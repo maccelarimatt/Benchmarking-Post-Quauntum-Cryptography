@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Flask App{% endblock %}</title>
+  <style>
+    :root {
+      --island-bg: rgba(128, 128, 128, 0.7);
+      --island-radius: 1.5rem;
+      --island-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    body {
+      margin: 0;
+      padding: 5vh 5vw;
+      background-image: url('/static/Images/background.gif');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+
+    .island {
+      background-color: var(--island-bg);
+      border-radius: var(--island-radius);
+      box-shadow: var(--island-shadow);
+      backdrop-filter: blur(4px);
+      transition: transform 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem; /* Add padding for spacing inside */
+    }
+
+    .island:hover {
+      transform: translateY(-5px);
+    }
+
+    .top-island {
+      width: 100%;
+      max-width: 1200px;
+      min-height: 120px;
+      margin: 2vh 0;
+    }
+
+    .top-island form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    .top-island p {
+      margin: 0 0 1rem 0;
+      font-size: 1.2rem;
+      color: #fff;
+      max-width: 90%;
+    }
+
+    .top-island input[type="text"] {
+      padding: 0.6rem 1rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      width: 60%;
+      max-width: 400px;
+      margin-bottom: 1rem;
+    }
+
+    .top-island button {
+      padding: 0.6rem 1.5rem;
+      border: none;
+      border-radius: 0.5rem;
+      background-color: red;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .top-island button:hover {
+      background-color: darkred;
+    }
+
+    .middle-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+      max-width: 1200px;
+      margin: 2vh 0;
+      gap: 2rem;
+    }
+
+    .middle-island {
+      flex: 1 1 40%;
+      min-width: 250px;
+      min-height: 350px;
+      background-color: var(--island-bg);
+      border-radius: var(--island-radius);
+      box-shadow: var(--island-shadow);
+      backdrop-filter: blur(4px);
+      transition: transform 0.3s ease;
+    }
+
+    .middle-island:hover {
+      transform: translateY(-5px);
+    }
+
+    .bottom-island {
+      width: 100%;
+      max-width: 1200px;
+      min-height: 120px;
+      padding: 2rem;
+      margin: 2vh 0;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 700px) {
+      .middle-row {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .middle-island {
+        width: 100%;
+      }
+
+      .top-island input[type="text"] {
+        width: 90%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Top island -->
+  <div class="island top-island">
+    <form method="POST" action="/encrypt">
+      <p>Enter any plaintext word below to see how it is encrypted using both RSA‑512 and Kyber algorithms:</p>
+      <input type="text" name="plaintext" placeholder="Enter your word..." required>
+      <button type="submit">Encrypt</button>
+    </form>
+  </div>
+
+  <!-- Middle row with two islands -->
+  <div class="middle-row">
+    <div class="middle-island"></div>
+    <div class="middle-island"></div>
+  </div>
+
+  <!-- Bottom island -->
+  <div class="island bottom-island"></div>
+</body>
+</html>
+
+
