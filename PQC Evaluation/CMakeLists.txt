@@ -16,3 +16,7 @@ endif()
 # --- Dilithium demo (new) ---
 add_executable(dilithium dilithium.c)
 target_link_libraries(dilithium PRIVATE OQS::oqs)
+
+# --- Falcon demo (new) ---
+add_executable(falcon falcon.c)
+target_link_libraries(falcon PRIVATE OQS::oqs)
