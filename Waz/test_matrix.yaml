@@ -1,0 +1,103 @@
+
+version: 1
+description: >
+  Functional validation + performance benchmark matrix for RSA (OAEP, PSS), ML-KEM/ML-DSA,
+  and selected PQC schemes (Kyber, HQC, Dilithium, Falcon, SPHINCS+, XMSSMT).
+  Use ACVP JSON for ML-KEM/ML-DSA, Wycheproof JSON for RSA edge/negative tests,
+  and scheme KATs from PQClean for others. Repeat each measured op 30× with 3 warmups.
+
+environment:
+  host: "<fill: e.g., Wits-Lab-Desktop-01>"
+  os: "<fill: e.g., Ubuntu 22.04 LTS>"
+  cpu: "<fill: e.g., Ryzen 7 5800X>"
+  ram_gb: "<fill: e.g., 32>"
+  lib_versions:
+    liboqs: ">=0.10"
+    oqs-openssl-provider: "optional"
+    python: ">=3.10"
+
+bench:
+  repeats: 30
+  warmup: 3
+  confidence: 0.95
+  rng_seed: 42
+  pin_cpu: true        # optional: pin to a single core to reduce jitter
+  drop_caches: false   # optional: experiment only
+
+sources:
+  nist_acvp:
+    url: "https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files"
+    dest: "./data/vectors/nist_acvp"
+    notes: "ML-KEM/ML-DSA final vectors per NIST ACVP JSON. Use these for correctness."
+  wycheproof:
+    url: "https://github.com/C2SP/wycheproof"
+    dest: "./data/vectors/wycheproof"
+    notes: "RSA OAEP & PSS (valid + negative) JSON vectors."
+  pqclean:
+    url: "https://github.com/PQClean/PQClean"
+    dest: "./data/vectors/pqclean"
+    notes: "Scheme KATs (Known Answer Tests) for Kyber, Dilithium, Falcon, SPHINCS+, XMSSMT, HQC (as available)."
+
+algorithms:
+  rsa:
+    oaep:
+      moduli: [2048, 3072]
+      hashes: [sha256, sha512]
+      mgf1: ["same-as-hash"]
+      label: ["", "test"]  # OAEP label (empty and 'test')
+      message_lengths:
+        # OAEP max message length (bytes) is k - 2*hLen - 2, where k is modulus length in bytes.
+        "2048":
+          sha256: [32, 128, 190]
+          sha512: [32, 64, 126]
+        "3072":
+          sha256: [32, 256, 318]
+          sha512: [32, 128, 254]
+      invalid_tests: true   # run Wycheproof negative tests
+    pss:
+      moduli: [2048, 3072]
+      hashes: [sha256, sha512]
+      mgf1: ["same-as-hash"]
+      salt_len: ["hashLen", 32]  # hashLen and fixed-32 as variants
+      invalid_tests: true
+
+  kems:
+  - { name: ML-KEM-512,  vectors: nist_acvp }
+  - { name: ML-KEM-768,  vectors: nist_acvp }
+  - { name: ML-KEM-1024, vectors: nist_acvp }
+
+  # Optional: keep as performance-only unless you bring in third-party KATs
+  - { name: HQC-128, vectors: self_kat }
+  - { name: HQC-192, vectors: self_kat }
+  - { name: HQC-256, vectors: self_kat }
+
+
+signatures:
+  # ML-DSA (Dilithium) — ACVP JSON (FIPS 204)
+  - { name: ML-DSA-44, vectors: nist_acvp }
+  - { name: ML-DSA-65, vectors: nist_acvp }
+  - { name: ML-DSA-87, vectors: nist_acvp }
+
+  # SLH-DSA (SPHINCS+) — ACVP JSON (FIPS 205)
+  - { name: SLH-DSA-SHA2-128s, vectors: nist_acvp }
+  - { name: SLH-DSA-SHA2-192s, vectors: nist_acvp }
+  - { name: SLH-DSA-SHA2-256s, vectors: nist_acvp }
+
+  # XMSS (stateful) — ACVP JSON (XMSS/LMS supported by ACVP)
+  - { name: XMSS-SHA2_20/2_256, vectors: nist_acvp }
+
+  # Optional extras without official ACVP vectors — do round-trip self tests
+  - { name: Falcon-512,  vectors: self_kat }
+  - { name: Falcon-1024, vectors: self_kat }
+
+
+operations:
+  kems: ["keygen", "encaps", "decaps"]
+  signatures: ["keygen", "sign", "verify"]
+  rsa:
+    oaep: ["keygen", "encrypt", "decrypt"]
+    pss: ["keygen", "sign", "verify"]
+
+output:
+  format: csv
+  fields: ["algo","op","param_set","trial","elapsed_ms","mem_bytes"]
