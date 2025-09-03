@@ -79,6 +79,7 @@ PQC Evaluation/build/
 **/Release*/
 **/x64/
 **/x86/
+**/Waz/data
 
 # ---------- VS Code ----------
 # Ignore local machine settings; keep common project files
