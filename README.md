@@ -1,7 +1,3 @@
-Here’s a drop-in **README.md** tailored to your repo layout. Just paste it at the repo root.
-
----
-
 # Analysis of Post-Quantum Cryptography — Kyber (ML-KEM) Demo
 
 This repo contains a small C demo that performs **hybrid encryption** using **ML-KEM-768 (Kyber-768)** from **liboqs**, deriving a shared secret and then encrypting arbitrary plaintext with **AES-256-GCM** (OpenSSL).
