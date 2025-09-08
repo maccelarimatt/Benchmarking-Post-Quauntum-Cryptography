@@ -18,14 +18,14 @@ def run_all_tests():
     """Run all cryptographic algorithm tests and log results to CSV."""
     results = []
     # Each test module has a run_tests() that returns a list of result dicts
-    results += test_rsa_oaep.run_tests()
-    #results += test_rsa_pss.run_tests()
+    results += test_rsa_oaep.run_tests() #Need
+    results += test_rsa_pss.run_tests() #Need
     results += test_kyber.run_tests()
-    results += test_hqc.run_tests()
+    results += test_hqc.run_tests() #Need
     results += test_dilithium.run_tests()
     results += test_falcon.run_tests()
     results += test_sphincs.run_tests()
-    results += test_xmssmt.run_tests()
+    results += test_xmssmt.run_tests() #Need
     # Define CSV file and headers
     csv_file = "test_results.csv"
     headers = ["Algorithm", "Operation", "TestCaseID", "Result", 
