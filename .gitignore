@@ -80,6 +80,9 @@ PQC Evaluation/build/
 **/x64/
 **/x86/
 **/Waz/data
+**/Waz/liboqs
+**/Waz/liboqs-python
+**/Test/.acvp_cache
 
 # ---------- VS Code ----------
 # Ignore local machine settings; keep common project files
