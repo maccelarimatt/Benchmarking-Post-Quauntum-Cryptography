@@ -44,7 +44,13 @@ def measure(fn: Callable[[], None], runs: int) -> OpStats:
 def export_json(summary: AlgoSummary, export_path: str | None) -> None:
     if not export_path:
         return
+    # Normalize Windows-style separators on POSIX if users pass e.g. "results\file.json"
+    if "\\" in export_path and ":" not in export_path:
+        export_path = export_path.replace("\\", "/")
     path = pathlib.Path(export_path)
+    # Resolve relative paths to the repository root so results/ always lands at repo root
+    if not path.is_absolute():
+        path = _repo_root() / path
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         json.dump({
@@ -53,6 +59,16 @@ def export_json(summary: AlgoSummary, export_path: str | None) -> None:
             "ops": {k: asdict(v) for k,v in summary.ops.items()},
             "meta": summary.meta
         }, f, indent=2)
+
+def _repo_root() -> pathlib.Path:
+    """Best-effort detection of the repository root (directory containing .git).
+    Falls back to the current working directory if not found.
+    """
+    here = pathlib.Path(__file__).resolve()
+    for p in (here, *here.parents):
+        if (p / ".git").exists():
+            return p
+    return pathlib.Path.cwd()
 
 def run_kem(name: str, runs: int) -> AlgoSummary:
     cls = registry.get(name)
