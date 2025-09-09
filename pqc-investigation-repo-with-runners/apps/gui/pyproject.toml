@@ -1,0 +1,21 @@
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pqcbench-gui"
+version = "0.1.0"
+description = "Flask GUI for interactive demonstrations"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name="Investigation Team"}]
+dependencies = [
+  "Flask>=3.0.0",
+  "pqcbench-core>=0.1.0",
+  "pqcbench-rsa>=0.1.0",
+  "pqcbench-liboqs>=0.1.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

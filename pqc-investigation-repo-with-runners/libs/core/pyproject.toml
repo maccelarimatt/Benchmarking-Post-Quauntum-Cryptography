@@ -1,0 +1,16 @@
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pqcbench-core"
+version = "0.1.0"
+description = "Core interfaces, registry, and shared utilities for PQC Investigation"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name="Investigation Team"}]
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]

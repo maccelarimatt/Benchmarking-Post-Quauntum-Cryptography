@@ -1,0 +1,19 @@
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pqcbench-liboqs"
+version = "0.1.0"
+description = "liboqs-backed KEM and signature adapters (Kyber, Dilithium, Falcon, SPHINCS+, XMSSMT, HQC)"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name="Investigation Team"}]
+dependencies = [
+  # "python-oqs>=0.10.0",
+  "pqcbench-core>=0.1.0"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

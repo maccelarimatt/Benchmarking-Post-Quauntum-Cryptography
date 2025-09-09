@@ -1,0 +1,21 @@
+
+# Editable installs (local packages)
+-e libs/core
+-e libs/adapters/rsa
+-e libs/adapters/liboqs
+-e apps/cli
+-e apps/gui
+
+# Tooling
+pytest
+pytest-cov
+mypy
+flake8
+black
+isort
+pre-commit
+typer
+flask
+# cryptography and liboqs are optional at this stage; add once ready
+# cryptography
+# python-oqs
