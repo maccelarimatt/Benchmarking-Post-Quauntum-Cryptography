@@ -8,6 +8,7 @@ __pycache__/
 *.egg
 dist/
 build/
+.venv311/
 
 # Editors/OS
 .vscode/

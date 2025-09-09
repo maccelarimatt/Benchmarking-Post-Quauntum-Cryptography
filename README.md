@@ -66,3 +66,21 @@ run-kyber --runs 50 --export results/kyber.json
 run-dilithium --runs 50 --message-size 4096 --export results/dilithium.json
 ```
 On Windows you can also use the wrappers in `scripts\run_*.ps1`.
+
+## Selecting PQC parameter sets
+
+The liboqs-backed adapters auto-detect available algorithms. You can override the chosen parameter set via environment variables (if supported by your liboqs build):
+
+- `PQCBENCH_KYBER_ALG` (e.g., `ML-KEM-768`, `ML-KEM-1024`, `Kyber768`)
+- `PQCBENCH_HQC_ALG` (e.g., `HQC-128`, `HQC-192`, `HQC-256`)
+- `PQCBENCH_DILITHIUM_ALG` (e.g., `ML-DSA-65`, `Dilithium2`)
+- `PQCBENCH_FALCON_ALG` (e.g., `Falcon-512`)
+- `PQCBENCH_SPHINCS_ALG` (e.g., `SPHINCS+-SHA2-128f-simple`)
+- `PQCBENCH_XMSSMT_ALG` (e.g., `XMSSMT-SHA2_20/2_256`)
+
+Example:
+
+```
+export PQCBENCH_KYBER_ALG=ML-KEM-1024
+export PQCBENCH_DILITHIUM_ALG=ML-DSA-65
+```
