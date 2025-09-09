@@ -1,133 +1,68 @@
-# Analysis of Post-Quantum Cryptography — Kyber (ML-KEM) Demo
 
-This repo contains a small C demo that performs **hybrid encryption** using **ML-KEM-768 (Kyber-768)** from **liboqs**, deriving a shared secret and then encrypting arbitrary plaintext with **AES-256-GCM** (OpenSSL).
+# PQC Investigation – Modular Monorepo
 
-> **Note:** Kyber/ML-KEM is a **KEM** (key encapsulation), not a direct “encrypt plaintext” algorithm. We use it to derive a symmetric key, then encrypt with AES-GCM.
+A modular, multi-package repository for benchmarking classical and post‑quantum cryptography (RSA‑OAEP, RSA‑PSS, Kyber/ML‑KEM, HQC, Dilithium/ML‑DSA, Falcon/FN‑DSA, SPHINCS+, XMSSMT) with ACVP validation, a CLI, and a Flask GUI.
 
-## Repository layout
+## Quick start (dev)
+```bash
+# Linux/macOS (PowerShell script also included for Windows)
+python -m venv .venv && source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements-dev.txt
+pre-commit install
+pytest -q
+pqcbench --help   # CLI entry point
+FLASK_APP=apps/gui/src/webapp/app.py flask run
+```
 
+## Repo map
 ```
 .
-├─ Application/                 # Python app (not used by this C demo)
-│  ├─ static/
-│  ├─ templates/
-│  └─ main.py
-└─ PQC Evaluation/              # CMake C demo using liboqs + OpenSSL
-   ├─ CMakeLists.txt
-   ├─ main.c
-   └─ build/                    # created by CMake
+├─ apps/
+│  ├─ cli/            # CLI app: runs algos, ACVP checks, benchmarks
+│  └─ gui/            # Flask GUI for demos/visualisations
+├─ libs/
+│  ├─ core/           # Interfaces, registry, metrics, shared utils
+│  └─ adapters/
+│     ├─ liboqs/      # PQC adapters using liboqs (Kyber, Dilithium, Falcon, etc.)
+│     └─ rsa/         # Classical RSA-OAEP / RSA-PSS adapter
+├─ acvp/              # ACVP harness, vector management
+├─ benchmarks/        # Reproducible benchmark scenarios + scripts
+├─ tests/             # Unit + integration tests
+├─ docs/              # Optional: MkDocs (or Sphinx) docs scaffold
+├─ results/           # CSV/JSON benchmark outputs (gitignored)
+├─ scripts/           # Dev/setup utilities
+├─ .github/workflows/ # CI
+└─ requirements-dev.txt
 ```
 
-## Prerequisites (Windows 10/11)
+## Design principles
+- **Interfaces first:** algorithm‑agnostic `KEM` and `Signature` protocols define the contract.
+- **Adapters:** each algorithm lives behind a small adapter package (e.g., `pqcbench_liboqs`, `pqcbench_rsa`).
+- **Registry:** adapters self‑register; the CLI/GUI discover algorithms at runtime without import spaghetti.
+- **ACVP harness:** vectors in `acvp/vectors` (tracked with Git LFS), scripts in `acvp/harness`.
+- **Benchmarks:** deterministic scenarios; outputs are machine‑readable (CSV/JSON) and versioned.
+- **Separation of concerns:** GUI/CLI never talk to liboqs/crypto directly—only via the core interfaces.
 
-* **Visual Studio 2022** with “Desktop development with C++”
-* **Git**
-* **CMake** (bundled with VS is fine)
-* **vcpkg** package manager
+Replace `@studentA` / `@studentB` in `CODEOWNERS` with your GitHub handles.
 
-## One-time setup
 
-Open **PowerShell** and run:
-
-```powershell
-# 1) Get vcpkg (if you don’t have it yet)
-git clone https://github.com/microsoft/vcpkg $HOME\vcpkg
-& $HOME\vcpkg\bootstrap-vcpkg.bat
-
-# 2) Install libraries (MSVC ABI)
-$HOME\vcpkg\vcpkg.exe install liboqs:x64-windows openssl:x64-windows
-$HOME\vcpkg\vcpkg.exe integrate install   # optional, makes VS/MSBuild auto-find packages
+## One-command runners (installed via editable install)
+After `pip install -r requirements-dev.txt`, the following commands are available:
 ```
-
-## Build the C demo
-
-```powershell
-# From the repo root, cd into the C project folder (quotes because path has spaces)
-cd ".\PQC Evaluation"
-
-# Configure (generate Visual Studio build files)
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
-  -DCMAKE_TOOLCHAIN_FILE="$HOME\vcpkg\scripts\buildsystems\vcpkg.cmake" `
-  -DVCPKG_TARGET_TRIPLET=x64-windows
-
-# Compile
-cmake --build build --config Release
+run-kyber         # KEM
+run-hqc           # KEM
+run-rsa-oaep      # KEM-style wrapper
+run-dilithium     # SIG
+run-falcon        # SIG
+run-sphincsplus   # SIG
+run-xmssmt        # SIG
+run-rsa-pss       # SIG
 ```
-
-## Run the demo
-
-The binaries from vcpkg are DLLs; make sure Windows can find them:
-
-```powershell
-$env:PATH = "$HOME\vcpkg\installed\x64-windows\bin;$env:PATH"
-.\build\Release\hello.exe "my secret message"
+Each supports `--runs N` and (for signatures) `--message-size BYTES`, plus `--export results/<file>.json`.
+Examples:
 ```
-
-**Expected output (example):**
-
+run-kyber --runs 50 --export results/kyber.json
+run-dilithium --runs 50 --message-size 4096 --export results/dilithium.json
 ```
-KEM ciphertext (to receiver): <hex...>
-AES-GCM IV: <hex...>
-AES-GCM tag: <hex...>
-AES-GCM ciphertext: <hex...>
-Recovered plaintext: my secret message
-```
-
-### Optional: avoid setting PATH each time
-
-**A)** Add vcpkg’s bin to your user PATH permanently (one-time):
-
-```powershell
-[Environment]::SetEnvironmentVariable(
-  "Path",
-  $env:Path + ";$HOME\vcpkg\installed\x64-windows\bin",
-  "User"
-)
-```
-
-Open a new PowerShell window afterwards.
-
-**B)** Or copy DLLs next to the exe at build time — append this to `CMakeLists.txt`:
-
-```cmake
-add_custom_command(TARGET hello POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "$ENV{USERPROFILE}/vcpkg/installed/${VCPKG_TARGET_TRIPLET}/bin/oqs.dll"
-    "$<TARGET_FILE_DIR:hello>"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "$ENV{USERPROFILE}/vcpkg/installed/${VCPKG_TARGET_TRIPLET}/bin/libcrypto-3-x64.dll"
-    "$<TARGET_FILE_DIR:hello>"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "$ENV{USERPROFILE}/vcpkg/installed/${VCPKG_TARGET_TRIPLET}/bin/libssl-3-x64.dll"
-    "$<TARGET_FILE_DIR:hello>"
-)
-```
-
-## What the demo does
-
-1. Generate an **ML-KEM-768** keypair (receiver).
-2. **Encapsulate** to the public key to derive a 32-byte shared secret (sender).
-3. Use that secret as an **AES-256-GCM** key to encrypt the provided plaintext.
-4. **Decapsulate** with the secret key and decrypt; print the recovered plaintext.
-
-You can switch algorithms by changing the strings in `main.c`:
-
-* `"ML-KEM-512"`, `"ML-KEM-768"`, `"ML-KEM-1024"` for KEM,
-* `"ML-DSA-44"`, `"ML-DSA-65"`, `"ML-DSA-87"` for signatures (if you add a SIG demo).
-
-## Common pitfalls
-
-* **Mixing toolchains:** This project uses **MSVC** (`x64-windows` triplet). If you compile with MSYS2/MinGW, install `liboqs:x64-mingw-dynamic` instead and adjust commands.
-* **Spaces in paths:** Always quote paths in PowerShell, e.g. `cd ".\PQC Evaluation"`.
-* **Missing DLLs at runtime:** Add vcpkg `bin` to PATH or copy DLLs beside the exe (see above).
-* **First-time configure:** Only re-run the `cmake -S ... -B build ...` configure step when you change libraries or the generator; otherwise just `cmake --build ...`.
-
-## Credits
-
-* [Open Quantum Safe / liboqs](https://github.com/open-quantum-safe/liboqs)
-* [OpenSSL](https://www.openssl.org/)
-* Built with [vcpkg](https://github.com/microsoft/vcpkg) + MSVC on Windows
-
----
-
-If you want, I can also drop in a VS Code task (`.vscode/tasks.json`) or a `CMakeUserPresets.json` so you can press a single build/run button.
+On Windows you can also use the wrappers in `scripts\run_*.ps1`.

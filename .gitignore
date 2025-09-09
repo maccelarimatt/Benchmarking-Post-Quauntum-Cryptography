@@ -1,101 +1,24 @@
-# ---------- OS junk ----------
-.DS_Store
-Thumbs.db
-ehthumbs.db
-Icon?
-Desktop.ini
 
-# ---------- Python (Application/) ----------
+# Python
 __pycache__/
-*.py[cod]
-*.pyd
-*.pyo
-*.egg-info/
-.eggs/
+*.pyc
 .venv/
-venv/
-env/
-ENV/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-coverage.xml
-htmlcov/
-.ipynb_checkpoints
 .env
-.env.*
+*.egg-info/
+*.egg
+dist/
+build/
 
-# ---------- C/C++ / CMake ----------
-CMakeCache.txt
-CMakeFiles/
-CMakeScripts/
-Testing/
-Makefile
-cmake_install.cmake
-install_manifest.txt
-compile_commands.json
-CTestTestfile.cmake
-*.cmake.user
-*.dir/
-*.obj
-*.o
-*.iobj
-*.ipdb
-*.pdb
-*.idb
-*.ilk
-*.exp
-*.a
-*.la
-*.lo
-*.dll
-*.dylib
-*.so
-*.lib
-*.exe
-*.out
-*.app
-*.manifest
-*.pch
-*.rsp
-.browse.VC.db
-*.VC.db
-*.VC.opendb
-.vs/
+# Editors/OS
+.vscode/
+.idea/
+.DS_Store
 
-# Build folders (project-specific + common names)
-# Project-specific CMake build dir:
-PQC Evaluation/build/
+# Data/artifacts
+results/
+.acvp_cache/
+**/vectors/**
+!acvp/vectors/.gitattributes
 
-# Common build dirs anywhere:
-**/build/
-**/build-*/
-**/cmake-build-*/
-**/out/
-**/bin/
-**/obj/
-**/Debug*/
-**/Release*/
-**/x64/
-**/x86/
-**/Waz/data
-**/Waz/liboqs
-**/Waz/liboqs-python
-**/Test/.acvp_cache
-
-# ---------- VS Code ----------
-# Ignore local machine settings; keep common project files
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-
-# ---------- Logs / temp ----------
-*.log
-*.tmp
-*.temp
-*.swp
-*.swo
-*~
+# Node (if any future frontend)
+node_modules/
