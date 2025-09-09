@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Tuple
 from pqcbench import registry
-from ._util import try_import_oqs, resolve_algorithm, pick_sig_algorithm
+from ._util import try_import_oqs, resolve_algorithm, pick_sig_algorithm, pick_stateful_sig_algorithm
 
 _oqs = try_import_oqs()
 
@@ -148,8 +148,8 @@ else:
         name = "xmssmt"
 
         def __init__(self) -> None:
-            # XMSS/XMSSMT names differ by build; try a few common ones
-            self.alg = pick_sig_algorithm(
+            # XMSS/XMSSMT are stateful signatures; use StatefulSignature API
+            self.alg = pick_stateful_sig_algorithm(
                 _oqs,
                 "PQCBENCH_XMSSMT_ALG",
                 [
@@ -162,15 +162,15 @@ else:
                 raise RuntimeError("No supported XMSS/XMSSMT algorithm enabled in liboqs")
 
         def keygen(self) -> Tuple[bytes, bytes]:
-            with _oqs.Signature(self.alg) as s:
+            with _oqs.StatefulSignature(self.alg) as s:
                 pk = s.generate_keypair()
                 sk = s.export_secret_key()
                 return pk, sk
 
         def sign(self, secret_key: bytes, message: bytes) -> bytes:
-            with _oqs.Signature(self.alg, secret_key=secret_key) as s:
+            with _oqs.StatefulSignature(self.alg, secret_key=secret_key) as s:
                 return s.sign(message)
 
         def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
-            with _oqs.Signature(self.alg) as v:
+            with _oqs.StatefulSignature(self.alg) as v:
                 return v.verify(message, signature, public_key)
