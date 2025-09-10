@@ -3,17 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>{% block title %}Flask App{% endblock %}</title>
+  <title>{% block title %}PQC Bench GUI{% endblock %}</title>
   <style>
+    * { box-sizing: border-box; }
     :root {
       --island-bg: rgba(128, 128, 128, 0.7);
       --island-radius: 1.5rem;
       --island-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      --accent: #ff4d4f; /* professional, readable accent */
+      --text: #ffffff;
+      --muted: rgba(255,255,255,.85);
     }
 
     body {
       margin: 0;
       padding: 5vh 5vw;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      line-height: 1.35;
+      color: var(--text);
       background-image: url('/static/Images/background.gif');
       background-size: cover;
       background-position: center;
@@ -37,6 +44,7 @@
       justify-content: center;
       text-align: center;
       padding: 2rem; /* Add padding for spacing inside */
+      gap: 1rem; /* ensure inner blocks don’t touch */
     }
 
     .island:hover {
@@ -55,12 +63,13 @@
       flex-direction: column;
       align-items: center;
       width: 100%;
+      gap: 1rem;
     }
 
     .top-island p {
       margin: 0 0 1rem 0;
       font-size: 1.2rem;
-      color: #fff;
+      color: var(--text);
       max-width: 90%;
     }
 
@@ -72,13 +81,15 @@
       width: 60%;
       max-width: 400px;
       margin-bottom: 1rem;
+      background: rgba(255,255,255,.95);
+      color: #111;
     }
 
     .top-island button {
       padding: 0.6rem 1.5rem;
       border: none;
       border-radius: 0.5rem;
-      background-color: red;
+      background-color: var(--accent);
       color: white;
       font-size: 1rem;
       cursor: pointer;
@@ -86,7 +97,7 @@
     }
 
     .top-island button:hover {
-      background-color: darkred;
+      background-color: #e04446;
     }
 
     .middle-row {
@@ -95,8 +106,8 @@
       justify-content: center;
       width: 100%;
       max-width: 1200px;
-      margin: 2vh 0;
-      gap: 2rem;
+      margin: 2.5vh 0;
+      gap: 2rem; /* spacing between boxes */
     }
 
     .middle-island {
@@ -108,6 +119,7 @@
       box-shadow: var(--island-shadow);
       backdrop-filter: blur(4px);
       transition: transform 0.3s ease;
+      padding: 1rem; /* ensure content spacing */
     }
 
     .middle-island:hover {
@@ -119,8 +131,18 @@
       max-width: 1200px;
       min-height: 120px;
       padding: 2rem;
-      margin: 2vh 0;
+      margin: 2.5vh 0 1vh 0;
     }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: .5rem .35rem; }
+    thead th { border-bottom: 1px solid rgba(255,255,255,.25); }
+    tbody tr { border-bottom: 1px dashed rgba(255,255,255,.15); }
+    tbody tr:nth-child(even) { background: rgba(0,0,0,.08); }
+
+    code, pre, kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    code { background: rgba(255,255,255,.2); padding: .1rem .35rem; border-radius: .3rem; }
+    pre { background: rgba(0,0,0,.3); padding: 1rem; border-radius: .5rem; }
 
     /* Responsive adjustments */
     @media (max-width: 700px) {
@@ -142,21 +164,171 @@
 <body>
   <!-- Top island -->
   <div class="island top-island">
-    <form method="POST" action="/encrypt">
-      <p>Enter any plaintext word below to see how it is encrypted using both RSA‑512 and Kyber algorithms:</p>
-      <input type="text" name="plaintext" placeholder="Enter your word..." required>
-      <button type="submit">Encrypt</button>
+    <form method="POST" action="/run" style="width:100%;">
+      <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:1rem; flex-wrap:wrap;">
+        <div style="text-align:left; color:#fff;">
+          <h1 style="margin:0 0 .25rem 0; font-size:1.6rem;">PQC Bench</h1>
+          <div style="opacity:.9;">Run micro-benchmarks and export results</div>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:1rem; align-items:end; color:#fff;">
+          <label>
+            Algorithm<br/>
+            <select id="algo-select" name="algo" style="padding:0.5rem; border-radius:0.5rem; min-width:220px;">
+              {% for name in algos %}
+                <option value="{{name}}" {% if selected_algo==name %}selected{% endif %}>{{name}} ({{ kinds[name] }})</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Runs<br/>
+            <input id="runs-input" type="number" name="runs" min="1" value="{{ default_runs or 10 }}" style="padding:0.5rem; border-radius:0.5rem; width:120px;"/>
+          </label>
+          <label id="msg-size-wrap">
+            Message size (bytes)<br/>
+            <input id="msg-size-input" type="number" name="message_size" min="1" value="{{ default_message_size or 1024 }}" style="padding:0.5rem; border-radius:0.5rem; width:160px;"/>
+          </label>
+          <label style="display:flex; gap:0.5rem; align-items:center;">
+            <input id="export-check" type="checkbox" name="do_export" {% if last_export %}checked{% endif %}/>
+            Export to
+            <input id="export-path" type="text" name="export_path" placeholder="results/<algo>.json" value="{{ last_export or '' }}" style="padding:0.5rem; border-radius:0.5rem; min-width:240px;"/>
+          </label>
+          <button type="submit">Run</button>
+        </div>
+      </div>
     </form>
   </div>
 
   <!-- Middle row with two islands -->
   <div class="middle-row">
-    <div class="middle-island"></div>
-    <div class="middle-island"></div>
+    <div class="middle-island" style="padding:1rem; color:#fff; text-align:left;">
+      <h3 style="margin-top:0;">Available Algorithms</h3>
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:.5rem;">
+        {% for name in algos %}
+          <div style="background:rgba(0,0,0,.25); padding:.5rem .75rem; border-radius:.5rem; display:flex; justify-content:space-between; align-items:center;">
+            <span>{{name}}</span>
+            <span style="font-size:.8rem; background:rgba(255,255,255,.2); padding:.1rem .4rem; border-radius:.3rem;">{{ kinds[name] }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="middle-island" style="padding:1rem; color:#fff; text-align:left;">
+      <h3 style="margin-top:0;">Status</h3>
+      {% if error %}
+        <div style="color:#ffdddd; background:#902; padding:0.75rem 1rem; border-radius:0.5rem;">Error: {{ error }}</div>
+      {% else %}
+        <div style="background:rgba(0,0,0,.25); padding:0.75rem 1rem; border-radius:0.5rem;">Ready.</div>
+      {% endif %}
+      {% if last_export %}
+        <div style="margin-top:.75rem;">Exported to: <code>{{ last_export }}</code></div>
+      {% endif %}
+    </div>
   </div>
 
   <!-- Bottom island -->
-  <div class="island bottom-island"></div>
+  <div class="island bottom-island" style="color:#fff; text-align:left;">
+    <h3 style="margin-top:0;">Result</h3>
+    {% if result_json %}
+      {% macro fmt_ms(v) -%}
+        {{ (v or 0)|round(3) }} ms
+      {%- endmacro %}
+      {% macro fmt_bytes(v) -%}
+        {%- set n = v|int(0) -%}
+        {%- if n >= 1024*1024 -%}
+          {{ (n/1048576)|round(2) }} MB ({{n}} B)
+        {%- elif n >= 1024 -%}
+          {{ (n/1024)|round(2) }} KB ({{n}} B)
+        {%- else -%}
+          {{ n }} B
+        {%- endif -%}
+      {%- endmacro %}
+
+      <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+        <div style="flex:1 1 420px; background:rgba(0,0,0,.25); padding:1rem; border-radius:.75rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
+            <div>
+              <div style="font-size:1.2rem; font-weight:700;">{{ result_json.algo }}</div>
+              <div style="opacity:.85;">Algorithm</div>
+            </div>
+            <div style="font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem;">{{ result_json.kind }}</div>
+          </div>
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr style="text-align:left; border-bottom:1px solid rgba(255,255,255,.2);">
+                <th style="padding:.4rem .2rem;">Operation</th>
+                <th style="padding:.4rem .2rem;">Runs</th>
+                <th style="padding:.4rem .2rem;">Mean</th>
+                <th style="padding:.4rem .2rem;">Min</th>
+                <th style="padding:.4rem .2rem;">Max</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% set op_order = ['keygen','encapsulate','decapsulate'] if result_json.kind=='KEM' else ['keygen','sign','verify'] %}
+              {% for op in op_order %}
+                {% if op in result_json.ops %}
+                {% set row = result_json.ops[op] %}
+                <tr style="border-bottom:1px dashed rgba(255,255,255,.15);">
+                  <td style="padding:.35rem .2rem; text-transform:capitalize;">{{ op }}</td>
+                  <td style="padding:.35rem .2rem;">{{ row.runs }}</td>
+                  <td style="padding:.35rem .2rem;">{{ fmt_ms(row.mean_ms) }}</td>
+                  <td style="padding:.35rem .2rem;">{{ fmt_ms(row.min_ms) }}</td>
+                  <td style="padding:.35rem .2rem;">{{ fmt_ms(row.max_ms) }}</td>
+                </tr>
+                {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div style="flex:1 1 320px; background:rgba(0,0,0,.25); padding:1rem; border-radius:.75rem;">
+          <div style="font-size:1.1rem; font-weight:700; margin-bottom:.75rem;">Metadata</div>
+          <table style="width:100%; border-collapse:collapse;">
+            <tbody>
+              {% for k, v in result_json.meta.items() %}
+              <tr style="border-bottom:1px dashed rgba(255,255,255,.15);">
+                <td style="padding:.35rem .2rem; opacity:.9;">{{ k.replace('_',' ') }}</td>
+                <td style="padding:.35rem .2rem; font-weight:600; text-align:right;">
+                  {% if 'len' in k or 'size' in k %}{{ fmt_bytes(v) }}{% else %}{{ v }}{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% if last_export %}
+            <div style="margin-top:.75rem; font-size:.9rem;">Saved as: <code>{{ last_export }}</code></div>
+          {% endif %}
+        </div>
+      </div>
+
+      <details style="margin-top:1rem;">
+        <summary style="cursor:pointer;">View raw JSON</summary>
+        <pre style="white-space:pre-wrap; word-break:break-word; background:rgba(0,0,0,0.3); padding:1rem; border-radius:0.5rem; max-height:45vh; overflow:auto; margin-top:.5rem;">{{ result_json | tojson(indent=2) }}</pre>
+      </details>
+    {% else %}
+      <p>No run yet. Choose an algorithm and click Run.</p>
+    {% endif %}
+  </div>
+
+  <script>
+    (function() {
+      const kinds = {{ kinds|tojson }};
+      const select = document.getElementById('algo-select');
+      const msgWrap = document.getElementById('msg-size-wrap');
+      const exportPath = document.getElementById('export-path');
+      const exportCheck = document.getElementById('export-check');
+      function refresh() {
+        const name = select.value;
+        const kind = kinds[name] || '';
+        // Show msg size only for signatures
+        msgWrap.style.display = (kind === 'SIG') ? 'block' : 'none';
+        // If exporting and path empty, set sensible default
+        if (exportCheck.checked && (!exportPath.value || exportPath.value.trim()==='')) {
+          exportPath.value = `results/${name.replace('+', 'plus')}.json`;
+        }
+      }
+      select.addEventListener('change', refresh);
+      exportCheck.addEventListener('change', refresh);
+      refresh();
+    })();
+  </script>
 </body>
 </html>
 
