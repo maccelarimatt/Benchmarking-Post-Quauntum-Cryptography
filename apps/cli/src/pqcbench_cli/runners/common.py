@@ -1,6 +1,6 @@
 
 from __future__ import annotations
-import time, json, pathlib
+import time, json, pathlib, base64
 from dataclasses import dataclass, asdict
 from typing import Callable, Dict, Any, List, Tuple
 from pqcbench import registry
@@ -23,6 +23,7 @@ class OpStats:
     mean_ms: float
     min_ms: float
     max_ms: float
+    series: List[float]
 
 @dataclass
 class AlgoSummary:
@@ -32,14 +33,14 @@ class AlgoSummary:
     meta: Dict[str, Any]
 
 def measure(fn: Callable[[], None], runs: int) -> OpStats:
-    times = []
+    times: List[float] = []
     for _ in range(runs):
         t0 = time.perf_counter()
         fn()
         dt = (time.perf_counter() - t0) * 1000.0
         times.append(dt)
     mean = sum(times)/len(times)
-    return OpStats(runs=runs, mean_ms=mean, min_ms=min(times), max_ms=max(times))
+    return OpStats(runs=runs, mean_ms=mean, min_ms=min(times), max_ms=max(times), series=times)
 
 def export_json(summary: AlgoSummary, export_path: str | None) -> None:
     if not export_path:
@@ -59,6 +60,24 @@ def export_json(summary: AlgoSummary, export_path: str | None) -> None:
             "ops": {k: asdict(v) for k,v in summary.ops.items()},
             "meta": summary.meta
         }, f, indent=2)
+
+def _export_json_blob(data: dict, export_path: str | None) -> None:
+    if not export_path:
+        return
+    # Normalize Windows separators for relative paths
+    if "\\" in export_path and ":" not in export_path:
+        export_path = export_path.replace("\\", "/")
+    path = pathlib.Path(export_path)
+    if not path.is_absolute():
+        path = _repo_root() / path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+def _b64(x: bytes | bytearray | None) -> str | None:
+    if x is None:
+        return None
+    return base64.b64encode(bytes(x)).decode("ascii")
 
 def _repo_root() -> pathlib.Path:
     """Best-effort detection of the repository root (directory containing .git).
@@ -123,3 +142,46 @@ def run_sig(name: str, runs: int, message_size: int) -> AlgoSummary:
         "message_size": message_size
     }
     return AlgoSummary(algo=name, kind="SIG", ops=ops, meta=meta)
+
+
+# -------- Raw trace exporters (single illustrative run) --------
+
+def export_trace_kem(name: str, export_path: str | None) -> None:
+    if not export_path:
+        return
+    cls = registry.get(name)
+    algo = cls()
+    pk, sk = algo.keygen()
+    ct, ss = algo.encapsulate(pk)
+    ss_dec = algo.decapsulate(sk, ct)
+    trace = {
+        "algo": name,
+        "kind": "KEM",
+        "trace": {
+            "keygen": {"public_key": _b64(pk), "secret_key": _b64(sk)},
+            "encapsulate": {"ciphertext": _b64(ct), "shared_secret": _b64(ss)},
+            "decapsulate": {"shared_secret": _b64(ss_dec), "matches": (ss == ss_dec)},
+        }
+    }
+    _export_json_blob(trace, export_path)
+
+def export_trace_sig(name: str, message_size: int, export_path: str | None) -> None:
+    if not export_path:
+        return
+    cls = registry.get(name)
+    algo = cls()
+    pk, sk = algo.keygen()
+    msg = b"x" * int(message_size)
+    sig = algo.sign(sk, msg)
+    ok = algo.verify(pk, msg, sig)
+    trace = {
+        "algo": name,
+        "kind": "SIG",
+        "trace": {
+            "keygen": {"public_key": _b64(pk), "secret_key": _b64(sk)},
+            "message": _b64(msg),
+            "sign": {"signature": _b64(sig)},
+            "verify": {"ok": bool(ok)},
+        }
+    }
+    _export_json_blob(trace, export_path)

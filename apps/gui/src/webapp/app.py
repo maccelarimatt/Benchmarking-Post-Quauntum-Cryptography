@@ -6,7 +6,14 @@ from typing import Dict, Any
 
 # Reuse the CLI runner logic to keep one source of truth for measurements
 try:
-    from pqcbench_cli.runners.common import _load_adapters, run_kem, run_sig, export_json
+    from pqcbench_cli.runners.common import (
+        _load_adapters,
+        run_kem,
+        run_sig,
+        export_json,
+        export_trace_kem,
+        export_trace_sig,
+    )
 except Exception:
     # If CLI package isn't installed, try best-effort import of adapters directly
     _load_adapters = None
@@ -78,6 +85,8 @@ def run():
         message_size = 1024
     export_path = request.form.get("export_path", "")
     do_export = request.form.get("do_export") == "on"
+    do_export_trace = request.form.get("do_export_trace") == "on"
+    export_trace_path = request.form.get("export_trace_path", "")
 
     result: Dict[str, Any] | None = None
     error: str | None = None
@@ -97,6 +106,13 @@ def run():
             out_path = export_path.strip() or f"results/{name.replace('+','plus')}.json"
             export_json(summary, out_path)  # type: ignore[misc]
             last_export = out_path
+
+        if do_export_trace:
+            raw_path = export_trace_path.strip() or f"results/{name.replace('+','plus')}_trace.json"
+            if kind == "KEM":
+                export_trace_kem(name, raw_path)  # type: ignore[misc]
+            else:
+                export_trace_sig(name, message_size, raw_path)  # type: ignore[misc]
 
         # Shape result like CLI JSON output for consistency
         result = {

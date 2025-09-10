@@ -1,17 +1,24 @@
 
 from __future__ import annotations
 import typer, json
-from .common import run_kem, export_json
+from .common import run_kem, export_json, export_trace_kem
 
 app = typer.Typer(add_completion=False)
 
 @app.command()
-def main(runs: int = 10, export: str = "results/kyber_summary.json", print_json: bool = True):
+def main(
+    runs: int = 10,
+    export: str = "results/kyber_summary.json",
+    export_raw: str = "",
+    print_json: bool = True,
+):
     """
     Run kyber KEM micro-bench (keygen/encapsulate/decapsulate).
     """
     summary = run_kem("kyber", runs)
     export_json(summary, export)
+    if export_raw:
+        export_trace_kem("kyber", export_raw)
     if print_json:
         import json
         typer.echo(json.dumps({

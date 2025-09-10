@@ -58,13 +58,20 @@
       margin: 2vh 0;
     }
 
-    .top-island form {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 100%;
-      gap: 1rem;
+    .top-island form { width: 100%; }
+    .form-header {
+      display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;
+      width:100%;
     }
+    .controls-grid {
+      display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem;
+      align-items:end; width:100%;
+    }
+    .control label { font-size:.9rem; opacity:.95; display:block; text-align:left; margin-bottom:.2rem; }
+    .control input[type="number"], .control input[type="text"], .control select {
+      padding:0.55rem 0.6rem; border:none; border-radius:0.5rem; width:100%; background:rgba(255,255,255,.96); color:#111;
+    }
+    .control.inline { display:flex; gap:.5rem; align-items:center; }
 
     .top-island p {
       margin: 0 0 1rem 0;
@@ -144,6 +151,23 @@
     code { background: rgba(255,255,255,.2); padding: .1rem .35rem; border-radius: .3rem; }
     pre { background: rgba(0,0,0,.3); padding: 1rem; border-radius: .5rem; }
 
+    /* Charts: ensure reliable initial paint even under backdrop filters */
+    .chart-card {
+      background: rgba(0,0,0,.20);
+      padding: .75rem;
+      border-radius: .5rem;
+      min-height: 180px;
+      max-height: 220px;
+      overflow: hidden;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      position: relative;
+      z-index: 1;
+      will-change: transform;
+    }
+    .chart-title { margin: 0 0 .5rem 0; font-weight: 600; }
+    .chart-canvas { display:block; width: 100% !important; height: 150px !important; transform: translateZ(0); }
+
     /* Responsive adjustments */
     @media (max-width: 700px) {
       .middle-row {
@@ -164,35 +188,42 @@
 <body>
   <!-- Top island -->
   <div class="island top-island">
-    <form method="POST" action="/run" style="width:100%;">
-      <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:1rem; flex-wrap:wrap;">
+    <form method="POST" action="/run">
+      <div class="form-header">
         <div style="text-align:left; color:#fff;">
           <h1 style="margin:0 0 .25rem 0; font-size:1.6rem;">PQC Bench</h1>
           <div style="opacity:.9;">Run micro-benchmarks and export results</div>
         </div>
-        <div style="display:flex; flex-wrap:wrap; gap:1rem; align-items:end; color:#fff;">
-          <label>
-            Algorithm<br/>
-            <select id="algo-select" name="algo" style="padding:0.5rem; border-radius:0.5rem; min-width:220px;">
-              {% for name in algos %}
-                <option value="{{name}}" {% if selected_algo==name %}selected{% endif %}>{{name}} ({{ kinds[name] }})</option>
-              {% endfor %}
-            </select>
-          </label>
-          <label>
-            Runs<br/>
-            <input id="runs-input" type="number" name="runs" min="1" value="{{ default_runs or 10 }}" style="padding:0.5rem; border-radius:0.5rem; width:120px;"/>
-          </label>
-          <label id="msg-size-wrap">
-            Message size (bytes)<br/>
-            <input id="msg-size-input" type="number" name="message_size" min="1" value="{{ default_message_size or 1024 }}" style="padding:0.5rem; border-radius:0.5rem; width:160px;"/>
-          </label>
-          <label style="display:flex; gap:0.5rem; align-items:center;">
-            <input id="export-check" type="checkbox" name="do_export" {% if last_export %}checked{% endif %}/>
-            Export to
-            <input id="export-path" type="text" name="export_path" placeholder="results/<algo>.json" value="{{ last_export or '' }}" style="padding:0.5rem; border-radius:0.5rem; min-width:240px;"/>
-          </label>
+        <div>
           <button type="submit">Run</button>
+        </div>
+      </div>
+      <div class="controls-grid" style="margin-top: .75rem; color:#fff;">
+        <div class="control">
+          <label for="algo-select">Algorithm</label>
+          <select id="algo-select" name="algo">
+            {% for name in algos %}
+              <option value="{{name}}" {% if selected_algo==name %}selected{% endif %}>{{name}} ({{ kinds[name] }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="control">
+          <label for="runs-input">Runs</label>
+          <input id="runs-input" type="number" name="runs" min="1" value="{{ default_runs or 10 }}" />
+        </div>
+        <div id="msg-size-wrap" class="control">
+          <label for="msg-size-input">Message size (bytes)</label>
+          <input id="msg-size-input" type="number" name="message_size" min="1" value="{{ default_message_size or 1024 }}" />
+        </div>
+        <div class="control inline">
+          <input id="export-check" type="checkbox" name="do_export" {% if last_export %}checked{% endif %}/>
+          <label for="export-path" style="margin:0;">Export to</label>
+          <input id="export-path" type="text" name="export_path" placeholder="results/<algo>.json" value="{{ last_export or '' }}" />
+        </div>
+        <div class="control inline">
+          <input id="export-trace-check" type="checkbox" name="do_export_trace"/>
+          <label for="export-trace-path" style="margin:0;">Export raw trace to</label>
+          <input id="export-trace-path" type="text" name="export_trace_path" placeholder="results/<algo>_trace.json" />
         </div>
       </div>
     </form>
@@ -225,7 +256,7 @@
   </div>
 
   <!-- Bottom island -->
-  <div class="island bottom-island" style="color:#fff; text-align:left;">
+  <div class="island bottom-island" style="color:#fff; text-align:left; gap:1.25rem; flex-direction:column; align-items:stretch; isolation:isolate;">
     <h3 style="margin-top:0;">Result</h3>
     {% if result_json %}
       {% macro fmt_ms(v) -%}
@@ -298,6 +329,21 @@
         </div>
       </div>
 
+      <div style="background:rgba(0,0,0,.25); padding:1rem; border-radius:.75rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+          <div style="font-size:1.1rem; font-weight:700;">Run Timings</div>
+          <label style="display:flex; align-items:center; gap:.5rem; font-size:.9rem; opacity:.95;">
+            <input type="checkbox" id="autoscale-y" checked/>
+            Autoscale Y to data range
+          </label>
+          <label style="display:flex; align-items:center; gap:.5rem; font-size:.9rem; opacity:.95;">
+            <input type="checkbox" id="trim-outliers" checked/>
+            Trim outliers (5–95%)
+          </label>
+        </div>
+        <div id="charts" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1rem; margin-top:.75rem;"></div>
+      </div>
+
       <details style="margin-top:1rem;">
         <summary style="cursor:pointer;">View raw JSON</summary>
         <pre style="white-space:pre-wrap; word-break:break-word; background:rgba(0,0,0,0.3); padding:1rem; border-radius:0.5rem; max-height:45vh; overflow:auto; margin-top:.5rem;">{{ result_json | tojson(indent=2) }}</pre>
@@ -307,6 +353,7 @@
     {% endif %}
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     (function() {
       const kinds = {{ kinds|tojson }};
@@ -314,6 +361,32 @@
       const msgWrap = document.getElementById('msg-size-wrap');
       const exportPath = document.getElementById('export-path');
       const exportCheck = document.getElementById('export-check');
+      const exportTracePath = document.getElementById('export-trace-path');
+      const exportTraceCheck = document.getElementById('export-trace-check');
+      const result = {{ (result_json or {})|tojson }};
+      const chartsEl = document.getElementById('charts');
+      const autoScaleY = document.getElementById('autoscale-y');
+      const trimCtl = document.getElementById('trim-outliers');
+      const charts = [];
+      let ro = null;
+      function clearCharts() {
+        try { charts.forEach(c => c?.destroy?.()); } catch (e) {}
+        charts.length = 0;
+      }
+      function repaintAll() {
+        for (const c of charts) {
+          try { c.resize(); c.update('none'); } catch (e) {}
+        }
+      }
+      function quantile(arr, q) {
+        if (!arr || !arr.length) return 0;
+        const a = arr.slice().sort((x,y)=>x-y);
+        const idx = (a.length-1)*q;
+        const lo = Math.floor(idx), hi = Math.ceil(idx);
+        if (lo === hi) return a[lo];
+        const h = idx - lo;
+        return a[lo] * (1-h) + a[hi] * h;
+      }
       function refresh() {
         const name = select.value;
         const kind = kinds[name] || '';
@@ -323,13 +396,115 @@
         if (exportCheck.checked && (!exportPath.value || exportPath.value.trim()==='')) {
           exportPath.value = `results/${name.replace('+', 'plus')}.json`;
         }
+        if (exportTraceCheck.checked && (!exportTracePath.value || exportTracePath.value.trim()==='')) {
+          exportTracePath.value = `results/${name.replace('+', 'plus')}_trace.json`;
+        }
+        // Draw charts if we have a result
+        if (chartsEl && result && result.ops) {
+          chartsEl.innerHTML = '';
+          clearCharts();
+          const opOrder = (result.kind === 'KEM') ? ['keygen','encapsulate','decapsulate'] : ['keygen','sign','verify'];
+          opOrder.forEach((op) => {
+            const row = result.ops[op];
+            if (!row || !row.series || row.series.length === 0) return;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'chart-card';
+            const title = document.createElement('div');
+            title.textContent = op.charAt(0).toUpperCase() + op.slice(1);
+            title.className = 'chart-title';
+            wrapper.appendChild(title);
+            const canvas = document.createElement('canvas');
+            canvas.className = 'chart-canvas';
+            wrapper.appendChild(canvas);
+            chartsEl.appendChild(wrapper);
+            // Labels 1..N
+            const labels = row.series.map((_, i) => i+1);
+            // Build chart (line)
+            try {
+              const s = row.series.slice();
+              let min = Math.min.apply(null, s);
+              let max = Math.max.apply(null, s);
+              if (trimCtl && trimCtl.checked && s.length >= 5) {
+                const q05 = quantile(s, 0.05);
+                const q95 = quantile(s, 0.95);
+                min = Math.min(min, q05);
+                max = Math.max(min + 0.01, q95);
+              }
+              const pad = Math.max((max - min) * 0.12, 0.2);
+              const scaleOptions = autoScaleY && autoScaleY.checked ? {
+                beginAtZero: false,
+                suggestedMin: min - pad,
+                suggestedMax: max + pad,
+              } : {
+                beginAtZero: true,
+              };
+              // Defer to next frame to ensure wrapper has a real width
+              requestAnimationFrame(() => {
+                // Compute concrete pixel size and set intrinsic + CSS sizes
+                const rect = wrapper.getBoundingClientRect();
+                const pxW = Math.max(260, Math.floor(rect.width) || Math.floor(chartsEl.clientWidth/3) || 320);
+                const pxH = 150;
+                canvas.width = pxW;
+                canvas.height = pxH;
+                canvas.style.width = pxW + 'px';
+                canvas.style.height = pxH + 'px';
+
+                const chart = new Chart(canvas.getContext('2d'), {
+                  type: 'line',
+                  data: {
+                    labels,
+                    datasets: [{
+                      label: 'Time (ms)',
+                      data: row.series,
+                      borderColor: '#ff4d4f',
+                      backgroundColor: 'rgba(255,77,79,0.12)',
+                      tension: 0.25,
+                      pointRadius: 1.5,
+                    }]
+                  },
+                  options: {
+                    responsive: false,
+                    scales: {
+                      x: { title: { display: true, text: 'Run' }, grid: { color: 'rgba(255,255,255,.08)' }, ticks:{ color:'#fff' } },
+                      y: Object.assign({ title: { display: true, text: 'ms' }, grid: { color: 'rgba(255,255,255,.08)' }, ticks:{ color:'#fff', callback:(v)=> (typeof v==='number'? v.toFixed(1): v), maxTicksLimit: 5 } }, scaleOptions)
+                    },
+                    plugins: { legend: { display:false }, decimation: { enabled: true, algorithm: 'min-max' } },
+                    animation: false,
+                    normalized: true,
+                    interaction: { mode: 'nearest', intersect: false }
+                  }
+                });
+                charts.push(chart);
+                try { chart.update('none'); } catch (e) {}
+                // Fallback: force another update after layout settles
+                setTimeout(() => { try { chart.resize(); chart.update('none'); } catch (e) {} }, 150);
+                // Hard repaint: toggle a tiny transform to invalidate compositing (fixes Safari/backdrop-filter quirk)
+                const old = wrapper.style.transform;
+                wrapper.style.transform = 'translateZ(0.0001px)';
+                void wrapper.offsetWidth;
+                wrapper.style.transform = old || '';
+              });
+            } catch (e) { /* silently ignore if Chart.js unavailable */ }
+          });
+          // After all charts are queued, schedule a further repaint
+          requestAnimationFrame(() => setTimeout(repaintAll, 220));
+          // Observe size changes and repaint
+          try {
+            if (!ro && 'ResizeObserver' in window) {
+              ro = new ResizeObserver(() => repaintAll());
+              ro.observe(chartsEl);
+            }
+          } catch (e) {}
+        }
       }
       select.addEventListener('change', refresh);
       exportCheck.addEventListener('change', refresh);
+      exportTraceCheck.addEventListener('change', refresh);
+      if (autoScaleY) autoScaleY.addEventListener('change', refresh);
+      if (trimCtl) trimCtl.addEventListener('change', refresh);
+      window.addEventListener('load', () => setTimeout(repaintAll, 200));
       refresh();
     })();
   </script>
 </body>
 </html>
-
-

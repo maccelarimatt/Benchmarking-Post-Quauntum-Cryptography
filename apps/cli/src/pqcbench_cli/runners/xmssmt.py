@@ -1,17 +1,25 @@
 
 from __future__ import annotations
 import typer, json
-from .common import run_sig, export_json
+from .common import run_sig, export_json, export_trace_sig
 
 app = typer.Typer(add_completion=False)
 
 @app.command()
-def main(runs: int = 10, message_size: int = 1024, export: str = "results/xmssmt_summary.json", print_json: bool = True):
+def main(
+    runs: int = 10,
+    message_size: int = 1024,
+    export: str = "results/xmssmt_summary.json",
+    export_raw: str = "",
+    print_json: bool = True,
+):
     """
     Run xmssmt signature micro-bench (keygen/sign/verify).
     """
     summary = run_sig("xmssmt", runs, message_size)
     export_json(summary, export)
+    if export_raw:
+        export_trace_sig("xmssmt", message_size, export_raw)
     if print_json:
         import json
         typer.echo(json.dumps({
