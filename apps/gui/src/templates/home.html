@@ -23,74 +23,134 @@
     .island { background: var(--island-bg); border-radius: var(--island-radius); box-shadow: var(--island-shadow); backdrop-filter: blur(4px); padding: 2rem; width:100%; max-width:1200px; }
     .title { font-size:1.7rem; font-weight:700; margin:0 0 .5rem 0; }
     .subtitle { opacity:.9; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap:1rem; }
-    label { font-size:.95rem; display:block; margin-bottom:.2rem; }
-    input[type="number"], input[type="text"], select { width:100%; padding:.55rem .6rem; border:none; border-radius:.5rem; background:rgba(255,255,255,.96); color:#111; }
-    .row { display:flex; flex-wrap:wrap; gap:1rem; align-items:end; }
-    button { padding:.6rem 1.5rem; border:none; border-radius:.5rem; background:var(--accent); color:#fff; cursor:pointer; }
-    .card { background: rgba(0,0,0,.25); border-radius:.75rem; padding:1rem; }
+    .two-col { display:grid; grid-template-columns: minmax(360px, 1fr) 1fr; gap: 1.25rem; }
+    @media (max-width: 960px) { .two-col { grid-template-columns: 1fr; } }
+    .form-card { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.2rem; }
+    .form-grid { display:grid; grid-template-columns: repeat(12, 1fr); gap: .9rem; align-items:end; }
+    .field { grid-column: span 6; }
+    .field--full { grid-column: 1 / -1; }
+    label { font-size:.95rem; display:block; margin-bottom:.35rem; }
+    input[type="number"], input[type="text"], select { width:100%; padding:.65rem .7rem; border:none; border-radius:.6rem; background:rgba(255,255,255,.96); color:#111; }
+    .hint { font-size:.85rem; opacity:.9; margin-top:.25rem; }
+    .actions { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1rem; }
+    button { padding:.7rem 1.6rem; border:none; border-radius:.6rem; background:var(--accent); color:#fff; cursor:pointer; }
+    .muted-btn { background: rgba(255,255,255,.2); }
+    .alg-section { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.2rem; }
     .alg-list { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:1rem; }
-    .alg-item { background: rgba(0,0,0,.25); border-radius:.6rem; padding:.75rem; }
+    .alg-item { background: rgba(0,0,0,.2); border-radius:.6rem; padding:.8rem; }
     .alg-kind { font-size:.8rem; background:rgba(255,255,255,.2); padding:.1rem .4rem; border-radius:.3rem; margin-left:.4rem; }
   </style>
-</head>
+  </head>
 <body>
   <div class="island" style="margin-bottom:2vh;">
     <div class="title">PQC Bench</div>
     <div class="subtitle">Choose an algorithm and parameters, then run to view results.</div>
   </div>
 
-  <div class="island" style="margin-bottom:2vh;">
-    <form method="POST" action="/run">
-      <div class="grid">
-        <div>
-          <label for="algo">Algorithm</label>
-          <select id="algo" name="algo">
-            {% for name in algos %}
-              <option value="{{name}}">{{name}} ({{ kinds[name] }})</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label for="runs">Runs</label>
-          <input id="runs" name="runs" type="number" min="1" value="{{ default_runs or 10 }}" />
-        </div>
-        <div>
-          <label for="msg">Message size (bytes, SIG only)</label>
-          <input id="msg" name="message_size" type="number" min="1" value="{{ default_message_size or 1024 }}" />
-        </div>
-        <div class="row">
-          <input id="export" type="checkbox" name="do_export" />
-          <label for="export_path" style="margin:0;">Export summary to</label>
-          <input id="export_path" name="export_path" placeholder="results/&lt;algo&gt;.json" />
-        </div>
-        <div class="row">
-          <input id="export_trace" type="checkbox" name="do_export_trace" />
-          <label for="export_trace_path" style="margin:0;">Export raw trace to</label>
-          <input id="export_trace_path" name="export_trace_path" placeholder="results/&lt;algo&gt;_trace.json" />
-        </div>
-      </div>
-      <div style="margin-top:1rem; display:flex; justify-content:flex-end;">
-        <button type="submit">Run</button>
-      </div>
-    </form>
-  </div>
-
-  <div class="island" style="margin-bottom:2vh;">
-    <div class="title" style="font-size:1.2rem;">Available Algorithms</div>
-    <div class="alg-list">
-      {% for name in algos %}
-        <div class="alg-item">
-          <div style="display:flex; align-items:center; justify-content:space-between;">
-            <div style="font-weight:700;">{{name}}</div>
-            <div class="alg-kind">{{ kinds[name] }}</div>
+  <div class="island two-col" style="margin-bottom:2vh;">
+    <div class="form-card">
+      <div class="title" style="font-size:1.2rem;">Select Algorithm & Parameters</div>
+      <form method="POST" action="/run">
+        <div class="form-grid">
+          <div class="field" style="grid-column: span 8;">
+            <label for="algo">Algorithm</label>
+            <select id="algo" name="algo">
+              {% for name in algos %}
+                <option value="{{name}}">{{name}} ({{ kinds[name] }})</option>
+              {% endfor %}
+            </select>
+            <div class="hint">Choose a KEM for key exchange or a SIG for signatures.</div>
           </div>
-          <div style="margin-top:.4rem; opacity:.9; font-size:.95rem;">{{ (algo_info.get(name, {}) or {}).get('about', 'No description available.') }}</div>
+          <div class="field" style="grid-column: span 4;">
+            <label for="runs">Runs</label>
+            <input id="runs" name="runs" type="number" min="1" value="{{ default_runs or 10 }}" />
+          </div>
+          <div class="field" id="msg-field" style="grid-column: span 6;">
+            <label for="msg">Message size (bytes)</label>
+            <input id="msg" name="message_size" type="number" min="1" value="{{ default_message_size or 1024 }}" />
+            <div class="hint">Used by signature algorithms only.</div>
+          </div>
+          <div class="field field--full" style="display:flex; gap:.7rem; align-items:center;">
+            <input id="export" type="checkbox" name="do_export" />
+            <label for="export_path" style="margin:0;">Export summary to</label>
+            <input id="export_path" name="export_path" placeholder="results/&lt;algo&gt;.json" />
+          </div>
+          <div class="field field--full" style="display:flex; gap:.7rem; align-items:center;">
+            <input id="export_trace" type="checkbox" name="do_export_trace" />
+            <label for="export_trace_path" style="margin:0;">Export raw trace to</label>
+            <input id="export_trace_path" name="export_trace_path" placeholder="results/&lt;algo&gt;_trace.json" />
+          </div>
         </div>
-      {% endfor %}
+        <div class="actions">
+          <button class="muted-btn" type="reset">Reset</button>
+          <button type="submit">Run</button>
+        </div>
+      </form>
+    </div>
+
+    <div>
+      <div class="alg-section" style="margin-bottom:1rem;">
+        <div class="title" style="font-size:1.1rem; margin-bottom:.5rem;">Key Encapsulation (KEM)</div>
+        <div class="alg-list">
+          {% for name in algos %}
+            {% if kinds[name] == 'KEM' %}
+            <div class="alg-item">
+              <div style="display:flex; align-items:center; justify-content:space-between;">
+                <div style="font-weight:700;">{{name}}</div>
+                <div class="alg-kind">{{ kinds[name] }}</div>
+              </div>
+              <div style="margin-top:.4rem; opacity:.9; font-size:.95rem;">{{ (algo_info.get(name, {}) or {}).get('about', 'No description available.') }}</div>
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      <div class="alg-section">
+        <div class="title" style="font-size:1.1rem; margin-bottom:.5rem;">Signatures (SIG)</div>
+        <div class="alg-list">
+          {% for name in algos %}
+            {% if kinds[name] == 'SIG' %}
+            <div class="alg-item">
+              <div style="display:flex; align-items:center; justify-content:space-between;">
+                <div style="font-weight:700;">{{name}}</div>
+                <div class="alg-kind">{{ kinds[name] }}</div>
+              </div>
+              <div style="margin-top:.4rem; opacity:.9; font-size:.95rem;">{{ (algo_info.get(name, {}) or {}).get('about', 'No description available.') }}</div>
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
     </div>
   </div>
 
+  <script>
+    (function(){
+      const kinds = {{ kinds|tojson }};
+      const select = document.getElementById('algo');
+      const msgField = document.getElementById('msg-field');
+      const exportC = document.getElementById('export');
+      const exportPath = document.getElementById('export_path');
+      const exportTraceC = document.getElementById('export_trace');
+      const exportTracePath = document.getElementById('export_trace_path');
+      function refresh(){
+        const name = select.value || '';
+        const kind = kinds[name] || '';
+        // Show msg size only for signatures
+        if (msgField) msgField.style.display = (kind === 'SIG') ? 'block' : 'none';
+        if (exportC && exportC.checked && (!exportPath.value || !exportPath.value.trim())){
+          exportPath.value = `results/${name.replace('+','plus')}.json`;
+        }
+        if (exportTraceC && exportTraceC.checked && (!exportTracePath.value || !exportTracePath.value.trim())){
+          exportTracePath.value = `results/${name.replace('+','plus')}_trace.json`;
+        }
+      }
+      select.addEventListener('change', refresh);
+      if (exportC) exportC.addEventListener('change', refresh);
+      if (exportTraceC) exportTraceC.addEventListener('change', refresh);
+      refresh();
+    })();
+  </script>
+
 </body>
 </html>
-

@@ -377,20 +377,12 @@
         <div id="charts" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1rem; margin-top:.75rem;"></div>
       </div>
 
-      {% set has_mem_series = false %}
-      {% for op in op_order %}
-        {% if op in result_json.ops and result_json.ops[op].mem_series_kb %}
-          {% set has_mem_series = true %}
-        {% endif %}
-      {% endfor %}
-      {% if has_mem_series %}
       <div style="background:rgba(0,0,0,.25); padding:1rem; border-radius:.75rem;">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
           <div style="font-size:1.1rem; font-weight:700;">Memory (peak RSS delta, KB)</div>
         </div>
         <div id="mem-charts" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1rem; margin-top:.75rem;"></div>
       </div>
-      {% endif %}
 
       <details style="margin-top:1rem;">
         <summary style="cursor:pointer;">View raw JSON</summary>
