@@ -25,27 +25,58 @@
     .subtitle { opacity:.9; }
     .two-col { display:grid; grid-template-columns: minmax(360px, 1fr) 1fr; gap: 1.25rem; }
     @media (max-width: 960px) { .two-col { grid-template-columns: 1fr; } }
-    .form-card { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.2rem; }
+    .form-card { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.2rem; border: 1px solid rgba(255,255,255,.18); box-shadow: 0 8px 30px rgba(0,0,0,.25) inset; }
     .form-grid { display:grid; grid-template-columns: repeat(12, 1fr); gap: .9rem; align-items:end; }
     .field { grid-column: span 6; }
     .field--full { grid-column: 1 / -1; }
-    label { font-size:.95rem; display:block; margin-bottom:.35rem; }
-    input[type="number"], input[type="text"], select { width:100%; padding:.65rem .7rem; border:none; border-radius:.6rem; background:rgba(255,255,255,.96); color:#111; }
+    label { font-size:.95rem; display:block; margin-bottom:.35rem; letter-spacing:.2px; }
+    /* Inputs */
+    .field input[type="number"],
+    .field input[type="text"],
+    .field select {
+      width:100%;
+      padding:.7rem .8rem;
+      border-radius:.7rem;
+      border:1px solid rgba(255,255,255,.35);
+      background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.92));
+      color:#111;
+      outline:none;
+      transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+      box-shadow: 0 1px 0 rgba(0,0,0,.08), inset 0 0 0 rgba(0,0,0,0);
+      font-size: 0.98rem;
+    }
+    .field input::placeholder { color: #6b7280; opacity:.9; }
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(255,77,79,.25);
+      background: linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.96));
+    }
+    .field input:disabled {
+      background: linear-gradient(180deg, rgba(245,245,245,.95), rgba(238,238,238,.9));
+      color:#737373;
+      border-color: rgba(255,255,255,.25);
+      cursor:not-allowed;
+    }
+    /* Checkboxes */
+    input[type="checkbox"] { accent-color: var(--accent); width: 1.05rem; height: 1.05rem; }
+    .checkbox-row { display:flex; gap:.7rem; align-items:center; }
     .hint { font-size:.85rem; opacity:.9; margin-top:.25rem; }
     .actions { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1rem; }
-    button { padding:.7rem 1.6rem; border:none; border-radius:.6rem; background:var(--accent); color:#fff; cursor:pointer; }
-    .muted-btn { background: rgba(255,255,255,.2); }
+    button { padding:.7rem 1.6rem; border:none; border-radius:.7rem; background: linear-gradient(180deg, #ff5d5f, #e04446); color:#fff; cursor:pointer; box-shadow: 0 4px 14px rgba(255,77,79,.25); }
+    button:hover { filter: brightness(1.02); }
+    .muted-btn { background: rgba(255,255,255,.16); color:#fff; box-shadow:none; }
     .alg-section { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.2rem; }
     .alg-list { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:1rem; }
     .alg-item { background: rgba(0,0,0,.2); border-radius:.6rem; padding:.8rem; }
     .alg-kind { font-size:.8rem; background:rgba(255,255,255,.2); padding:.1rem .4rem; border-radius:.3rem; margin-left:.4rem; }
-    .field.is-disabled { opacity: .6; }
+    .field.is-disabled { opacity: .65; }
     .field.is-disabled input { pointer-events: none; }
   </style>
   </head>
 <body>
   <div class="island" style="margin-bottom:2vh;">
-    <div class="title">PQC Bench</div>
+    <div class="title">Post-Quantum Cryptography Bench</div>
     <div class="subtitle">Choose an algorithm and parameters, then run to view results.</div>
   </div>
 

@@ -388,6 +388,29 @@
         <summary style="cursor:pointer;">View raw JSON</summary>
         <pre style="white-space:pre-wrap; word-break:break-word; background:rgba(0,0,0,0.3); padding:1rem; border-radius:0.5rem; max-height:45vh; overflow:auto; margin-top:.5rem;">{{ result_json | tojson(indent=2) }}</pre>
       </details>
+
+      {% if trace_sections %}
+      <details style="margin-top:1rem;">
+        <summary style="cursor:pointer;">View raw data (one run)</summary>
+        <div style="margin-top:.6rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem;">
+          {% for section in trace_sections %}
+          <div style="background:rgba(0,0,0,.25); padding:1rem; border-radius:.6rem;">
+            <div style="font-weight:700; margin-bottom:.5rem;">{{ section.title }}</div>
+            {% for item in section['items'] %}
+              <div style="margin-bottom:.6rem; text-align:left;">
+                <div style="opacity:.9; font-size:.95rem;">{{ item.label }}{% if item.len is not none %} <span style="opacity:.8;">({{ item.len }} B)</span>{% endif %}</div>
+                {% if item.text %}
+                  <div style="margin-top:.25rem; font-weight:600;">{{ item.text }}</div>
+                {% elif item.b64 %}
+                  <pre style="white-space:pre-wrap; word-break:break-all; background:rgba(0,0,0,0.3); padding:.6rem .7rem; border-radius:.4rem; max-height:30vh; overflow:auto;">{{ item.b64 }}</pre>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
     {% else %}
       <p>No run yet. Choose an algorithm and click Run.</p>
     {% endif %}

@@ -1,6 +1,7 @@
 
 from __future__ import annotations
 from flask import Flask, render_template, request, redirect, url_for
+import base64
 from pqcbench import registry
 from typing import Dict, Any
 
@@ -134,6 +135,7 @@ def run():
     export_trace_path = request.form.get("export_trace_path", "")
 
     result: Dict[str, Any] | None = None
+    trace_sections: list[dict[str, Any]] | None = None
     error: str | None = None
     last_export: str | None = None
 
@@ -166,6 +168,67 @@ def run():
             "ops": {k: vars(v) for k, v in summary.ops.items()},
             "meta": summary.meta,
         }
+
+        # Build a single illustrative raw-data trace for display (not JSON)
+        try:
+            cls = registry.get(name)
+            algo = cls()
+            if kind == "KEM":
+                pk, sk = algo.keygen()
+                ct, ss = algo.encapsulate(pk)
+                ss_dec = algo.decapsulate(sk, ct)
+                trace_sections = [
+                    {
+                        "title": "Keygen",
+                        "items": [
+                            {"label": "public_key", "len": len(pk), "b64": base64.b64encode(pk).decode("ascii")},
+                            {"label": "secret_key", "len": len(sk), "b64": base64.b64encode(sk).decode("ascii")},
+                        ],
+                    },
+                    {
+                        "title": "Encapsulate",
+                        "items": [
+                            {"label": "ciphertext", "len": len(ct), "b64": base64.b64encode(ct).decode("ascii")},
+                            {"label": "shared_secret", "len": len(ss), "b64": base64.b64encode(ss).decode("ascii")},
+                        ],
+                    },
+                    {
+                        "title": "Decapsulate",
+                        "items": [
+                            {"label": "shared_secret", "len": len(ss_dec), "b64": base64.b64encode(ss_dec).decode("ascii")},
+                            {"label": "matches", "len": None, "text": "true" if ss == ss_dec else "false"},
+                        ],
+                    },
+                ]
+            else:  # SIG
+                pk, sk = algo.keygen()
+                msg = (b"x" * int(message_size))
+                sig = algo.sign(sk, msg)
+                ok = algo.verify(pk, msg, sig)
+                trace_sections = [
+                    {
+                        "title": "Keygen",
+                        "items": [
+                            {"label": "public_key", "len": len(pk), "b64": base64.b64encode(pk).decode("ascii")},
+                            {"label": "secret_key", "len": len(sk), "b64": base64.b64encode(sk).decode("ascii")},
+                        ],
+                    },
+                    {
+                        "title": "Sign",
+                        "items": [
+                            {"label": "message", "len": len(msg), "b64": base64.b64encode(msg).decode("ascii")},
+                            {"label": "signature", "len": len(sig), "b64": base64.b64encode(sig).decode("ascii")},
+                        ],
+                    },
+                    {
+                        "title": "Verify",
+                        "items": [
+                            {"label": "ok", "len": None, "text": "true" if ok else "false"},
+                        ],
+                    },
+                ]
+        except Exception:
+            trace_sections = None
     except Exception as e:
         error = str(e)
 
@@ -181,6 +244,7 @@ def run():
         default_runs=runs,
         default_message_size=message_size,
         selected_algo=name,
+        trace_sections=trace_sections,
     )
 
 
