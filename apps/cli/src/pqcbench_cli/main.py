@@ -38,9 +38,9 @@ def app_main():
 if __name__ == "__main__":
     app_main()
 
-# Extra diagnostic command (optional): list oqs mechanisms by probing
-@app.command()
-def probe_oqs():
+# Extra diagnostic command: list oqs mechanisms by probing
+@app.command(name="probe-oqs")
+def probe_oqs() -> None:
     """Probe common OQS KEM/SIG mechanisms supported by your install."""
     try:
         import oqs  # type: ignore
@@ -89,3 +89,6 @@ def probe_oqs():
     typer.echo("Stateful SIG mechanisms:")
     for n in found_st_sig:
         typer.echo(f"- {n}")
+
+# Backwards-compatible alias with underscore name (zsh/bash examples)
+app.command(name="probe_oqs")(probe_oqs)

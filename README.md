@@ -15,6 +15,51 @@ pqcbench --help   # CLI entry point
 FLASK_APP=apps/gui/src/webapp/app.py flask run
 ```
 
+## Environment with liboqs (HQC, XMSS/XMSSMT enabled)
+
+If you need full PQC support via liboqs (Kyber, HQC, Dilithium, Falcon, SPHINCS+, XMSS/XMSSMT), build from source using the helper script. This ensures HQC and XMSSMT are enabled.
+
+Prereqs:
+- Build tools: `git`, `cmake`, `ninja` (optional but recommended)
+- OpenSSL 3.x (recommended). On macOS: `brew install cmake ninja openssl@3`
+
+Steps:
+```bash
+# If its showing (base)
+conda deactivate
+
+
+python3 -m venv .venv && source .venv/bin/activate
+
+# Build and install liboqs + python bindings locally under .local/oqs
+scripts/setup_oqs.sh --branch main   # or omit to use main
+
+# Export runtime env so Python can find the shared lib
+source scripts/env.example.sh
+
+# Install repo packages (editable)
+pip install -r requirements-dev.txt
+
+pqcbench probe-oqs
+
+# Sanity check
+# Just run this again if it cant find the algorithms
+pqcbench list-algos
+#pip uninstall -y oqs
+#bash scripts/setup_oqs.sh --branch 0.10.0
+#source scripts/env.example.sh
+#pqcbench list-algos 
+run-kyber --runs 5 --export results/kyber.json
+run-hqc --runs 5 --export results/hqc.json
+run-xmssmt --runs 3 --export results/xmssmt.json
+```
+
+Notes:
+- The script enables a broad set of algorithms (not a minimal build) and links with OpenSSL if available.
+- On macOS, ensure `DYLD_LIBRARY_PATH` includes `.local/oqs/lib`; on Linux, ensure `LD_LIBRARY_PATH` does. The `scripts/env.example.sh` does this for you.
+- You can pin `--branch` to a liboqs release tag (e.g., `0.10.0`) for stability.
+- To select parameter sets, set env vars like `PQCBENCH_KYBER_ALG=ML-KEM-1024` or `PQCBENCH_XMSSMT_ALG=XMSSMT-SHA2_20/2_256`.
+
 ## Repo map
 ```
 .

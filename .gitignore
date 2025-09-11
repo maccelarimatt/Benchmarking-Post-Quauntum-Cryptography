@@ -24,3 +24,7 @@ results/
 
 # Node (if any future frontend)
 node_modules/
+
+.build/
+.liboqs-python/
+.local/
