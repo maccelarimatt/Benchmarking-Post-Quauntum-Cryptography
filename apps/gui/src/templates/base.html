@@ -282,6 +282,14 @@
             </div>
             <div style="font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem;">{{ result_json.kind }}</div>
           </div>
+          {% set ns = namespace(has_mem=false) %}
+          {% set op_order = ['keygen','encapsulate','decapsulate'] if result_json.kind=='KEM' else ['keygen','sign','verify'] %}
+          {% for op in op_order %}
+            {% if op in result_json.ops and result_json.ops[op].mem_mean_kb is not none %}
+              {% set ns.has_mem = true %}
+            {% endif %}
+          {% endfor %}
+
           <table style="width:100%; border-collapse:collapse;">
             <thead>
               <tr style="text-align:left; border-bottom:1px solid rgba(255,255,255,.2);">
@@ -290,10 +298,14 @@
                 <th style="padding:.4rem .2rem;">Mean</th>
                 <th style="padding:.4rem .2rem;">Min</th>
                 <th style="padding:.4rem .2rem;">Max</th>
+                {% if ns.has_mem %}
+                  <th style="padding:.4rem .2rem; text-align:right;">Mem mean</th>
+                  <th style="padding:.4rem .2rem; text-align:right;">Mem min</th>
+                  <th style="padding:.4rem .2rem; text-align:right;">Mem max</th>
+                {% endif %}
               </tr>
             </thead>
             <tbody>
-              {% set op_order = ['keygen','encapsulate','decapsulate'] if result_json.kind=='KEM' else ['keygen','sign','verify'] %}
               {% for op in op_order %}
                 {% if op in result_json.ops %}
                 {% set row = result_json.ops[op] %}
@@ -303,6 +315,11 @@
                   <td style="padding:.35rem .2rem;">{{ fmt_ms(row.mean_ms) }}</td>
                   <td style="padding:.35rem .2rem;">{{ fmt_ms(row.min_ms) }}</td>
                   <td style="padding:.35rem .2rem;">{{ fmt_ms(row.max_ms) }}</td>
+                  {% if ns.has_mem %}
+                    <td style="padding:.35rem .2rem; text-align:right;">{{ (row.mem_mean_kb or 0)|round(2) }} KB</td>
+                    <td style="padding:.35rem .2rem; text-align:right;">{{ (row.mem_min_kb or 0)|round(2) }} KB</td>
+                    <td style="padding:.35rem .2rem; text-align:right;">{{ (row.mem_max_kb or 0)|round(2) }} KB</td>
+                  {% endif %}
                 </tr>
                 {% endif %}
               {% endfor %}
@@ -344,6 +361,21 @@
         <div id="charts" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1rem; margin-top:.75rem;"></div>
       </div>
 
+      {% set has_mem_series = false %}
+      {% for op in op_order %}
+        {% if op in result_json.ops and result_json.ops[op].mem_series_kb %}
+          {% set has_mem_series = true %}
+        {% endif %}
+      {% endfor %}
+      {% if has_mem_series %}
+      <div style="background:rgba(0,0,0,.25); padding:1rem; border-radius:.75rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+          <div style="font-size:1.1rem; font-weight:700;">Memory (peak RSS delta, KB)</div>
+        </div>
+        <div id="mem-charts" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1rem; margin-top:.75rem;"></div>
+      </div>
+      {% endif %}
+
       <details style="margin-top:1rem;">
         <summary style="cursor:pointer;">View raw JSON</summary>
         <pre style="white-space:pre-wrap; word-break:break-word; background:rgba(0,0,0,0.3); padding:1rem; border-radius:0.5rem; max-height:45vh; overflow:auto; margin-top:.5rem;">{{ result_json | tojson(indent=2) }}</pre>
@@ -365,6 +397,7 @@
       const exportTraceCheck = document.getElementById('export-trace-check');
       const result = {{ (result_json or {})|tojson }};
       const chartsEl = document.getElementById('charts');
+      const memChartsEl = document.getElementById('mem-charts');
       const autoScaleY = document.getElementById('autoscale-y');
       const trimCtl = document.getElementById('trim-outliers');
       const charts = [];
@@ -486,6 +519,81 @@
               });
             } catch (e) { /* silently ignore if Chart.js unavailable */ }
           });
+          // Memory charts (if any)
+          if (memChartsEl) {
+            memChartsEl.innerHTML = '';
+            opOrder.forEach((op) => {
+              const row = result.ops[op];
+              if (!row || !row.mem_series_kb || row.mem_series_kb.length === 0) return;
+              const wrapper = document.createElement('div');
+              wrapper.className = 'chart-card';
+              const title = document.createElement('div');
+              title.textContent = op.charAt(0).toUpperCase() + op.slice(1);
+              title.className = 'chart-title';
+              wrapper.appendChild(title);
+              const canvas = document.createElement('canvas');
+              canvas.className = 'chart-canvas';
+              wrapper.appendChild(canvas);
+              memChartsEl.appendChild(wrapper);
+              const labels = row.mem_series_kb.map((_, i) => i+1);
+              try {
+                const s = row.mem_series_kb.slice();
+                let min = Math.min.apply(null, s);
+                let max = Math.max.apply(null, s);
+                if (trimCtl && trimCtl.checked && s.length >= 5) {
+                  const q05 = quantile(s, 0.05);
+                  const q95 = quantile(s, 0.95);
+                  min = Math.min(min, q05);
+                  max = Math.max(min + 0.01, q95);
+                }
+                const pad = Math.max((max - min) * 0.12, 0.2);
+                const scaleOptions = autoScaleY && autoScaleY.checked ? {
+                  beginAtZero: false,
+                  suggestedMin: min - pad,
+                  suggestedMax: max + pad,
+                } : {
+                  beginAtZero: true,
+                };
+                requestAnimationFrame(() => {
+                  const rect = wrapper.getBoundingClientRect();
+                  const pxW = Math.max(260, Math.floor(rect.width) || Math.floor((memChartsEl.clientWidth||chartsEl.clientWidth)/3) || 320);
+                  const pxH = 150;
+                  canvas.width = pxW;
+                  canvas.height = pxH;
+                  canvas.style.width = pxW + 'px';
+                  canvas.style.height = pxH + 'px';
+                  const chart = new Chart(canvas.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                      labels,
+                      datasets: [{
+                        label: 'KB',
+                        data: row.mem_series_kb,
+                        borderColor: '#4d9dff',
+                        backgroundColor: 'rgba(77,157,255,0.12)',
+                        tension: 0.25,
+                        pointRadius: 1.5,
+                      }]
+                    },
+                    options: {
+                      responsive: false,
+                      scales: {
+                        x: { title: { display: true, text: 'Run' }, grid: { color: 'rgba(255,255,255,.08)' }, ticks:{ color:'#fff' } },
+                        y: Object.assign({ title: { display: true, text: 'KB' }, grid: { color: 'rgba(255,255,255,.08)' }, ticks:{ color:'#fff', callback:(v)=> (typeof v==='number'? v.toFixed(1): v), maxTicksLimit: 5 } }, scaleOptions)
+                      },
+                      plugins: { legend: { display:false }, decimation: { enabled: true, algorithm: 'min-max' } },
+                      animation: false,
+                      normalized: true,
+                      interaction: { mode: 'nearest', intersect: false }
+                    }
+                  });
+                  charts.push(chart);
+                  try { chart.update('none'); } catch (e) {}
+                  setTimeout(() => { try { chart.resize(); chart.update('none'); } catch (e) {} }, 150);
+                });
+              } catch (e) {}
+            });
+          }
           // After all charts are queued, schedule a further repaint
           requestAnimationFrame(() => setTimeout(repaintAll, 220));
           // Observe size changes and repaint
