@@ -47,6 +47,16 @@ if _oqs is None:
             return b"sig"
         def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
             return True
+    
+    @registry.register("mayo")
+    class MayoPlaceholder:
+        name = "mayo"
+        def keygen(self) -> Tuple[bytes, bytes]:
+            return b"pk", b"sk"
+        def sign(self, secret_key: bytes, message: bytes) -> bytes:
+            return b"sig"
+        def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
+            return True
 else:
     # Real liboqs-backed adapters
     @registry.register("dilithium")
@@ -173,4 +183,38 @@ else:
 
         def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
             with _oqs.StatefulSignature(self.alg) as v:
+                return v.verify(message, signature, public_key)
+
+    @registry.register("mayo")
+    class Mayo:
+        name = "mayo"
+
+        def __init__(self) -> None:
+            # Support multiple parameter sets via env override or first available
+            # Common liboqs names: MAYO-1, MAYO-2, MAYO-3, MAYO-5
+            self.alg = pick_sig_algorithm(
+                _oqs,
+                "PQCBENCH_MAYO_ALG",
+                [
+                    "MAYO-2",
+                    "MAYO-1",
+                    "MAYO-3",
+                    "MAYO-5",
+                ],
+            )
+            if not self.alg:
+                raise RuntimeError("No supported MAYO algorithm enabled in liboqs")
+
+        def keygen(self) -> Tuple[bytes, bytes]:
+            with _oqs.Signature(self.alg) as s:
+                pk = s.generate_keypair()
+                sk = s.export_secret_key()
+                return pk, sk
+
+        def sign(self, secret_key: bytes, message: bytes) -> bytes:
+            with _oqs.Signature(self.alg, secret_key=secret_key) as s:
+                return s.sign(message)
+
+        def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
+            with _oqs.Signature(self.alg) as v:
                 return v.verify(message, signature, public_key)

@@ -28,6 +28,7 @@ run-dilithium = "pqcbench_cli.runners.dilithium:app_main"
 run-falcon = "pqcbench_cli.runners.falcon:app_main"
 run-sphincsplus = "pqcbench_cli.runners.sphincsplus:app_main"
 run-xmssmt = "pqcbench_cli.runners.xmssmt:app_main"
+run-mayo = "pqcbench_cli.runners.mayo:app_main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

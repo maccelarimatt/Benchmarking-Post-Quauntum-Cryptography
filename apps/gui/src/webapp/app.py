@@ -93,6 +93,11 @@ ALGO_INFO = {
         "label": "RSA-PSS",
         "about": "RSA-PSS: Classical RSA signatures baseline for benchmarking.",
     },
+    "mayo": {
+        "kind": "SIG",
+        "label": "MAYO",
+        "about": "MAYO: Multivariate post-quantum signature (selects MAYO-1/2/3/5 if available).",
+    },
 }
 
 

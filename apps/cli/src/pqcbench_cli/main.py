@@ -55,6 +55,7 @@ def probe_oqs() -> None:
         "ML-DSA-65", "ML-DSA-87", "ML-DSA-110", "Dilithium2", "Dilithium3", "Dilithium5",
         "Falcon-512", "Falcon-1024",
         "SPHINCS+-SHA2-128f-simple", "SPHINCS+-SHA2-128s-simple", "SPHINCS+-SHAKE-128f-simple",
+        "MAYO-1", "MAYO-2", "MAYO-3", "MAYO-5",
     ]
     st_sig_candidates = [
         "XMSSMT-SHA2_20/2_256", "XMSSMT-SHA2_20/4_256", "XMSS-SHA2_20_256",

@@ -56,6 +56,12 @@ pqcbench list-algos
 run-kyber --runs 5 --export results/kyber.json
 run-hqc --runs 5 --export results/hqc.json
 run-xmssmt --runs 3 --export results/xmssmt.json
+
+
+
+## If you add a new PQC, run the following:
+pip install --upgrade pip setuptools wheel
+pip install -r requirements-dev.txt
 ```
 
 Notes:
@@ -107,6 +113,7 @@ run-falcon        # SIG
 run-sphincsplus   # SIG
 run-xmssmt        # SIG
 run-rsa-pss       # SIG
+run-mayo          # SIG
 ```
 Each supports `--runs N` and (for signatures) `--message-size BYTES`, plus `--export results/<file>.json`.
 Examples:
@@ -126,6 +133,7 @@ The liboqs-backed adapters auto-detect available algorithms. You can override th
 - `PQCBENCH_FALCON_ALG` (e.g., `Falcon-512`)
 - `PQCBENCH_SPHINCS_ALG` (e.g., `SPHINCS+-SHA2-128f-simple`)
 - `PQCBENCH_XMSSMT_ALG` (e.g., `XMSSMT-SHA2_20/2_256`)
+- `PQCBENCH_MAYO_ALG` (e.g., `MAYO-1`, `MAYO-2`, `MAYO-3`, `MAYO-5`)
 
 Example:
 

@@ -21,6 +21,6 @@ fi
 # export PQCBENCH_FALCON_ALG=Falcon-512
 # export PQCBENCH_SPHINCS_ALG=SPHINCS+-SHA2-128f-simple
 # export PQCBENCH_XMSSMT_ALG=XMSSMT-SHA2_20/2_256
+# export PQCBENCH_MAYO_ALG=MAYO-2
 
 echo "Environment configured for liboqs in $OQS_PREFIX"
-
