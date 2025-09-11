@@ -39,6 +39,8 @@
     .alg-list { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:1rem; }
     .alg-item { background: rgba(0,0,0,.2); border-radius:.6rem; padding:.8rem; }
     .alg-kind { font-size:.8rem; background:rgba(255,255,255,.2); padding:.1rem .4rem; border-radius:.3rem; margin-left:.4rem; }
+    .field.is-disabled { opacity: .6; }
+    .field.is-disabled input { pointer-events: none; }
   </style>
   </head>
 <body>
@@ -51,12 +53,12 @@
     <div class="form-card">
       <div class="title" style="font-size:1.2rem;">Select Algorithm & Parameters</div>
       <form method="POST" action="/run">
-        <div class="form-grid">
+        <div class="form-grid" style="max-width: 680px; margin: 0 auto;">
           <div class="field" style="grid-column: span 8;">
             <label for="algo">Algorithm</label>
             <select id="algo" name="algo">
               {% for name in algos %}
-                <option value="{{name}}">{{name}} ({{ kinds[name] }})</option>
+                <option value="{{name}}">{{ display_names.get(name, name) }} ({{ kinds[name] }})</option>
               {% endfor %}
             </select>
             <div class="hint">Choose a KEM for key exchange or a SIG for signatures.</div>
@@ -96,7 +98,7 @@
             {% if kinds[name] == 'KEM' %}
             <div class="alg-item">
               <div style="display:flex; align-items:center; justify-content:space-between;">
-                <div style="font-weight:700;">{{name}}</div>
+                <div style="font-weight:700;">{{ display_names.get(name, name) }}</div>
                 <div class="alg-kind">{{ kinds[name] }}</div>
               </div>
               <div style="margin-top:.4rem; opacity:.9; font-size:.95rem;">{{ (algo_info.get(name, {}) or {}).get('about', 'No description available.') }}</div>
@@ -112,7 +114,7 @@
             {% if kinds[name] == 'SIG' %}
             <div class="alg-item">
               <div style="display:flex; align-items:center; justify-content:space-between;">
-                <div style="font-weight:700;">{{name}}</div>
+                <div style="font-weight:700;">{{ display_names.get(name, name) }}</div>
                 <div class="alg-kind">{{ kinds[name] }}</div>
               </div>
               <div style="margin-top:.4rem; opacity:.9; font-size:.95rem;">{{ (algo_info.get(name, {}) or {}).get('about', 'No description available.') }}</div>
@@ -129,6 +131,7 @@
       const kinds = {{ kinds|tojson }};
       const select = document.getElementById('algo');
       const msgField = document.getElementById('msg-field');
+      const msgInput = document.getElementById('msg');
       const exportC = document.getElementById('export');
       const exportPath = document.getElementById('export_path');
       const exportTraceC = document.getElementById('export_trace');
@@ -136,8 +139,12 @@
       function refresh(){
         const name = select.value || '';
         const kind = kinds[name] || '';
-        // Show msg size only for signatures
-        if (msgField) msgField.style.display = (kind === 'SIG') ? 'block' : 'none';
+        // Keep message size visible, but disable unless SIG
+        if (msgInput) {
+          const isSig = (kind === 'SIG');
+          msgInput.disabled = !isSig;
+          if (msgField) msgField.classList.toggle('is-disabled', !isSig);
+        }
         if (exportC && exportC.checked && (!exportPath.value || !exportPath.value.trim())){
           exportPath.value = `results/${name.replace('+','plus')}.json`;
         }

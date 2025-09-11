@@ -54,34 +54,42 @@ def _algo_kinds() -> Dict[str, str]:
 ALGO_INFO = {
     "kyber": {
         "kind": "KEM",
+        "label": "Kyber",
         "about": "ML-KEM (Kyber): NIST-selected post-quantum key encapsulation mechanism for secure key exchange.",
     },
     "hqc": {
         "kind": "KEM",
+        "label": "HQC",
         "about": "HQC: Code-based KEM offering quantum-resistant key establishment.",
     },
     "rsa-oaep": {
         "kind": "KEM",
+        "label": "RSA-OAEP",
         "about": "RSA-OAEP: Classical RSA encryption in a KEM-style wrapper for comparison.",
     },
     "dilithium": {
         "kind": "SIG",
+        "label": "Dilithium",
         "about": "ML-DSA (Dilithium): NIST-selected post-quantum digital signature scheme.",
     },
     "falcon": {
         "kind": "SIG",
+        "label": "Falcon",
         "about": "Falcon: Lattice-based post-quantum signature focusing on compact signatures.",
     },
     "sphincs+": {
         "kind": "SIG",
+        "label": "SPHINCS+",
         "about": "SPHINCS+: Stateless hash-based signature scheme; conservative and flexible.",
     },
     "xmssmt": {
         "kind": "SIG",
+        "label": "XMSSMT",
         "about": "XMSS/XMSSMT: Stateful hash-based signatures (one-time/limited-use keys).",
     },
     "rsa-pss": {
         "kind": "SIG",
+        "label": "RSA-PSS",
         "about": "RSA-PSS: Classical RSA signatures baseline for benchmarking.",
     },
 }
@@ -92,12 +100,14 @@ def index():
     _ensure_adapters_loaded()
     algos = list(registry.list().keys())
     kinds = _algo_kinds()
+    display_names = {name: (ALGO_INFO.get(name, {}).get("label") or name.replace("-", "-").replace("sphincs+", "SPHINCS+").title()) for name in algos}
     # Home/setup screen
     return render_template(
         "home.html",
         algos=algos,
         kinds=kinds,
         algo_info=ALGO_INFO,
+        display_names=display_names,
         default_runs=10,
         default_message_size=1024,
     )
@@ -159,10 +169,12 @@ def run():
     except Exception as e:
         error = str(e)
 
+    display_names = {name: (ALGO_INFO.get(name, {}).get("label") or name.replace("-", "-").replace("sphincs+", "SPHINCS+").title()) for name in algos}
     return render_template(
         "base.html",
         algos=algos,
         kinds=kinds,
+        display_names=display_names,
         last_export=last_export,
         result_json=result,
         error=error,

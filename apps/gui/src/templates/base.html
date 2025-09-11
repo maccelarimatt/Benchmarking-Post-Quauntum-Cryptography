@@ -293,7 +293,7 @@
         <div style="flex:1 1 420px; background:rgba(0,0,0,.25); padding:1rem; border-radius:.75rem;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
             <div>
-              <div style="font-size:1.2rem; font-weight:700;">{{ result_json.algo }}</div>
+              <div style="font-size:1.2rem; font-weight:700;">{{ display_names.get(result_json.algo, result_json.algo) }}</div>
               <div style="opacity:.85;">Algorithm</div>
             </div>
             <div style="font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem;">{{ result_json.kind }}</div>
