@@ -28,8 +28,12 @@ Steps:
 # If its showing (base)
 conda deactivate
 
+$PY312 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip setuptools wheel
+pip install -r requirements-dev.txt
 
-python3 -m venv .venv && source .venv/bin/activate
+#python3 -m venv .venv && source .venv/bin/activate
 
 # Build and install liboqs + python bindings locally under .local/oqs
 scripts/setup_oqs.sh --branch main   # or omit to use main
@@ -38,7 +42,7 @@ scripts/setup_oqs.sh --branch main   # or omit to use main
 source scripts/env.example.sh
 
 # Install repo packages (editable)
-pip install -r requirements-dev.txt
+#pip install -r requirements-dev.txt
 
 pqcbench probe-oqs
 
