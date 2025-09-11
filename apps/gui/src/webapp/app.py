@@ -51,18 +51,53 @@ def _algo_kinds() -> Dict[str, str]:
     return kinds
 
 
+ALGO_INFO = {
+    "kyber": {
+        "kind": "KEM",
+        "about": "ML-KEM (Kyber): NIST-selected post-quantum key encapsulation mechanism for secure key exchange.",
+    },
+    "hqc": {
+        "kind": "KEM",
+        "about": "HQC: Code-based KEM offering quantum-resistant key establishment.",
+    },
+    "rsa-oaep": {
+        "kind": "KEM",
+        "about": "RSA-OAEP: Classical RSA encryption in a KEM-style wrapper for comparison.",
+    },
+    "dilithium": {
+        "kind": "SIG",
+        "about": "ML-DSA (Dilithium): NIST-selected post-quantum digital signature scheme.",
+    },
+    "falcon": {
+        "kind": "SIG",
+        "about": "Falcon: Lattice-based post-quantum signature focusing on compact signatures.",
+    },
+    "sphincs+": {
+        "kind": "SIG",
+        "about": "SPHINCS+: Stateless hash-based signature scheme; conservative and flexible.",
+    },
+    "xmssmt": {
+        "kind": "SIG",
+        "about": "XMSS/XMSSMT: Stateful hash-based signatures (one-time/limited-use keys).",
+    },
+    "rsa-pss": {
+        "kind": "SIG",
+        "about": "RSA-PSS: Classical RSA signatures baseline for benchmarking.",
+    },
+}
+
+
 @app.route("/")
 def index():
     _ensure_adapters_loaded()
     algos = list(registry.list().keys())
     kinds = _algo_kinds()
+    # Home/setup screen
     return render_template(
-        "base.html",
+        "home.html",
         algos=algos,
         kinds=kinds,
-        last_export=None,
-        result_json=None,
-        error=None,
+        algo_info=ALGO_INFO,
         default_runs=10,
         default_message_size=1024,
     )

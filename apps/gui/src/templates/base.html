@@ -186,8 +186,24 @@
   </style>
 </head>
 <body>
+  {% if result_json %}
+  <div class="island top-island" style="display:flex; justify-content:space-between; align-items:center;">
+    <div style="text-align:left; color:#fff;">
+      <h1 style="margin:0 0 .25rem 0; font-size:1.6rem;">Results</h1>
+      <div style="opacity:.9;">Benchmark summary and charts</div>
+    </div>
+    <div>
+      <a href="/" style="text-decoration:none;"><button type="button">Back to setup</button></a>
+    </div>
+  </div>
+  <style>
+    /* Hide setup and info sections on results view */
+    #setup-form { display: none !important; }
+    .middle-row { display: none !important; }
+  </style>
+  {% endif %}
   <!-- Top island -->
-  <div class="island top-island">
+  <div class="island top-island" id="setup-form">
     <form method="POST" action="/run">
       <div class="form-header">
         <div style="text-align:left; color:#fff;">
