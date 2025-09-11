@@ -16,6 +16,7 @@ isort
 pre-commit
 typer
 flask
+psutil
 # cryptography and liboqs (Python bindings) are optional; uncomment to force install
 cryptography
 # oqs

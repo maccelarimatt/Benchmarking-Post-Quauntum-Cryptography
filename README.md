@@ -133,3 +133,10 @@ Example:
 export PQCBENCH_KYBER_ALG=ML-KEM-1024
 export PQCBENCH_DILITHIUM_ALG=ML-DSA-65
 ```
+
+### Metrics captured
+- Latency per operation: `mean_ms`, `min_ms`, `max_ms`, and per-run `series`.
+- Sizes: `public_key_len`, `secret_key_len`, and `ciphertext_len`/`signature_len`.
+- Memory footprint: peak RSS delta per run (`mem_series_kb`) with summary fields
+  `mem_mean_kb`, `mem_min_kb`, `mem_max_kb` when `psutil` is available. If `psutil`
+  is not installed, these fields are omitted or null.

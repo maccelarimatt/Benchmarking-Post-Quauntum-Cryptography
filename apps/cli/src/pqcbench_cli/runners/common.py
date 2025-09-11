@@ -24,6 +24,11 @@ class OpStats:
     min_ms: float
     max_ms: float
     series: List[float]
+    # Memory footprint metrics (peak RSS delta per run)
+    mem_mean_kb: float | None = None
+    mem_min_kb: float | None = None
+    mem_max_kb: float | None = None
+    mem_series_kb: List[float] | None = None
 
 @dataclass
 class AlgoSummary:
@@ -33,14 +38,102 @@ class AlgoSummary:
     meta: Dict[str, Any]
 
 def measure(fn: Callable[[], None], runs: int) -> OpStats:
+    """Measure time and memory footprint.
+
+    - Time: measure wall-clock latency per run (ms)
+    - Memory: sample process RSS during the function call and record peak delta (KB)
+
+    If psutil is unavailable, memory metrics are left as None.
+    """
     times: List[float] = []
+    mem_peaks_kb: List[float] = []
+
+    # Optional psutil-based sampler
+    try:
+        import psutil  # type: ignore
+        import threading
+        import os
+
+        proc = psutil.Process(os.getpid())
+
+        class _MemSampler:
+            def __init__(self) -> None:
+                self._stop = threading.Event()
+                self._peak_rss = 0
+                self._baseline = 0
+
+            def start(self) -> None:
+                # Establish a baseline RSS before the measurement
+                try:
+                    self._baseline = int(proc.memory_info().rss)
+                except Exception:
+                    self._baseline = 0
+
+                self._stop.clear()
+                self._peak_rss = 0
+                self._thread = threading.Thread(target=self._run, daemon=True)
+                self._thread.start()
+
+            def stop(self) -> float:
+                self._stop.set()
+                self._thread.join(timeout=0.5)
+                # Return peak delta in KB (avoid negatives)
+                delta = max(0, self._peak_rss - self._baseline)
+                return delta / 1024.0
+
+            def _run(self) -> None:
+                # Sample at ~1 kHz (best effort; OS granularity applies)
+                while not self._stop.is_set():
+                    try:
+                        rss = int(proc.memory_info().rss)
+                        if rss > self._peak_rss:
+                            self._peak_rss = rss
+                    except Exception:
+                        pass
+                    # Busy wait would distort timings; sleep a tiny interval
+                    time.sleep(0.001)
+
+        sampler_factory: Callable[[], _MemSampler] | None = lambda: _MemSampler()
+    except Exception:
+        sampler_factory = None
+
     for _ in range(runs):
+        sampler = sampler_factory() if sampler_factory else None
+        if sampler:
+            sampler.start()
         t0 = time.perf_counter()
         fn()
         dt = (time.perf_counter() - t0) * 1000.0
         times.append(dt)
-    mean = sum(times)/len(times)
-    return OpStats(runs=runs, mean_ms=mean, min_ms=min(times), max_ms=max(times), series=times)
+        if sampler:
+            mem_peaks_kb.append(sampler.stop())
+
+    mean = sum(times) / len(times)
+
+    # Summarize memory metrics if available; otherwise leave as None
+    if mem_peaks_kb:
+        mem_mean = sum(mem_peaks_kb) / len(mem_peaks_kb)
+        mem_min = min(mem_peaks_kb)
+        mem_max = max(mem_peaks_kb)
+        return OpStats(
+            runs=runs,
+            mean_ms=mean,
+            min_ms=min(times),
+            max_ms=max(times),
+            series=times,
+            mem_mean_kb=mem_mean,
+            mem_min_kb=mem_min,
+            mem_max_kb=mem_max,
+            mem_series_kb=mem_peaks_kb,
+        )
+    else:
+        return OpStats(
+            runs=runs,
+            mean_ms=mean,
+            min_ms=min(times),
+            max_ms=max(times),
+            series=times,
+        )
 
 def export_json(summary: AlgoSummary, export_path: str | None) -> None:
     if not export_path:
