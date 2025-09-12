@@ -1,6 +1,6 @@
 from __future__ import annotations
 import os
-from typing import Tuple, List
+from typing import Tuple, List, Iterable
 from pqcbench import registry
 
 try:
@@ -11,20 +11,40 @@ except Exception as e:
 
 
 def _pick(preferred: List[str], available: List[str], fallback_contains: List[str]) -> str:
-    # Environment override first (if exact match)
+    """Select a mechanism name from available options.
+
+    Order of precedence:
+    1) First item in `preferred` that exactly matches an available mechanism
+    2) First item in `preferred` that appears in `available` (same as 1, explicit)
+    3) First item in `available` that contains any token in `fallback_contains`
+    """
     for env in preferred:
         if env and env in available:
             return env
-    # Then first preferred that exists
     for name in preferred:
         if name and name in available:
             return name
-    # Then any available that contains one of the tokens
     for token in fallback_contains:
         for a in available:
             if token in a:
                 return a
     raise RuntimeError(f"No matching mechanism found. Available: {available}")
+
+
+def _env_opts(*names: Iterable[str]) -> List[str]:
+    """Collect env var values (first non-empty from each name), preserving order.
+
+    Supports both legacy and project-prefixed names, e.g. KYBER_MECH and
+    PQCBENCH_KYBER_ALG. Empty or unset values are ignored.
+    """
+    vals: List[str] = []
+    for group in names:
+        for n in group:
+            val = os.getenv(n)
+            if val:
+                vals.append(val)
+                break
+    return vals
 
 # ---------- KEMs ----------
 
@@ -52,11 +72,19 @@ class _OQSKEM:
 
 @registry.register("kyber")
 class Kyber(_OQSKEM):
-    """Default: ML-KEM-768 if available (aka Kyber768)."""
+    """Default: ML-KEM-768 if available (aka Kyber768).
+
+    Environment overrides (checked in order):
+    - `PQCBENCH_KYBER_ALG`
+    - `KYBER_MECH` (legacy)
+    """
     def __init__(self):
         kems = oqs.get_enabled_kem_mechanisms()
         mech = _pick(
-            preferred=[os.getenv("KYBER_MECH"), "ML-KEM-768", "Kyber768", "ML-KEM-512", "Kyber512", "ML-KEM-1024", "Kyber1024"],
+            preferred=[
+                *_env_opts(["PQCBENCH_KYBER_ALG", "KYBER_MECH"]),
+                "ML-KEM-768", "Kyber768", "ML-KEM-512", "Kyber512", "ML-KEM-1024", "Kyber1024"
+            ],
             available=kems,
             fallback_contains=["ML-KEM", "Kyber"],
         )
@@ -65,11 +93,19 @@ class Kyber(_OQSKEM):
 
 @registry.register("hqc")
 class HQC(_OQSKEM):
-    """Default: HQC-192 if available."""
+    """Default: HQC-192 if available.
+
+    Environment overrides (checked in order):
+    - `PQCBENCH_HQC_ALG`
+    - `HQC_MECH` (legacy)
+    """
     def __init__(self):
         kems = oqs.get_enabled_kem_mechanisms()
         mech = _pick(
-            preferred=[os.getenv("HQC_MECH"), "HQC-192", "HQC-256", "HQC-128"],
+            preferred=[
+                *_env_opts(["PQCBENCH_HQC_ALG", "HQC_MECH"]),
+                "HQC-192", "HQC-256", "HQC-128"
+            ],
             available=kems,
             fallback_contains=["HQC"],
         )
@@ -107,11 +143,19 @@ class _OQSSignature:
 
 @registry.register("dilithium")
 class Dilithium(_OQSSignature):
-    """Default: ML-DSA-65 (≈ Dilithium-3) if available."""
+    """Default: ML-DSA-65 (≈ Dilithium-3) if available.
+
+    Environment overrides (checked in order):
+    - `PQCBENCH_DILITHIUM_ALG`
+    - `DILITHIUM_MECH` (legacy)
+    """
     def __init__(self):
         sigs = oqs.get_enabled_sig_mechanisms()
         mech = _pick(
-            preferred=[os.getenv("DILITHIUM_MECH"), "ML-DSA-65", "Dilithium3", "ML-DSA-44", "Dilithium2", "ML-DSA-87", "Dilithium5"],
+            preferred=[
+                *_env_opts(["PQCBENCH_DILITHIUM_ALG", "DILITHIUM_MECH"]),
+                "ML-DSA-65", "Dilithium3", "ML-DSA-44", "Dilithium2", "ML-DSA-87", "Dilithium5"
+            ],
             available=sigs,
             fallback_contains=["ML-DSA", "Dilithium"],
         )
@@ -120,11 +164,19 @@ class Dilithium(_OQSSignature):
 
 @registry.register("falcon")
 class Falcon(_OQSSignature):
-    """Default: Falcon-512."""
+    """Default: Falcon-512.
+
+    Environment overrides (checked in order):
+    - `PQCBENCH_FALCON_ALG`
+    - `FALCON_MECH` (legacy)
+    """
     def __init__(self):
         sigs = oqs.get_enabled_sig_mechanisms()
         mech = _pick(
-            preferred=[os.getenv("FALCON_MECH"), "Falcon-512", "Falcon-1024"],
+            preferred=[
+                *_env_opts(["PQCBENCH_FALCON_ALG", "FALCON_MECH"]),
+                "Falcon-512", "Falcon-1024"
+            ],
             available=sigs,
             fallback_contains=["Falcon"],
         )
@@ -133,11 +185,19 @@ class Falcon(_OQSSignature):
 
 @registry.register("sphincsplus")
 class SphincsPlus(_OQSSignature):
-    """Default: SPHINCS+-SHA2-128s-simple (fallback to any SPHINCS+)."""
+    """Default: SPHINCS+-SHA2-128s-simple (fallback to any SPHINCS+).
+
+    Environment overrides (checked in order):
+    - `PQCBENCH_SPHINCS_ALG`
+    - `SPHINCSPLUS_MECH` (legacy)
+    """
     def __init__(self):
         sigs = oqs.get_enabled_sig_mechanisms()
         mech = _pick(
-            preferred=[os.getenv("SPHINCSPLUS_MECH"), "SPHINCS+-SHA2-128s-simple", "SPHINCS+-SHA2-128f-simple"],
+            preferred=[
+                *_env_opts(["PQCBENCH_SPHINCS_ALG", "SPHINCSPLUS_MECH"]),
+                "SPHINCS+-SHA2-128s-simple", "SPHINCS+-SHA2-128f-simple"
+            ],
             available=sigs,
             fallback_contains=["SPHINCS+"],
         )
@@ -155,7 +215,10 @@ class XMSSMT:
         mechs = list(st())
         # Prefer a common XMSSMT parameter set; otherwise any XMSSMT
         self._mech = _pick(
-            preferred=[os.getenv("XMSSMT_MECH"), "XMSSMT-SHA2_20/2_256", "XMSSMT-SHA2_20/4_256"],
+            preferred=[
+                *_env_opts(["PQCBENCH_XMSSMT_ALG", "XMSSMT_MECH"]),
+                "XMSSMT-SHA2_20/2_256", "XMSSMT-SHA2_20/4_256"
+            ],
             available=mechs,
             fallback_contains=["XMSSMT"],
         )

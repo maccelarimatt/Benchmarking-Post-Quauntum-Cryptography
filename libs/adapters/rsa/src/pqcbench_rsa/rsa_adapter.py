@@ -29,6 +29,11 @@ def _load_public_key(pk_bytes: bytes):
 
 @registry.register("rsa-oaep")
 class RSAKEM:
+    """KEM-style wrapper around RSA-OAEP using cryptography.
+
+    Not a real KEM; we sample a random 32-byte secret and encrypt it with
+    RSA-OAEP to provide a classical baseline for comparison.
+    """
     name = "rsa-oaep"
     def keygen(self) -> Tuple[bytes, bytes]:
         return _gen_rsa_keypair(2048)
@@ -57,6 +62,7 @@ class RSAKEM:
 
 @registry.register("rsa-pss")
 class RSASignature:
+    """RSA-PSS signature adapter using cryptography (baseline)."""
     name = "rsa-pss"
     def keygen(self) -> Tuple[bytes, bytes]:
         return _gen_rsa_keypair(2048)

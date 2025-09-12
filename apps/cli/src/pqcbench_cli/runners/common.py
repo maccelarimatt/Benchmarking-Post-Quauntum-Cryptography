@@ -1,5 +1,10 @@
 
 from __future__ import annotations
+"""Shared benchmarking utilities for CLI runners.
+
+Includes adapter bootstrap, timing/memory measurement, JSON export helpers,
+and per-kind (KEM/SIG) micro-benchmark orchestrators.
+"""
 import time, json, pathlib, base64
 from dataclasses import dataclass, asdict
 from typing import Callable, Dict, Any, List, Tuple
@@ -183,6 +188,16 @@ def _repo_root() -> pathlib.Path:
     return pathlib.Path.cwd()
 
 def run_kem(name: str, runs: int) -> AlgoSummary:
+    """Run a KEM micro-benchmark for the registered algorithm `name`.
+
+    Measures wall-clock latency (and optional memory deltas) for:
+    - keygen
+    - encapsulate
+    - decapsulate
+
+    Fresh keys are generated for each run of encapsulate/decapsulate to avoid
+    reusing state and to keep comparisons fair.
+    """
     cls = registry.get(name)
     ops = {}
     # measure keygen
@@ -211,6 +226,13 @@ def run_kem(name: str, runs: int) -> AlgoSummary:
     return AlgoSummary(algo=name, kind="KEM", ops=ops, meta=meta)
 
 def run_sig(name: str, runs: int, message_size: int) -> AlgoSummary:
+    """Run a signature micro-benchmark for the registered algorithm `name`.
+
+    Measures wall-clock latency (and optional memory deltas) for:
+    - keygen
+    - sign (with fresh keys per run)
+    - verify (with fresh keys/signature per run)
+    """
     cls = registry.get(name)
     ops = {}
     msg = b"x" * message_size

@@ -142,6 +142,9 @@ export PQCBENCH_KYBER_ALG=ML-KEM-1024
 export PQCBENCH_DILITHIUM_ALG=ML-DSA-65
 ```
 
+Compatibility: legacy `*_MECH` env vars (e.g., `KYBER_MECH`) are also honored,
+but `PQCBENCH_*` takes precedence when both are set.
+
 ### Metrics captured
 - Latency per operation: `mean_ms`, `min_ms`, `max_ms`, and per-run `series`.
 - Sizes: `public_key_len`, `secret_key_len`, and `ciphertext_len`/`signature_len`.
