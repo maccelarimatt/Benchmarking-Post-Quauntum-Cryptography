@@ -2,6 +2,13 @@
 from __future__ import annotations
 from typing import Dict, Any, Callable
 
+"""Minimal adapter registry.
+
+Adapters call `@registry.register("name")` at import-time to expose
+implementations. Consumers can list or fetch adapters by name without hard
+imports.
+"""
+
 class _Registry:
     def __init__(self) -> None:
         self._items: Dict[str, Any] = {}

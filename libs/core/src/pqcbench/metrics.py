@@ -3,6 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, Any, List
 
+"""Lightweight benchmark result containers used by batch scripts.
+
+The CLI/GUI primarily return per-operation timing summaries; these dataclasses
+are used by the `benchmarks/` scripts for simple aggregation and export.
+"""
+
 @dataclass
 class MetricRecord:
     algo: str

@@ -1,5 +1,10 @@
 
 from __future__ import annotations
+"""Flask web app wrapping CLI benchmarking utilities.
+
+Uses the same adapter registry as the CLI to ensure consistent behavior.
+Provides simple single-run traces and JSON summaries in the browser.
+"""
 from flask import Flask, render_template, request, redirect, url_for
 from dataclasses import asdict
 import base64
@@ -339,4 +344,3 @@ def health():
 
 if __name__ == "__main__":
     app.run(debug=True)
-

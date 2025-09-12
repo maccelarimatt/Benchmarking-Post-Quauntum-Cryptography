@@ -4,6 +4,12 @@ import time, statistics, json, pathlib
 from pqcbench import registry
 from pqcbench.metrics import MetricRecord, BenchmarkResult
 
+"""Simple batch benchmark driver.
+
+Runs a lightweight timing loop over available adapters' keygen to demonstrate
+batch collection. Results are written to `results/bench_summary.json`.
+"""
+
 HERE = pathlib.Path(__file__).parent
 RESULTS = HERE.parent / "results"
 RESULTS.mkdir(exist_ok=True)

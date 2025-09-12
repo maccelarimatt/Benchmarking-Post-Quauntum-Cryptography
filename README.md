@@ -1,7 +1,7 @@
 
 # PQC Investigation – Modular Monorepo
 
-A modular, multi-package repository for benchmarking classical and post‑quantum cryptography (RSA‑OAEP, RSA‑PSS, Kyber/ML‑KEM, HQC, Dilithium/ML‑DSA, Falcon/FN‑DSA, SPHINCS+, XMSSMT) with ACVP validation, a CLI, and a Flask GUI.
+A modular, multi-package repository for benchmarking classical and post‑quantum cryptography (RSA‑OAEP, RSA‑PSS, Kyber/ML‑KEM, HQC, Dilithium/ML‑DSA, Falcon/FN‑DSA, SPHINCS+, XMSSMT, MAYO) with ACVP validation, a CLI, and a Flask GUI.
 
 ## Quick start (dev)
 ```bash
@@ -141,6 +141,9 @@ Example:
 export PQCBENCH_KYBER_ALG=ML-KEM-1024
 export PQCBENCH_DILITHIUM_ALG=ML-DSA-65
 ```
+
+Compatibility: legacy `*_MECH` env vars (e.g., `KYBER_MECH`) are also honored,
+but `PQCBENCH_*` takes precedence when both are set.
 
 ### Metrics captured
 - Latency per operation: `mean_ms`, `min_ms`, `max_ms`, and per-run `series`.
