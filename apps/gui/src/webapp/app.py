@@ -1,6 +1,7 @@
 
 from __future__ import annotations
 from flask import Flask, render_template, request, redirect, url_for
+from dataclasses import asdict
 import base64
 from pqcbench import registry
 from typing import Dict, Any
@@ -50,6 +51,19 @@ def _algo_kinds() -> Dict[str, str]:
         else:
             kinds[name] = "OTHER"
     return kinds
+
+
+def _display_names(names: list[str]) -> Dict[str, str]:
+    out: Dict[str, str] = {}
+    for n in names:
+        label = ALGO_INFO.get(n, {}).get("label")
+        if not label:
+            if n.lower() == "sphincs+":
+                label = "SPHINCS+"
+            else:
+                label = n.replace("-", "-").title()
+        out[n] = label
+    return out
 
 
 ALGO_INFO = {
@@ -106,7 +120,7 @@ def index():
     _ensure_adapters_loaded()
     algos = list(registry.list().keys())
     kinds = _algo_kinds()
-    display_names = {name: (ALGO_INFO.get(name, {}).get("label") or name.replace("-", "-").replace("sphincs+", "SPHINCS+").title()) for name in algos}
+    display_names = _display_names(algos)
     # Home/setup screen
     return render_template(
         "home.html",
@@ -253,6 +267,71 @@ def run():
     )
 
 
+# Inline compare UI lives on the home page; no standalone compare form route.
+
+
+@app.route("/compare/run", methods=["POST"])
+def compare_run():
+    _ensure_adapters_loaded()
+    kinds = _algo_kinds()
+    all_names = list(kinds.keys())
+
+    mode = request.form.get("mode", "pair")  # 'pair' or 'all'
+    kind = request.form.get("kind", "KEM").upper()
+    try:
+        runs = int(request.form.get("runs", "10"))
+    except Exception:
+        runs = 10
+    try:
+        message_size = int(request.form.get("message_size", "1024"))
+    except Exception:
+        message_size = 1024
+
+    # Selection
+    if mode == "all":
+        selected = [n for n in all_names if kinds.get(n) == kind]
+    else:
+        a = (request.form.getlist("algo_a") or [""])[-1]
+        b = (request.form.getlist("algo_b") or [""])[-1]
+        selected = [x for x in [a, b] if x and kinds.get(x) == kind and x.strip()]
+        # dedupe
+        seen = set()
+        selected = [x for x in selected if not (x in seen or seen.add(x))]
+    if not selected:
+        return redirect(url_for("index"))
+
+    # Run summaries
+    results = []
+    errors: Dict[str, str] = {}
+    for name in selected:
+        try:
+            if kind == "KEM":
+                summary = run_kem(name, runs)  # type: ignore[misc]
+            else:
+                summary = run_sig(name, runs, message_size)  # type: ignore[misc]
+            results.append(summary)
+        except Exception as e:
+            errors[name] = str(e)
+
+    display_names = _display_names(selected)
+    compare = {
+        "kind": kind,
+        "runs": runs,
+        "message_size": message_size,
+        "algos": [
+            {
+                "name": s.algo,
+                "label": display_names.get(s.algo, s.algo),
+                "ops": {k: asdict(v) for k, v in s.ops.items()},
+                "meta": s.meta,
+            }
+            for s in results
+        ],
+    }
+
+    return render_template("compare_results.html", compare=compare, errors=errors)
+
+
 @app.route("/health")
 def health():
     return {"status": "ok"}
@@ -260,3 +339,4 @@ def health():
 
 if __name__ == "__main__":
     app.run(debug=True)
+

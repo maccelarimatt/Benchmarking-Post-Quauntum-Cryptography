@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PQC Bench – Compare Results</title>
+  <style>
+    :root { --island-bg: rgba(128,128,128,.7); --island-radius:1.5rem; --text:#fff; }
+    body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size:cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
+    .island { background:var(--island-bg); border-radius:var(--island-radius); padding:2rem; backdrop-filter: blur(4px); max-width:1200px; margin:0 auto 2vh auto; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; }
+    .card { background: rgba(0,0,0,.25); border-radius:.75rem; padding:1rem; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { padding:.45rem .35rem; border-bottom: 1px dashed rgba(255,255,255,.2); }
+  </style>
+</head>
+<body>
+  <div class="island" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+      <div style="font-size:1.6rem; font-weight:700;">Compare Results – {{ compare.kind }}</div>
+      <div style="opacity:.9;">Runs: {{ compare.runs }}{% if compare.kind=='SIG' %}, Message size: {{ compare.message_size }} B{% endif %}</div>
+    </div>
+    <div>
+      <a href="/" style="text-decoration:none;">
+        <button type="button" style="padding:.7rem 1.6rem; border:none; border-radius:.7rem; background: linear-gradient(180deg, #ff5d5f, #e04446); color:#fff; cursor:pointer; box-shadow: 0 4px 14px rgba(255,77,79,.25);">Back to setup</button>
+      </a>
+    </div>
+  </div>
+
+  {% if errors and errors|length %}
+  <div class="island" style="background: rgba(128,0,0,.35);">
+    <div style="font-weight:700; margin-bottom:.5rem;">Some algorithms were skipped:</div>
+    <ul>
+    {% for name, msg in errors.items() %}
+      <li><b>{{ name }}</b>: {{ msg }}</li>
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <div class="island">
+    <div class="grid">
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:.5rem;">Timing (ms)</div>
+        <div id="timing-charts" class="grid"></div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:.5rem;">Memory (KB)</div>
+        <div id="memory-charts" class="grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="island">
+    <div class="card">
+      <div style="font-weight:700; margin-bottom:.5rem;">Summary</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Algorithm</th>
+            {% set ops = ['keygen','encapsulate','decapsulate'] if compare.kind=='KEM' else ['keygen','sign','verify'] %}
+            {% for op in ops %}
+              <th>{{ op|capitalize }} mean</th>
+            {% endfor %}
+            <th>Mem mean (KB)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in compare.algos %}
+          <tr>
+            <td>{{ a.label }}</td>
+            {% for op in ops %}
+              <td>
+                {% if a.ops.get(op) %}{{ '%.3f'|format(a.ops[op].mean_ms) }}{% else %}-{% endif %}
+              </td>
+            {% endfor %}
+            <td>
+              {% set mems = [] %}
+              {% for op in ops %}
+                {% if a.ops.get(op) and a.ops[op].mem_mean_kb is not none %}{% set _ = mems.append(a.ops[op].mem_mean_kb) %}{% endif %}
+              {% endfor %}
+              {% if mems %}{{ '%.2f'|format((mems|sum)/ (mems|length)) }}{% else %}-{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    (function(){
+      const data = {{ compare|tojson }};
+      const ops = data.kind === 'KEM' ? ['keygen','encapsulate','decapsulate'] : ['keygen','sign','verify'];
+      const timingHost = document.getElementById('timing-charts');
+      const memoryHost = document.getElementById('memory-charts');
+      const palette = ['#ff4d4f', '#4d9dff', '#7ed957', '#ffd166', '#c792ea', '#00c2a8', '#f78c6c'];
+      function makePanel(host, title){
+        const wrap = document.createElement('div');
+        wrap.style.background = 'rgba(0,0,0,.20)';
+        wrap.style.padding = '.75rem';
+        wrap.style.borderRadius = '.5rem';
+        const h = document.createElement('div');
+        h.textContent = title; h.style.fontWeight = '600'; h.style.marginBottom = '.5rem';
+        wrap.appendChild(h);
+        const canvas = document.createElement('canvas');
+        canvas.style.width = '100%'; canvas.style.height = '220px';
+        wrap.appendChild(canvas);
+        host.appendChild(wrap);
+        return canvas.getContext('2d');
+      }
+      ops.forEach((op, opIndex) => {
+        // Timing chart
+        const ctxT = makePanel(timingHost, op.charAt(0).toUpperCase()+op.slice(1));
+        const labels = (data.algos[0] && data.algos[0].ops[op]) ? data.algos[0].ops[op].series.map((_,i)=>i+1) : [];
+        const tDatasets = data.algos.map((a,idx)=>({
+          label: a.label,
+          data: (a.ops[op] && a.ops[op].series) ? a.ops[op].series : [],
+          borderColor: palette[idx % palette.length],
+          backgroundColor: palette[idx % palette.length]+'33',
+          tension: 0.25,
+          pointRadius: 1.5,
+        }));
+        new Chart(ctxT, { type:'line', data:{ labels, datasets: tDatasets }, options:{ responsive:true, plugins:{legend:{labels:{color:'#fff'}}}, scales:{ x:{ ticks:{color:'#fff'}}, y:{ ticks:{color:'#fff'}} } } });
+
+        // Memory chart
+        const ctxM = makePanel(memoryHost, op.charAt(0).toUpperCase()+op.slice(1));
+        const mDatasets = data.algos.map((a,idx)=>({
+          label: a.label,
+          data: (a.ops[op] && a.ops[op].mem_series_kb) ? a.ops[op].mem_series_kb : [],
+          borderColor: palette[idx % palette.length],
+          backgroundColor: palette[idx % palette.length]+'33',
+          tension: 0.25,
+          pointRadius: 1.5,
+        }));
+        new Chart(ctxM, { type:'line', data:{ labels, datasets: mDatasets }, options:{ responsive:true, plugins:{legend:{labels:{color:'#fff'}}}, scales:{ x:{ ticks:{color:'#fff'}}, y:{ ticks:{color:'#fff'}} } } });
+      });
+    })();
+  </script>
+</body>
+</html>

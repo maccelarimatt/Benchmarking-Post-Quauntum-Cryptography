@@ -64,6 +64,7 @@
     .hint { font-size:.85rem; opacity:.9; margin-top:.25rem; }
     .actions { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1rem; }
     button { padding:.7rem 1.6rem; border:none; border-radius:.7rem; background: linear-gradient(180deg, #ff5d5f, #e04446); color:#fff; cursor:pointer; box-shadow: 0 4px 14px rgba(255,77,79,.25); }
+    .btn-secondary { padding:.7rem 1.6rem; border:none; border-radius:.7rem; background: rgba(255,255,255,.16); color:#fff; text-decoration:none; display:inline-block; }
     button:hover { filter: brightness(1.02); }
     .muted-btn { background: rgba(255,255,255,.16); color:#fff; box-shadow:none; }
     .alg-section { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.2rem; }
@@ -72,6 +73,8 @@
     .alg-kind { font-size:.8rem; background:rgba(255,255,255,.2); padding:.1rem .4rem; border-radius:.3rem; margin-left:.4rem; }
     .field.is-disabled { opacity: .65; }
     .field.is-disabled input { pointer-events: none; }
+    /* Export rows: extra rounding for inputs */
+    .export-row input[type="text"] { border-radius: 1rem; }
   </style>
   </head>
 <body>
@@ -85,30 +88,31 @@
       <div class="title" style="font-size:1.2rem;">Select Algorithm & Parameters</div>
       <form method="POST" action="/run">
         <div class="form-grid" style="max-width: 680px; margin: 0 auto;">
-          <div class="field" style="grid-column: span 8;">
+          <div class="field" style="grid-column: span 6;">
             <label for="algo">Algorithm</label>
             <select id="algo" name="algo">
               {% for name in algos %}
                 <option value="{{name}}">{{ display_names.get(name, name) }} ({{ kinds[name] }})</option>
               {% endfor %}
             </select>
-            <div class="hint">Choose a KEM for key exchange or a SIG for signatures.</div>
+            
           </div>
-          <div class="field" style="grid-column: span 4;">
+          <div class="field" style="grid-column: span 3;">
             <label for="runs">Runs</label>
             <input id="runs" name="runs" type="number" min="1" value="{{ default_runs or 10 }}" />
           </div>
-          <div class="field" id="msg-field" style="grid-column: span 6;">
+          <div class="field" id=\"msg-field\" style=\"grid-column: span 3;\">
             <label for="msg">Message size (bytes)</label>
             <input id="msg" name="message_size" type="number" min="1" value="{{ default_message_size or 1024 }}" />
             <div class="hint">Used by signature algorithms only.</div>
           </div>
-          <div class="field field--full" style="display:flex; gap:.7rem; align-items:center;">
+<div class="field field--full"><div class="hint">Choose a KEM for key exchange or a SIG for signatures.</div></div>
+          <div class="field field--full export-row" style="display:flex; gap:.7rem; align-items:center;">
             <input id="export" type="checkbox" name="do_export" />
             <label for="export_path" style="margin:0;">Export summary to</label>
             <input id="export_path" name="export_path" placeholder="results/&lt;algo&gt;.json" />
           </div>
-          <div class="field field--full" style="display:flex; gap:.7rem; align-items:center;">
+          <div class="field field--full export-row" style="display:flex; gap:.7rem; align-items:center;">
             <input id="export_trace" type="checkbox" name="do_export_trace" />
             <label for="export_trace_path" style="margin:0;">Export raw trace to</label>
             <input id="export_trace_path" name="export_trace_path" placeholder="results/&lt;algo&gt;_trace.json" />
@@ -119,6 +123,91 @@
           <button type="submit">Run</button>
         </div>
       </form>
+      <hr style="border:none; border-top:1px solid rgba(255,255,255,.2); margin:1.25rem 0;"/>
+      <div>
+        <div class="title" style="font-size:1.2rem;">Compare Mechanisms</div>
+        <form method="POST" action="/compare/run">
+          <div class="form-grid" style="max-width: 680px; margin: 0 auto;">
+            <div class="field" style="grid-column: span 3;">
+              <label for="cmp_kind">Kind</label>
+              <select id="cmp_kind" name="kind">
+                <option value="KEM">KEM</option>
+                <option value="SIG">SIG</option>
+              </select>
+            </div>
+            <div class="field" style="grid-column: span 4;">
+              <label for="cmp_mode">Mode</label>
+              <select id="cmp_mode" name="mode">
+                <option value="pair">Compare two</option>
+                <option value="all">All of kind</option>
+              </select>
+            </div>
+            <div class="field" style="grid-column: span 2;">
+              <label for="cmp_runs">Runs</label>
+              <input id="cmp_runs" type="number" name="runs" min="1" value="{{ default_runs or 10 }}" />
+            </div>
+            <div class="field" id="cmp_msg_field" style="grid-column: span 3;">
+              <label for="cmp_msg">Message size (SIG)</label>
+              <input id="cmp_msg" type="number" name="message_size" min="1" value="{{ default_message_size or 1024 }}" />
+            </div>
+
+            <!-- Pair selectors for KEM -->
+            <div class="field field--full" id="cmp_kem_pair" style="display:none;">
+              <div class="row">
+                <div style="flex:1;">
+                  <label for="cmp_kem_a">Algorithm A (KEM)</label>
+                  <select id="cmp_kem_a" name="algo_a">
+                    {% for name in algos %}
+                      {% if kinds[name] == 'KEM' %}
+                        <option value="{{name}}">{{ display_names.get(name, name) }}</option>
+                      {% endif %}
+                    {% endfor %}
+                  </select>
+                </div>
+                <div style="flex:1;">
+                  <label for="cmp_kem_b">Algorithm B (KEM)</label>
+                  <select id="cmp_kem_b" name="algo_b">
+                    {% for name in algos %}
+                      {% if kinds[name] == 'KEM' %}
+                        <option value="{{name}}">{{ display_names.get(name, name) }}</option>
+                      {% endif %}
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pair selectors for SIG -->
+            <div class="field field--full" id="cmp_sig_pair" style="display:none;">
+              <div class="row">
+                <div style="flex:1;">
+                  <label for="cmp_sig_a">Algorithm A (SIG)</label>
+                  <select id="cmp_sig_a" name="algo_a">
+                    {% for name in algos %}
+                      {% if kinds[name] == 'SIG' %}
+                        <option value="{{name}}">{{ display_names.get(name, name) }}</option>
+                      {% endif %}
+                    {% endfor %}
+                  </select>
+                </div>
+                <div style="flex:1;">
+                  <label for="cmp_sig_b">Algorithm B (SIG)</label>
+                  <select id="cmp_sig_b" name="algo_b">
+                    {% for name in algos %}
+                      {% if kinds[name] == 'SIG' %}
+                        <option value="{{name}}">{{ display_names.get(name, name) }}</option>
+                      {% endif %}
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="actions">
+            <button type="submit">Run comparison</button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <div>
@@ -157,6 +246,7 @@
     </div>
   </div>
 
+
   <script>
     (function(){
       const kinds = {{ kinds|tojson }};
@@ -188,7 +278,47 @@
       if (exportTraceC) exportTraceC.addEventListener('change', refresh);
       refresh();
     })();
+
+    // Inline compare tool logic
+    (function(){
+      const kindSel = document.getElementById('cmp_kind');
+      const modeSel = document.getElementById('cmp_mode');
+      const msgField = document.getElementById('cmp_msg_field');
+      const msgInput = document.getElementById('cmp_msg');
+      const kemPair = document.getElementById('cmp_kem_pair');
+      const sigPair = document.getElementById('cmp_sig_pair');
+      const kemA = document.getElementById('cmp_kem_a');
+      const kemB = document.getElementById('cmp_kem_b');
+      const sigA = document.getElementById('cmp_sig_a');
+      const sigB = document.getElementById('cmp_sig_b');
+
+      function syncOptions(aSel, bSel){
+        if (!aSel || !bSel) return;
+        const valA = aSel.value;
+        Array.from(bSel.options).forEach(o => { o.disabled = (o.value && o.value === valA); });
+        if (bSel.value === valA){
+          const alt = Array.from(bSel.options).find(o => !o.disabled && o.value);
+          if (alt) bSel.value = alt.value;
+        }
+      }
+      function refresh(){
+        const isSig = (kindSel.value === 'SIG');
+        // enable/disable message size
+        if (msgInput) { msgInput.disabled = !isSig; }
+        if (msgField) { msgField.style.opacity = isSig ? '1' : '.65'; }
+        // pair/all toggle
+        const isPair = (modeSel.value === 'pair');
+        if (kemPair) kemPair.style.display = isPair && !isSig ? 'block' : 'none';
+        if (sigPair) sigPair.style.display = isPair && isSig ? 'block' : 'none';
+        if (isPair){ if (isSig) { syncOptions(sigA, sigB); } else { syncOptions(kemA, kemB); } }
+      }
+      kindSel.addEventListener('change', refresh);
+      modeSel.addEventListener('change', refresh);
+      refresh();
+    })();
   </script>
 
 </body>
 </html>
+
+
