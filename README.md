@@ -1,7 +1,7 @@
 
 # PQC Investigation – Modular Monorepo
 
-A modular, multi-package repository for benchmarking classical and post‑quantum cryptography (RSA‑OAEP, RSA‑PSS, Kyber/ML‑KEM, HQC, Dilithium/ML‑DSA, Falcon/FN‑DSA, SPHINCS+, XMSSMT) with ACVP validation, a CLI, and a Flask GUI.
+A modular, multi-package repository for benchmarking classical and post‑quantum cryptography (RSA‑OAEP, RSA‑PSS, Kyber/ML‑KEM, HQC, Dilithium/ML‑DSA, Falcon/FN‑DSA, SPHINCS+, XMSSMT, MAYO) with ACVP validation, a CLI, and a Flask GUI.
 
 ## Quick start (dev)
 ```bash
