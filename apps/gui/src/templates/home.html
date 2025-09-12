@@ -17,7 +17,7 @@
       margin: 0; padding: 5vh 5vw; color: var(--text);
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
       background-image: url('/static/Images/background.gif');
-      background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed;
+      background-size: cover; background-position: center center; background-repeat: no-repeat; background-attachment: fixed;`n      background-color: #0b0f14;
       display:flex; flex-direction:column; align-items:center; min-height:100vh;
     }
     .island { background: var(--island-bg); border-radius: var(--island-radius); box-shadow: var(--island-shadow); backdrop-filter: blur(4px); padding: 2rem; width:100%; max-width:1200px; }
@@ -33,18 +33,7 @@
     /* Inputs */
     .field input[type="number"],
     .field input[type="text"],
-    .field select {
-      width:100%;
-      padding:.7rem .8rem;
-      border-radius:.7rem;
-      border:1px solid rgba(255,255,255,.35);
-      background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.92));
-      color:#111;
-      outline:none;
-      transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
-      box-shadow: 0 1px 0 rgba(0,0,0,.08), inset 0 0 0 rgba(0,0,0,0);
-      font-size: 0.98rem;
-    }
+    .field select { width:100%; padding:.6rem .7rem; border-radius:.6rem; border:1px solid rgba(255,255,255,.35); background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.94)); color:#111; outline:none; transition: border-color .18s ease, box-shadow .18s ease, background .18s ease; box-shadow: 0 1px 0 rgba(0,0,0,.08), inset 0 0 0 rgba(0,0,0,0); font-size: 0.95rem; }
     .field input::placeholder { color: #6b7280; opacity:.9; }
     .field input:focus,
     .field select:focus {
@@ -59,22 +48,54 @@
       cursor:not-allowed;
     }
     /* Checkboxes */
-    input[type="checkbox"] { accent-color: var(--accent); width: 1.05rem; height: 1.05rem; }
+    input[type="checkbox"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.9rem;
+  border: 2px solid rgba(255,255,255,.6);
+  background: rgba(255,255,255,.12);
+  display: inline-grid;
+  place-content: center;
+}
+input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+input[type="checkbox"]::after { content: none; }
+input[type="checkbox"]:checked::after { opacity: 1; }
     .checkbox-row { display:flex; gap:.7rem; align-items:center; }
     .hint { font-size:.85rem; opacity:.9; margin-top:.25rem; }
     .actions { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1rem; }
-    button { padding:.7rem 1.6rem; border:none; border-radius:.7rem; background: linear-gradient(180deg, #ff5d5f, #e04446); color:#fff; cursor:pointer; box-shadow: 0 4px 14px rgba(255,77,79,.25); }
-    .btn-secondary { padding:.7rem 1.6rem; border:none; border-radius:.7rem; background: rgba(255,255,255,.16); color:#fff; text-decoration:none; display:inline-block; }
-    button:hover { filter: brightness(1.02); }
-    .muted-btn { background: rgba(255,255,255,.16); color:#fff; box-shadow:none; }
+    button { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow: 0 2px 6px rgba(0,0,0,.18); transition: transform .05s ease, filter .15s ease; }
+    .btn-secondary { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: rgba(255,255,255,.16); color:#fff; text-decoration:none; display:inline-block; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+    button:hover { filter: brightness(1.03); }
+    .muted-btn { background: rgba(255,255,255,.16); color:#fff; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
     .alg-section { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.2rem; }
     .alg-list { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:1rem; }
     .alg-item { background: rgba(0,0,0,.2); border-radius:.6rem; padding:.8rem; }
-    .alg-kind { font-size:.8rem; background:rgba(255,255,255,.2); padding:.1rem .4rem; border-radius:.3rem; margin-left:.4rem; }
+    .alg-kind { font-size:.8rem; background:rgba(255,255,255,.16); padding:.1rem .4rem; border-radius:.3rem; margin-left:.4rem; }
     .field.is-disabled { opacity: .65; }
     .field.is-disabled input { pointer-events: none; }
     /* Export rows: extra rounding for inputs */
-    .export-row input[type="text"] { border-radius: 1rem; }
+    .export-row input[type="text"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border-radius: 2.8rem; /* rounder corners */
+  padding: 1.1rem 1.4rem; /* larger box */
+  min-width: 460px;       /* bigger base width */
+  flex: 1 1 auto;
+  width: 100%;
+  font-size: 1.1rem;      /* larger text */
+  line-height: 1.25;
+  border: 1px solid rgba(0,0,0,.15);
+  background: rgba(255,255,255,.98);
+}
+  /* Ensure export path inputs are large and rounded across browsers */
+#export_path, #export_trace_path { -webkit-appearance: none; -moz-appearance: none; appearance: none; border-radius: 1.8rem !important; padding: 0.78rem 1rem !important; font-size: 1rem !important; min-width: 320px !important; max-width: 480px !important; width: auto !important; flex: 1 1 360px !important; line-height: 1.2; border: 1px solid rgba(0,0,0,.15); background: rgba(255,255,255,.98); }
   </style>
   </head>
 <body>
@@ -320,5 +341,18 @@
 
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
