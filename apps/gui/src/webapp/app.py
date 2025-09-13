@@ -296,8 +296,19 @@ def compare_run():
     if mode == "all":
         selected = [n for n in all_names if kinds.get(n) == kind]
     else:
-        a = (request.form.getlist("algo_a") or [""])[-1]
-        b = (request.form.getlist("algo_b") or [""])[-1]
+        # There are duplicate fields (KEM + SIG) with same names in the DOM.
+        # For KEM we want the FIRST non-empty occurrence (KEM fields appear first),
+        # for SIG we want the LAST non-empty occurrence (SIG fields appear later).
+        def pick_for_kind(key: str) -> str:
+            vals = request.form.getlist(key) or []
+            seq = vals if kind == "KEM" else list(reversed(vals))
+            for v in seq:
+                if v and v.strip():
+                    return v
+            return ""
+
+        a = pick_for_kind("algo_a")
+        b = pick_for_kind("algo_b")
         selected = [x for x in [a, b] if x and kinds.get(x) == kind and x.strip()]
         # dedupe
         seen = set()
@@ -337,6 +348,17 @@ def compare_run():
     return render_template("compare_results.html", compare=compare, errors=errors)
 
 
+@app.route("/algo/<name>")
+def algo_detail(name: str):
+    _ensure_adapters_loaded()
+    algos = list(registry.list().keys())
+    kinds = _algo_kinds()
+    label = (ALGO_INFO.get(name, {}).get("label") or ("SPHINCS+" if name.lower()=="sphincs+" else name.replace("-","-").title()))
+    kind = kinds.get(name, ALGO_INFO.get(name, {}).get("kind", ""))
+    about = ALGO_INFO.get(name, {}).get("about", "")
+    return render_template("algo_detail.html", name=name, label=label, kind=kind, about=about)
+
+
 @app.route("/health")
 def health():
     return {"status": "ok"}
@@ -344,3 +366,4 @@ def health():
 
 if __name__ == "__main__":
     app.run(debug=True)
+

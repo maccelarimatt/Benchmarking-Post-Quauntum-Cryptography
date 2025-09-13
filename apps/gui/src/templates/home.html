@@ -237,7 +237,7 @@ input[type="checkbox"]:checked::after { opacity: 1; }
         <div class="alg-list">
           {% for name in algos %}
             {% if kinds[name] == 'KEM' %}
-            <div class="alg-item">
+            <div class="alg-item" data-algo="{{ name }}">
               <div style="display:flex; align-items:center; justify-content:space-between;">
                 <div style="font-weight:700;">{{ display_names.get(name, name) }}</div>
                 <div class="alg-kind">{{ kinds[name] }}</div>
@@ -253,7 +253,7 @@ input[type="checkbox"]:checked::after { opacity: 1; }
         <div class="alg-list">
           {% for name in algos %}
             {% if kinds[name] == 'SIG' %}
-            <div class="alg-item">
+            <div class="alg-item" data-algo="{{ name }}">
               <div style="display:flex; align-items:center; justify-content:space-between;">
                 <div style="font-weight:700;">{{ display_names.get(name, name) }}</div>
                 <div class="alg-kind">{{ kinds[name] }}</div>
@@ -339,20 +339,16 @@ input[type="checkbox"]:checked::after { opacity: 1; }
     })();
   </script>
 
+  <script>
+    (function(){
+      var cards = document.querySelectorAll('.alg-section .alg-item[data-algo]');
+      for (var i=0; i<cards.length; i++){
+        cards[i].addEventListener('click', function(){
+          var n = this.getAttribute('data-algo');
+          if (n) window.location.href = '/algo/' + encodeURIComponent(n);
+        });
+      }
+    })();
+  </script>
 </body>
-</html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
