@@ -6,6 +6,7 @@ Uses the same adapter registry as the CLI to ensure consistent behavior.
 Provides simple single-run traces and JSON summaries in the browser.
 """
 from flask import Flask, render_template, request, redirect, url_for
+from jinja2 import TemplateNotFound
 from dataclasses import asdict
 import base64
 from pqcbench import registry
@@ -356,7 +357,26 @@ def algo_detail(name: str):
     label = (ALGO_INFO.get(name, {}).get("label") or ("SPHINCS+" if name.lower()=="sphincs+" else name.replace("-","-").title()))
     kind = kinds.get(name, ALGO_INFO.get(name, {}).get("kind", ""))
     about = ALGO_INFO.get(name, {}).get("about", "")
-    return render_template("algo_detail.html", name=name, label=label, kind=kind, about=about)
+    # Prefer a template named after the algorithm if it exists
+    tmpl = f"{name.lower()}.html"
+    try:
+        return render_template(tmpl, name=name, label=label, kind=kind, about=about)
+    except TemplateNotFound:
+        # Fallback to a generic detail page if available
+        try:
+            return render_template("algo_detail.html", name=name, label=label, kind=kind, about=about)
+        except TemplateNotFound:
+            # Final fallback: return home to avoid a 500 if generic template is missing
+            display_names = _display_names(algos)
+            return render_template(
+                "home.html",
+                algos=algos,
+                kinds=kinds,
+                algo_info=ALGO_INFO,
+                display_names=display_names,
+                default_runs=10,
+                default_message_size=1024,
+            )
 
 
 @app.route("/health")

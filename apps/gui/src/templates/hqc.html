@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ label }} - Details</title>
+  <style>
+    :root { --island-bg: rgba(128,128,128,.7); --island-radius:1.5rem; --text:#fff; --accent:#ff4d4f; }
+    body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
+    .island { background:var(--island-bg); border-radius:var(--island-radius); padding:2rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 2vh auto; }
+    .btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.18); text-decoration:none; }
+    .badge { font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem; display:inline-block; }
+    .muted { opacity:.9; }
+    h2, h3 { margin: 0 0 .6rem 0; }
+    h2 { font-size:1.25rem; }
+    h3 { font-size:1.05rem; margin-top:1.2rem; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:.45rem .4rem; border-bottom:1px solid rgba(255,255,255,.2); }
+    th { font-weight:600; }
+    .refs li { margin:.35rem 0; }
+    .chip { display:inline-block; font-size:.85rem; padding:.1rem .5rem; border-radius:.4rem; background:rgba(255,255,255,.15); margin-right:.4rem; }
+    .toc a { color:#fff; text-decoration:none; }
+    .toc a:hover { text-decoration:underline; }
+    .note { font-size:.95rem; opacity:.95; }
+    code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
+  </style>
+  <!-- MathJax for LaTeX-style math -->
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <div class="island" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+    <div>
+      <div style="font-size:1.6rem; font-weight:700;">{{ label }}</div>
+      {% if kind %}<div class="badge" title="Kind">{{ kind }}</div>{% endif %}
+    </div>
+    <div>
+      <a href="/" class="btn">Back to home</a>
+    </div>
+  </div>
+
+  <div class="island">
+    <div style="font-weight:700; margin-bottom:.5rem;">About</div>
+    <p class="muted">
+      {{ about or 'This page explains the HQC (Hamming Quasi-Cyclic) KEM in depth: its origins, math, parameters, algorithms, security assumptions, and practical considerations—plus references.' }}
+    </p>
+    <div class="toc muted">
+      <span class="chip"><a href="#history">Origins & history</a></span>
+      <span class="chip"><a href="#overview">Design overview</a></span>
+      <span class="chip"><a href="#math">Mathematical setting</a></span>
+      <span class="chip"><a href="#params">Parameter sets</a></span>
+      <span class="chip"><a href="#algorithms">Algorithms</a></span>
+      <span class="chip"><a href="#security">Security</a></span>
+      <span class="chip"><a href="#impl">Implementation notes</a></span>
+      <span class="chip"><a href="#proscons">Pros & cons</a></span>
+      <span class="chip"><a href="#references">References</a></span>
+    </div>
+  </div>
+
+  <div class="island" id="history">
+    <h2>Origins & history</h2>
+    <p class="muted">
+      <strong>HQC</strong> is a code-based KEM whose security is grounded in the <em>Quasi-Cyclic Syndrome Decoding</em> (QCSD) problem. It originates from the “Efficient Encryption from Random Quasi-Cyclic Codes” line of work (HQC/RQC) and evolved through the NIST PQC process. In <strong>March 2025</strong>, NIST selected HQC as the fifth PQC algorithm (a <em>backup KEM</em> to ML-KEM/Kyber) and moved it toward standardization, citing its distinct code-based foundation. HQC continues to be maintained by the original team with regularly updated specifications and proofs. [1][2][3][4]
+    </p>
+  </div>
+
+  <div class="island" id="overview">
+    <h2>Design overview</h2>
+    <p class="muted">
+      HQC first defines a compact, IND-CPA public-key encryption (HQC-PKE) built on random double-circulant codes, then applies a salted Fujisaki–Okamoto transform in the HHK framework with implicit rejection to obtain an IND-CCA2 KEM (HQC-KEM). Messages are encoded with a concatenated Reed-Muller/Reed-Solomon code (RMRS) to obtain strong decoding guarantees and a tightly controlled decryption-failure rate (DFR). [1][3]
+    </p>
+  </div>
+
+  <div class="island" id="math">
+    <h2>Mathematical setting</h2>
+    <p class="muted">
+      Work in the binary vector space \(V=\mathbb{F}_2^n\), identified with the ring \(R=\mathbb{F}_2[X]/(X^n-1)\). Convolution (polynomial) multiplication of \(u,v\in V\) is
+    </p>
+    <p class="mono">
+      \( w_k \;=\; \sum_{i+j\equiv k\ (\mathrm{mod}\ n)} u_i\,v_j,\quad k=0,\dots,n-1. \)
+    </p>
+    <p class="muted">
+      For a vector \(v\), let \(\mathrm{rot}(v)\) be its circulant matrix. The public matrix has double-circulant form \(H=(I_n\;|\;\mathrm{rot}(h))\). The ambient length \(n\) is chosen as the smallest primitive prime greater than \(n_1n_2\) (the length of the concatenated RMRS code), and computations sometimes truncate the last \(\ell = n - n_1n_2\) bits. [1]
+    </p>
+    <h3>Security problems</h3>
+    <p class="muted">
+      IND-CPA security of HQC-PKE reduces to decisional QCSD variants with parity/truncation:
+      \( \text{Adv}^{\mathrm{IND\mbox{-}CPA}}_{\text{HQC-PKE}} \le
+      \text{Adv}_{\text{2-DQCSD-P}} + \text{Adv}_{\text{3-DQCSD-PT}}.
