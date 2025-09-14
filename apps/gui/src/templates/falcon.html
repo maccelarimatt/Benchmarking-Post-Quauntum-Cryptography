@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ label }} - Details</title>
+  <style>
+    :root { --island-bg: rgba(128,128,128,.7); --island-radius:1.5rem; --text:#fff; --accent:#ff4d4f; }
+    body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
+    .island { background:var(--island-bg); border-radius:var(--island-radius); padding:2rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 2vh auto; }
+    .btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.18); text-decoration:none; }
+    .badge { font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem; display:inline-block; }
+    .muted { opacity:.9; }
+    h2, h3 { margin: 0 0 .6rem 0; }
+    h2 { font-size:1.25rem; }
+    h3 { font-size:1.05rem; margin-top:1.2rem; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:.45rem .4rem; border-bottom:1px solid rgba(255,255,255,.2); }
+    th { font-weight:600; }
+    .refs li { margin:.35rem 0; }
+    .chip { display:inline-block; font-size:.85rem; padding:.1rem .5rem; border-radius:.4rem; background:rgba(255,255,255,.15); margin-right:.4rem; }
+    .toc a { color:#fff; text-decoration:none; }
+    .toc a:hover { text-decoration:underline; }
+    .note { font-size:.95rem; opacity:.95; }
+    code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
+  </style>
+  <!-- MathJax for LaTeX-style math -->
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <div class="island" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+    <div>
+      <div style="font-size:1.6rem; font-weight:700;">{{ label }}</div>
+      {% if kind %}<div class="badge" title="Kind">{{ kind }}</div>{% endif %}
+    </div>
+    <div>
+      <a href="/" class="btn">Back to home</a>
+    </div>
+  </div>
+
+  <div class="island">
+    <div style="font-weight:700; margin-bottom:.5rem;">About</div>
+    <p class="muted">
+      {{ about or 'This page explains the Falcon signature scheme in depth: its origins, math over NTRU lattices, parameters, algorithms, security assumptions, and implementation considerations—plus references.' }}
+    </p>
+    <div class="toc muted">
+      <span class="chip"><a href="#history">Origins & history</a></span>
+      <span class="chip"><a href="#overview">Design overview</a></span>
+      <span class="chip"><a href="#math">Mathematical setting</a></span>
+      <span class="chip"><a href="#params">Parameter sets</a></span>
+      <span class="chip"><a href="#algorithms">Algorithms</a></span>
+      <span class="chip"><a href="#security">Security</a></span>
+      <span class="chip"><a href="#impl">Implementation notes</a></span>
+      <span class="chip"><a href="#proscons">Pros & cons</a></span>
+      <span class="chip"><a href="#references">References</a></span>
+    </div>
+  </div>
+
+  <div class="island" id="history">
+    <h2>Origins & history</h2>
+    <p class="muted">
+      <strong>Falcon</strong> (Fast Fourier lattice-based compact signatures over NTRU) instantiates the GPV hash-and-sign framework over NTRU lattices, using an efficient trapdoor sampler called <em>fast Fourier sampling</em>. Falcon was selected by NIST in <b>July 2022</b> as a post-quantum signature candidate to be standardized alongside Dilithium and SPHINCS+. NIST announced that the Falcon-based standard will appear as <em>FIPS&nbsp;206</em> under the name <em>FN-DSA</em>, with draft publication following the August&nbsp;13, 2024 finalization of FIPS&nbsp;203/204/205, and reiterated this plan in March&nbsp;2025. [1][2]
+    </p>
+  </div>
+
+  <div class="island" id="overview">
+    <h2>Design overview</h2>
+    <p class="muted">
+      Falcon realizes GPV over the cyclotomic ring \( R_q=\mathbb{Z}_q[x]/(x^n+1) \) (power-of-two \(n\)), using NTRU lattices and a discrete-Gaussian <em>preimage sampler</em>. Keys encode an NTRU trapdoor; signing samples a short lattice vector in the coset determined by a hash of the message; the signature verifies by checking that the reconstructed vector is below a norm bound. Thanks to fast Fourier techniques and careful encoding, Falcon achieves very compact signatures and keys among lattice schemes. [3][4]
+    </p>
+  </div>
+
+  <div class="island" id="math">
+    <h2>Mathematical setting</h2>
+    <p class="muted">
+      Work in \( R_q=\mathbb{Z}_q[x]/(x^n+1) \) with \(n\in\{512,1024\}\) and prime \( q=12289 \). The NTRU public key is \( h=g\,f^{-1} \bmod q \) for small polynomials \(f,g\in R_q\). The corresponding <em>complete NTRU lattice</em> \( \mathcal{L}_h \subset \mathbb{Z}^{2n} \) admits two bases: a public one and a short secret one built from \((f,g,F,G)\) such that
+    </p>
+    <p class="mono">
+      \( h = g/f \bmod (x^n{+}1) \bmod q,\qquad fG - gF = q \bmod (x^n{+}1). \)
+    </p>
+    <p class="muted">
+      Signing follows the GPV paradigm: given a “target” \( c \in R_q \) (a hash of the message and a nonce), output a short vector \( (s_1,s_2)\in R^2 \) satisfying the <em>I-NTRU</em> relation
+    </p>
+    <p class="mono">
+      \( s_1 + s_2\,h \equiv c \pmod{q,\;x^n+1}. \)
+    </p>
+    <p class="muted">
+      Falcon uses an ffLDL/ffSampling tree over \( \mathbb{Q}[x]/(x^n+1) \) to sample from a discrete Gaussian close to the ideal distribution; verification checks a Euclidean-norm bound \( \lVert(s_1,s_2)\rVert_2 \le \beta \) implied by parameters. [3][5][6]
+    </p>
+  </div>
+
+  <div class="island" id="params">
+    <h2>Parameter sets</h2>
+    <p class="muted note">Both instances use \(q{=}12289\) and \( \varphi(x){=}x^n{+}1 \). Falcon publishes variable-length signatures (compressed <span class="mono">s₂</span> with an integrated nonce) and also defines fixed-size “padded” encodings.</p>
+    <div class="grid-2">
+      <div>
+        <table>
+          <thead><tr><th>Instance</th><th>n</th><th>q</th><th>Security (claimed)</th></tr></thead>
+          <tbody>
+            <tr><td>Falcon-512</td><td>512</td><td>12289</td><td>NIST Level 1</td></tr>
+            <tr><td>Falcon-1024</td><td>1024</td><td>12289</td><td>NIST Level 5</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="muted">
+        <h3>Sizes (bytes)</h3>
+        <table>
+          <thead><tr><th>Instance</th><th>Public key</th><th>Secret key</th><th>Signature</th></tr></thead>
+          <tbody>
+            <tr><td>Falcon-512</td><td>897</td><td>1281</td><td>~652 avg (var.); 752 (OQS); 809 (fixed)</td></tr>
+            <tr><td>Falcon-1024</td><td>1793</td><td>2305</td><td>~1261 avg (var.); 1462 (OQS); 1577 (fixed)</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:.5rem;">Variable vs fixed sizes per spec/impl notes; OQS reports standard encodings; “padded” variants use fixed-size 666/1280 B. [7][8]</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="algorithms">
+    <h2>Algorithms</h2>
+
+    <h3>Key generation</h3>
+    <p class="muted">
+      Sample short \(f,g\in R\) (from discrete Gaussians / bounded distributions). Solve the NTRU equation for short \(F,G\) so that \(fG-gF=q \bmod (x^n+1)\). Set
+    </p>
+    <p class="mono">
+      \( h = g\,f^{-1} \bmod q,\quad \mathrm{pk}=h,\quad \mathrm{sk}=(f,g,F,G)\ \text{(or compact seed/format).} \)
+    </p>
+    <p class="muted">The public basis and secret basis span the same lattice \( \mathcal{L}_h \subset \mathbb{Z}^{2n} \). [3]</p>
+
+    <h3>Signing (GPV hash-and-sign with ffSampling)</h3>
+    <p class="muted">
+      Compute a challenge polynomial \( c \leftarrow H(\text{pk}\,\|\,m\,\|\,r) \in R_q \) for a per-signature nonce \(r\). Using the trapdoor basis \((f,g,F,G)\), sample a short lattice vector with Falcon’s fast Fourier sampler to obtain \((s_1,s_2)\) such that
+    </p>
+    <p class="mono">\( s_1 + s_2 h \equiv c \pmod{q,x^n+1}. \)</p>
+    <p class="muted">
+      Output the signature as a compressed encoding of \(s_2\) (plus the integrated nonce). The sampler adds carefully tuned Gaussian noise to ensure statistical closeness and key privacy across many signatures. [3][6]
+    </p>
+
+    <h3>Verification</h3>
+    <p class="muted">
+      Recompute \( c \leftarrow H(\text{pk}\,\|\,m\,\|\,r) \) and reconstruct
+    </p>
+    <p class="mono">\( s_1 \equiv c - s_2 h \pmod{q,x^n+1}. \)</p>
+    <p class="muted">
+      Check that \((s_1,s_2)\) is sufficiently short (Euclidean-norm bound) and that the signature encoding is valid (including any “padded” format rules). Accept iff all checks pass. [3]
+    </p>
+  </div>
+
+  <div class="island" id="security">
+    <h2>Security at a glance</h2>
+    <ul class="muted">
+      <li><b>Assumptions:</b> GPV hash-and-sign over NTRU lattices; reduction to (I-)SIS/NTRU-SIS with discrete-Gaussian sampling in the (Q)ROM. [3][9]</li>
+      <li><b>Categories:</b> Falcon-512 → NIST Level 1; Falcon-1024 → Level 5. [7]</li>
+      <li><b>Encoding & nonce:</b> Per-signature nonce integrated into the signature; variable-length and fixed-size encodings defined. [8]</li>
+      <li><b>Side-channels / FP concerns:</b> Implementations rely on floating-point FFT/ffSampling; precision, determinism and constant-time behavior require care. Attacks and mitigations have been studied. [5][10][11]</li>
+      <li><b>Status:</b> NIST indicates the Falcon-based standard will be <em>FN-DSA (FIPS 206)</em>; draft publication tracked since 2024 and reiterated in 2025. [1][2]</li>
+    </ul>
+  </div>
+
+  <div class="island" id="impl">
+    <h2>Implementation notes</h2>
+    <ul class="muted">
+      <li><b>Arithmetic:</b> Polynomial ops in \(R_q\); practical code often uses an NTT for mod-\(q\) products and floating-point FFT in the sampler. [5][12]</li>
+      <li><b>Sampler:</b> ffLDL tree (size ≈90&nbsp;kB at \(n{=}1024\)) rebuilt from the secret on load; Gaussian parameters tuned to meet norm bounds and leakage goals. [3]</li>
+      <li><b>Encodings:</b> Compact variable-length signatures; optional fixed-size “padded” encodings for constant-time processing. [8]</li>
+      <li><b>Constant-time:</b> Reference/optimized code paths exist for integer-only, FPU, and AVX2; CT verification optional. [8]</li>
+    </ul>
+  </div>
+
+  <div class="island" id="proscons">
+    <h2>Pros & cons</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Pros</h3>
+        <ul class="muted">
+          <li>Very compact signatures and small public keys among lattice schemes; fast verification. [3][7]</li>
+          <li>Mathematically elegant GPV construction with strong theory for Gaussian sampling. [3][9]</li>
+          <li>Clear migration path via NIST FN-DSA (FIPS&nbsp;206) draft trajectory. [1][2]</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Cons</h3>
+        <ul class="muted">
+          <li>Floating-point sampling is subtle; careful constant-time and precision management required. [5][10]</li>
+          <li>Only two standardized parameter sizes (no “middle” level); 1024 roughly doubles sizes vs 512. [7][13]</li>
+          <li>Side-channel resistance and fault-attack hardening need particular attention. [11]</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="references">
+    <h2>References</h2>
+    <ol class="refs muted">
+      <li>[1] NIST, “NIST Releases First 3 Finalized Post-Quantum Encryption Standards,” Aug. 13, 2024 (notes future <i>FIPS&nbsp;206 / FN-DSA</i> draft). [Online]. Available: <a target="_blank" rel="noopener" href="https://www.nist.gov/news-events/news/2024/08/nist-releases-first-3-finalized-post-quantum-encryption-standards">nist.gov</a></li>
+      <li>[2] NIST, “NIST Selects HQC as Fifth Algorithm for Post-Quantum Encryption,” Mar. 11, 2025 (reiterates Falcon/FIPS&nbsp;206 draft). [Online]. Available: <a target="_blank" rel="noopener" href="https://www.nist.gov/news-events/news/2025/03/nist-selects-hqc-fifth-algorithm-post-quantum-encryption">nist.gov</a></li>
+      <li>[3] P.-A. Fouque <i>et&nbsp;al.</i>, “<i>Falcon: Fast-Fourier Lattice-based Compact Signatures over NTRU</i>,” specification/documentation, v2021-11-01. [Online]. Available: <a target="_blank" rel="noopener" href="https://falcon-sign.info/falcon.pdf">falcon-sign.info</a></li>
+      <li>[4] IBM Research, “Falcon: Fast-Fourier Lattice-based Compact Signatures over NTRU,” 2020. [Online]. Available: <a target="_blank" rel="noopener" href="https://research.ibm.com/publications/falcon-fast-fourier-lattice-based-compact-signatures-over-ntru">research.ibm.com</a></li>
+      <li>[5] NIST CSRC, “Navigating Floating-Point Challenges in Falcon,” Jul. 24, 2024 (talk). [Online]. Available: <a target="_blank" rel="noopener" href="https://csrc.nist.gov/presentations/2024/navigating-floating-point-challenges-in-falcon">csrc.nist.gov</a></li>
+      <li>[6] D.-T. Nguyen <i>et&nbsp;al.</i>, “Fast Falcon Signature Generation and Verification,” NIST PQC 2022. [Online]. Available: <a target="_blank" rel="noopener" href="https://csrc.nist.gov/csrc/media/Events/2022/fourth-pqc-standardization-conference/documents/papers/fast-falcon-signature-generation-and-verification-pqc2022.pdf">csrc.nist.gov</a></li>
+      <li>[7] Open Quantum Safe (liboqs), “Falcon parameter set summary,” accessed Sep. 14, 2025. [Online]. Available: <a target="_blank" rel="noopener" href="https://openquantumsafe.org/liboqs/algorithms/sig/falcon.html">openquantumsafe.org</a></li>
+      <li>[8] T. Pornin, “Official Comment: Updated Falcon Implementation,” Aug. 3, 2019 (sizes, nonce integration, fixed-size encoding). [Online]. Available: <a target="_blank" rel="noopener" href="https://csrc.nist.gov/CSRC/media/Projects/post-quantum-cryptography/documents/round-2/official-comments/FALCON-round2-official-comment.pdf">csrc.nist.gov</a></li>
+      <li>[9] C. Gentry, C. Peikert, and V. Vaikuntanathan, “Trapdoors for Hard Lattices and New Cryptographic Constructions,” 2008. [Online]. Available: <a target="_blank" rel="noopener" href="https://www.cs.toronto.edu/~vinodv/trapcvp.pdf">cs.toronto.edu</a></li>
+      <li>[10] E. Karabulut and A. Aysu, “FALCON Down: Breaking FALCON via Side-Channel Attacks,” NIST PQC 2022. [Online]. Available: <a target="_blank" rel="noopener" href="https://csrc.nist.gov/csrc/media/Events/2022/fourth-pqc-standardization-conference/documents/papers/falcon-down-pqc2022.pdf">csrc.nist.gov</a></li>
+      <li>[11] D.-T. Nguyen <i>et&nbsp;al.</i>, “Fast Falcon Signature Generation and Verification Using NTT,” 2023. [Online]. Available: <a target="_blank" rel="noopener" href="https://par.nsf.gov/servlets/purl/10438497">par.nsf.gov</a></li>
+      <li>[12] S.-C. Seo <i>et&nbsp;al.</i>, “Accelerating Falcon Post-Quantum Digital Signature,” 2023. [Online]. Available: <a target="_blank" rel="noopener" href="https://www.sciencedirect.com/org/science/article/pii/S1546221823004642">sciencedirect.com</a></li>
+      <li>[13] Cloudflare, “Another look at PQ signatures,” Nov. 7, 2024 (size trade-offs and absence of mid-level parameter). [Online]. Available: <a target="_blank" rel="noopener" href="https://blog.cloudflare.com/another-look-at-pq-signatures">cloudflare.com</a></li>
+    </ol>
+  </div>
+</body>
+</html>

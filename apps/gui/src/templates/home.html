@@ -75,7 +75,8 @@ input[type="checkbox"]:checked::after { opacity: 1; }
     .muted-btn { background: rgba(255,255,255,.16); color:#fff; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
     .alg-section { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.2rem; }
     .alg-list { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:1rem; }
-    .alg-item { background: rgba(0,0,0,.2); border-radius:.6rem; padding:.8rem; }
+    .alg-item { background: rgba(0,0,0,.2); border-radius:.6rem; padding:.8rem; cursor: pointer; transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease; }
+    .alg-item:hover { background: rgba(0,0,0,.28); box-shadow: 0 6px 18px rgba(0,0,0,.25); transform: translateY(-2px); }
     .alg-kind { font-size:.8rem; background:rgba(255,255,255,.16); padding:.1rem .4rem; border-radius:.3rem; margin-left:.4rem; }
     .field.is-disabled { opacity: .65; }
     .field.is-disabled input { pointer-events: none; }
