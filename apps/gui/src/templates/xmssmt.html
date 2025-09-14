@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ label }} - Details</title>
+  <style>
+    :root { --island-bg: rgba(128,128,128,.7); --island-radius:1.5rem; --text:#fff; --accent:#ff4d4f; }
+    body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
+    .island { background:var(--island-bg); border-radius:var(--island-radius); padding:2rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 2vh auto; }
+    .btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.18); text-decoration:none; }
+    .badge { font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem; display:inline-block; }
+    .muted { opacity:.9; }
+    h2, h3 { margin: 0 0 .6rem 0; }
+    h2 { font-size:1.25rem; }
+    h3 { font-size:1.05rem; margin-top:1.2rem; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:.45rem .4rem; border-bottom:1px solid rgba(255,255,255,.2); }
+    th { font-weight:600; }
+    .refs li { margin:.35rem 0; }
+    .chip { display:inline-block; font-size:.85rem; padding:.1rem .5rem; border-radius:.4rem; background:rgba(255,255,255,.15); margin-right:.4rem; }
+    .toc a { color:#fff; text-decoration:none; }
+    .toc a:hover { text-decoration:underline; }
+    .note { font-size:.95rem; opacity:.95; }
+    code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
+  </style>
+  <!-- MathJax for LaTeX-style math -->
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <div class="island" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+    <div>
+      <div style="font-size:1.6rem; font-weight:700;">{{ label }}</div>
+      {% if kind %}<div class="badge" title="Kind">{{ kind }}</div>{% endif %}
+    </div>
+    <div>
+      <a href="/" class="btn">Back to home</a>
+    </div>
+  </div>
+
+  <div class="island">
+    <div style="font-weight:700; margin-bottom:.5rem;">About</div>
+    <p class="muted">
+      {{ about or 'This page explains the eXtended Merkle Signature Scheme (XMSS) and its multi-tree variant XMSS^MT in depth: origins, design, math, parameters, algorithms, security issues (including state management), and practical considerations—with references.' }}
+    </p>
+    <div class="toc muted">
+      <span class="chip"><a href="#history">Origins & history</a></span>
+      <span class="chip"><a href="#overview">Design overview</a></span>
+      <span class="chip"><a href="#math">Mathematical setting</a></span>
+      <span class="chip"><a href="#params">Parameter sets</a></span>
+      <span class="chip"><a href="#algorithms">Algorithms</a></span>
+      <span class="chip"><a href="#security">Security</a></span>
+      <span class="chip"><a href="#impl">Implementation notes</a></span>
+      <span class="chip"><a href="#proscons">Pros & cons</a></span>
+      <span class="chip"><a href="#references">References</a></span>
+    </div>
+  </div>
+
+  <div class="island" id="history">
+    <h2>Origins & history</h2>
+    <p class="muted">
+      <strong>XMSS</strong> is a stateful, hash-based signature standardized by the IETF as <em>RFC&nbsp;8391</em> (2018), specifying WOTS+, single-tree XMSS, and multi-tree <strong>XMSS<sup>MT</sup></strong>. NIST later profiled XMSS/XMSS<sup>MT</sup> for federal use in <em>SP&nbsp;800-208</em> (2020), approving specific parameter sets with SHA-256 or SHAKE256 (192- or 256-bit outputs) and emphasizing controlled deployment scenarios where state can be safely maintained. </p>
+  </div>
+
+  <div class="island" id="overview">
+    <h2>Design overview</h2>
+    <p class="muted">
+      XMSS composes three ideas: a <em>Winternitz one-time signature</em> (WOTS+), an <em>L-tree</em> to compress the WOTS+ public key to one <span class="mono">n</span>-byte leaf, and a binary <em>Merkle tree</em> that authenticates leaves to a long-term public root. Each message consumes exactly one WOTS+ key (hence “stateful”). XMSS<sup>MT</sup> stacks several XMSS trees (a hypertree): bottom-layer leaves sign messages; higher layers sign lower-layer roots, boosting total signing capacity while keeping per-tree height manageable.
+    </p>
+  </div>
+
+  <div class="island" id="math">
+    <h2>Mathematical setting</h2>
+    <p class="muted">
+      Let \(n\) be the hash security parameter (bytes) and \(w\in\{4,16\}\) the Winternitz parameter. WOTS+ consists of \( \mathrm{len} \) base-\(w\) chains, where
+    </p>
+    <p class="mono">
+      \( \mathrm{len}_1=\left\lceil \frac{8n}{\log_2 w}\right\rceil,\quad
+         \mathrm{len}_2=\left\lfloor \frac{\log_2(\mathrm{len}_1 (w-1))}{\log_2 w}\right\rfloor+1,\quad
+         \mathrm{len}=\mathrm{len}_1+\mathrm{len}_2. \)
+    </p>
+    <p class="muted">
+      The WOTS+ chaining function iterates a keyed hash \(F\) with ADRS-tweaked bitmasks:
+    </p>
+    <p class="mono">
+      \( X_{i+1} \leftarrow F_{k_i}\!\big(X_i \oplus \mathrm{BM}_i\big) \), &nbsp;where \(k_i,\mathrm{BM}_i \gets \mathrm{PRF}(\text{SEED},\text{ADRS}) \).
+    </p>
+    <p class="muted">
+      XMSS adds keyed, randomized hashing \(H\) (with two bitmasks) and a randomized message hash \(H_{\text{msg}}\). Leaves are computed by L-tree compression of the WOTS+ public key; internal nodes use randomized hashing on their children. The public key is \((\text{root},\text{SEED})\).
+    </p>
+    <p class="mono">
+      \(\mathrm{RAND\_HASH}(L,R,\mathrm{SEED},\mathrm{ADRS}) = H\big(\mathrm{KEY},(L\oplus \mathrm{BM}_0)\,\|\, (R\oplus \mathrm{BM}_1)\big)\),
+      with \(\mathrm{KEY},\mathrm{BM}_0,\mathrm{BM}_1 \leftarrow \mathrm{PRF}(\mathrm{SEED},\mathrm{ADRS})\).
+    </p>
+  </div>
+
+  <div class="island" id="params">
+    <h2>Parameter sets</h2>
+    <p class="muted note">
+      NIST SP&nbsp;800-208 approves XMSS/XMSS<sup>MT</sup> parameter sets using SHA-256 (n=32), SHA-256/192 (n=24), SHAKE256/256 (n=32), and SHAKE256/192 (n=24), all with \(w=16\). Below are representative entries; see the cited tables for the full lists.
+    </p>
+    <div class="grid-2">
+      <div>
+        <h3>XMSS (single-tree)</h3>
+        <table>
+          <thead><tr><th>Parameter set</th><th>n</th><th>w</th><th>len</th><th>h</th></tr></thead>
+          <tbody>
+            <tr><td>XMSS-SHA2_10_192</td><td>24</td><td>16</td><td>51</td><td>10</td></tr>
+            <tr><td>XMSS-SHA2_16_192</td><td>24</td><td>16</td><td>51</td><td>16</td></tr>
+            <tr><td>XMSS-SHA2_20_192</td><td>24</td><td>16</td><td>51</td><td>20</td></tr>
+            <tr><td>XMSS-SHAKE256_10_256</td><td>32</td><td>16</td><td>67</td><td>10</td></tr>
+            <tr><td>XMSS-SHAKE256_16_256</td><td>32</td><td>16</td><td>67</td><td>16</td></tr>
+            <tr><td>XMSS-SHAKE256_20_256</td><td>32</td><td>16</td><td>67</td><td>20</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3>XMSS<sup>MT</sup> (multi-tree)</h3>
+        <table>
+          <thead><tr><th>Parameter set</th><th>n</th><th>w</th><th>len</th><th>h</th><th>d</th></tr></thead>
+          <tbody>
+            <tr><td>XMSSMT-SHA2_20/2_256</td><td>32</td><td>16</td><td>67</td><td>20</td><td>2</td></tr>
+            <tr><td>XMSSMT-SHA2_60/3_256</td><td>32</td><td>16</td><td>67</td><td>60</td><td>3</td></tr>
+            <tr><td>XMSSMT-SHA2_60/12_192</td><td>24</td><td>16</td><td>51</td><td>60</td><td>12</td></tr>
+            <tr><td>XMSSMT-SHAKE256_40/8_256</td><td>32</td><td>16</td><td>67</td><td>40</td><td>8</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:.5rem;">Full tables and function bindings (F, H, H<sub>msg</sub>, PRF, PRF<sub>keygen</sub>) are given in SP&nbsp;800-208 §5.1–5.4.</p>
+      </div>
+    </div>
+    <p class="muted note">
+      Signature lengths (formulas): for XMSS, \( |\sigma| = 4 + n + (\mathrm{len}+h)\,n \). For XMSS<sup>MT</sup>, \( |\sigma| = \lceil h/8 \rceil + n + (h + d\,\mathrm{len})\,n \).
+      Example: XMSS-SHA2_16_256 (n=32, len=67, h=16) → \(4+32+(83)\times 32 = 2\,692\) bytes; XMSSMT-SHA2_60/3_256 (n=32, len=67, h=60, d=3) → \( \lceil60/8\rceil +32 + (60+201)\times32 = 8\,392\) bytes.
+    </p>
+  </div>
+
+  <div class="island" id="algorithms">
+    <h2>Algorithms</h2>
+
+    <h3>Key generation (single-tree)</h3>
+    <ol class="muted">
+      <li>Sample \(\mathsf{SEED}\in\{0,1\}^{8n}\) and derive ADRS-tweaked keys/bitmasks via \(\mathrm{PRF}(\mathsf{SEED}, \mathrm{ADRS})\).</li>
+      <li>For each leaf index \(i\in\{0,\dots,2^h-1\}\), derive a WOTS+ key pair; compress its public key with an L-tree to obtain a leaf value.</li>
+      <li>Hash leaves pairwise with <em>randomized</em> \(H\) to compute internal nodes up to the root \(\mathsf{root}\).</li>
+      <li>Public key: \((\mathsf{root},\mathsf{SEED})\). Private key stores all WOTS+ sks (or derives them pseudorandomly), \(\mathsf{idx}\) (next unused leaf), \(\mathsf{SK\_PRF}\), \(\mathsf{SEED}\), \(\mathsf{root}\).</li>
+    </ol>
+
+    <h3>Signing (XMSS)</h3>
+    <ol class="muted">
+      <li>Set index \( \mathsf{idx\_sig}\leftarrow\mathsf{idx}\); compute per-signature randomness \( r \leftarrow \mathrm{PRF}(\mathsf{SK\_PRF}, \mathrm{ADRS}) \).</li>
+      <li>Compute randomized digest \( M' = H_{\text{msg}}( r \,\|\, \mathsf{root} \,\|\, \mathrm{toByte}(\mathsf{idx\_sig}, n),\, M ) \).</li>
+      <li>Produce WOTS+ signature \( \sigma_{\text{WOTS}} \) on \( M' \) with the \( \mathsf{idx\_sig} \) key.</li>
+      <li>Include the authentication path from that leaf to the root.</li>
+      <li>Output \( \sigma = (\mathsf{idx\_sig}, r, \sigma_{\text{WOTS}}, \text{AuthPath}) \).</li>
+    </ol>
+
+    <h3>Verification (XMSS)</h3>
+    <ol class="muted">
+      <li>Recompute \( M' = H_{\text{msg}}( r \,\|\, \mathsf{root} \,\|\, \mathrm{toByte}(\mathsf{idx\_sig}, n),\, M ) \).</li>
+      <li>Recover the WOTS+ public key from \( \sigma_{\text{WOTS}} \) and \( M' \); compress via L-tree to the leaf; climb the AuthPath to reconstruct \( \hat{\mathsf{root}} \).</li>
+      <li>Accept iff \( \hat{\mathsf{root}} = \mathsf{root} \) and encoding checks pass.</li>
+    </ol>
+
+    <h3>XMSS<sup>MT</sup> (multi-tree)</h3>
+    <p class="muted">A hypertree of total height \(h\) is split into \(d\) layers of height \(h/d\). Bottom-layer WOTS+ signs \(M'\); at each higher layer, a reduced XMSS signature authenticates the child root. The signature concatenates \(d\) reduced XMSS signatures plus \((\mathsf{idx\_sig}, r)\).</p>
+  </div>
+
+  <div class="island" id="security">
+    <h2>Security at a glance</h2>
+    <ul class="muted">
+      <li><b>Assumptions:</b> preimage/second-preimage and collision resistance of the underlying hash; security proofs provided in RFC&nbsp;8391 and profiled by NIST.</li>
+      <li><b>Randomized hashing & domain separation:</b> keyed \(H\) with two bitmasks, and \(H_{\text{msg}}\) with \((r,\mathsf{root},\mathsf{idx\_sig})\) to thwart multi-target attacks and ensure position-dependent hashing.</li>
+      <li><b>Statefulness:</b> each WOTS+ key must be used once. NIST requires storing the incremented leaf index in non-volatile memory <em>before</em> releasing a signature; implementations should run in controlled environments (e.g., HSMs).</li>
+      <li><b>Capacity:</b> XMSS signs up to \(2^h\) messages per key; XMSS<sup>MT</sup> increases capacity via \(d\) layers.</li>
+    </ul>
+  </div>
+
+  <div class="island" id="impl">
+    <h2>Implementation notes</h2>
+    <ul class="muted">
+      <li><b>BDS traversal:</b> use the BDS algorithm to generate authentication paths with \(O(h)\) storage and efficient updates.</li>
+      <li><b>Seeded keygen:</b> pseudorandom key generation can derive WOTS+ private keys from a seed to reduce secret-key storage.</li>
+      <li><b>SP&nbsp;800-208 profiles:</b> approves SHA-256/SHAKE256 (192/256-bit outputs) and mandates hardware modules that prevent secret-key export.</li>
+      <li><b>Deployment fit:</b> excellent for firmware/code signing and long-lived roots of trust where state can be strictly managed; less ideal for high-throughput, stateless protocols.</li>
+    </ul>
+  </div>
+
+  <div class="island" id="proscons">
+    <h2>Pros & cons</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Pros</h3>
+        <ul class="muted">
+          <li>Conservative hash-only assumptions; quantum-resistant by design.</li>
+          <li>Smaller signatures than SPHINCS+ at comparable security (kB vs multi-kB/10s-kB).</li>
+          <li>Mature standardization: IETF RFC and NIST guidance with concrete, interoperable parameter sets.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Cons</h3>
+        <ul class="muted">
+          <li>State management is hard; misuse (key reuse) is catastrophic.</li>
+          <li>Signatures still relatively large vs lattice schemes; throughput limited by tree traversal.</li>
+          <li>Operational requirements (e.g., HSM, index persistence) may complicate integration.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="references">
+    <h2>References</h2>
+    <ol class="refs muted">
+      <li>[1] A. Hülsing, D. Butin, S. Gazdag, J. Rijneveld, and J. M. Schanck, “<i>XMSS: eXtended Merkle Signature Scheme</i>,” RFC 8391, IETF, May 2018. [Online]. Available: <a target="_blank" rel="noopener" href="https://www.rfc-editor.org/info/rfc8391">rfc-editor.org/info/rfc8391</a></li>
+      <li>[2] D. A. Cooper <i>et&nbsp;al.</i>, “<i>NIST SP 800-208: Recommendation for Stateful Hash-Based Signature Schemes</i>,” NIST, Nov. 2020. [Online]. Available: <a target="_blank" rel="noopener" href="https://csrc.nist.gov/pubs/sp/800/208/final">csrc.nist.gov/pubs/sp/800/208/final</a></li>
+      <li>[3] A. Hülsing, J. Buchmann, and D. Martínez, “XMSS – A Practical Forward Secure Signature Scheme based on Minimal Security Assumptions,” 2013 (full version). [Online]. Available: <a target="_blank" rel="noopener" href="https://huelsing.net/wordpress/wp-content/uploads/2013/05/mssgesamt.pdf">huelsing.net</a></li>
+      <li>[4] A. Hülsing, “WOTS+: Shorter Signatures for Hash-Based Signature Schemes,” 2013. [Online]. Available: <a target="_blank" rel="noopener" href="https://eprint.iacr.org/2017/965.pdf">eprint.iacr.org</a></li>
+      <li>[5] RFC 8391, §3.1: WOTS+ parameters and chaining (formulas for \(\mathrm{len}_1,\mathrm{len}_2\)). [Online]. See [1].</li>
+      <li>[6] RFC 8391, §4.1.4–4.1.6: Randomized hashing, L-trees, TreeHash; §4.1.8–4.1.10: Signature format, generation, verification; §4.2: XMSS<sup>MT</sup>. [Online]. See [1].</li>
+      <li>[7] NIST SP 800-208, §1–§2: Intended applications, statefulness risks; §5: Approved XMSS/XMSS<sup>MT</sup> parameter tables (SHA-256 / SHAKE256; 192/256-bit). [Online]. See [2].</li>
+      <li>[8] NIST SP 800-208, §8.1–§8.2: Conformance requirements for index persistence and non-export of secret keys. [Online]. See [2].</li>
+      <li>[9] H. Kosuge and H. Tanaka, “Simple and Memory-efficient Signature Generation of XMSS/XMSSMT,” 2021. [Online]. Available: <a target="_blank" rel="noopener" href="https://www.ece.uvic.ca/~raltawy/SAC2021/9.pdf">ece.uvic.ca</a></li>
+      <li>[10] A. Hülsing, “Forward Secure Signatures on Smart Cards (XMSS & BDS traversal),” 2013. [Online]. Available: <a target="_blank" rel="noopener" href="https://huelsing.files.wordpress.com/2013/05/xmss-smart.pdf">huelsing.files.wordpress.com</a></li>
+      <li>[11] Open Quantum Safe, “XMSS algorithm page,” accessed Sep. 14, 2025. [Online]. Available: <a target="_blank" rel="noopener" href="https://openquantumsafe.org/liboqs/algorithms/sig_stfl/xmss.html">openquantumsafe.org</a></li>
+    </ol>
+  </div>
+</body>
+</html>
