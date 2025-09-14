@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ label }} - Details</title>
+  <style>
+    :root { --island-bg: rgba(128,128,128,.7); --island-radius:1.5rem; --text:#fff; --accent:#ff4d4f; }
+    body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
+    .island { background:var(--island-bg); border-radius:var(--island-radius); padding:2rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 2vh auto; }
+    .btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.18); text-decoration:none; }
+    .badge { font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem; display:inline-block; }
+    .muted { opacity:.9; }
+    h2, h3 { margin: 0 0 .6rem 0; }
+    h2 { font-size:1.25rem; }
+    h3 { font-size:1.05rem; margin-top:1.2rem; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:.45rem .4rem; border-bottom:1px solid rgba(255,255,255,.2); }
+    th { font-weight:600; }
+    .refs li { margin:.35rem 0; }
+    .chip { display:inline-block; font-size:.85rem; padding:.1rem .5rem; border-radius:.4rem; background:rgba(255,255,255,.15); margin-right:.4rem; }
+    .toc a { color:#fff; text-decoration:none; }
+    .toc a:hover { text-decoration:underline; }
+    .note { font-size:.95rem; opacity:.95; }
+    code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
+  </style>
+  <!-- MathJax for LaTeX-style math -->
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <div class="island" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+    <div>
+      <div style="font-size:1.6rem; font-weight:700;">{{ label }}</div>
+      {% if kind %}<div class="badge" title="Kind">{{ kind }}</div>{% endif %}
+    </div>
+    <div>
+      <a href="/" class="btn">Back to home</a>
+    </div>
+  </div>
+
+  <div class="island">
+    <div style="font-weight:700; margin-bottom:.5rem;">About</div>
+    <p class="muted">
+      {{ about or 'This page explains the CRYSTALS-Dilithium / ML-DSA signature scheme in depth: origins, math, parameters, algorithms, security assumptions, and implementation considerations—plus references.' }}
+    </p>
+    <div class="toc muted">
+      <span class="chip"><a href="#history">Origins & history</a></span>
+      <span class="chip"><a href="#overview">Design overview</a></span>
+      <span class="chip"><a href="#math">Mathematical setting</a></span>
+      <span class="chip"><a href="#params">Parameter sets</a></span>
+      <span class="chip"><a href="#algorithms">Algorithms</a></span>
+      <span class="chip"><a href="#security">Security</a></span>
+      <span class="chip"><a href="#impl">Implementation notes</a></span>
+      <span class="chip"><a href="#proscons">Pros & cons</a></span>
+      <span class="chip"><a href="#references">References</a></span>
+    </div>
+  </div>
+
+  <div class="island" id="history">
+    <h2>Origins & history</h2>
+    <p class="muted">
+      <strong>Dilithium</strong> is a lattice-based digital signature built on module lattices and the Fiat–Shamir-with-aborts
+      paradigm. It was selected by NIST in <strong>July 2022</strong> as one of the first post-quantum signature schemes for
+      standardization and was later standardized as <em>FIPS 204: ML-DSA</em> on <strong>August 13, 2024</strong>. The standardized
+      parameter sets are ML-DSA-44, ML-DSA-65, and ML-DSA-87 (formerly roughly corresponding to Dilithium
+      2/3/5). [1][2][3]
+    </p>
+  </div>
+
+  <div class="island" id="overview">
+    <h2>Design overview</h2>
+    <p class="muted">
+      ML-DSA constructs keys over a small polynomial ring and signs by sampling a short vector \( \mathbf{y} \), computing
+      a commitment \( \mathbf{w}=\mathbf{A}\mathbf{y} \), hashing its “high bits” with the message to obtain a sparse
+      challenge \( c \), and outputting \( \mathbf{z}=\mathbf{y}+c\mathbf{s}_1 \) with a compact <em>hint</em> that lets the verifier
+      reconstruct the same high bits. Rejection sampling enforces that \( \mathbf{z} \) and certain decomposed values
+      remain in bounds, yielding strong unforgeability in the (Q)ROM under MLWE/MISIS assumptions. [1][4]
+    </p>
+  </div>
+
+  <div class="island" id="math">
+    <h2>Mathematical setting</h2>
+    <p class="muted">
+      Work in the ring \( R_q=\mathbb{Z}_q[x]/(x^{256}+1) \) with \( q=8\,380\,417 \). Use the NTT with a primitive \(512\)-th
+      root of unity \( \zeta=1753 \) to accelerate polynomial multiplications. The public matrix \( \mathbf{A}\in R_q^{k\times \ell} \)
+      is derived from a 256-bit seed \( \rho \). [1]
+    </p>
+    <h3>Key relation</h3>
+    <p class="muted">
+      Secrets \( \mathbf{s}_1\in R_q^{\ell} \), \( \mathbf{s}_2\in R_q^{k} \) are sampled from a centered small distribution with
+      parameter \( \eta \). Define
+    </p>
+    <p class="mono">
+      \( \mathbf{t}=\mathbf{A}\mathbf{s}_1+\mathbf{s}_2 \in R_q^{k}. \)
+    </p>
+    <p class="muted">
+      Compress \( \mathbf{t} \) by dropping \( d \) low bits per coefficient: \( \mathbf{t}_1=\lfloor \mathbf{t}/2^d \rfloor \), and keep a
+      hash \( \mathrm{tr}(\mathrm{pk})=H(\mathrm{pk}) \) for domain separation. [1]
+    </p>
+    <h3>Decomposition & hints</h3>
+    <p class="muted">
+      For any \( w\in R_q \), define a decomposition \( \mathrm{Decompose}(w)=(w_1,w_0) \) such that
+    </p>
+    <p class="mono">
+      \( w = w_1 \cdot 2^{d} + w_0,\quad w_1\in \{0,\dots,2^{d}-1\},\; w_0\in \left(-\tfrac{q}{2},\tfrac{q}{2}\right). \)
+    </p>
+    <p class="muted">
+      A <em>hint</em> \( h \) lets the verifier recover the same “high bits” \( w_1 \) from a related value after subtracting
+      \( c\,\mathbf{t} \); its Hamming weight is bounded by \( \omega \). [1]
+    </p>
+  </div>
+
+  <div class="island" id="params">
+    <h2>Parameter sets (ML-DSA-44/65/87)</h2>
+    <p class="muted note">All sets use \(n{=}256\), \(q{=}8{,}380{,}417\), ring \(R_q=\mathbb{Z}_q[x]/(x^{256}+1)\); NTT root \( \zeta=1753 \).</p>
+    <div class="grid-2">
+      <div>
+        <table>
+          <thead><tr><th>Set</th><th>\((k,\ell)\)</th><th>\(\eta\)</th><th>\(\gamma_1\)</th><th>\(\gamma_2\)</th><th>\(\tau\)</th><th>\(\omega\)</th><th>Cat.</th></tr></thead>
+          <tbody>
+            <tr><td>ML-DSA-44</td><td>(4,4)</td><td>2</td><td>\(2^{17}\)</td><td>\((q-1)/88\)</td><td>39</td><td>80</td><td>2</td></tr>
+            <tr><td>ML-DSA-65</td><td>(6,5)</td><td>4</td><td>\(2^{19}\)</td><td>\((q-1)/32\)</td><td>49</td><td>55</td><td>3</td></tr>
+            <tr><td>ML-DSA-87</td><td>(8,7)</td><td>2</td><td>\(2^{19}\)</td><td>\((q-1)/32\)</td><td>60</td><td>75</td><td>5</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:.5rem;">Here \(d{=}13\) dropped bits in pk compression; \( \beta=\tau\eta \) controls a signing bound. [1]</p>
+      </div>
+      <div class="muted">
+        <h3>Sizes (bytes)</h3>
+        <table>
+          <thead><tr><th>Set</th><th>Private key</th><th>Public key</th><th>Signature</th></tr></thead>
+          <tbody>
+            <tr><td>ML-DSA-44</td><td>2560</td><td>1312</td><td>2420</td></tr>
+            <tr><td>ML-DSA-65</td><td>4032</td><td>1952</td><td>3309</td></tr>
+            <tr><td>ML-DSA-87</td><td>4896</td><td>2592</td><td>4627</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:.5rem;">Security categories (2/3/5) follow NIST’s SP 800-57 notion of strength. [1]</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="algorithms">
+    <h2>Algorithms</h2>
+
+    <h3>Key generation</h3>
+    <p class="muted">
+      Sample a 256-bit seed \( \xi \); derive seeds \( (\rho, K, \rho') \). Sample secrets \( \mathbf{s}_1,\mathbf{s}_2 \leftarrow \mathrm{CBD}_\eta \).
+      Compute \( \mathbf{t}=\mathbf{A}\mathbf{s}_1+\mathbf{s}_2 \) and its compressed \( \mathbf{t}_1=\lfloor \mathbf{t}/2^d \rfloor \).
+    </p>
+    <p class="mono">
+      \( \mathrm{pk}=(\rho, \mathbf{t}_1),\qquad \mathrm{sk}=(\rho, K, \rho', \mathbf{s}_1, \mathbf{s}_2, \mathbf{t}_1, H(\mathrm{pk})). \)  <!-- schematic -->
+    </p>
+
+    <h3>Signing (hedged; Fiat–Shamir with aborts)</h3>
+    <p class="muted">
+      Given message \( M \), compute a representative \( \mu = H(\mathrm{tr}(\mathrm{pk}) \,\|\, M) \).
+      Sample \( \mathbf{y}\in R_q^\ell \) with coefficients in \( (-\gamma_1,\gamma_1) \) using seed \( \rho' \) and fresh randomness.
+      Set \( \mathbf{w}=\mathbf{A}\mathbf{y} \) and decompose each coordinate:
+    </p>
+    <p class="mono">\( \mathrm{Decompose}(\mathbf{w})=(\mathbf{w}_1,\mathbf{w}_0). \)</p>
+    <p class="muted">
+      Derive a sparse challenge polynomial \( c \) (with \( \tau \) coefficients in \( \{\pm1\} \)):
+    </p>
+    <p class="mono">\( c \leftarrow H(\mu \,\|\, \mathbf{w}_1). \)</p>
+    <p class="muted">
+      Form
+    </p>
+    <p class="mono">\( \mathbf{z}=\mathbf{y}+c\,\mathbf{s}_1. \)</p>
+    <p class="muted">
+      If \( \lVert \mathbf{z} \rVert_\infty \ge \gamma_1-\beta \) or other bounds fail, <em>reject</em> and resample \( \mathbf{y} \).
+      Compute a bounded-weight hint \( h \) enabling recovery of high bits after subtracting \( c\,\mathbf{t} \):
+    </p>
+    <p class="mono">\( h \leftarrow \mathrm{MakeHint}(\mathbf{w}_0,\, \mathbf{w}_0 + c\,\mathbf{s}_2). \)</p>
+    <p class="muted">Output signature \( \sigma=(\mathbf{z}, h, c) \). [1][4]</p>
+
+    <h3>Verification</h3>
+    <p class="muted">
+      Recompute \( \mu = H(\mathrm{tr}(\mathrm{pk}) \,\|\, M) \). Using \( \mathbf{z} \) and \( c \), compute
+    </p>
+    <p class="mono">\( \mathbf{w}' = \mathbf{A}\mathbf{z} - c\,\mathbf{t}_1 \cdot 2^d. \)</p>
+    <p class="muted">
+      Apply the hint: \( \mathbf{w}_1' \leftarrow \mathrm{UseHint}(h, \mathbf{w}') \). Check that \( \lVert \mathbf{z} \rVert_\infty < \gamma_1-\beta \),
+      \( \mathrm{wt}(h)\le \omega \), and that
+    </p>
+    <p class="mono">\( c \stackrel{?}{=} H(\mu \,\|\, \mathbf{w}_1'). \)</p>
+    <p class="muted">Accept iff all checks pass. [1]</p>
+  </div>
+
+  <div class="island" id="security">
+    <h2>Security at a glance</h2>
+    <ul class="muted">
+      <li><b>Assumptions:</b> MLWE/MISIS over \( R_q \) with parameters per set; reductions in ROM/QROM via Fiat–Shamir-with-aborts. [1][4]</li>
+      <li><b>Categories:</b> ML-DSA-44 → Cat-2, ML-DSA-65 → Cat-3, ML-DSA-87 → Cat-5. [1]</li>
+      <li><b>Variants:</b> Pure ML-DSA (default, hedged) and pre-hash mode (HashML-DSA) for very large messages; both support optional context strings. [1][5]</li>
+      <li><b>Misuse resistance:</b> Signs a representative \( \mu=H(\mathrm{tr(pk)}\|M) \) (BUFF goal); length checks and hint-unpacking checks are mandatory. [1]</li>
+    </ul>
+  </div>
+
+  <div class="island" id="impl">
+    <h2>Implementation notes</h2>
+    <ul class="muted">
+      <li><b>Symmetric:</b> SHAKE-128/256; H and G wrappers defined over SHAKE; incremental API allowed per SP 800-185. [1]</li>
+      <li><b>Sampling & NTT:</b> Secrets from CBD with \( \eta\in\{2,4\} \); 256-point NTT in \( R_q \) with \( \zeta=1753 \). [1]</li>
+      <li><b>Key material:</b> Public key stores \( (\rho,\mathbf{t}_1) \); private key can be kept compact via seed \( \xi \) if recomputation is acceptable. [1]</li>
+      <li><b>APIs & ecosystems:</b> IETF LAMPS defines ML-DSA in X.509/PKIX (OIDs, parameters) across 44/65/87; also guidance around pre-hash vs external-mu modes and context strings. [5][6]</li>
+    </ul>
+  </div>
+
+  <div class="island" id="proscons">
+    <h2>Pros & cons</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Pros</h3>
+        <ul class="muted">
+          <li>Fast signing/verification; compact public keys; mature constant-time implementations. [1][2]</li>
+          <li>Well-studied Fiat–Shamir-with-aborts design; straightforward integration into existing PKI (X.509, TLS). [1][5]</li>
+          <li>Fully standardized (FIPS 204) with multiple security categories and clear guidance. [1]</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Cons</h3>
+        <ul class="muted">
+          <li>Signatures (≈2.4–4.6 KB) larger than classical ECDSA/Ed25519; storage/bandwidth impact in some protocols. [1]</li>
+          <li>Side-channel hardening and careful bounds enforcement are required; misuse (omitting checks) can break SUF-CMA. [1]</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="references">
+    <h2>References</h2>
+    <ol class="refs muted">
+      <li>[1] NIST, “<i>Module-Lattice-Based Digital Signature Standard (FIPS 204)</i>,” Aug. 13, 2024. [Online]. Available: <a target="_blank" rel="noopener" href="https://nvlpubs.nist.gov/nistpubs/fips/nist.fips.204.pdf">nist.gov</a></li>
+      <li>[2] NIST, “PQC Standardization Process: Announcing Four Candidates to be Standardized,” News Release, Jul. 5, 2022. [Online]. Available: <a target="_blank" rel="noopener" href="https://www.nist.gov/news-events/news/2022/07/pqc-standardization-process-announcing-four-candidates-be-standardized-plus">nist.gov</a></li>
+      <li>[3] CRYSTALS-Dilithium Team, “<i>CRYSTALS-Dilithium Algorithm Specifications</i>,” v3, Feb. 8, 2021. [Online]. Available: <a target="_blank" rel="noopener" href="https://pq-crystals.org/dilithium/data/dilithium-specification-round3-20210208.pdf">pq-crystals.org</a></li>
+      <li>[4] CRYSTALS-Dilithium slides (overview & design), NIST PQC, 2018. [Online]. Available: <a target="_blank" rel="noopener" href="https://csrc.nist.gov/CSRC/media/Presentations/Crystals-Dilithium/images-media/CRYSTALS-Dilithium-April2018.pdf">csrc.nist.gov</a></li>
+      <li>[5] IETF LAMPS, “<i>ML-DSA in PKIX Certificates & CRLs</i>,” Internet-Draft, 2025. [Online]. Available: <a target="_blank" rel="noopener" href="https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/">ietf.org</a></li>
+      <li>[6] NIST, “NIST Releases First Finalized PQC Standards,” Aug. 13, 2024 (context on FIPS 203/204/205). [Online]. Available: <a target="_blank" rel="noopener" href="https://www.nist.gov/news-events/news/2024/08/nist-releases-first-3-finalized-post-quantum-encryption-standards">nist.gov</a></li>
+    </ol>
+  </div>
+</body>
+</html>
