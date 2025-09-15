@@ -153,6 +153,12 @@ else:
             with _oqs.Signature(self.alg) as v:
                 return v.verify(message, signature, public_key)
 
+    # Provide a registry alias so callers using "sphincsplus" resolve correctly
+    try:
+        registry.register("sphincsplus")(SphincsPlus)
+    except Exception:
+        pass
+
     @registry.register("xmssmt")
     class Xmssmt:
         name = "xmssmt"

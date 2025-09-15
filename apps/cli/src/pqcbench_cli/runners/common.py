@@ -259,7 +259,8 @@ def run_kem(name: str, runs: int) -> AlgoSummary:
         "ciphertext_len": _ct_len,
         "shared_secret_len": _ss_len,
         "ciphertext_expansion_ratio": _ct_expansion,
-        "mechanism": getattr(instance, "mech", None),
+        # Prefer common adapter attributes in order: mech (our RSA), alg (liboqs), _mech (stateful adapters)
+        "mechanism": getattr(instance, "mech", None) or getattr(instance, "alg", None) or getattr(instance, "_mech", None),
     }
     return AlgoSummary(algo=name, kind="KEM", ops=ops, meta=meta)
 
@@ -303,7 +304,7 @@ def run_sig(name: str, runs: int, message_size: int) -> AlgoSummary:
         "signature_len": _sig_len,
         "message_size": message_size,
         "signature_expansion_ratio": _sig_expansion,
-        "mechanism": getattr(instance, "mech", None),
+        "mechanism": getattr(instance, "mech", None) or getattr(instance, "alg", None) or getattr(instance, "_mech", None),
     }
     return AlgoSummary(algo=name, kind="SIG", ops=ops, meta=meta)
 

@@ -170,38 +170,42 @@ Examples (all flags enabled)
 
 ```bash
 # KEMs
-run-kyber        --runs 50 --export results/kyber_sec.json \
+run-kyber        --runs 1 --export results/kyber_sec.json \
   --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 
-run-hqc          --runs 50 --export results/hqc_sec.json \
+run-hqc          --runs 1 --export results/hqc_sec.json \
   --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 
-run-rsa-oaep     --runs 50 --export results/rsa_oaep_sec.json \
+run-rsa-oaep     --runs 1 --export results/rsa_oaep_sec.json \
   --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 
 # Signatures
-run-dilithium    --runs 50 --message-size 4096 --export results/dilithium_sec.json \
+run-dilithium    --runs 1 --message-size 4096 --export results/dilithium_sec.json \
   --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 
-run-falcon       --runs 50 --message-size 4096 --export results/falcon_sec.json \
+run-falcon       --runs 1 --message-size 4096 --export results/falcon_sec.json \
   --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 
-run-sphincsplus  --runs 20 --message-size 4096 --export results/sphincsplus_sec.json \
+run-sphincsplus  --runs 1 --message-size 4096 --export results/sphincsplus_sec.json \
   --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 
-run-xmssmt       --runs 10 --message-size 2048 --export results/xmssmt_sec.json \
+run-rsa-pss      --runs 1 --message-size 2048 --export results/rsa_pss_sec.json \
   --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 
-run-rsa-pss      --runs 50 --message-size 2048 --export results/rsa_pss_sec.json \
+run-mayo         --runs 1 --message-size 4096 --export results/mayo_sec.json \
   --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 
-run-mayo         --runs 20 --message-size 4096 --export results/mayo_sec.json \
+run-xmssmt       --runs 1 --message-size 2048 --export results/xmssmt_sec.json \
   --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 ```
 
 Notes:
 - RSA commands benefit from `--sec-rsa-phys` by adding surface-code physical resource estimates. For non‑RSA algorithms the flag is ignored.
 - Enabling `--sec-adv` attempts to use an external lattice estimator if present; otherwise the result clearly states that the floor model was used.
+
+## Security analysis docs
+
+For background on how pqcbench computes and reports security measures (classical bits, quantum considerations, and algorithm‑specific resource models), see `docs/security/README.md`. This document explains the RSA estimator in detail and outlines the models used for PQC families; additional sections will be populated as advanced estimators are integrated.
 
 Profiles and architectures
 --------------------------
