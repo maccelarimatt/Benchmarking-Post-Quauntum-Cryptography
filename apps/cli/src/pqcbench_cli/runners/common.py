@@ -244,11 +244,21 @@ def run_kem(name: str, runs: int) -> AlgoSummary:
     instance = cls()
     pk, sk = instance.keygen()
     ct, ss = cls().encapsulate(pk)
+    # Compute ciphertext expansion relative to the delivered payload (shared secret)
+    _ct_len = len(ct) if isinstance(ct, (bytes, bytearray)) else None
+    _ss_len = len(ss) if isinstance(ss, (bytes, bytearray)) else None
+    _ct_expansion = None
+    try:
+        if _ct_len is not None and _ss_len and _ss_len > 0:
+            _ct_expansion = float(_ct_len) / float(_ss_len)
+    except Exception:
+        _ct_expansion = None
     meta = {
         "public_key_len": len(pk) if isinstance(pk, (bytes, bytearray)) else None,
         "secret_key_len": len(sk) if isinstance(sk, (bytes, bytearray)) else None,
-        "ciphertext_len": len(ct) if isinstance(ct, (bytes, bytearray)) else None,
-        "shared_secret_len": len(ss) if isinstance(ss, (bytes, bytearray)) else None,
+        "ciphertext_len": _ct_len,
+        "shared_secret_len": _ss_len,
+        "ciphertext_expansion_ratio": _ct_expansion,
         "mechanism": getattr(instance, "mech", None),
     }
     return AlgoSummary(algo=name, kind="KEM", ops=ops, meta=meta)
@@ -279,11 +289,20 @@ def run_sig(name: str, runs: int, message_size: int) -> AlgoSummary:
     instance = cls()
     pk, sk = instance.keygen()
     sig = instance.sign(sk, msg)
+    # Compute signature expansion relative to message size
+    _sig_len = len(sig) if isinstance(sig, (bytes, bytearray)) else None
+    _sig_expansion = None
+    try:
+        if _sig_len is not None and message_size and int(message_size) > 0:
+            _sig_expansion = float(_sig_len) / float(int(message_size))
+    except Exception:
+        _sig_expansion = None
     meta = {
         "public_key_len": len(pk) if isinstance(pk, (bytes, bytearray)) else None,
         "secret_key_len": len(sk) if isinstance(sk, (bytes, bytearray)) else None,
-        "signature_len": len(sig) if isinstance(sig, (bytes, bytearray)) else None,
+        "signature_len": _sig_len,
         "message_size": message_size,
+        "signature_expansion_ratio": _sig_expansion,
         "mechanism": getattr(instance, "mech", None),
     }
     return AlgoSummary(algo=name, kind="SIG", ops=ops, meta=meta)
