@@ -56,6 +56,9 @@ _add(["ML-DSA-65", "Dilithium3"], family="ML-DSA", category_floor=192,
 _add(["ML-DSA-87", "Dilithium5"], family="ML-DSA", category_floor=256,
      notes="k=8, l=7; n=256; q=8380417",
      extras={"k": 8, "l": 7, "n": 256, "q": 8380417})
+# Some liboqs builds expose ML-DSA-110; treat as Cat-5 floor for labeling
+_add(["ML-DSA-110"], family="ML-DSA", category_floor=256,
+     notes="non-FIPS param; treated as Cat-5 floor for labeling")
 
 # Falcon (FN-DSA)
 # Provide common ring dimension and modulus for reference (NTRU lattice over Z_q[x]/(x^n+1)).
@@ -70,15 +73,22 @@ _add(["Falcon-1024"], family="Falcon", category_floor=256,
 _add(["HQC-128"], family="HQC", category_floor=128)
 _add(["HQC-192"], family="HQC", category_floor=192)
 _add(["HQC-256"], family="HQC", category_floor=256)
+# Some liboqs names carry CCA2 suffix; map them to the same floors
+_add(["HQC-128-1-CCA2"], family="HQC", category_floor=128)
+_add(["HQC-192-1-CCA2"], family="HQC", category_floor=192)
+_add(["HQC-256-1-CCA2"], family="HQC", category_floor=256)
 
 # SPHINCS+ (hash-based) — many variants; approximate by suffix
 _add(["SPHINCS+-SHA2-128s-simple", "SPHINCS+-SHA2-128f-simple"], family="SPHINCS+", category_floor=128)
 _add(["SPHINCS+-SHA2-192s-simple", "SPHINCS+-SHA2-192f-simple"], family="SPHINCS+", category_floor=192)
 _add(["SPHINCS+-SHA2-256s-simple", "SPHINCS+-SHA2-256f-simple"], family="SPHINCS+", category_floor=256)
+_add(["SPHINCS+-SHA2-128f-robust"], family="SPHINCS+", category_floor=128)
+_add(["SPHINCS+-SHAKE-128s-simple", "SPHINCS+-SHAKE-128f-simple"], family="SPHINCS+", category_floor=128)
 
 # XMSSMT — security target depends on the parameter set; provide common examples
 _add(["XMSSMT-SHA2_20/2_256"], family="XMSSMT", category_floor=128)
 _add(["XMSSMT-SHA2_20/4_256"], family="XMSSMT", category_floor=192)
+_add(["XMSS-SHA2_20_256"], family="XMSS", category_floor=128)
 
 # MAYO (multivariate signatures) — approximate by level name
 _add(["MAYO-1"], family="MAYO", category_floor=128, notes="multivariate (MQ) signature")
