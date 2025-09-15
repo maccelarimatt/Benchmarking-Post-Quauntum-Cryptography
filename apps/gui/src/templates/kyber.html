@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{{ label }} - Details</title>
   <style>
-    :root { --island-bg: rgba(128,128,128,.7); --island-radius:1.5rem; --text:#fff; --accent:#ff4d4f; }
+    :root { --island-bg: rgba(128,128,128,.9); --island-radius:1.5rem; --text:#fff; --accent:#ff4d4f; }
     body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
     .island { background:var(--island-bg); border-radius:var(--island-radius); padding:2rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 2vh auto; }
     .btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.18); text-decoration:none; }
@@ -25,6 +25,7 @@
     .toc a:hover { text-decoration:underline; }
     .note { font-size:.95rem; opacity:.95; }
     code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
+    ol.refs { list-style: none; margin: 0; padding-left: 0; }
   </style>
   <!-- MathJax for LaTeX-style math -->
   <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -61,7 +62,7 @@
   <div class="island" id="history">
     <h2>Origins & history</h2>
     <p class="muted">
-      Kyber is a lattice-based KEM from the CRYSTALS suite (CRYSTALS-Kyber). It was selected by NIST in July 2022 as the primary public-key algorithm for general encryption/key establishment and standardized as <em>FIPS 203: ML-KEM</em> in August 2024. The standardized parameter sets are named ML-KEM-512/768/1024 (formerly Kyber-512/768/1024) [1][2][3].
+      Kyber is a lattice-based KEM from the CRYSTALS suite (CRYSTALS-Kyber). It was selected by NIST in July 2022 as the primary public-key algorithm for general encryption/key establishment and standardised as <em>FIPS 203: ML-KEM</em> in August 2024. The standardised parameter sets are named ML-KEM-512/768/1024 (formerly Kyber-512/768/1024) [1][2][3].
     </p>
   </div>
 
@@ -187,14 +188,14 @@
         <h3>Pros</h3>
         <ul class="muted">
           <li>Small keys/ciphertexts and very fast operations; NTT-friendly structure [2][3].</li>
-          <li>Simple, constant-time reference/optimized implementations; mature tooling.</li>
+          <li>Simple, constant-time reference/optimised implementations; mature tooling.</li>
           <li>Standardized (FIPS 203) with clear migration path and broad vendor support [1][2].</li>
         </ul>
       </div>
       <div>
         <h3>Cons</h3>
         <ul class="muted">
-          <li>Structure (module lattices) requires careful parameterization and side-channel hardening.</li>
+          <li>Structure (module lattices) requires careful parameterisation and side-channel hardening.</li>
           <li>Non-zero decryption-failure probability (mitigated by FO and tiny \(\delta\)) [2][3].</li>
         </ul>
       </div>

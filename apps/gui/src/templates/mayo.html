@@ -5,24 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{{ label }} - Details</title>
   <style>
-    :root { --island-bg: rgba(128,128,128,.7); --island-radius:1.5rem; --text:#fff; --accent:#ff4d4f; }
+    :root { --island-bg: rgba(128, 128, 128, 0.9); --island-radius:1.5rem; --text:#fff; --accent:#ff4d4f; }
     body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
     .island { background:var(--island-bg); border-radius:var(--island-radius); padding:2rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 2vh auto; }
     .btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.18); text-decoration:none; }
     .badge { font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem; display:inline-block; }
     .muted { opacity:.9; }
-    .kicker { font-size:.9rem; opacity:.85; margin-bottom:.5rem; }
-    h2 { margin:.2rem 0 1rem 0; font-size:1.35rem; }
-    h3 { margin:1.2rem 0 .6rem 0; font-size:1.1rem; }
-    code, pre { background:rgba(255,255,255,.15); padding:.2rem .4rem; border-radius:.35rem; }
-    table { width:100%; border-collapse:collapse; font-size:.95rem; }
-    th, td { padding:.5rem .6rem; border-bottom:1px solid rgba(255,255,255,.2); text-align:left; }
-    .toc { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.6rem; }
-    .toc a { text-decoration:none; color:#fff; background:rgba(255,255,255,.2); padding:.25rem .6rem; border-radius:.6rem; font-size:.9rem; }
-    .note { font-size:.9rem; opacity:.85; }
-    .refs li { margin-bottom:.6rem; }
+    h2, h3 { margin: 0 0 .6rem 0; }
+    h2 { font-size:1.25rem; }
+    h3 { font-size:1.05rem; margin-top:1.2rem; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:.45rem .4rem; border-bottom:1px solid rgba(255,255,255,.2); }
+    th { font-weight:600; }
+    .refs li { margin:.35rem 0; }
+    .chip { display:inline-block; font-size:.85rem; padding:.1rem .5rem; border-radius:.4rem; background:rgba(255,255,255,.15); margin-right:.4rem; }
+    .toc a { color:#fff; text-decoration:none; }
+    .toc a:hover { text-decoration:underline; }
+    .note { font-size:.95rem; opacity:.95; }
+    code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
+    ol.refs { list-style: none; margin: 0; padding-left: 0; }
   </style>
-  <!-- MathJax for equations -->
+  <!-- MathJax for LaTeX-style math -->
   <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
@@ -39,212 +44,180 @@
   <div class="island">
     <div style="font-weight:700; margin-bottom:.5rem;">About</div>
     <p class="muted">
-      MAYO is a multivariate-quadratic (MQ) digital signature scheme derived from Oil-and-Vinegar (OV) ideas. It “whips up” a small-<em>oil</em> OV map into a larger map to enable signing while keeping public keys very small. It targets NIST security levels 1, 3, and 5 and is currently a Round-2 candidate in NIST’s “Additional Digital Signatures” process. See background, math, parameters, security notes, and references below.
+      {{ about or 'This page explains the MAYO multivariate (OV-derived) signature in depth: origins, math, parameters, algorithms, security assumptions, and implementation notes—plus references.' }}
     </p>
-    <div class="toc">
-      <a href="#background">Background & history</a>
-      <a href="#overview">Design overview</a>
-      <a href="#math">Mathematical formulation</a>
-      <a href="#algorithms">Algorithms (KeyGen/Sign/Verify)</a>
-      <a href="#parameters">Parameters & sizes</a>
-      <a href="#security">Security considerations</a>
-      <a href="#impl">Implementation notes</a>
-      <a href="#proscons">Pros & cons</a>
-      <a href="#refs">References</a>
+    <div class="toc muted">
+      <span class="chip"><a href="#history">Origins & history</a></span>
+      <span class="chip"><a href="#overview">Design overview</a></span>
+      <span class="chip"><a href="#math">Mathematical setting</a></span>
+      <span class="chip"><a href="#params">Parameter sets</a></span>
+      <span class="chip"><a href="#algorithms">Algorithms</a></span>
+      <span class="chip"><a href="#security">Security</a></span>
+      <span class="chip"><a href="#impl">Implementation notes</a></span>
+      <span class="chip"><a href="#proscons">Pros & cons</a></span>
+      <span class="chip"><a href="#references">References</a></span>
     </div>
   </div>
 
-  <div class="island" id="background">
-    <div class="kicker">MAYO (/algo/mayo)</div>
-    <h2>Background & history</h2>
-    <p>
-      Multivariate-quadratic signatures date back to the 1990s. Patarin’s Oil-and-Vinegar (OV) (1997) and its Unbalanced OV (UOV) variant (1999) are among the most studied MQ constructions. The original balanced OV was broken, but UOV has withstood decades of cryptanalysis.
-      In 2021, Beullens introduced <em>MAYO</em>, a practical OV-based signature scheme that drastically reduces public-key sizes by using a small “oil” space and a public “whipping” transformation. In 2023, MAYO was submitted to NIST’s Additional Digital Signatures call and advanced to Round 2 in October 2024. Updated parameter sets (2024–2025) reflect improved analyses and implementation considerations.
+  <div class="island" id="history">
+    <h2>Origins & history</h2>
+    <p class="muted">
+      <strong>MAYO</strong> is a post-quantum, multivariate-quadratic (MQ) signature scheme that builds on Oil-and-Vinegar (OV) ideas.
+      It was proposed by Beullens (ASIACRYPT 2021) to obtain <em>very small public keys</em> by using a small “oil” space and a
+      public “whipping” transform, then entered NIST’s Additional (non-primary) Digital Signatures track (2023) and advanced to Round 2 (Oct. 2024).
+      Parameter sets were updated in 2024–2025 following new cryptanalysis and implementation feedback.
     </p>
   </div>
 
   <div class="island" id="overview">
-    <h2>Design overview (intuitive)</h2>
-    <p>
-      An OV public key is a quadratic map \(P:\mathbb{F}_q^n \to \mathbb{F}_q^m\) with a hidden “oil” subspace \(O \subset \mathbb{F}_q^n\) (dimension \(o\)) on which \(P\) vanishes. Classic OV signs by picking a random “vinegar” part \(v\) and solving a <em>linear</em> system for the oil part \(o\) to make \(P(v+o)=t\) where \(t\) is a hash of the message.
-    </p>
-    <p>
-      MAYO chooses \(o<m\) to make recovering \(O\) from \(P\) harder and keys much smaller. But then the usual OV signing equations become underdetermined. The fix is to “whip up” \(P\) into a larger map \(P^\ast:\mathbb{F}_q^{kn}\to\mathbb{F}_q^m\) using fixed public matrices \(\{E_{ij}\}\). This creates an effective oil space of dimension \(ko\). With parameters ensuring \(ko>m\), signing again reduces to solving a linear system (now in \(ko\) variables).
+    <h2>Design overview</h2>
+    <p class="muted">
+      An OV public key is a quadratic map \(P:\mathbb{F}_q^n\!\to\!\mathbb{F}_q^m\) with a hidden oil subspace \(O\subset\mathbb{F}_q^n\) of
+      dimension \(o\) such that \(P(o)=0\) for all \(o\in O\). Classic OV signs by fixing “vinegar” variables so the remaining equations are linear in the “oil” variables.
+      MAYO deliberately chooses a <em>small</em> \(o\) (shrinking the public key) which makes the system <em>underdetermined</em>;
+      it then “whips” multiple inputs together to regain solvability while keeping the public key compact.
     </p>
   </div>
 
   <div class="island" id="math">
-    <h2>Mathematical formulation</h2>
-    <h3>Base OV map and differential</h3>
-    <p>
-      Let the public map be \(P(x)=(p_1,\dots,p_m):\mathbb{F}_q^n \to \mathbb{F}_q^m\) of quadratic polynomials, and let \(O\subset \mathbb{F}_q^n\) be the secret oil subspace with \(\dim O=o\). Define the bilinear differential
+    <h2>Mathematical setting</h2>
+    <p class="muted">
+      Let \(P=(p_1,\dots,p_m)\) be quadratic polynomials over \(\mathbb{F}_q\) in \(n\) variables. Write the (symmetric) bilinear differential
     </p>
-    <p style="margin-left:1rem">
-      \[
-        P'(x,y) \;:=\; P(x+y) - P(x) - P(y).
-      \]
+    <p class="mono">
+      \(P'(x,y)=P(x+y)-P(x)-P(y).\)
     </p>
-    <p class="note">
-      In classic OV, for a random \(v\) one solves for \(o\in O\) from
-      \[
-        P(v+o)=P'(v,o) + P(o) + P(v)=t,
-      \]
-      which becomes a linear system in the \(o\)-coordinates because \(P(o)=0\) for all \(o\in O\).
+    <p class="muted">
+      For a secret oil subspace \(O\subset\mathbb{F}_q^n\) of dimension \(o\), OV ensures \(P(o)=0\) for all \(o\in O\).
+      MAYO introduces a public “whipped” map on \(k\) blocks:
     </p>
-
-    <h3>Whipped map \(P^\ast\)</h3>
-    <p>
-      MAYO publicly defines a “whipped” map using fixed matrices \(E_{ij}\in\mathbb{F}_q^{m\times m}\):
+    <p class="mono">
+      \( P^\ast(x_1,\dots,x_k)=\sum_{i=1}^{k}E_{ii}P(x_i)+\sum_{1\le i<j\le k}E_{ij}P'(x_i,x_j), \)
     </p>
-    <p style="margin-left:1rem">
-      \[
-        P^\ast(x_1,\dots,x_k)\;=\;\sum_{i=1}^k E_{ii}P(x_i)
-        \;+\;\sum_{1\le i<j\le k} E_{ij}\,P'(x_i,x_j).
-      \]
-    </p>
-    <p>
-      This construction preserves a zeros subspace of dimension \(ko\): the set
-      \(\,O_k=\{(o_1,\dots,o_k): o_i\in O\}\). Choosing parameters with \(ko>m\) restores the linear-algebraic signing method.
+    <p class="muted">
+      with fixed public matrices \(E_{ij}\in\mathbb{F}_q^{m\times m}\). The zero set contains
+      \( O_k=\{(o_1,\dots,o_k):o_i\in O\} \), giving an effective “oil space” of dimension \(k\,o\).
+      Choosing parameters with \(k\,o > m\) lets signing proceed by solving a linear system in the oil coordinates.
     </p>
 
-    <h3>Digest mapping and signature format</h3>
-    <p>
-      For message \(M\), compute a digest and salt (e.g., via SHAKE256) to obtain \(t\in\mathbb{F}_q^m\).
-      For \(q=16\) (used in MAYO), a signature packs \(nk/2\) bytes of \(s=(s_1,\dots,s_k)\in\mathbb{F}_q^{kn}\) plus the salt:
-      \[
-        \text{sig\_bytes} \;=\; \left\lceil \frac{nk}{2}\right\rceil + \texttt{salt\_bytes}.
-      \]
+    <h3>Digest mapping & signature length</h3>
+    <p class="muted">
+      A message \(M\) is hashed (and salted) into a target \(t\in\mathbb{F}_q^m\). For \(q=16\), signatures encode \(kn\) field elements at 4 bits each,
+      so the core signature part costs \(\lceil kn/2\rceil\) bytes plus a salt.
     </p>
+  </div>
+
+  <div class="island" id="params">
+    <h2>Parameter sets</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Round-2 (current, 2025)</h3>
+        <table>
+          <thead><tr><th>Set</th><th>Level</th><th>Public key</th><th>Secret key</th><th>Signature</th></tr></thead>
+          <tbody>
+            <tr><td>MAYO-1</td><td>1</td><td>1420 B</td><td>24 B</td><td>454 B</td></tr>
+            <tr><td>MAYO-2</td><td>1</td><td>4912 B</td><td>24 B</td><td>186 B</td></tr>
+            <tr><td>MAYO-3</td><td>3</td><td>2986 B</td><td>32 B</td><td>681 B</td></tr>
+            <tr><td>MAYO-5</td><td>5</td><td>5554 B</td><td>40 B</td><td>964 B</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="muted">
+        <h3>Legacy Round-1 examples</h3>
+        <table>
+          <thead><tr><th>Set</th><th>Level</th><th>\((n,m,o,k)\)</th><th>PK</th><th>SK</th><th>Sig</th></tr></thead>
+          <tbody>
+            <tr><td>MAYO1</td><td>1</td><td>(66,64,8,9)</td><td>1168 B</td><td>24 B</td><td>321 B</td></tr>
+            <tr><td>MAYO2</td><td>1</td><td>(78,64,18,4)</td><td>5488 B</td><td>24 B</td><td>180 B</td></tr>
+            <tr><td>MAYO3</td><td>3</td><td>(99,96,10,11)</td><td>2656 B</td><td>32 B</td><td>577 B</td></tr>
+            <tr><td>MAYO5</td><td>5</td><td>(133,128,12,12)</td><td>5008 B</td><td>40 B</td><td>838 B</td></tr>
+          </tbody>
+        </table>
+        <p class="note" style="margin-top:.5rem;">
+          Trade-off: smaller \(o\) → smaller PK but larger signatures; \(k\) is set so \(k\,o>m\) for solvability.
+        </p>
+      </div>
+    </div>
   </div>
 
   <div class="island" id="algorithms">
     <h2>Algorithms</h2>
 
-    <h3>Key generation (compact + expanded)</h3>
-    <ol class="muted">
-      <li>Sample <code>seed_sk</code>; derive <code>seed_pk</code> and a description of the oil subspace \(O\) (e.g., via SHAKE256).</li>
-      <li>Expand pseudo-randomly (e.g., AES-128-CTR with <code>seed_pk</code>) the structured pieces of \(P\):
-          upper-triangular blocks \(P^{(1)}_i\in \mathbb{F}_q^{(n-o)\times(n-o)}\) and mixed blocks \(P^{(2)}_i\in \mathbb{F}_q^{(n-o)\times o}\), for \(i=1,\dots,m\).</li>
-      <li>Compute the small “oil” blocks \(P^{(3)}_i\in \mathbb{F}_q^{o\times o}\) using \(O\) (ensuring \(P\) vanishes on \(O\)).</li>
-      <li>Compact PK = <code>seed_pk</code> \|\; encoding of \(\{P^{(3)}_i\}\).
-          Expanded SK/PK add encodings of \(\{P^{(1)}_i\},\{P^{(2)}_i\}\) and auxiliary linear terms \(L_i\) used during signing.</li>
-    </ol>
+    <h3>Key generation</h3>
+    <p class="muted">
+      From seeds, derive a description of the oil space \(O\) and the public components of \(P\).
+      The public key encodes a compact seed (and small “oil-block” data); expanded keys reconstruct full polynomial blocks deterministically.
+    </p>
 
     <h3>Signing</h3>
-    <p>
-      Given expanded secret key and message \(M\):
-    </p>
     <ol class="muted">
-      <li>Hash \(M\) and derive a per-message <em>salt</em>; set \(t\in\mathbb{F}_q^m\) from the XOF output.</li>
-      <li>Repeat up to a small bounded number of trials (due to rejection sampling):
-        <ul>
-          <li>Derive \(k\) random “vinegar” vectors \(v_i\in\mathbb{F}_q^{n-o}\) and helper randomness \(r\).</li>
-          <li>Build the linear system \(A x = y\) over \(\mathbb{F}_q\), where \(x\in\mathbb{F}_q^{ko}\) encodes all oil blocks \((o_1,\dots,o_k)\), and \(y\) is derived from \(t\) and quadratic terms like \(v_i^\top P^{(1)}_a v_j\).</li>
-          <li>Attempt to solve for \(x\) using <em>SampleSolution</em>(\(A,y,r\)); if solvable, set \(s_i=v_i+o_i\), output signature \(\sigma=(s,\text{salt})\).</li>
-        </ul>
-      </li>
+      <li>Compute \(t\leftarrow \mathrm{H}(M,\text{salt})\in\mathbb{F}_q^m\).</li>
+      <li>Sample \(k\) vinegar vectors \(v_i\in\mathbb{F}_q^{n-o}\) and build a linear system \(A x = y\) in the oil coordinates \(x\in\mathbb{F}_q^{k o}\) using \(P^\ast\), \(t\), and bilinear terms (e.g., from \(P'(v_i,v_j)\)).</li>
+      <li>If solvable, recover \(o_i\) from \(x\), set \(s_i=v_i+o_i\), and output \(\sigma=(s_1,\dots,s_k,\text{salt})\). Otherwise, resample (low restart probability by design).</li>
     </ol>
-    <p class="note">
-      The linear system accounts for the “whipped” structure via accumulations of \(E^\ell\)-weighted blocks; with \(ko>m\), solutions exist with high probability.
-    </p>
 
     <h3>Verification</h3>
     <ol class="muted">
-      <li>Recompute \(t\) from \(M\) and the signature’s salt.</li>
-      <li>Evaluate \(P^\ast(s)\) using the public key and compare \(P^\ast(s)\stackrel{?}{=}t\). Accept iff equal.</li>
+      <li>Recompute \(t\leftarrow \mathrm{H}(M,\text{salt})\).</li>
+      <li>Evaluate \(P^\ast(s_1,\dots,s_k)\) with the public key and accept iff it equals \(t\).</li>
     </ol>
   </div>
 
-  <div class="island" id="parameters">
-    <h2>Parameters & sizes</h2>
-    <p class="muted">
-      MAYO uses \(q=16\) and parameter sets chosen for NIST levels 1, 3, 5. The authors updated sets after newer cryptanalytic insights (e.g., improved methods for underdetermined MQ and MinRank-style analyses). Below are Round-2 (2025) sizes followed by legacy Round-1 sizes (for context).
-    </p>
-
-    <h3>Round-2 (current) parameter sets</h3>
-    <table>
-      <thead><tr><th>Set</th><th>NIST Level</th><th>Public key</th><th>Secret key</th><th>Signature</th></tr></thead>
-      <tbody>
-        <tr><td>MAYO-1</td><td>1</td><td>1420 B</td><td>24 B</td><td>454 B</td></tr>
-        <tr><td>MAYO-2</td><td>1</td><td>4912 B</td><td>24 B</td><td>186 B</td></tr>
-        <tr><td>MAYO-3</td><td>3</td><td>2986 B</td><td>32 B</td><td>681 B</td></tr>
-        <tr><td>MAYO-5</td><td>5</td><td>5554 B</td><td>40 B</td><td>964 B</td></tr>
-      </tbody>
-    </table>
-
-    <h3 style="margin-top:1rem;">Round-1 (legacy) parameter sets (spec examples)</h3>
-    <table>
-      <thead><tr><th>Set</th><th>Level</th><th>\(n,m,o,k\)</th><th>PK</th><th>SK</th><th>Sig</th></tr></thead>
-      <tbody>
-        <tr><td>MAYO1</td><td>1</td><td>(66,64,8,9)</td><td>1168 B</td><td>24 B</td><td>321 B</td></tr>
-        <tr><td>MAYO2</td><td>1</td><td>(78,64,18,4)</td><td>5488 B</td><td>24 B</td><td>180 B</td></tr>
-        <tr><td>MAYO3</td><td>3</td><td>(99,96,10,11)</td><td>2656 B</td><td>32 B</td><td>577 B</td></tr>
-        <tr><td>MAYO5</td><td>5</td><td>(133,128,12,12)</td><td>5008 B</td><td>40 B</td><td>838 B</td></tr>
-      </tbody>
-    </table>
-
-    <p class="note">
-      Trade-off knob: smaller \(o\) reduces PK size but increases signature size (and vice versa). The “whipping” parameter \(k\) is set so \(ko>m\) for solvability.
-    </p>
-  </div>
-
   <div class="island" id="security">
-    <h2>Security considerations</h2>
-    <h3>Assumptions and proof sketch</h3>
+    <h2>Security at a glance</h2>
     <ul class="muted">
-      <li><strong>OV indistinguishability / hardness:</strong> recovering the oil space \(O\) from an OV map \(P\) (with small \(o\)) is hard.</li>
-      <li><strong>Preimage resistance of whipped maps:</strong> for random \(P\), the constructed \(P^\ast\) behaves as a (multi-target) preimage-resistant MQ map.</li>
-      <li><strong>EUF-CMA (in ROM):</strong> Using SHAKE as a random oracle and the above assumptions, MAYO provides EUF-CMA security. The rejection-sampling loop leaks a tiny amount of information, accounted for by a multiplicative loss factor \((1-Q_s\cdot B)\) where
-        \[
-          B \;=\; \frac{q^{\,k-(n-o)}}{q-1} + \frac{q^{\,m-ko}}{q-1},
-        \]
-        kept negligible by parameter choices; e.g., for level-1 sets the restart probability is around \(2^{-12}\)–\(2^{-36}\) depending on the set.</li>
+      <li><b>Assumptions:</b> hardness of recovering \(O\) (small-oil OV) and preimage resistance of the whipped map \(P^\ast\); EUF-CMA argued in the ROM.</li>
+      <li><b>Rejection sampling:</b> signing may restart with small probability; parameters bound leakage (negligible loss factors).</li>
+      <li><b>Attacks considered:</b> classical OV key-recovery lines, improved solving for underdetermined MQ, and MinRank-style analyses; Round-2 parameters reflect updated margins.</li>
+      <li><b>Status:</b> NIST Additional Signatures Round-2 candidate (with ongoing cryptanalysis and implementation updates).</li>
     </ul>
-
-    <h3>Known attack surface</h3>
-    <ul class="muted">
-      <li><strong>Classical OV key-recovery lines:</strong> Kipnis–Shamir-style, reconciliation/intersection, and generic MQ system-solving; parameters are chosen so estimated costs exceed the targeted bits.</li>
-      <li><strong>Underdetermined MQ solving:</strong> algorithmic improvements (e.g., Hashimoto-type) informed the 2024–2025 parameter updates, increasing margins.</li>
-      <li><strong>MinRank-style analyses:</strong> rectangular-MinRank techniques prompted avoiding regimes with \(o>n-m\) and tightening choices.</li>
-    </ul>
-
-    <h3>NIST status</h3>
-    <p class="muted">
-      MAYO is in Round 2 of NIST’s Additional Digital Signatures track alongside other non-lattice designs. Parameter updates and implementations continue to evolve under that process.
-    </p>
   </div>
 
   <div class="island" id="impl">
     <h2>Implementation notes</h2>
     <ul class="muted">
-      <li>Arithmetic over \(\mathbb{F}_{16}\), with attention to representations (bitsliced vs. nibblesliced) for embedded vs. AVX2 targets.</li>
-      <li>Compact/expanded key separation: PK components \(P^{(1)},P^{(2)}\) derived from <code>seed_pk</code> (e.g., via AES-128-CTR), with small stored \(P^{(3)}\) blocks.</li>
-      <li>Constant-time software (no secret-dependent branches/indices) and attention to the restart path in signing.</li>
-      <li>Reference and optimized AVX2/NEON code exist in liboqs and author repos for current Round-2 parameters.</li>
+      <li>Arithmetic over \(\mathbb{F}_{16}\); bitsliced/nibblesliced kernels for SIMD vs embedded targets.</li>
+      <li>Compact vs expanded keys: public seed expands polynomial blocks on the fly (e.g., via AES-CTR/SHAKE); store only small oil-block data.</li>
+      <li>Constant-time sampling and linear-algebra routines; handle the (rare) restart path safely.</li>
+      <li>Reference and optimised implementations exist for current Round-2 sets (e.g., liboqs and author repos).</li>
     </ul>
   </div>
 
   <div class="island" id="proscons">
     <h2>Pros & cons</h2>
-    <ul class="muted">
-      <li><strong>Pros:</strong> very small public keys (as low as ~1.4 KB), short signatures in some sets (≈186 B), fast sign/verify, flexible trade-offs via \(o,k\).</li>
-      <li><strong>Cons:</strong> relies on a newer hardness assumption (preimage resistance of whipped MQ maps), cryptanalysis of OV-variants continues to progress, and careful parameterization is essential.</li>
-    </ul>
+    <div class="grid-2">
+      <div>
+        <h3>Pros</h3>
+        <ul class="muted">
+          <li>Very small public keys (≈1–5&nbsp;KB) and short signatures for some sets (≈186&nbsp;B).</li>
+          <li>Fast sign/verify; flexible size-vs-speed via \(o,k\) tuning.</li>
+          <li>Diversity vs lattice/code-based families in a PQ migration plan.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Cons</h3>
+        <ul class="muted">
+          <li>Relies on newer/less-traditional assumptions (OV small-oil + whipped map).</li>
+          <li>Active cryptanalysis space (underdetermined MQ, MinRank variants) → parameters may evolve.</li>
+          <li>Careful constant-time linear algebra required for robust side-channel posture.</li>
+        </ul>
+      </div>
+    </div>
   </div>
 
-  <div class="island" id="refs">
-    <h2>References (IEEE style)</h2>
-    <ol class="refs">
-      <li>W. Beullens, “Practical Post-Quantum Signatures from Oil-and-Vinegar Maps,” in <em>ASIACRYPT 2021</em>, LNCS, 2021. Available via COSIC database.</li>
-      <li>M. J. Kannwischer, F. Campos, S. Celi, B. Hess, and W. Beullens, “MAYO Specification Document (Round-1),” NIST PQC Additional Signatures, 2023.</li>
-      <li>MAYO Team, “MAYO: Overview + Updates,” NIST PQC Seminar, Sept. 24, 2024 (slides).</li>
-      <li>G. Alagic <em>et al.</em>, “Status Report on the First Round of the Additional Digital Signature Schemes,” NIST IR 8528, Oct. 2024.</li>
-      <li>Open Quantum Safe, “MAYO (Round-2 parameter summary),” liboqs docs, Feb. 2025.</li>
-      <li>A. Kipnis, A. Shamir, and L. Goubin, “Unbalanced Oil and Vinegar Signature Schemes,” in <em>Eurocrypt 1999</em>, LNCS.</li>
-      <li>H. Furue and Y. Ikematsu, “A New Security Analysis Against MAYO and QR-UOV Using Rectangular MinRank Attack,” in <em>IWSEC 2023</em>, LNCS 14128.</li>
-      <li>C.-M. Cheng, Y. Hashimoto, H. Miura, and T. Takagi, “A Polynomial-Time Algorithm for Solving a Class of Underdetermined MQ Equations over Odd Characteristic,” in <em>PQCrypto 2014</em>, LNCS 8772.</li>
-      <li>MAYO project site, “About & Parameters,” 2023–2025.</li>
-      <li>M. J. Kannwischer <em>et al.</em>, “MAYO Specification Document (Round-2),” NIST PQC Additional Signatures, 2025.</li>
+  <div class="island" id="references">
+    <h2>References</h2>
+    <ol class="refs muted">
+      <li>[1] W. Beullens, “Practical Post-Quantum Signatures from Oil-and-Vinegar Maps,” in <i>ASIACRYPT 2021</i>, LNCS, 2021. [Online].</li>
+      <li>[2] M. J. Kannwischer, F. Campos, S. Celi, B. Hess, and W. Beullens, “MAYO Algorithm Specification (Round-1),” NIST PQC Additional Signatures, 2023. [Online].</li>
+      <li>[3] MAYO Team, “MAYO Updates & Rationale,” NIST PQC Seminar, Sept. 24, 2024 (slides). [Online].</li>
+      <li>[4] G. Alagic <i>et&nbsp;al.</i>, “Status Report: Additional Digital Signatures Round-1,” NIST IR 8528, Oct. 2024. [Online].</li>
+      <li>[5] Open Quantum Safe, “MAYO (Round-2 parameter summary),” liboqs, 2025. [Online].</li>
+      <li>[6] A. Kipnis, A. Shamir, and L. Goubin, “Unbalanced Oil and Vinegar Signature Schemes,” in <i>EUROCRYPT 1999</i>, LNCS. [Online].</li>
+      <li>[7] H. Furue and Y. Ikematsu, “Security Analysis Against MAYO and QR-UOV via Rectangular MinRank,” in <i>IWSEC 2023</i>, LNCS 14128. [Online].</li>
+      <li>[8] C.-M. Cheng, Y. Hashimoto, H. Miura, and T. Takagi, “On Underdetermined MQ Solving Over Small Fields,” in <i>PQCrypto 2014</i>, LNCS 8772. [Online].</li>
+      <li>[9] MAYO Project, “About & Parameters,” 2023–2025. [Online].</li>
+      <li>[10] M. J. Kannwischer <i>et&nbsp;al.</i>, “MAYO Algorithm Specification (Round-2),” NIST PQC Additional Signatures, 2025. [Online].</li>
     </ol>
   </div>
 </body>

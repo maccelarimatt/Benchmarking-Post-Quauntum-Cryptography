@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{{ label }} - Details</title>
   <style>
-    :root { --island-bg: rgba(128,128,128,.7); --island-radius:1.5rem; --text:#fff; --accent:#ff4d4f; }
+    :root { --island-bg: rgba(128,128,128,.9); --island-radius:1.5rem; --text:#fff; --accent:#ff4d4f; }
     body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
     .island { background:var(--island-bg); border-radius:var(--island-radius); padding:2rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 2vh auto; }
     .btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.18); text-decoration:none; }
@@ -25,6 +25,7 @@
     .toc a:hover { text-decoration:underline; }
     .note { font-size:.95rem; opacity:.95; }
     code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
+    ol.refs { list-style: none; margin: 0; padding-left: 0; }
   </style>
   <!-- MathJax for LaTeX-style math -->
   <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -62,7 +63,7 @@
     <h2>Origins & history</h2>
     <p class="muted">
       <strong>SPHINCS+</strong> is a stateless, hash-based signature framework that improves on SPHINCS (EUROCRYPT 2015) by
-      reducing signature sizes and clarifying security. In <b>August 2024</b>, NIST standardized SPHINCS+ as
+      reducing signature sizes and clarifying security. In <b>August 2024</b>, NIST standardised SPHINCS+ as
       <em>FIPS&nbsp;205: Stateless Hash-Based Digital Signature Standard (SLH-DSA)</em>, with SHA-2- and SHAKE-based
       families and “small” (s) vs “fast” (f) trade-offs; there are twelve approved parameter sets. SPHINCS+ remains
       attractive as it relies only on the preimage/collision resistance of standard hash functions. [1][5][9]
@@ -87,7 +88,7 @@
       Let \(n\in\{16,24,32\}\) be the security parameter (bytes). SPHINCS+ works over tweakable hash families
       \(F,H,T\) built from either SHA-256 or SHAKE-256 and an <em>address</em> (ADR) that domain-separates calls.
       A deterministic/hedged randomness value \(R\) is derived per signature; the message representative and addressing
-      indices come from a randomized hash \(\mathrm{H}_{\text{msg}}\).
+      indices come from a randomised hash \(\mathrm{H}_{\text{msg}}\).
     </p>
     <p class="mono">
       \( R = \mathrm{PRF}_{\mathsf{sk\_prf}}(\mathrm{opt\_rand}, M),\quad (\text{digest},\ \text{idx\_tree},\ \text{idx\_leaf}) = \mathrm{H}_{\text{msg}}(R, \mathrm{pk}, M). \)
@@ -117,7 +118,7 @@
   <div class="island" id="params">
     <h2>Parameter sets (SLH-DSA families)</h2>
     <p class="muted note">
-      Twelve standardized sets: {SHA2, SHAKE} × {128, 192, 256} × {s (small), f (fast)}.
+      Twelve standardised sets: {SHA2, SHAKE} × {128, 192, 256} × {s (small), f (fast)}.
       Typical internal parameters include \(n\) (bytes), total tree height \(h\), layers \(d\), Winternitz \(w\),
       FORS trees \(k\) of height \(a\). Keys are compact; signatures are large (trade-offs vary by “s/f”). [1][3][7][11]
     </p>
@@ -189,7 +190,7 @@
       <li><b>Assumptions:</b> security reduces to standard hash-function properties (preimage, second-preimage, collision resistance); no lattice/code assumptions. [3][4]</li>
       <li><b>Stateless:</b> no per-device state to manage (unlike XMSS/LMS), avoiding reuse risks at scale. [3]</li>
       <li><b>Domain separation:</b> FIPS 205 clarifies message-vs-prehash modes with explicit domain-separated inputs. [5]</li>
-      <li><b>Categories:</b> 128/192/256-bit families target NIST levels 1/3/5; “s” minimizes signature size, “f” speeds signing. [1][3]</li>
+      <li><b>Categories:</b> 128/192/256-bit families target NIST levels 1/3/5; “s” minimises signature size, “f” speeds signing. [1][3]</li>
     </ul>
   </div>
 

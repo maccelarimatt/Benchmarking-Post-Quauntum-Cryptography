@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{{ label }} - Details</title>
   <style>
-    :root { --island-bg: rgba(128,128,128,.7); --island-radius:1.5rem; --text:#fff; --accent:#ff4d4f; }
+    :root { --island-bg: rgba(128,128,128,.9); --island-radius:1.5rem; --text:#fff; --accent:#ff4d4f; }
     body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
     .island { background:var(--island-bg); border-radius:var(--island-radius); padding:2rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 2vh auto; }
     .btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.18); text-decoration:none; }
@@ -25,6 +25,7 @@
     .toc a:hover { text-decoration:underline; }
     .note { font-size:.95rem; opacity:.95; }
     code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
+    ol.refs { list-style: none; margin: 0; padding-left: 0; }
   </style>
   <!-- MathJax for LaTeX-style math -->
   <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -61,7 +62,7 @@
   <div class="island" id="history">
     <h2>Origins & history</h2>
     <p class="muted">
-      <strong>XMSS</strong> is a stateful, hash-based signature standardized by the IETF as <em>RFC&nbsp;8391</em> (2018), specifying WOTS+, single-tree XMSS, and multi-tree <strong>XMSS<sup>MT</sup></strong>. NIST later profiled XMSS/XMSS<sup>MT</sup> for federal use in <em>SP&nbsp;800-208</em> (2020), approving specific parameter sets with SHA-256 or SHAKE256 (192- or 256-bit outputs) and emphasizing controlled deployment scenarios where state can be safely maintained. </p>
+      <strong>XMSS</strong> is a stateful, hash-based signature standardised by the IETF as <em>RFC&nbsp;8391</em> (2018), specifying WOTS+, single-tree XMSS, and multi-tree <strong>XMSS<sup>MT</sup></strong>. NIST later profiled XMSS/XMSS<sup>MT</sup> for federal use in <em>SP&nbsp;800-208</em> (2020), approving specific parameter sets with SHA-256 or SHAKE256 (192- or 256-bit outputs) and emphasising controlled deployment scenarios where state can be safely maintained. </p>
   </div>
 
   <div class="island" id="overview">
@@ -88,7 +89,7 @@
       \( X_{i+1} \leftarrow F_{k_i}\!\big(X_i \oplus \mathrm{BM}_i\big) \), &nbsp;where \(k_i,\mathrm{BM}_i \gets \mathrm{PRF}(\text{SEED},\text{ADRS}) \).
     </p>
     <p class="muted">
-      XMSS adds keyed, randomized hashing \(H\) (with two bitmasks) and a randomized message hash \(H_{\text{msg}}\). Leaves are computed by L-tree compression of the WOTS+ public key; internal nodes use randomized hashing on their children. The public key is \((\text{root},\text{SEED})\).
+      XMSS adds keyed, randomised hashing \(H\) (with two bitmasks) and a randomised message hash \(H_{\text{msg}}\). Leaves are computed by L-tree compression of the WOTS+ public key; internal nodes use randomised hashing on their children. The public key is \((\text{root},\text{SEED})\).
     </p>
     <p class="mono">
       \(\mathrm{RAND\_HASH}(L,R,\mathrm{SEED},\mathrm{ADRS}) = H\big(\mathrm{KEY},(L\oplus \mathrm{BM}_0)\,\|\, (R\oplus \mathrm{BM}_1)\big)\),
@@ -143,14 +144,14 @@
     <ol class="muted">
       <li>Sample \(\mathsf{SEED}\in\{0,1\}^{8n}\) and derive ADRS-tweaked keys/bitmasks via \(\mathrm{PRF}(\mathsf{SEED}, \mathrm{ADRS})\).</li>
       <li>For each leaf index \(i\in\{0,\dots,2^h-1\}\), derive a WOTS+ key pair; compress its public key with an L-tree to obtain a leaf value.</li>
-      <li>Hash leaves pairwise with <em>randomized</em> \(H\) to compute internal nodes up to the root \(\mathsf{root}\).</li>
+      <li>Hash leaves pairwise with <em>randomised</em> \(H\) to compute internal nodes up to the root \(\mathsf{root}\).</li>
       <li>Public key: \((\mathsf{root},\mathsf{SEED})\). Private key stores all WOTS+ sks (or derives them pseudorandomly), \(\mathsf{idx}\) (next unused leaf), \(\mathsf{SK\_PRF}\), \(\mathsf{SEED}\), \(\mathsf{root}\).</li>
     </ol>
 
     <h3>Signing (XMSS)</h3>
     <ol class="muted">
       <li>Set index \( \mathsf{idx\_sig}\leftarrow\mathsf{idx}\); compute per-signature randomness \( r \leftarrow \mathrm{PRF}(\mathsf{SK\_PRF}, \mathrm{ADRS}) \).</li>
-      <li>Compute randomized digest \( M' = H_{\text{msg}}( r \,\|\, \mathsf{root} \,\|\, \mathrm{toByte}(\mathsf{idx\_sig}, n),\, M ) \).</li>
+      <li>Compute randomised digest \( M' = H_{\text{msg}}( r \,\|\, \mathsf{root} \,\|\, \mathrm{toByte}(\mathsf{idx\_sig}, n),\, M ) \).</li>
       <li>Produce WOTS+ signature \( \sigma_{\text{WOTS}} \) on \( M' \) with the \( \mathsf{idx\_sig} \) key.</li>
       <li>Include the authentication path from that leaf to the root.</li>
       <li>Output \( \sigma = (\mathsf{idx\_sig}, r, \sigma_{\text{WOTS}}, \text{AuthPath}) \).</li>
@@ -171,7 +172,7 @@
     <h2>Security at a glance</h2>
     <ul class="muted">
       <li><b>Assumptions:</b> preimage/second-preimage and collision resistance of the underlying hash; security proofs provided in RFC&nbsp;8391 and profiled by NIST.</li>
-      <li><b>Randomized hashing & domain separation:</b> keyed \(H\) with two bitmasks, and \(H_{\text{msg}}\) with \((r,\mathsf{root},\mathsf{idx\_sig})\) to thwart multi-target attacks and ensure position-dependent hashing.</li>
+      <li><b>Randomised hashing & domain separation:</b> keyed \(H\) with two bitmasks, and \(H_{\text{msg}}\) with \((r,\mathsf{root},\mathsf{idx\_sig})\) to thwart multi-target attacks and ensure position-dependent hashing.</li>
       <li><b>Statefulness:</b> each WOTS+ key must be used once. NIST requires storing the incremented leaf index in non-volatile memory <em>before</em> releasing a signature; implementations should run in controlled environments (e.g., HSMs).</li>
       <li><b>Capacity:</b> XMSS signs up to \(2^h\) messages per key; XMSS<sup>MT</sup> increases capacity via \(d\) layers.</li>
     </ul>
@@ -195,7 +196,7 @@
         <ul class="muted">
           <li>Conservative hash-only assumptions; quantum-resistant by design.</li>
           <li>Smaller signatures than SPHINCS+ at comparable security (kB vs multi-kB/10s-kB).</li>
-          <li>Mature standardization: IETF RFC and NIST guidance with concrete, interoperable parameter sets.</li>
+          <li>Mature standardisation: IETF RFC and NIST guidance with concrete, interoperable parameter sets.</li>
         </ul>
       </div>
       <div>

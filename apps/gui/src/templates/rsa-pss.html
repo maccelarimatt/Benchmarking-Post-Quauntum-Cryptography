@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{{ label }} - Details</title>
   <style>
-    :root { --island-bg: rgba(128,128,128,.7); --island-radius:1.5rem; --text:#fff; --accent:#ff4d4f; }
+    :root { --island-bg: rgba(128,128,128,.9); --island-radius:1.5rem; --text:#fff; --accent:#ff4d4f; }
     body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
     .island { background:var(--island-bg); border-radius:var(--island-radius); padding:2rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 2vh auto; }
     .btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.18); text-decoration:none; }
@@ -26,6 +26,7 @@
     .note { font-size:.95rem; opacity:.95; }
     code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
     .pill { display:inline-block; padding:.2rem .6rem; border-radius:999px; background:rgba(255,255,255,.18); margin-right:.35rem; font-size:.85rem;}
+    ol.refs { list-style: none; margin: 0; padding-left: 0; }
   </style>
   <!-- MathJax for LaTeX-style math -->
   <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -63,14 +64,14 @@
   <div class="island" id="history">
     <h2>Origins & history</h2>
     <p class="muted">
-      RSA (1977) provides a trapdoor permutation \(x\mapsto x^e \bmod n\). In 1996, Bellare and Rogaway proposed the <em>PSS</em> paradigm (“Exact Security of Digital Signatures”) giving tight ROM proofs for RSA signatures. PSS was adopted into PKCS #1 v2 (later v2.2 / RFC 8017), and NIST standardized its use within the Digital Signature Standard (FIPS 186-5). Today, RSA-PSS is the recommended RSA signature scheme in TLS, X.509, and many PKI profiles.
+      RSA (1977) provides a trapdoor permutation \(x\mapsto x^e \bmod n\). In 1996, Bellare and Rogaway proposed the <em>PSS</em> paradigm (“Exact Security of Digital Signatures”) giving tight ROM proofs for RSA signatures. PSS was adopted into PKCS #1 v2 (later v2.2 / RFC 8017), and NIST standardised its use within the Digital Signature Standard (FIPS 186-5). Today, RSA-PSS is the recommended RSA signature scheme in TLS, X.509, and many PKI profiles.
     </p>
   </div>
 
   <div class="island" id="overview">
     <h2>Design overview</h2>
     <p class="muted">
-      PSS signs a hash of the message with a randomized <em>encoding</em> (EMSA-PSS) that mixes a per-signature salt via MGF1 into a Feistel-like structure. The encoded message <span class="mono">EM</span> is then turned into an integer and exponentiated with the private exponent \(d\). Verification recomputes the encoding from the message and checks it against the RSA “message representative” recovered with the public exponent \(e\).
+      PSS signs a hash of the message with a randomised <em>encoding</em> (EMSA-PSS) that mixes a per-signature salt via MGF1 into a Feistel-like structure. The encoded message <span class="mono">EM</span> is then turned into an integer and exponentiated with the private exponent \(d\). Verification recomputes the encoding from the message and checks it against the RSA “message representative” recovered with the public exponent \(e\).
     </p>
   </div>
 
@@ -183,7 +184,7 @@
       <div>
         <h3>Pros</h3>
         <ul class="muted">
-          <li>Provably secure (ROM), widely standardized (RFC 8017, FIPS 186-5).</li>
+          <li>Provably secure (ROM), widely standardised (RFC 8017, FIPS 186-5).</li>
           <li>Interoperable and well-supported in TLS, X.509, JOSE, SSH, etc.</li>
           <li>Flexible: hashes and salt lengths tune performance/security.</li>
         </ul>

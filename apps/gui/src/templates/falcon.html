@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{{ label }} - Details</title>
   <style>
-    :root { --island-bg: rgba(128,128,128,.7); --island-radius:1.5rem; --text:#fff; --accent:#ff4d4f; }
+    :root { --island-bg: rgba(128,128,128,.9); --island-radius:1.5rem; --text:#fff; --accent:#ff4d4f; }
     body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
     .island { background:var(--island-bg); border-radius:var(--island-radius); padding:2rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 2vh auto; }
     .btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.18); text-decoration:none; }
@@ -25,6 +25,7 @@
     .toc a:hover { text-decoration:underline; }
     .note { font-size:.95rem; opacity:.95; }
     code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
+    ol.refs { list-style: none; margin: 0; padding-left: 0; }
   </style>
   <!-- MathJax for LaTeX-style math -->
   <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -61,7 +62,7 @@
   <div class="island" id="history">
     <h2>Origins & history</h2>
     <p class="muted">
-      <strong>Falcon</strong> (Fast Fourier lattice-based compact signatures over NTRU) instantiates the GPV hash-and-sign framework over NTRU lattices, using an efficient trapdoor sampler called <em>fast Fourier sampling</em>. Falcon was selected by NIST in <b>July 2022</b> as a post-quantum signature candidate to be standardized alongside Dilithium and SPHINCS+. NIST announced that the Falcon-based standard will appear as <em>FIPS&nbsp;206</em> under the name <em>FN-DSA</em>, with draft publication following the August&nbsp;13, 2024 finalization of FIPS&nbsp;203/204/205, and reiterated this plan in March&nbsp;2025. [1][2]
+      <strong>Falcon</strong> (Fast Fourier lattice-based compact signatures over NTRU) instantiates the GPV hash-and-sign framework over NTRU lattices, using an efficient trapdoor sampler called <em>fast Fourier sampling</em>. Falcon was selected by NIST in <b>July 2022</b> as a post-quantum signature candidate to be standardised alongside Dilithium and SPHINCS+. NIST announced that the Falcon-based standard will appear as <em>FIPS&nbsp;206</em> under the name <em>FN-DSA</em>, with draft publication following the August&nbsp;13, 2024 finalisation of FIPS&nbsp;203/204/205, and reiterated this plan in March&nbsp;2025. [1][2]
     </p>
   </div>
 
@@ -166,7 +167,7 @@
       <li><b>Arithmetic:</b> Polynomial ops in \(R_q\); practical code often uses an NTT for mod-\(q\) products and floating-point FFT in the sampler. [5][12]</li>
       <li><b>Sampler:</b> ffLDL tree (size ≈90&nbsp;kB at \(n{=}1024\)) rebuilt from the secret on load; Gaussian parameters tuned to meet norm bounds and leakage goals. [3]</li>
       <li><b>Encodings:</b> Compact variable-length signatures; optional fixed-size “padded” encodings for constant-time processing. [8]</li>
-      <li><b>Constant-time:</b> Reference/optimized code paths exist for integer-only, FPU, and AVX2; CT verification optional. [8]</li>
+      <li><b>Constant-time:</b> Reference/optimised code paths exist for integer-only, FPU, and AVX2; CT verification optional. [8]</li>
     </ul>
   </div>
 
@@ -185,7 +186,7 @@
         <h3>Cons</h3>
         <ul class="muted">
           <li>Floating-point sampling is subtle; careful constant-time and precision management required. [5][10]</li>
-          <li>Only two standardized parameter sizes (no “middle” level); 1024 roughly doubles sizes vs 512. [7][13]</li>
+          <li>Only two standardised parameter sizes (no “middle” level); 1024 roughly doubles sizes vs 512. [7][13]</li>
           <li>Side-channel resistance and fault-attack hardening need particular attention. [11]</li>
         </ul>
       </div>
