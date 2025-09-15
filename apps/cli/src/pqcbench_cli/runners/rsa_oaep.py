@@ -2,6 +2,7 @@
 from __future__ import annotations
 import typer, json
 from .common import run_kem, export_json, export_trace_kem
+from .common import _build_export_payload
 
 app = typer.Typer(add_completion=False)
 
@@ -11,22 +12,36 @@ def main(
     export: str = "results/rsa_oaep_summary.json",
     export_raw: str = "",
     print_json: bool = True,
+    # Security estimator flags
+    sec_adv: bool = typer.Option(False, help="Enable advanced lattice estimator when available"),
+    sec_rsa_phys: bool = typer.Option(False, help="Include surface-code physical overhead (RSA only)"),
+    sec_phys_error_rate: float = typer.Option(1e-3, help="Physical error rate per operation"),
+    sec_cycle_time_ns: float = typer.Option(1000.0, help="Surface code cycle time (ns)"),
+    sec_fail_prob: float = typer.Option(1e-2, help="Target total failure probability for the run"),
+    sec_profile: str = typer.Option("floor", help="Security profile: floor|classical|quantum"),
+    quantum_arch: str = typer.Option("", help="Quantum arch preset: superconducting-2025|iontrap-2025"),
+    rsa_model: str = typer.Option("ge2019", help="RSA resource model: ge2019"),
 ):
     """
     Run rsa_oaep KEM micro-bench (keygen/encapsulate/decapsulate).
     """
     summary = run_kem("rsa-oaep", runs)
-    export_json(summary, export)
+    _opts = {
+        "lattice_use_estimator": bool(sec_adv),
+        "lattice_profile": sec_profile,
+        "rsa_surface": bool(sec_rsa_phys),
+        "rsa_model": rsa_model,
+        "phys_error_rate": float(sec_phys_error_rate),
+        "cycle_time_s": float(sec_cycle_time_ns) * 1e-9,
+        "target_total_fail_prob": float(sec_fail_prob),
+        "quantum_arch": quantum_arch or None,
+    }
+    export_json(summary, export, security_opts=_opts)
     if export_raw:
         export_trace_kem("rsa-oaep", export_raw)
     if print_json:
         import json
-        typer.echo(json.dumps({
-            "algo": summary.algo,
-            "kind": summary.kind,
-            "ops": {k: vars(v) for k,v in summary.ops.items()},
-            "meta": summary.meta
-        }, indent=2))
+        typer.echo(json.dumps(_build_export_payload(summary, security_opts=_opts), indent=2))
 
 def app_main():
     app()

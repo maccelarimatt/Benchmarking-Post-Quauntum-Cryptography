@@ -140,7 +140,38 @@ def measure(fn: Callable[[], None], runs: int) -> OpStats:
             series=times,
         )
 
-def export_json(summary: AlgoSummary, export_path: str | None) -> None:
+def _build_export_payload(summary: AlgoSummary, *, security_opts: dict | None = None) -> dict:
+    """Construct the JSON payload including security estimates."""
+    # Attach security estimates (best-effort; never fail export on estimator issues)
+    try:
+        from pqcbench.security_estimator import estimate_for_summary, EstimatorOptions  # type: ignore
+        opts = None
+        if security_opts is not None:
+            opts = EstimatorOptions(
+                lattice_use_estimator=bool(security_opts.get("lattice_use_estimator", False)),
+                lattice_model=security_opts.get("lattice_model"),
+                lattice_profile=security_opts.get("lattice_profile"),
+                rsa_surface=bool(security_opts.get("rsa_surface", False)),
+                rsa_model=security_opts.get("rsa_model"),
+                quantum_arch=security_opts.get("quantum_arch"),
+                phys_error_rate=float(security_opts.get("phys_error_rate", 1e-3)),
+                cycle_time_s=float(security_opts.get("cycle_time_s", 1e-6)),
+                target_total_fail_prob=float(security_opts.get("target_total_fail_prob", 1e-2)),
+            )
+        security = estimate_for_summary(summary, options=opts)
+    except Exception as _e:
+        security = {"error": "security estimator unavailable"}
+
+    return {
+        "algo": summary.algo,
+        "kind": summary.kind,
+        "ops": {k: asdict(v) for k, v in summary.ops.items()},
+        "meta": summary.meta,
+        "security": security,
+    }
+
+
+def export_json(summary: AlgoSummary, export_path: str | None, *, security_opts: dict | None = None) -> None:
     if not export_path:
         return
     # Normalize Windows-style separators on POSIX if users pass e.g. "results\file.json"
@@ -152,12 +183,7 @@ def export_json(summary: AlgoSummary, export_path: str | None) -> None:
         path = _repo_root() / path
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
-        json.dump({
-            "algo": summary.algo,
-            "kind": summary.kind,
-            "ops": {k: asdict(v) for k,v in summary.ops.items()},
-            "meta": summary.meta
-        }, f, indent=2)
+        json.dump(_build_export_payload(summary, security_opts=security_opts), f, indent=2)
 
 def _export_json_blob(data: dict, export_path: str | None) -> None:
     if not export_path:
@@ -215,13 +241,15 @@ def run_kem(name: str, runs: int) -> AlgoSummary:
         _ = cls().decapsulate(sk, ct)
     ops["decapsulate"] = measure(do_decapsulate, runs)
     # meta (sizes are placeholders if adapters are not real yet)
-    pk, sk = cls().keygen()
+    instance = cls()
+    pk, sk = instance.keygen()
     ct, ss = cls().encapsulate(pk)
     meta = {
         "public_key_len": len(pk) if isinstance(pk, (bytes, bytearray)) else None,
         "secret_key_len": len(sk) if isinstance(sk, (bytes, bytearray)) else None,
         "ciphertext_len": len(ct) if isinstance(ct, (bytes, bytearray)) else None,
         "shared_secret_len": len(ss) if isinstance(ss, (bytes, bytearray)) else None,
+        "mechanism": getattr(instance, "mech", None),
     }
     return AlgoSummary(algo=name, kind="KEM", ops=ops, meta=meta)
 
@@ -248,13 +276,15 @@ def run_sig(name: str, runs: int, message_size: int) -> AlgoSummary:
         sig = cls().sign(sk, msg)
         _ = cls().verify(pk, msg, sig)
     ops["verify"] = measure(do_verify, runs)
-    pk, sk = cls().keygen()
-    sig = cls().sign(sk, msg)
+    instance = cls()
+    pk, sk = instance.keygen()
+    sig = instance.sign(sk, msg)
     meta = {
         "public_key_len": len(pk) if isinstance(pk, (bytes, bytearray)) else None,
         "secret_key_len": len(sk) if isinstance(sk, (bytes, bytearray)) else None,
         "signature_len": len(sig) if isinstance(sig, (bytes, bytearray)) else None,
-        "message_size": message_size
+        "message_size": message_size,
+        "mechanism": getattr(instance, "mech", None),
     }
     return AlgoSummary(algo=name, kind="SIG", ops=ops, meta=meta)
 

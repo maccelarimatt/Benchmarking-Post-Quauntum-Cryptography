@@ -151,3 +151,74 @@ but `PQCBENCH_*` takes precedence when both are set.
 - Memory footprint: peak RSS delta per run (`mem_series_kb`) with summary fields
   `mem_mean_kb`, `mem_min_kb`, `mem_max_kb` when `psutil` is available. If `psutil`
   is not installed, these fields are omitted or null.
+
+## Security estimator options
+
+All runners can emit a per-algorithm security block in both the terminal output and JSON files. Advanced options are available via flags:
+
+- `--sec-adv`: enable optional lattice estimator integration when available; otherwise falls back to NIST category floors.
+- `--sec-rsa-phys`: include RSA surface-code overhead (physical qubits and runtime) derived from logical resources; ignored for non-RSA algos.
+- `--sec-phys-error-rate`: physical error rate per operation for surface-code modeling (default `1e-3`).
+- `--sec-cycle-time-ns`: surface-code cycle time in nanoseconds (default `1000`, i.e., 1 µs).
+- `--sec-fail-prob`: acceptable total run failure probability budget (default `1e-2`).
+
+Examples (all flags enabled)
+
+```bash
+# KEMs
+run-kyber        --runs 50 --export results/kyber_sec.json \
+  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+
+run-hqc          --runs 50 --export results/hqc_sec.json \
+  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+
+run-rsa-oaep     --runs 50 --export results/rsa_oaep_sec.json \
+  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+
+# Signatures
+run-dilithium    --runs 50 --message-size 4096 --export results/dilithium_sec.json \
+  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+
+run-falcon       --runs 50 --message-size 4096 --export results/falcon_sec.json \
+  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+
+run-sphincsplus  --runs 20 --message-size 4096 --export results/sphincsplus_sec.json \
+  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+
+run-xmssmt       --runs 10 --message-size 2048 --export results/xmssmt_sec.json \
+  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+
+run-rsa-pss      --runs 50 --message-size 2048 --export results/rsa_pss_sec.json \
+  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+
+run-mayo         --runs 20 --message-size 4096 --export results/mayo_sec.json \
+  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+```
+
+Notes:
+- RSA commands benefit from `--sec-rsa-phys` by adding surface-code physical resource estimates. For non‑RSA algorithms the flag is ignored.
+- Enabling `--sec-adv` attempts to use an external lattice estimator if present; otherwise the result clearly states that the floor model was used.
+
+Profiles and architectures
+--------------------------
+
+- `--sec-profile floor|classical|quantum` selects the lattice modeling level (defaults to `floor`).
+- `--quantum-arch superconducting-2025|iontrap-2025` picks surface-code presets (overrides error rate and cycle time). Use with `--sec-rsa-phys`.
+- `--rsa-model ge2019` selects the RSA resource model constants (more models can be added).
+
+Merging results to CSV
+----------------------
+
+Collect all JSON files in `results/` into a single CSV with key performance and security columns:
+
+```bash
+python benchmarks/merge_results.py
+```
+
+Writes `results/security_metrics.csv`.
+
+Side-channel checks (optional)
+------------------------------
+
+See `tools/sidechannel/README.md` for a skeleton dudect setup you can adopt to
+produce leakage t-scores and merge them into your results.
