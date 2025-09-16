@@ -140,8 +140,174 @@ def measure(fn: Callable[[], None], runs: int) -> OpStats:
             series=times,
         )
 
+def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str, Any]:
+    """Create a standardized, compact security block from estimator output.
+
+    The goal is to remove repetition and provide a uniform shape across algorithms
+    while preserving important details. Family-specific extras are grouped under
+    'parameters', 'resources', and 'estimates'.
+    """
+    extras = dict(sec.get("extras") or {})
+    algo = summary.algo
+    mechanism = sec.get("mechanism") or summary.meta.get("mechanism")
+
+    # Infer family
+    fam = None
+    if isinstance(extras.get("params"), dict):
+        fam = extras["params"].get("family")
+    if not fam:
+        fam_map = {
+            "rsa-oaep": "RSA",
+            "rsa-pss": "RSA",
+            "kyber": "ML-KEM",
+            "dilithium": "ML-DSA",
+            "falcon": "Falcon",
+            "hqc": "HQC",
+            "sphincsplus": "SPHINCS+",
+            "sphincs+": "SPHINCS+",
+            "xmssmt": "XMSSMT",
+            "mayo": "MAYO",
+        }
+        fam = fam_map.get(algo)
+
+    # Common header
+    out: Dict[str, Any] = {
+        "mechanism": mechanism,
+        "family": fam,
+        "category_floor": extras.get("category_floor"),
+        "nist_category": extras.get("nist_category"),
+        "classical_bits": sec.get("classical_bits"),
+        "quantum_bits": sec.get("quantum_bits"),
+        "shor_breakable": bool(sec.get("shor_breakable")),
+        "notes": sec.get("notes"),
+    }
+
+    # Estimator info (if applicable)
+    est_name = extras.get("estimator_model")
+    est_profile = extras.get("lattice_profile")
+    if est_name or est_profile:
+        out["estimator"] = {
+            "name": est_name,
+            "profile": est_profile,
+            "available": bool(est_name) and not str(est_name).startswith("unavailable"),
+        }
+
+    # Parameters per family (best-effort)
+    params: Dict[str, Any] | None = None
+    if algo == "kyber":
+        params = (extras.get("mlkem", {}) or {}).get("kyber_params")
+    elif algo == "dilithium":
+        params = (extras.get("mldsa", {}) or {}).get("dilithium_params")
+    elif algo == "falcon":
+        params = (extras.get("falcon", {}) or {}).get("params")
+    elif algo in ("sphincsplus", "sphincs+"):
+        sx = (extras.get("sphincs") or {})
+        params = {
+            "hash_output_bits": sx.get("hash_output_bits"),
+            "variant": sx.get("variant"),
+            "family": sx.get("family"),
+        }
+    elif algo == "xmssmt":
+        xx = (extras.get("xmss") or {})
+        params = {
+            "hash_output_bits": xx.get("hash_output_bits"),
+            "tree_height": (xx.get("structure") or {}).get("tree_height"),
+            "layers": (xx.get("structure") or {}).get("layers"),
+        }
+    elif algo == "hqc":
+        # Parameters for HQC are not currently stored in params.py by default
+        params = None
+    elif algo in ("rsa-oaep", "rsa-pss"):
+        params = {"modulus_bits": extras.get("modulus_bits")}
+    elif algo == "mayo":
+        params = (extras.get("mayo", {}) or {}).get("params")
+    # Fallback to ParamHint if nothing else
+    if not params and isinstance(extras.get("params"), dict):
+        ph = extras["params"]
+        params = {k: ph.get(k) for k in ("mechanism", "notes")}
+        # Include any extras provided in ParamHint
+        if isinstance(ph.get("extras"), dict):
+            params.update(ph["extras"])  # type: ignore
+    if params:
+        out["parameters"] = params
+
+    # Resources (RSA-specific)
+    if algo in ("rsa-oaep", "rsa-pss"):
+        res = {k: extras.get(k) for k in ("logical_qubits", "toffoli", "t_count", "meas_depth", "depth_form", "t_per_toffoli", "rsa_model")}
+        if extras.get("surface"):
+            res["surface"] = extras.get("surface")
+        out["resources"] = res
+
+    # Estimates (curated or algorithm-specific)
+    estimates: Dict[str, Any] = {}
+    # Lattice curated
+    if algo == "kyber":
+        ce = (extras.get("mlkem", {}) or {}).get("curated_estimates")
+        if ce:
+            estimates["curated"] = ce
+    elif algo == "dilithium":
+        ce = (extras.get("mldsa", {}) or {}).get("curated_estimates")
+        if ce:
+            estimates["curated"] = ce
+        consts = (extras.get("mldsa", {}) or {}).get("core_svp_constants")
+        if consts:
+            out.setdefault("assumptions", {})["core_svp_constants"] = consts
+    elif algo == "falcon":
+        ce = (extras.get("falcon", {}) or {}).get("curated_estimates")
+        if ce:
+            estimates["curated"] = ce
+        consts = (extras.get("falcon", {}) or {}).get("core_svp_constants")
+        if consts:
+            out.setdefault("assumptions", {})["core_svp_constants"] = consts
+    elif algo in ("sphincsplus", "sphincs+"):
+        sx = extras.get("sphincs") or {}
+        if sx.get("curated_estimates"):
+            estimates["curated"] = sx.get("curated_estimates")
+        if sx.get("hash_costs"):
+            estimates["hash_costs"] = sx.get("hash_costs")
+    elif algo == "xmssmt":
+        xx = extras.get("xmss") or {}
+        if xx.get("hash_costs"):
+            estimates["hash_costs"] = xx.get("hash_costs")
+    elif algo == "hqc":
+        # Coarse ISD exponents (if present)
+        keys = [
+            "isd_model",
+            "isd_time_bits_classical",
+            "isd_mem_bits_classical",
+            "isd_time_bits_quantum_grover",
+            "isd_time_bits_quantum_conservative",
+        ]
+        isd = {k: extras.get(k) for k in keys if k in extras}
+        if isd:
+            estimates["hqc_isd"] = isd
+    elif algo == "mayo":
+        my = extras.get("mayo") or {}
+        if my.get("curated_estimates"):
+            estimates["curated"] = my.get("curated_estimates")
+        if my.get("checks"):
+            estimates["checks"] = my.get("checks")
+
+    # Lattice estimator details
+    if "classical_sieve" in extras or "qram_assisted" in extras or "beta" in extras:
+        lat = {}
+        if isinstance(extras.get("classical_sieve"), dict):
+            lat["classical_sieve_bits"] = extras["classical_sieve"].get("bits")
+        if isinstance(extras.get("qram_assisted"), dict):
+            lat["qram_sieve_bits"] = extras["qram_assisted"].get("bits")
+        if extras.get("beta") is not None:
+            lat["beta"] = extras.get("beta")
+        if lat:
+            estimates["lattice"] = lat
+
+    if estimates:
+        out["estimates"] = estimates
+
+    return out
+
+
 def _build_export_payload(summary: AlgoSummary, *, security_opts: dict | None = None) -> dict:
-    """Construct the JSON payload including security estimates."""
+    """Construct the JSON payload including security estimates, standardized."""
     # Attach security estimates (best-effort; never fail export on estimator issues)
     try:
         from pqcbench.security_estimator import estimate_for_summary, EstimatorOptions  # type: ignore
@@ -158,16 +324,18 @@ def _build_export_payload(summary: AlgoSummary, *, security_opts: dict | None = 
                 cycle_time_s=float(security_opts.get("cycle_time_s", 1e-6)),
                 target_total_fail_prob=float(security_opts.get("target_total_fail_prob", 1e-2)),
             )
-        security = estimate_for_summary(summary, options=opts)
+        security_raw = estimate_for_summary(summary, options=opts)
+        security_std = _standardize_security(summary, security_raw)
     except Exception as _e:
-        security = {"error": "security estimator unavailable"}
+        security_raw = {"error": "security estimator unavailable"}
+        security_std = security_raw
 
     return {
         "algo": summary.algo,
         "kind": summary.kind,
         "ops": {k: asdict(v) for k, v in summary.ops.items()},
         "meta": summary.meta,
-        "security": security,
+        "security": security_std,
     }
 
 

@@ -69,14 +69,26 @@ _add(["Falcon-1024"], family="Falcon", category_floor=256,
      notes="n=1024; q=12289; NTRU lattice",
      extras={"n": 1024, "q": 12289})
 
-# HQC (code-based)
-_add(["HQC-128"], family="HQC", category_floor=128)
-_add(["HQC-192"], family="HQC", category_floor=192)
-_add(["HQC-256"], family="HQC", category_floor=256)
-# Some liboqs names carry CCA2 suffix; map them to the same floors
-_add(["HQC-128-1-CCA2"], family="HQC", category_floor=128)
-_add(["HQC-192-1-CCA2"], family="HQC", category_floor=192)
-_add(["HQC-256-1-CCA2"], family="HQC", category_floor=256)
+# HQC (code-based) — include structural parameters from PQClean
+_add(["HQC-128"], family="HQC", category_floor=128,
+     notes="n=17669; RS n1=46,k=16,delta=15; RM n2=384; omega=66; omega_e=75; omega_r=75",
+     extras={"n": 17669, "k": 16, "w": 66, "n1": 46, "n2": 384, "omega": 66, "omega_e": 75, "omega_r": 75, "delta": 15})
+_add(["HQC-192"], family="HQC", category_floor=192,
+     notes="n=35851; RS n1=56,k=24,delta=16; RM n2=640; omega=100; omega_e=114; omega_r=114",
+     extras={"n": 35851, "k": 24, "w": 100, "n1": 56, "n2": 640, "omega": 100, "omega_e": 114, "omega_r": 114, "delta": 16})
+_add(["HQC-256"], family="HQC", category_floor=256,
+     notes="n=57637; RS n1=90,k=32,delta=29; RM n2=640; omega=131; omega_e=149; omega_r=149",
+     extras={"n": 57637, "k": 32, "w": 131, "n1": 90, "n2": 640, "omega": 131, "omega_e": 149, "omega_r": 149, "delta": 29})
+# Some liboqs names carry CCA2 suffix; map them to the same floors (reuse closest set)
+_add(["HQC-128-1-CCA2"], family="HQC", category_floor=128,
+     notes="alias of HQC-128",
+     extras={"n": 17669, "k": 16, "w": 66, "n1": 46, "n2": 384, "omega": 66, "omega_e": 75, "omega_r": 75, "delta": 15})
+_add(["HQC-192-1-CCA2"], family="HQC", category_floor=192,
+     notes="alias of HQC-192",
+     extras={"n": 35851, "k": 24, "w": 100, "n1": 56, "n2": 640, "omega": 100, "omega_e": 114, "omega_r": 114, "delta": 16})
+_add(["HQC-256-1-CCA2"], family="HQC", category_floor=256,
+     notes="alias of HQC-256",
+     extras={"n": 57637, "k": 32, "w": 131, "n1": 90, "n2": 640, "omega": 131, "omega_e": 149, "omega_r": 149, "delta": 29})
 
 # SPHINCS+ (hash-based) — many variants; approximate by suffix
 _add(["SPHINCS+-SHA2-128s-simple", "SPHINCS+-SHA2-128f-simple"], family="SPHINCS+", category_floor=128)
@@ -84,17 +96,31 @@ _add(["SPHINCS+-SHA2-192s-simple", "SPHINCS+-SHA2-192f-simple"], family="SPHINCS
 _add(["SPHINCS+-SHA2-256s-simple", "SPHINCS+-SHA2-256f-simple"], family="SPHINCS+", category_floor=256)
 _add(["SPHINCS+-SHA2-128f-robust"], family="SPHINCS+", category_floor=128)
 _add(["SPHINCS+-SHAKE-128s-simple", "SPHINCS+-SHAKE-128f-simple"], family="SPHINCS+", category_floor=128)
+_add(["SPHINCS+-SHA2-128s-robust", "SPHINCS+-SHA2-192s-robust", "SPHINCS+-SHA2-192f-robust", "SPHINCS+-SHA2-256s-robust", "SPHINCS+-SHA2-256f-robust"], family="SPHINCS+", category_floor=128)
+_add(["SPHINCS+-SHAKE-192s-simple", "SPHINCS+-SHAKE-192f-simple"], family="SPHINCS+", category_floor=192)
+_add(["SPHINCS+-SHAKE-256s-simple", "SPHINCS+-SHAKE-256f-simple"], family="SPHINCS+", category_floor=256)
 
 # XMSSMT — security target depends on the parameter set; provide common examples
 _add(["XMSSMT-SHA2_20/2_256"], family="XMSSMT", category_floor=128)
 _add(["XMSSMT-SHA2_20/4_256"], family="XMSSMT", category_floor=192)
 _add(["XMSS-SHA2_20_256"], family="XMSS", category_floor=128)
+_add(["XMSSMT-SHAKE_20/2_256"], family="XMSSMT", category_floor=128)
+_add(["XMSSMT-SHAKE_20/4_256"], family="XMSSMT", category_floor=192)
+_add(["XMSS-SHAKE_20_256"], family="XMSS", category_floor=128)
 
-# MAYO (multivariate signatures) — approximate by level name
-_add(["MAYO-1"], family="MAYO", category_floor=128, notes="multivariate (MQ) signature")
-_add(["MAYO-2"], family="MAYO", category_floor=160, notes="multivariate (MQ) signature")
-_add(["MAYO-3"], family="MAYO", category_floor=192, notes="multivariate (MQ) signature")
-_add(["MAYO-5"], family="MAYO", category_floor=256, notes="multivariate (MQ) signature")
+# MAYO (multivariate signatures) — include structural parameters from liboqs pqmayo
+_add(["MAYO-1"], family="MAYO", category_floor=128,
+     notes="n=86, m=78, o=8, v=78; k=10; q=16",
+     extras={"n": 86, "m": 78, "oil": 8, "vinegar": 78, "k": 10, "q": 16})
+_add(["MAYO-2"], family="MAYO", category_floor=160,
+     notes="n=81, m=64, o=17, v=64; k=4; q=16",
+     extras={"n": 81, "m": 64, "oil": 17, "vinegar": 64, "k": 4, "q": 16})
+_add(["MAYO-3"], family="MAYO", category_floor=192,
+     notes="n=118, m=108, o=10, v=108; k=11; q=16",
+     extras={"n": 118, "m": 108, "oil": 10, "vinegar": 108, "k": 11, "q": 16})
+_add(["MAYO-5"], family="MAYO", category_floor=256,
+     notes="n=154, m=142, o=12, v=142; k=12; q=16",
+     extras={"n": 154, "m": 142, "oil": 12, "vinegar": 142, "k": 12, "q": 16})
 
 
 def find(mechanism: Optional[str]) -> Optional[ParamHint]:
