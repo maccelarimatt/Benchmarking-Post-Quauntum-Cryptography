@@ -196,49 +196,25 @@ def _parse_security_form(form: Mapping[str, object]) -> tuple[dict[str, Any], di
 
 
 
-
-@app.route("/")
-def index():
-    _ensure_adapters_loaded()
-    algos = list(registry.list().keys())
-    kinds = _algo_kinds()
-    display_names = _display_names(algos)
-    # Home/setup screen
-    return render_template(
-        "home.html",
-        algos=algos,
-        kinds=kinds,
-        algo_info=ALGO_INFO,
-        display_names=display_names,
-        default_runs=10,
-        default_message_size=1024,
-        security_form=_security_defaults(),
-        security_profile_choices=SECURITY_PROFILE_CHOICES,
-        quantum_arch_choices=QUANTUM_ARCH_CHOICES,
-        rsa_model_choices=RSA_MODEL_CHOICES,
-    )
-
-
-@app.route("/run", methods=["POST"])
-def run():
+def _handle_run_submission(form: Mapping[str, Any]):
     _ensure_adapters_loaded()
     algos = list(registry.list().keys())
     kinds = _algo_kinds()
 
-    name = request.form.get("algo", "")
+    name = (form.get("algo", "") or "").strip()
     try:
-        runs = int(request.form.get("runs", "10"))
+        runs = int(form.get("runs", "10"))
     except Exception:
         runs = 10
     try:
-        message_size = int(request.form.get("message_size", "1024"))
+        message_size = int(form.get("message_size", "1024"))
     except Exception:
         message_size = 1024
-    security_form, security_opts = _parse_security_form(request.form)
-    export_path = request.form.get("export_path", "")
-    do_export = request.form.get("do_export") == "on"
-    do_export_trace = request.form.get("do_export_trace") == "on"
-    export_trace_path = request.form.get("export_trace_path", "")
+    security_form, security_opts = _parse_security_form(form)
+    export_path = (form.get("export_path", "") or "")
+    do_export = str(form.get("do_export") or "").lower() in ("on", "true", "1", "yes")
+    do_export_trace = str(form.get("do_export_trace") or "").lower() in ("on", "true", "1", "yes")
+    export_trace_path = (form.get("export_trace_path", "") or "")
 
     result: Dict[str, Any] | None = None
     trace_sections: list[dict[str, Any]] | None = None
@@ -255,7 +231,6 @@ def run():
             raise RuntimeError(f"Unknown or unsupported algorithm: {name}")
 
         if do_export:
-            # Default to results/<algo>.json if no path provided
             out_path = export_path.strip() or f"results/{name.replace('+','plus')}.json"
             export_json(summary, out_path, security_opts=security_opts)  # type: ignore[misc]
             last_export = out_path
@@ -267,7 +242,6 @@ def run():
             else:
                 export_trace_sig(name, message_size, raw_path)  # type: ignore[misc]
 
-        # Shape result like CLI JSON output for consistency
         if _build_export_payload is not None:
             result = _build_export_payload(summary, security_opts=security_opts)
         else:
@@ -279,7 +253,6 @@ def run():
             }
             result["security"] = {"error": "security estimator unavailable"}
 
-        # Build a single illustrative raw-data trace for display (not JSON)
         try:
             cls = registry.get(name)
             algo = cls()
@@ -310,9 +283,9 @@ def run():
                         ],
                     },
                 ]
-            else:  # SIG
+            else:
                 pk, sk = algo.keygen()
-                msg = (b"x" * int(message_size))
+                msg = b"x" * int(message_size)
                 sig = algo.sign(sk, msg)
                 ok = algo.verify(pk, msg, sig)
                 trace_sections = [
@@ -339,10 +312,10 @@ def run():
                 ]
         except Exception:
             trace_sections = None
-    except Exception as e:
-        error = str(e)
+    except Exception as exc:
+        error = str(exc)
 
-    display_names = {name: (ALGO_INFO.get(name, {}).get("label") or name.replace("-", "-").replace("sphincs+", "SPHINCS+").title()) for name in algos}
+    display_names = {algo_name: (ALGO_INFO.get(algo_name, {}).get("label") or algo_name.replace("-", "-").replace("sphincs+", "SPHINCS+").title()) for algo_name in algos}
     return render_template(
         "base.html",
         algos=algos,
@@ -359,38 +332,42 @@ def run():
         security_profile_choices=SECURITY_PROFILE_CHOICES,
         quantum_arch_choices=QUANTUM_ARCH_CHOICES,
         rsa_model_choices=RSA_MODEL_CHOICES,
+        selected_operation="single",
     )
 
 
-# Inline compare UI lives on the home page; no standalone compare form route.
-
-
-@app.route("/compare/run", methods=["POST"])
-def compare_run():
+def _handle_compare_submission(form: Mapping[str, Any]):
     _ensure_adapters_loaded()
     kinds = _algo_kinds()
     all_names = list(kinds.keys())
 
-    mode = request.form.get("mode", "pair")  # 'pair' or 'all'
-    kind = request.form.get("kind", "KEM").upper()
+    mode = str(form.get("mode", "pair") or "pair").lower()
+    kind = str(form.get("kind", "KEM") or "KEM").upper()
     try:
-        runs = int(request.form.get("runs", "10"))
+        runs = int(form.get("runs", "10"))
     except Exception:
         runs = 10
     try:
-        message_size = int(request.form.get("message_size", "1024"))
+        message_size = int(form.get("message_size", "1024"))
     except Exception:
         message_size = 1024
 
-    # Selection
+    def _getlist(key: str) -> list[str]:
+        getter = getattr(form, "getlist", None)
+        if callable(getter):
+            return list(getter(key))
+        value = form.get(key)
+        if isinstance(value, (list, tuple)):
+            return [v for v in value if v]
+        if value:
+            return [value]
+        return []
+
     if mode == "all":
         selected = [n for n in all_names if kinds.get(n) == kind]
     else:
-        # There are duplicate fields (KEM + SIG) with same names in the DOM.
-        # For KEM we want the FIRST non-empty occurrence (KEM fields appear first),
-        # for SIG we want the LAST non-empty occurrence (SIG fields appear later).
         def pick_for_kind(key: str) -> str:
-            vals = request.form.getlist(key) or []
+            vals = _getlist(key)
             seq = vals if kind == "KEM" else list(reversed(vals))
             for v in seq:
                 if v and v.strip():
@@ -400,24 +377,23 @@ def compare_run():
         a = pick_for_kind("algo_a")
         b = pick_for_kind("algo_b")
         selected = [x for x in [a, b] if x and kinds.get(x) == kind and x.strip()]
-        # dedupe
         seen = set()
         selected = [x for x in selected if not (x in seen or seen.add(x))]
+
     if not selected:
         return redirect(url_for("index"))
 
-    # Run summaries
     results = []
     errors: Dict[str, str] = {}
-    for name in selected:
+    for algo_name in selected:
         try:
             if kind == "KEM":
-                summary = run_kem(name, runs)  # type: ignore[misc]
+                summary = run_kem(algo_name, runs)  # type: ignore[misc]
             else:
-                summary = run_sig(name, runs, message_size)  # type: ignore[misc]
+                summary = run_sig(algo_name, runs, message_size)  # type: ignore[misc]
             results.append(summary)
-        except Exception as e:
-            errors[name] = str(e)
+        except Exception as exc:
+            errors[algo_name] = str(exc)
 
     display_names = _display_names(selected)
     compare = {
@@ -426,17 +402,67 @@ def compare_run():
         "message_size": message_size,
         "algos": [
             {
-                "name": s.algo,
-                "label": display_names.get(s.algo, s.algo),
-                "ops": {k: asdict(v) for k, v in s.ops.items()},
-                "meta": s.meta,
+                "name": summary.algo,
+                "label": display_names.get(summary.algo, summary.algo),
+                "ops": {k: asdict(v) for k, v in summary.ops.items()},
+                "meta": summary.meta,
             }
-            for s in results
+            for summary in results
         ],
     }
-
     return render_template("compare_results.html", compare=compare, errors=errors)
 
+
+
+
+
+@app.route("/")
+def index():
+    _ensure_adapters_loaded()
+    algos = list(registry.list().keys())
+    kinds = _algo_kinds()
+    display_names = _display_names(algos)
+    # Home/setup screen
+    return render_template(
+        "home.html",
+        algos=algos,
+        kinds=kinds,
+        algo_info=ALGO_INFO,
+        display_names=display_names,
+        default_runs=10,
+        default_message_size=1024,
+        security_form=_security_defaults(),
+        security_profile_choices=SECURITY_PROFILE_CHOICES,
+        quantum_arch_choices=QUANTUM_ARCH_CHOICES,
+        rsa_model_choices=RSA_MODEL_CHOICES,
+        selected_operation="single",
+        selected_algo=None,
+        last_export=None,
+        compare_kind="KEM",
+        compare_mode="pair",
+    )
+
+
+@app.route("/run", methods=["POST"])
+def run():
+    return _handle_run_submission(request.form)
+
+@app.route("/execute", methods=["POST"])
+def execute():
+    mode = str(request.form.get("operation", "single") or "single").lower()
+    if mode == "compare":
+        return _handle_compare_submission(request.form)
+    return _handle_run_submission(request.form)
+
+
+
+
+# Inline compare UI lives on the home page; no standalone compare form route.
+
+
+@app.route("/compare/run", methods=["POST"])
+def compare_run():
+    return _handle_compare_submission(request.form)
 
 @app.route("/algo/<name>")
 def algo_detail(name: str):
@@ -469,6 +495,11 @@ def algo_detail(name: str):
                 security_profile_choices=SECURITY_PROFILE_CHOICES,
                 quantum_arch_choices=QUANTUM_ARCH_CHOICES,
                 rsa_model_choices=RSA_MODEL_CHOICES,
+                selected_operation="single",
+                selected_algo=None,
+                last_export=None,
+                compare_kind="KEM",
+                compare_mode="pair",
             )
 
 

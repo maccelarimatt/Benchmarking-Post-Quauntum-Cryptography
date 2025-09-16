@@ -106,6 +106,17 @@
     .top-island button:hover {
       background-color: #e04446;
     }
+    .form-grid { display:grid; grid-template-columns: repeat(12, 1fr); gap: .9rem; align-items:end; }
+    .field { grid-column: span 6; text-align:left; }
+    .field--full { grid-column: 1 / -1; }
+    .hint { font-size:.85rem; opacity:.9; margin-top:.25rem; }
+    .checkbox-row { display:flex; gap:.7rem; align-items:center; }
+    .actions { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1rem; }
+    .actions button { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow: 0 2px 6px rgba(0,0,0,.18); }
+    .muted-btn { background: rgba(255,255,255,.16); color:#fff; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+    .export-row input[type="text"] { -webkit-appearance:none; -moz-appearance:none; appearance:none; border-radius:1.8rem; padding:0.78rem 1rem; font-size:1rem; min-width:320px; max-width:480px; width:auto; flex:1 1 360px; line-height:1.2; border:1px solid rgba(0,0,0,.15); background: rgba(255,255,255,.98); }
+    .field.is-disabled { opacity:.65; }
+    .field.is-disabled input { pointer-events:none; }
 
     .middle-row {
       display: flex;
@@ -203,94 +214,13 @@
   </style>
   {% endif %}
   <!-- Top island -->
-  <div class="island top-island" id="setup-form">
-    <form method="POST" action="/run">
-      <div class="form-header">
-        <div style="text-align:left; color:#fff;">
-          <h1 style="margin:0 0 .25rem 0; font-size:1.6rem;">PQC Bench</h1>
-          <div style="opacity:.9;">Run micro-benchmarks and export results</div>
-        </div>
-        <div>
-          <button type="submit">Run</button>
-        </div>
-      </div>
-      <div class="controls-grid" style="margin-top: .75rem; color:#fff;">
-        <div class="control">
-          <label for="algo-select">Algorithm</label>
-          <select id="algo-select" name="algo">
-            {% for name in algos %}
-              <option value="{{name}}" {% if selected_algo==name %}selected{% endif %}>{{name}} ({{ kinds[name] }})</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="control">
-          <label for="runs-input">Runs</label>
-          <input id="runs-input" type="number" name="runs" min="1" value="{{ default_runs or 10 }}" />
-        </div>
-        <div id="msg-size-wrap" class="control">
-          <label for="msg-size-input">Message size (bytes)</label>
-          <input id="msg-size-input" type="number" name="message_size" min="1" value="{{ default_message_size or 1024 }}" />
-        </div>
-        <div class="control inline">
-          <input id="export-check" type="checkbox" name="do_export" {% if last_export %}checked{% endif %}/>
-          <label for="export-path" style="margin:0;">Export to</label>
-          <input id="export-path" type="text" name="export_path" placeholder="results/<algo>.json" value="{{ last_export or '' }}" />
-        </div>
-        <div class="control inline">
-          <input id="export-trace-check" type="checkbox" name="do_export_trace"/>
-          <label for="export-trace-path" style="margin:0;">Export raw trace to</label>
-          <input id="export-trace-path" type="text" name="export_trace_path" placeholder="results/<algo>_trace.json" />
-        </div>
-      <div class="control" style="grid-column: 1 / -1; margin-top:.5rem;">
-        <div style="font-weight:600;">Security estimator</div>
-        <div class="hint">Optional: configure estimator inputs for security metrics.</div>
-      </div>
-      <div class="control inline">
-        <input id="sec_adv" type="checkbox" name="sec_adv" {% if security_form.sec_adv %}checked{% endif %}/
-        <label for="sec_adv" style="margin:0;">Advanced lattice estimator</label>
-      </div>
-      <div class="control inline">
-        <input id="sec_rsa_phys" type="checkbox" name="sec_rsa_phys" {% if security_form.sec_rsa_phys %}checked{% endif %}/
-        <label for="sec_rsa_phys" style="margin:0;">Include RSA surface-code overhead</label>
-      </div>
-      <div class="control">
-        <label for="sec_profile">Security profile</label>
-        <select id="sec_profile" name="sec_profile">
-          {% for profile in security_profile_choices %}
-            <option value="{{ profile }}" {% if security_form.sec_profile == profile %}selected{% endif %}>{{ profile|capitalize }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="control">
-        <label for="sec_phys_error_rate">Physical error rate</label>
-        <input id="sec_phys_error_rate" type="number" name="sec_phys_error_rate" step="any" min="0" value="{{ security_form.sec_phys_error_rate }}" />
-      </div>
-      <div class="control">
-        <label for="sec_cycle_time_ns">Cycle time (ns)</label>
-        <input id="sec_cycle_time_ns" type="number" name="sec_cycle_time_ns" step="any" min="0" value="{{ security_form.sec_cycle_time_ns }}" />
-      </div>
-      <div class="control">
-        <label for="sec_fail_prob">Target fail probability</label>
-        <input id="sec_fail_prob" type="number" name="sec_fail_prob" step="any" min="0" value="{{ security_form.sec_fail_prob }}" />
-      </div>
-      <div class="control">
-        <label for="quantum_arch">Quantum arch preset</label>
-        <select id="quantum_arch" name="quantum_arch">
-          {% for value, label in quantum_arch_choices %}
-            <option value="{{ value }}" {% if security_form.quantum_arch == value %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="control">
-        <label for="rsa_model">RSA resource model</label>
-        <select id="rsa_model" name="rsa_model">
-          {% for model in rsa_model_choices %}
-            <option value="{{ model }}" {% if security_form.rsa_model == model %}selected{% endif %}>{{ model }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      </div>
-    </form>
+  <div class="island top-island" id="setup-form" style="flex-direction:column; align-items:stretch; text-align:left;">
+    <div style="text-align:left; color:#fff; margin-bottom:1rem;">
+      <h1 style="margin:0 0 .25rem 0; font-size:1.6rem;">PQC Bench</h1>
+      <div style="opacity:.9;">Run micro-benchmarks, export results, or compare mechanisms.</div>
+    </div>
+    {% include '_main_form.html' %}
+  </div>
   </div>
 
   <!-- Middle row with two islands -->
@@ -537,12 +467,6 @@
   <script>
     (function() {
       const kinds = {{ kinds|tojson }};
-      const select = document.getElementById('algo-select');
-      const msgWrap = document.getElementById('msg-size-wrap');
-      const exportPath = document.getElementById('export-path');
-      const exportCheck = document.getElementById('export-check');
-      const exportTracePath = document.getElementById('export-trace-path');
-      const exportTraceCheck = document.getElementById('export-trace-check');
       const result = {{ (result_json or {})|tojson }};
       const chartsEl = document.getElementById('charts');
       const memChartsEl = document.getElementById('mem-charts');
@@ -569,16 +493,9 @@
         return a[lo] * (1-h) + a[hi] * h;
       }
       function refresh() {
-        const name = select.value;
-        const kind = kinds[name] || '';
         // Show msg size only for signatures
-        msgWrap.style.display = (kind === 'SIG') ? 'block' : 'none';
         // If exporting and path empty, set sensible default
-        if (exportCheck.checked && (!exportPath.value || exportPath.value.trim()==='')) {
-          exportPath.value = `results/${name.replace('+', 'plus')}.json`;
         }
-        if (exportTraceCheck.checked && (!exportTracePath.value || exportTracePath.value.trim()==='')) {
-          exportTracePath.value = `results/${name.replace('+', 'plus')}_trace.json`;
         }
         // Draw charts if we have a result
         if (chartsEl && result && result.ops) {
@@ -753,9 +670,6 @@
           } catch (e) {}
         }
       }
-      select.addEventListener('change', refresh);
-      exportCheck.addEventListener('change', refresh);
-      exportTraceCheck.addEventListener('change', refresh);
       if (autoScaleY) autoScaleY.addEventListener('change', refresh);
       if (trimCtl) trimCtl.addEventListener('change', refresh);
       window.addEventListener('load', () => setTimeout(repaintAll, 200));
