@@ -241,6 +241,54 @@
           <label for="export-trace-path" style="margin:0;">Export raw trace to</label>
           <input id="export-trace-path" type="text" name="export_trace_path" placeholder="results/<algo>_trace.json" />
         </div>
+      <div class="control" style="grid-column: 1 / -1; margin-top:.5rem;">
+        <div style="font-weight:600;">Security estimator</div>
+        <div class="hint">Optional: configure estimator inputs for security metrics.</div>
+      </div>
+      <div class="control inline">
+        <input id="sec_adv" type="checkbox" name="sec_adv" {% if security_form.sec_adv %}checked{% endif %}/
+        <label for="sec_adv" style="margin:0;">Advanced lattice estimator</label>
+      </div>
+      <div class="control inline">
+        <input id="sec_rsa_phys" type="checkbox" name="sec_rsa_phys" {% if security_form.sec_rsa_phys %}checked{% endif %}/
+        <label for="sec_rsa_phys" style="margin:0;">Include RSA surface-code overhead</label>
+      </div>
+      <div class="control">
+        <label for="sec_profile">Security profile</label>
+        <select id="sec_profile" name="sec_profile">
+          {% for profile in security_profile_choices %}
+            <option value="{{ profile }}" {% if security_form.sec_profile == profile %}selected{% endif %}>{{ profile|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="control">
+        <label for="sec_phys_error_rate">Physical error rate</label>
+        <input id="sec_phys_error_rate" type="number" name="sec_phys_error_rate" step="any" min="0" value="{{ security_form.sec_phys_error_rate }}" />
+      </div>
+      <div class="control">
+        <label for="sec_cycle_time_ns">Cycle time (ns)</label>
+        <input id="sec_cycle_time_ns" type="number" name="sec_cycle_time_ns" step="any" min="0" value="{{ security_form.sec_cycle_time_ns }}" />
+      </div>
+      <div class="control">
+        <label for="sec_fail_prob">Target fail probability</label>
+        <input id="sec_fail_prob" type="number" name="sec_fail_prob" step="any" min="0" value="{{ security_form.sec_fail_prob }}" />
+      </div>
+      <div class="control">
+        <label for="quantum_arch">Quantum arch preset</label>
+        <select id="quantum_arch" name="quantum_arch">
+          {% for value, label in quantum_arch_choices %}
+            <option value="{{ value }}" {% if security_form.quantum_arch == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="control">
+        <label for="rsa_model">RSA resource model</label>
+        <select id="rsa_model" name="rsa_model">
+          {% for model in rsa_model_choices %}
+            <option value="{{ model }}" {% if security_form.rsa_model == model %}selected{% endif %}>{{ model }}</option>
+          {% endfor %}
+        </select>
+      </div>
       </div>
     </form>
   </div>
@@ -358,6 +406,75 @@
           </table>
           {% if last_export %}
             <div style="margin-top:.75rem; font-size:.9rem;">Saved as: <code>{{ last_export }}</code></div>
+          {% endif %}
+        </div>
+        <div style="flex:1 1 320px; background:rgba(0,0,0,.25); padding:1rem; border-radius:.75rem;">
+          <div style="font-size:1.1rem; font-weight:700; margin-bottom:.75rem;">Security</div>
+          {% set security = result_json.security %}
+          {% if not security %}
+            <div style="opacity:.85;">Security estimator data unavailable.</div>
+          {% else %}
+            {% if security.get('error') %}
+              <div style="color:#ffdddd; background:rgba(255,0,0,0.25); padding:.6rem .7rem; border-radius:.5rem;">{{ security.error }}</div>
+            {% else %}
+              {% set metrics = [
+                ('Mechanism', 'mechanism'),
+                ('Family', 'family'),
+                ('Category floor', 'category_floor'),
+                ('NIST category', 'nist_category'),
+                ('Classical security (bits)', 'classical_bits'),
+                ('Quantum security (bits)', 'quantum_bits'),
+                ('Shor breakable', 'shor_breakable'),
+              ] %}
+              <table style="width:100%; border-collapse:collapse;">
+                <tbody>
+                  {% for label, key in metrics %}
+                    {% set value = security.get(key) %}
+                    {% if value is not none %}
+                    <tr style="border-bottom:1px dashed rgba(255,255,255,.15);">
+                      <td style="padding:.35rem .2rem; opacity:.9;">{{ label }}</td>
+                      <td style="padding:.35rem .2rem; font-weight:600; text-align:right;">
+                        {% if key in ['classical_bits', 'quantum_bits'] and value is number %}
+                          {{ value|round(2) }}
+                        {% elif key == 'shor_breakable' %}
+                          {{ 'Yes' if value else 'No' }}
+                        {% else %}
+                          {{ value }}
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endif %}
+                  {% endfor %}
+                </tbody>
+              </table>
+              {% if security.notes %}
+                <div style="margin-top:.6rem; font-size:.9rem; opacity:.85;">{{ security.notes }}</div>
+              {% endif %}
+              {% if security.estimator %}
+                {% set estimator = security.estimator %}
+                <div style="margin-top:.6rem; font-size:.9rem;">
+                  <div><strong>Estimator:</strong> {{ estimator.name or 'Unavailable' }}</div>
+                  {% if estimator.profile %}
+                    <div>Profile: {{ estimator.profile }}</div>
+                  {% endif %}
+                  <div>Available: {{ 'Yes' if estimator.available else 'No' }}</div>
+                </div>
+              {% endif %}
+              {% set extras = [
+                ('Parameters', 'parameters'),
+                ('Resources', 'resources'),
+                ('Estimates', 'estimates'),
+                ('Assumptions', 'assumptions'),
+              ] %}
+              {% for label, key in extras %}
+                {% if security.get(key) %}
+                  <details style="margin-top:.6rem;">
+                    <summary style="cursor:pointer;">{{ label }}</summary>
+                    <pre style="margin-top:.35rem; background:rgba(0,0,0,0.3); padding:.6rem .7rem; border-radius:.5rem; white-space:pre-wrap;">{{ security.get(key) | tojson(indent=2) }}</pre>
+                  </details>
+                {% endif %}
+              {% endfor %}
+            {% endif %}
           {% endif %}
         </div>
       </div>

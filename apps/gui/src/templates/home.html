@@ -139,6 +139,60 @@ input[type="checkbox"]:checked::after { opacity: 1; }
             <label for="export_trace_path" style="margin:0;">Export raw trace to</label>
             <input id="export_trace_path" name="export_trace_path" placeholder="results/&lt;algo&gt;_trace.json" />
           </div>
+        <div class="field field--full" style="margin-top:.4rem;">
+          <div style="font-weight:600;">Security estimator</div>
+          <div class="hint">Optional: configure the estimator inputs used for security summaries.</div>
+        </div>
+        <div class="field" style="grid-column: span 6;">
+          <div class="checkbox-row">
+            <input id="sec_adv" type="checkbox" name="sec_adv" {% if security_form.sec_adv %}checked{% endif %}/
+            <label for="sec_adv" style="margin:0;">Advanced lattice estimator</label>
+          </div>
+        </div>
+        <div class="field" style="grid-column: span 6;">
+          <div class="checkbox-row">
+            <input id="sec_rsa_phys" type="checkbox" name="sec_rsa_phys" {% if security_form.sec_rsa_phys %}checked{% endif %}/
+            <label for="sec_rsa_phys" style="margin:0;">Include RSA surface-code overhead</label>
+          </div>
+        </div>
+        <div class="field" style="grid-column: span 4;">
+          <label for="sec_profile">Security profile</label>
+          <select id="sec_profile" name="sec_profile">
+            {% for profile in security_profile_choices %}
+              <option value="{{ profile }}" {% if security_form.sec_profile == profile %}selected{% endif %}>{{ profile|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field" style="grid-column: span 4;">
+          <label for="sec_phys_error_rate">Physical error rate</label>
+          <input id="sec_phys_error_rate" name="sec_phys_error_rate" type="number" step="any" min="0" value="{{ security_form.sec_phys_error_rate }}" />
+          <div class="hint">Probability per physical operation.</div>
+        </div>
+        <div class="field" style="grid-column: span 4;">
+          <label for="sec_cycle_time_ns">Cycle time (ns)</label>
+          <input id="sec_cycle_time_ns" name="sec_cycle_time_ns" type="number" step="any" min="0" value="{{ security_form.sec_cycle_time_ns }}" />
+        </div>
+        <div class="field" style="grid-column: span 4;">
+          <label for="sec_fail_prob">Target fail probability</label>
+          <input id="sec_fail_prob" name="sec_fail_prob" type="number" step="any" min="0" value="{{ security_form.sec_fail_prob }}" />
+        </div>
+        <div class="field" style="grid-column: span 4;">
+          <label for="quantum_arch">Quantum arch preset</label>
+          <select id="quantum_arch" name="quantum_arch">
+            {% for value, label in quantum_arch_choices %}
+              <option value="{{ value }}" {% if security_form.quantum_arch == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field" style="grid-column: span 4;">
+          <label for="rsa_model">RSA resource model</label>
+          <select id="rsa_model" name="rsa_model">
+            {% for model in rsa_model_choices %}
+              <option value="{{ model }}" {% if security_form.rsa_model == model %}selected{% endif %}>{{ model }}</option>
+            {% endfor %}
+          </select>
+          <div class="hint">Applies to RSA baselines only.</div>
+        </div>
         </div>
         <div class="actions">
           <button class="muted-btn" type="reset">Reset</button>

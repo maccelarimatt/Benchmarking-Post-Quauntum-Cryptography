@@ -10,7 +10,7 @@ from jinja2 import TemplateNotFound
 from dataclasses import asdict
 import base64
 from pqcbench import registry
-from typing import Dict, Any
+from typing import Dict, Any, Mapping
 
 # Reuse the CLI runner logic to keep one source of truth for measurements
 try:
@@ -21,11 +21,14 @@ try:
         export_json,
         export_trace_kem,
         export_trace_sig,
+        _build_export_payload,
     )
 except Exception:
     # If CLI package isn't installed, try best-effort import of adapters directly
     _load_adapters = None
     run_kem = run_sig = export_json = None  # type: ignore
+    export_trace_kem = export_trace_sig = None  # type: ignore
+    _build_export_payload = None  # type: ignore
 
 app = Flask(__name__, template_folder="../templates", static_folder="../static")
 
@@ -120,6 +123,79 @@ ALGO_INFO = {
     },
 }
 
+SECURITY_PROFILE_CHOICES = ["floor", "classical", "quantum"]
+QUANTUM_ARCH_CHOICES = [
+    ("", "None"),
+    ("superconducting-2025", "Superconducting 2025"),
+    ("iontrap-2025", "Ion Trap 2025"),
+]
+RSA_MODEL_CHOICES = ["ge2019", "ge2025", "fast2025"]
+DEFAULT_SECURITY_FORM = {
+    "sec_adv": False,
+    "sec_rsa_phys": False,
+    "sec_phys_error_rate": 1e-3,
+    "sec_cycle_time_ns": 1000.0,
+    "sec_fail_prob": 1e-2,
+    "sec_profile": "floor",
+    "quantum_arch": "",
+    "rsa_model": "ge2019",
+}
+
+def _security_defaults() -> dict[str, Any]:
+    return dict(DEFAULT_SECURITY_FORM)
+
+def _coerce_float(value: object, default: float) -> float:
+    if value is None:
+        return float(default)
+    try:
+        if isinstance(value, str):
+            value = value.strip()
+        if value == "":
+            return float(default)
+        return float(value)  # type: ignore[arg-type]
+    except Exception:
+        return float(default)
+
+def _normalize_choice(value: object, choices: list[str], default: str) -> str:
+    if value is None:
+        return default
+    text = str(value).strip().lower()
+    for choice in choices:
+        if text == choice.lower():
+            return choice
+    return default
+
+def _parse_security_form(form: Mapping[str, object]) -> tuple[dict[str, Any], dict[str, Any]]:
+    values = _security_defaults()
+    raw_adv = form.get("sec_adv")
+    values["sec_adv"] = str(raw_adv).lower() in ("on", "true", "1", "yes") if raw_adv is not None else False
+    raw_rsa_surface = form.get("sec_rsa_phys")
+    values["sec_rsa_phys"] = str(raw_rsa_surface).lower() in ("on", "true", "1", "yes") if raw_rsa_surface is not None else False
+    values["sec_phys_error_rate"] = _coerce_float(form.get("sec_phys_error_rate"), DEFAULT_SECURITY_FORM["sec_phys_error_rate"])
+    values["sec_cycle_time_ns"] = _coerce_float(form.get("sec_cycle_time_ns"), DEFAULT_SECURITY_FORM["sec_cycle_time_ns"])
+    values["sec_fail_prob"] = _coerce_float(form.get("sec_fail_prob"), DEFAULT_SECURITY_FORM["sec_fail_prob"])
+    values["sec_profile"] = _normalize_choice(form.get("sec_profile"), SECURITY_PROFILE_CHOICES, DEFAULT_SECURITY_FORM["sec_profile"])
+    raw_arch = form.get("quantum_arch")
+    if raw_arch is None:
+        values["quantum_arch"] = DEFAULT_SECURITY_FORM["quantum_arch"]
+    else:
+        values["quantum_arch"] = str(raw_arch).strip()
+    values["rsa_model"] = _normalize_choice(form.get("rsa_model"), RSA_MODEL_CHOICES, DEFAULT_SECURITY_FORM["rsa_model"])
+    security_opts = {
+        "lattice_use_estimator": bool(values["sec_adv"]),
+        "lattice_profile": values["sec_profile"],
+        "rsa_surface": bool(values["sec_rsa_phys"]),
+        "phys_error_rate": float(values["sec_phys_error_rate"]),
+        "cycle_time_s": float(values["sec_cycle_time_ns"]) * 1e-9,
+        "target_total_fail_prob": float(values["sec_fail_prob"]),
+        "quantum_arch": values["quantum_arch"] or None,
+    }
+    if values["rsa_model"]:
+        security_opts["rsa_model"] = values["rsa_model"]
+    return values, security_opts
+
+
+
 
 @app.route("/")
 def index():
@@ -136,6 +212,10 @@ def index():
         display_names=display_names,
         default_runs=10,
         default_message_size=1024,
+        security_form=_security_defaults(),
+        security_profile_choices=SECURITY_PROFILE_CHOICES,
+        quantum_arch_choices=QUANTUM_ARCH_CHOICES,
+        rsa_model_choices=RSA_MODEL_CHOICES,
     )
 
 
@@ -154,6 +234,7 @@ def run():
         message_size = int(request.form.get("message_size", "1024"))
     except Exception:
         message_size = 1024
+    security_form, security_opts = _parse_security_form(request.form)
     export_path = request.form.get("export_path", "")
     do_export = request.form.get("do_export") == "on"
     do_export_trace = request.form.get("do_export_trace") == "on"
@@ -176,7 +257,7 @@ def run():
         if do_export:
             # Default to results/<algo>.json if no path provided
             out_path = export_path.strip() or f"results/{name.replace('+','plus')}.json"
-            export_json(summary, out_path)  # type: ignore[misc]
+            export_json(summary, out_path, security_opts=security_opts)  # type: ignore[misc]
             last_export = out_path
 
         if do_export_trace:
@@ -187,12 +268,16 @@ def run():
                 export_trace_sig(name, message_size, raw_path)  # type: ignore[misc]
 
         # Shape result like CLI JSON output for consistency
-        result = {
-            "algo": summary.algo,
-            "kind": summary.kind,
-            "ops": {k: vars(v) for k, v in summary.ops.items()},
-            "meta": summary.meta,
-        }
+        if _build_export_payload is not None:
+            result = _build_export_payload(summary, security_opts=security_opts)
+        else:
+            result = {
+                "algo": summary.algo,
+                "kind": summary.kind,
+                "ops": {k: vars(v) for k, v in summary.ops.items()},
+                "meta": summary.meta,
+            }
+            result["security"] = {"error": "security estimator unavailable"}
 
         # Build a single illustrative raw-data trace for display (not JSON)
         try:
@@ -270,6 +355,10 @@ def run():
         default_message_size=message_size,
         selected_algo=name,
         trace_sections=trace_sections,
+        security_form=security_form,
+        security_profile_choices=SECURITY_PROFILE_CHOICES,
+        quantum_arch_choices=QUANTUM_ARCH_CHOICES,
+        rsa_model_choices=RSA_MODEL_CHOICES,
     )
 
 
@@ -376,6 +465,10 @@ def algo_detail(name: str):
                 display_names=display_names,
                 default_runs=10,
                 default_message_size=1024,
+                security_form=_security_defaults(),
+                security_profile_choices=SECURITY_PROFILE_CHOICES,
+                quantum_arch_choices=QUANTUM_ARCH_CHOICES,
+                rsa_model_choices=RSA_MODEL_CHOICES,
             )
 
 
