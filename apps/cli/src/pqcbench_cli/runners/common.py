@@ -5,10 +5,13 @@ from __future__ import annotations
 Includes adapter bootstrap, timing/memory measurement, JSON export helpers,
 and per-kind (KEM/SIG) micro-benchmark orchestrators.
 """
-import time, json, pathlib, base64
+import time, json, pathlib, base64, multiprocessing
 from dataclasses import dataclass, asdict
 from typing import Callable, Dict, Any, List, Tuple
 from pqcbench import registry
+from functools import partial
+
+_MP_CONTEXT = multiprocessing.get_context('spawn')
 
 def _load_adapters() -> None:
     import importlib, traceback
@@ -43,91 +46,25 @@ class AlgoSummary:
     meta: Dict[str, Any]
 
 def measure(fn: Callable[[], None], runs: int) -> OpStats:
-    """Measure time and memory footprint.
+    """Measure time and memory footprint in isolated runs.
 
-    - Time: measure wall-clock latency per run (ms)
-    - Memory: capture the per-run delta in process unique RSS (KB) and peak Python allocations
-
-    Memory metrics reflect only the measured run; they are reset before each call. If
-    psutil or tracemalloc are unavailable, the corresponding fields remain None.
+    Every iteration executes in a fresh Python process so caches, allocator pools,
+    and liboqs state from previous runs cannot influence the measurement.
+    Reported memory is the maximum of the child process unique RSS delta and the
+    Python heap peak (KB). If psutil or tracemalloc are unavailable, the fields
+    remain None.
     """
     times: List[float] = []
     mem_peaks_kb: List[float] = []
 
-    # Strict per-run memory measurement helpers.
-    _capture_before: Callable[[], int] | None
-    _capture_after: Callable[[], int] | None
-    try:
-        import psutil  # type: ignore
-        import gc
-        import os
-
-        proc = psutil.Process(os.getpid())
-
-        def _sample_process_bytes() -> int:
-            try:
-                full = proc.memory_full_info()
-                uss = getattr(full, "uss", None)
-                if uss is not None:
-                    return int(uss)
-            except Exception:
-                pass
-            return int(proc.memory_info().rss)
-
-        def _capture_before() -> int:
-            gc.collect()
-            return _sample_process_bytes()
-
-        def _capture_after() -> int:
-            value = _sample_process_bytes()
-            gc.collect()
-            return value
-
-        capture_process_memory = True
-    except Exception:
-        capture_process_memory = False
-        _capture_before = None
-        _capture_after = None
-
-    try:
-        import tracemalloc  # type: ignore
-        use_tracemalloc = not tracemalloc.is_tracing()
-    except Exception:
-        tracemalloc = None  # type: ignore
-        use_tracemalloc = False
-
     for _ in range(runs):
-        baseline_bytes = _capture_before() if capture_process_memory and _capture_before else None
-        if use_tracemalloc:
-            tracemalloc.start()
-        t0 = time.perf_counter()
-        try:
-            fn()
-        finally:
-            dt = (time.perf_counter() - t0) * 1000.0
-            times.append(dt)
-
-            after_bytes = None
-            if capture_process_memory and baseline_bytes is not None and _capture_after:
-                after_bytes = _capture_after()
-
-            py_peak_kb = None
-            if use_tracemalloc:
-                _, peak_bytes = tracemalloc.get_traced_memory()
-                tracemalloc.stop()
-                py_peak_kb = peak_bytes / 1024.0
-
-            if capture_process_memory and baseline_bytes is not None and after_bytes is not None:
-                rss_delta_kb = max(0.0, (after_bytes - baseline_bytes) / 1024.0)
-                if py_peak_kb is not None:
-                    rss_delta_kb = max(rss_delta_kb, py_peak_kb)
-                mem_peaks_kb.append(rss_delta_kb)
-            elif py_peak_kb is not None:
-                mem_peaks_kb.append(py_peak_kb)
+        dt_ms, mem_kb = _run_isolated(fn)
+        times.append(dt_ms)
+        if mem_kb is not None:
+            mem_peaks_kb.append(mem_kb)
 
     mean = sum(times) / len(times)
 
-    # Summarize memory metrics if available; otherwise leave as None
     if mem_peaks_kb:
         mem_mean = sum(mem_peaks_kb) / len(mem_peaks_kb)
         mem_min = min(mem_peaks_kb)
@@ -151,6 +88,151 @@ def measure(fn: Callable[[], None], runs: int) -> OpStats:
             max_ms=max(times),
             series=times,
         )
+
+
+def _run_isolated(fn: Callable[[], None]) -> Tuple[float, float | None]:
+    """Execute `fn` in a fresh process and return (time_ms, memory_kb)."""
+    parent_conn, child_conn = _MP_CONTEXT.Pipe(duplex=False)
+    proc = _MP_CONTEXT.Process(target=_isolated_worker, args=(fn, child_conn))
+    proc.start()
+    child_conn.close()
+    try:
+        result = parent_conn.recv()
+    except EOFError:
+        proc.join()
+        raise RuntimeError("Benchmark worker exited without reporting results.")
+    finally:
+        parent_conn.close()
+    proc.join()
+    status = result.get("status")
+    if status == "ok":
+        return result["time_ms"], result["mem_kb"]
+    err = result.get("error") or "unknown error"
+    tb = result.get("traceback")
+    message = f"Benchmark worker failed: {err}"
+    if tb:
+        message = f"{message}\n{tb}"
+    raise RuntimeError(message)
+
+
+def _isolated_worker(fn: Callable[[], None], conn) -> None:
+    """Child-process entry point for isolated measurements."""
+    try:
+        dt, mem_kb = _single_run_metrics(fn)
+        conn.send({"status": "ok", "time_ms": dt, "mem_kb": mem_kb})
+    except Exception as exc:
+        import traceback
+        conn.send({
+            "status": "error",
+            "error": repr(exc),
+            "traceback": traceback.format_exc(),
+        })
+    finally:
+        conn.close()
+
+
+def _single_run_metrics(fn: Callable[[], None]) -> Tuple[float, float | None]:
+    """Run `fn` exactly once, capturing time and memory usage."""
+    import os
+    import gc
+    import time as _time
+
+    baseline_bytes: int | None = None
+    after_bytes: int | None = None
+    rss_delta_kb: float | None = None
+    proc = None
+
+    try:
+        import psutil  # type: ignore
+        proc = psutil.Process(os.getpid())
+
+        def _sample_process_bytes() -> int:
+            try:
+                full = proc.memory_full_info()
+                uss = getattr(full, "uss", None)
+                if uss is not None:
+                    return int(uss)
+            except Exception:
+                pass
+            return int(proc.memory_info().rss)
+
+        gc.collect()
+        baseline_bytes = _sample_process_bytes()
+    except Exception:
+        proc = None  # type: ignore
+
+    try:
+        import tracemalloc  # type: ignore
+        tracemalloc.start()
+        use_tracemalloc = True
+    except Exception:
+        tracemalloc = None  # type: ignore
+        use_tracemalloc = False
+
+    t0 = _time.perf_counter()
+    fn()
+    dt_ms = (_time.perf_counter() - t0) * 1000.0
+
+    if proc is not None and baseline_bytes is not None:
+        try:
+            after_bytes = _sample_process_bytes()
+        except Exception:
+            after_bytes = None
+        gc.collect()
+        if after_bytes is not None:
+            rss_delta_kb = max(0.0, (after_bytes - baseline_bytes) / 1024.0)
+
+    py_peak_kb: float | None = None
+    if use_tracemalloc and tracemalloc is not None:
+        try:
+            _, peak_bytes = tracemalloc.get_traced_memory()
+            py_peak_kb = peak_bytes / 1024.0
+        finally:
+            tracemalloc.stop()
+
+    if py_peak_kb is not None:
+        rss_delta_kb = max(rss_delta_kb or 0.0, py_peak_kb)
+
+    gc.collect()
+    return dt_ms, rss_delta_kb
+
+
+def _kem_keygen_once(name: str) -> None:
+    cls = registry.get(name)
+    cls().keygen()
+
+
+def _kem_encapsulate_once(name: str) -> None:
+    cls = registry.get(name)
+    pk, _ = cls().keygen()
+    cls().encapsulate(pk)
+
+
+def _kem_decapsulate_once(name: str) -> None:
+    cls = registry.get(name)
+    pk, sk = cls().keygen()
+    ct, _ = cls().encapsulate(pk)
+    cls().decapsulate(sk, ct)
+
+
+def _sig_keygen_once(name: str) -> None:
+    cls = registry.get(name)
+    cls().keygen()
+
+
+def _sig_sign_once(name: str, message_size: int) -> None:
+    cls = registry.get(name)
+    msg = b"x" * int(message_size)
+    _, sk = cls().keygen()
+    cls().sign(sk, msg)
+
+
+def _sig_verify_once(name: str, message_size: int) -> None:
+    cls = registry.get(name)
+    msg = b"x" * int(message_size)
+    pk, sk = cls().keygen()
+    sig = cls().sign(sk, msg)
+    cls().verify(pk, msg, sig)
 
 
 def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str, Any]:
@@ -410,26 +492,13 @@ def run_kem(name: str, runs: int) -> AlgoSummary:
     reusing state and to keep comparisons fair.
     """
     cls = registry.get(name)
-    ops = {}
-    # measure keygen
-    def do_keygen():
-        _ = cls().keygen()
-    ops["keygen"] = measure(do_keygen, runs)
-    # For enc/dec we need fresh keys each time to be fair
-    def do_encapsulate():
-        pk, sk = cls().keygen()
-        _ = cls().encapsulate(pk)
-    ops["encapsulate"] = measure(do_encapsulate, runs)
-    def do_decapsulate():
-        pk, sk = cls().keygen()
-        ct, ss = cls().encapsulate(pk)
-        _ = cls().decapsulate(sk, ct)
-    ops["decapsulate"] = measure(do_decapsulate, runs)
-    # meta (sizes are placeholders if adapters are not real yet)
+    ops: Dict[str, OpStats] = {}
+    ops["keygen"] = measure(partial(_kem_keygen_once, name), runs)
+    ops["encapsulate"] = measure(partial(_kem_encapsulate_once, name), runs)
+    ops["decapsulate"] = measure(partial(_kem_decapsulate_once, name), runs)
     instance = cls()
     pk, sk = instance.keygen()
     ct, ss = cls().encapsulate(pk)
-    # Compute ciphertext expansion relative to the delivered payload (shared secret)
     _ct_len = len(ct) if isinstance(ct, (bytes, bytearray)) else None
     _ss_len = len(ss) if isinstance(ss, (bytes, bytearray)) else None
     _ct_expansion = None
@@ -444,10 +513,10 @@ def run_kem(name: str, runs: int) -> AlgoSummary:
         "ciphertext_len": _ct_len,
         "shared_secret_len": _ss_len,
         "ciphertext_expansion_ratio": _ct_expansion,
-        # Prefer common adapter attributes in order: mech (our RSA), alg (liboqs), _mech (stateful adapters)
         "mechanism": getattr(instance, "mech", None) or getattr(instance, "alg", None) or getattr(instance, "_mech", None),
     }
     return AlgoSummary(algo=name, kind="KEM", ops=ops, meta=meta)
+
 
 def run_sig(name: str, runs: int, message_size: int) -> AlgoSummary:
     """Run a signature micro-benchmark for the registered algorithm `name`.
@@ -458,24 +527,14 @@ def run_sig(name: str, runs: int, message_size: int) -> AlgoSummary:
     - verify (with fresh keys/signature per run)
     """
     cls = registry.get(name)
-    ops = {}
-    msg = b"x" * message_size
-    def do_keygen():
-        _ = cls().keygen()
-    ops["keygen"] = measure(do_keygen, runs)
-    def do_sign():
-        pk, sk = cls().keygen()
-        _ = cls().sign(sk, msg)
-    ops["sign"] = measure(do_sign, runs)
-    def do_verify():
-        pk, sk = cls().keygen()
-        sig = cls().sign(sk, msg)
-        _ = cls().verify(pk, msg, sig)
-    ops["verify"] = measure(do_verify, runs)
+    ops: Dict[str, OpStats] = {}
+    ops["keygen"] = measure(partial(_sig_keygen_once, name), runs)
+    ops["sign"] = measure(partial(_sig_sign_once, name, message_size), runs)
+    ops["verify"] = measure(partial(_sig_verify_once, name, message_size), runs)
     instance = cls()
     pk, sk = instance.keygen()
+    msg = b"x" * message_size
     sig = instance.sign(sk, msg)
-    # Compute signature expansion relative to message size
     _sig_len = len(sig) if isinstance(sig, (bytes, bytearray)) else None
     _sig_expansion = None
     try:
@@ -493,8 +552,6 @@ def run_sig(name: str, runs: int, message_size: int) -> AlgoSummary:
     }
     return AlgoSummary(algo=name, kind="SIG", ops=ops, meta=meta)
 
-
-# -------- Raw trace exporters (single illustrative run) --------
 
 def export_trace_kem(name: str, export_path: str | None) -> None:
     if not export_path:
@@ -535,5 +592,7 @@ def export_trace_sig(name: str, message_size: int, export_path: str | None) -> N
         }
     }
     _export_json_blob(trace, export_path)
+
+
 
 
