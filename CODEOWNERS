@@ -1,8 +1,0 @@
-
-# Replace with real GitHub usernames
-/libs/adapters/liboqs/ @studentA
-/libs/adapters/rsa/    @studentB
-/benchmarks/           @studentA @studentB
-/acvp/                 @studentA @studentB
-/apps/cli/             @studentB
-/apps/gui/             @studentA
