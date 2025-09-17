@@ -29,7 +29,7 @@ class OpStats:
     min_ms: float
     max_ms: float
     series: List[float]
-    # Memory footprint metrics (peak RSS delta per run)
+    # Memory footprint metrics (per-run process delta / Python peak)
     mem_mean_kb: float | None = None
     mem_min_kb: float | None = None
     mem_max_kb: float | None = None
@@ -46,72 +46,84 @@ def measure(fn: Callable[[], None], runs: int) -> OpStats:
     """Measure time and memory footprint.
 
     - Time: measure wall-clock latency per run (ms)
-    - Memory: sample process RSS during the function call and record peak delta (KB)
+    - Memory: capture the per-run delta in process unique RSS (KB) and peak Python allocations
 
-    If psutil is unavailable, memory metrics are left as None.
+    Memory metrics reflect only the measured run; they are reset before each call. If
+    psutil or tracemalloc are unavailable, the corresponding fields remain None.
     """
     times: List[float] = []
     mem_peaks_kb: List[float] = []
 
-    # Optional psutil-based sampler
+    # Strict per-run memory measurement helpers.
+    _capture_before: Callable[[], int] | None
+    _capture_after: Callable[[], int] | None
     try:
         import psutil  # type: ignore
-        import threading
+        import gc
         import os
 
         proc = psutil.Process(os.getpid())
 
-        class _MemSampler:
-            def __init__(self) -> None:
-                self._stop = threading.Event()
-                self._peak_rss = 0
-                self._baseline = 0
+        def _sample_process_bytes() -> int:
+            try:
+                full = proc.memory_full_info()
+                uss = getattr(full, "uss", None)
+                if uss is not None:
+                    return int(uss)
+            except Exception:
+                pass
+            return int(proc.memory_info().rss)
 
-            def start(self) -> None:
-                # Establish a baseline RSS before the measurement
-                try:
-                    self._baseline = int(proc.memory_info().rss)
-                except Exception:
-                    self._baseline = 0
+        def _capture_before() -> int:
+            gc.collect()
+            return _sample_process_bytes()
 
-                self._stop.clear()
-                self._peak_rss = 0
-                self._thread = threading.Thread(target=self._run, daemon=True)
-                self._thread.start()
+        def _capture_after() -> int:
+            value = _sample_process_bytes()
+            gc.collect()
+            return value
 
-            def stop(self) -> float:
-                self._stop.set()
-                self._thread.join(timeout=0.5)
-                # Return peak delta in KB (avoid negatives)
-                delta = max(0, self._peak_rss - self._baseline)
-                return delta / 1024.0
-
-            def _run(self) -> None:
-                # Sample at ~1 kHz (best effort; OS granularity applies)
-                while not self._stop.is_set():
-                    try:
-                        rss = int(proc.memory_info().rss)
-                        if rss > self._peak_rss:
-                            self._peak_rss = rss
-                    except Exception:
-                        pass
-                    # Busy wait would distort timings; sleep a tiny interval
-                    time.sleep(0.001)
-
-        sampler_factory: Callable[[], _MemSampler] | None = lambda: _MemSampler()
+        capture_process_memory = True
     except Exception:
-        sampler_factory = None
+        capture_process_memory = False
+        _capture_before = None
+        _capture_after = None
+
+    try:
+        import tracemalloc  # type: ignore
+        use_tracemalloc = not tracemalloc.is_tracing()
+    except Exception:
+        tracemalloc = None  # type: ignore
+        use_tracemalloc = False
 
     for _ in range(runs):
-        sampler = sampler_factory() if sampler_factory else None
-        if sampler:
-            sampler.start()
+        baseline_bytes = _capture_before() if capture_process_memory and _capture_before else None
+        if use_tracemalloc:
+            tracemalloc.start()
         t0 = time.perf_counter()
-        fn()
-        dt = (time.perf_counter() - t0) * 1000.0
-        times.append(dt)
-        if sampler:
-            mem_peaks_kb.append(sampler.stop())
+        try:
+            fn()
+        finally:
+            dt = (time.perf_counter() - t0) * 1000.0
+            times.append(dt)
+
+            after_bytes = None
+            if capture_process_memory and baseline_bytes is not None and _capture_after:
+                after_bytes = _capture_after()
+
+            py_peak_kb = None
+            if use_tracemalloc:
+                _, peak_bytes = tracemalloc.get_traced_memory()
+                tracemalloc.stop()
+                py_peak_kb = peak_bytes / 1024.0
+
+            if capture_process_memory and baseline_bytes is not None and after_bytes is not None:
+                rss_delta_kb = max(0.0, (after_bytes - baseline_bytes) / 1024.0)
+                if py_peak_kb is not None:
+                    rss_delta_kb = max(rss_delta_kb, py_peak_kb)
+                mem_peaks_kb.append(rss_delta_kb)
+            elif py_peak_kb is not None:
+                mem_peaks_kb.append(py_peak_kb)
 
     mean = sum(times) / len(times)
 
@@ -139,6 +151,7 @@ def measure(fn: Callable[[], None], runs: int) -> OpStats:
             max_ms=max(times),
             series=times,
         )
+
 
 def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str, Any]:
     """Create a standardized, compact security block from estimator output.
@@ -522,3 +535,5 @@ def export_trace_sig(name: str, message_size: int, export_path: str | None) -> N
         }
     }
     _export_json_blob(trace, export_path)
+
+
