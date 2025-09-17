@@ -26,7 +26,7 @@
     .two-col { display:grid; grid-template-columns: minmax(360px, 1fr) 1fr; gap: 1.25rem; }
     @media (max-width: 960px) { .two-col { grid-template-columns: 1fr; } }
     .form-card { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.2rem; border: 1px solid rgba(255,255,255,.18); box-shadow: 0 8px 30px rgba(0,0,0,.25) inset; }
-    .form-grid { display:grid; grid-template-columns: repeat(12, 1fr); gap: .9rem; align-items:end; }
+    .form-grid { display:grid; grid-template-columns: repeat(12, 1fr); gap: .9rem; align-items:start; }
     .field { grid-column: span 6; }
     .field--full { grid-column: 1 / -1; }
     label { font-size:.95rem; display:block; margin-bottom:.35rem; letter-spacing:.2px; }
@@ -54,7 +54,9 @@
   appearance: none;
   width: 1.25rem;
   height: 1.25rem;
-  border-radius: 0.9rem;
+  border-radius: 50%;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 1.25rem;
   border: 2px solid rgba(255,255,255,.6);
   background: rgba(255,255,255,.12);
   display: inline-grid;
@@ -86,17 +88,17 @@ input[type="checkbox"]:checked::after { opacity: 1; }
   -moz-appearance: none;
   appearance: none;
   border-radius: 2.8rem; /* rounder corners */
-  padding: 1.1rem 1.4rem; /* larger box */
+  padding: 0.6rem 1rem; /* align height with dropdowns */
   min-width: 460px;       /* bigger base width */
   flex: 1 1 auto;
   width: 100%;
-  font-size: 1.1rem;      /* larger text */
-  line-height: 1.25;
+  font-size: 0.95rem;      /* align text size */
+  line-height: 1.2;
   border: 1px solid rgba(0,0,0,.15);
   background: rgba(255,255,255,.98);
 }
   /* Ensure export path inputs are large and rounded across browsers */
-#export_path, #export_trace_path { -webkit-appearance: none; -moz-appearance: none; appearance: none; border-radius: 1.8rem !important; padding: 0.78rem 1rem !important; font-size: 1rem !important; min-width: 320px !important; max-width: 480px !important; width: auto !important; flex: 1 1 360px !important; line-height: 1.2; border: 1px solid rgba(0,0,0,.15); background: rgba(255,255,255,.98); }
+#export_path, #export_trace_path { -webkit-appearance: none; -moz-appearance: none; appearance: none; border-radius: 1.8rem !important; padding: 0.6rem 0.9rem !important; font-size: 0.95rem !important; min-width: 320px !important; max-width: 480px !important; width: auto !important; flex: 1 1 360px !important; line-height: 1.2; border: 1px solid rgba(0,0,0,.15); background: rgba(255,255,255,.98); }
   </style>
   </head>
 <body>

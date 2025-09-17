@@ -493,11 +493,7 @@
         return a[lo] * (1-h) + a[hi] * h;
       }
       function refresh() {
-        // Show msg size only for signatures
-        // If exporting and path empty, set sensible default
-        }
-        }
-        // Draw charts if we have a result
+        // Render charts for the current result payload
         if (chartsEl && result && result.ops) {
           chartsEl.innerHTML = '';
           clearCharts();
