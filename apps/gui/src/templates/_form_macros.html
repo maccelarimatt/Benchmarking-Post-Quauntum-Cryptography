@@ -1,0 +1,7 @@
+{% macro number_field(field_id, name, label, value, column='span 3', min=1, hint=None, wrapper_id=None, input_attrs='') -%}
+  <div class="field" style="grid-column: {{ column }};"{% if wrapper_id %} id="{{ wrapper_id }}"{% endif %}>
+    <label for="{{ field_id }}">{{ label }}</label>
+    <input id="{{ field_id }}" name="{{ name }}" type="number" min="{{ min }}" value="{{ value }}" {{ input_attrs|safe }} />
+    {% if hint %}<div class="hint">{{ hint }}</div>{% endif %}
+  </div>
+{%- endmacro %}

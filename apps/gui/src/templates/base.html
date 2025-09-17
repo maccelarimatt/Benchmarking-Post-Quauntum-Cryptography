@@ -106,6 +106,17 @@
     .top-island button:hover {
       background-color: #e04446;
     }
+    .form-grid { display:grid; grid-template-columns: repeat(12, 1fr); gap: .9rem; align-items:end; }
+    .field { grid-column: span 6; text-align:left; }
+    .field--full { grid-column: 1 / -1; }
+    .hint { font-size:.85rem; opacity:.9; margin-top:.25rem; }
+    .checkbox-row { display:flex; gap:.7rem; align-items:center; }
+    .actions { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1rem; }
+    .actions button { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow: 0 2px 6px rgba(0,0,0,.18); }
+    .muted-btn { background: rgba(255,255,255,.16); color:#fff; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+    .export-row input[type="text"] { -webkit-appearance:none; -moz-appearance:none; appearance:none; border-radius:1.8rem; padding:0.78rem 1rem; font-size:1rem; min-width:320px; max-width:480px; width:auto; flex:1 1 360px; line-height:1.2; border:1px solid rgba(0,0,0,.15); background: rgba(255,255,255,.98); }
+    .field.is-disabled { opacity:.65; }
+    .field.is-disabled input { pointer-events:none; }
 
     .middle-row {
       display: flex;
@@ -183,9 +194,57 @@
         width: 90%;
       }
     }
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(5, 7, 12, 0.72);
+      backdrop-filter: blur(6px);
+      z-index: 9999;
+      color: #fff;
+      text-align: center;
+      padding: 2rem;
+    }
+    .loading-overlay.is-visible {
+      display: flex;
+    }
+    .loading-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.5rem 2rem;
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 1rem;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    }
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 4px solid rgba(255, 255, 255, 0.35);
+      border-top-color: var(--accent);
+      animation: loading-spin 0.85s linear infinite;
+    }
+    .loading-text {
+      font-size: 1.05rem;
+      letter-spacing: 0.04em;
+    }
+    @keyframes loading-spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
+  <div id="loading-overlay" class="loading-overlay" hidden>
+    <div class="loading-card">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Running benchmarks...</div>
+    </div>
+  </div>
+
   {% if result_json %}
   <div class="island top-island" style="display:flex; justify-content:space-between; align-items:center;">
     <div style="text-align:left; color:#fff;">
@@ -203,46 +262,13 @@
   </style>
   {% endif %}
   <!-- Top island -->
-  <div class="island top-island" id="setup-form">
-    <form method="POST" action="/run">
-      <div class="form-header">
-        <div style="text-align:left; color:#fff;">
-          <h1 style="margin:0 0 .25rem 0; font-size:1.6rem;">PQC Bench</h1>
-          <div style="opacity:.9;">Run micro-benchmarks and export results</div>
-        </div>
-        <div>
-          <button type="submit">Run</button>
-        </div>
-      </div>
-      <div class="controls-grid" style="margin-top: .75rem; color:#fff;">
-        <div class="control">
-          <label for="algo-select">Algorithm</label>
-          <select id="algo-select" name="algo">
-            {% for name in algos %}
-              <option value="{{name}}" {% if selected_algo==name %}selected{% endif %}>{{name}} ({{ kinds[name] }})</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="control">
-          <label for="runs-input">Runs</label>
-          <input id="runs-input" type="number" name="runs" min="1" value="{{ default_runs or 10 }}" />
-        </div>
-        <div id="msg-size-wrap" class="control">
-          <label for="msg-size-input">Message size (bytes)</label>
-          <input id="msg-size-input" type="number" name="message_size" min="1" value="{{ default_message_size or 1024 }}" />
-        </div>
-        <div class="control inline">
-          <input id="export-check" type="checkbox" name="do_export" {% if last_export %}checked{% endif %}/>
-          <label for="export-path" style="margin:0;">Export to</label>
-          <input id="export-path" type="text" name="export_path" placeholder="results/<algo>.json" value="{{ last_export or '' }}" />
-        </div>
-        <div class="control inline">
-          <input id="export-trace-check" type="checkbox" name="do_export_trace"/>
-          <label for="export-trace-path" style="margin:0;">Export raw trace to</label>
-          <input id="export-trace-path" type="text" name="export_trace_path" placeholder="results/<algo>_trace.json" />
-        </div>
-      </div>
-    </form>
+  <div class="island top-island" id="setup-form" style="flex-direction:column; align-items:stretch; text-align:left;">
+    <div style="text-align:left; color:#fff; margin-bottom:1rem;">
+      <h1 style="margin:0 0 .25rem 0; font-size:1.6rem;">PQC Bench</h1>
+      <div style="opacity:.9;">Run micro-benchmarks, export results, or compare mechanisms.</div>
+    </div>
+    {% include '_main_form.html' %}
+  </div>
   </div>
 
   <!-- Middle row with two islands -->
@@ -360,6 +386,75 @@
             <div style="margin-top:.75rem; font-size:.9rem;">Saved as: <code>{{ last_export }}</code></div>
           {% endif %}
         </div>
+        <div style="flex:1 1 320px; background:rgba(0,0,0,.25); padding:1rem; border-radius:.75rem;">
+          <div style="font-size:1.1rem; font-weight:700; margin-bottom:.75rem;">Security</div>
+          {% set security = result_json.security %}
+          {% if not security %}
+            <div style="opacity:.85;">Security estimator data unavailable.</div>
+          {% else %}
+            {% if security.get('error') %}
+              <div style="color:#ffdddd; background:rgba(255,0,0,0.25); padding:.6rem .7rem; border-radius:.5rem;">{{ security.error }}</div>
+            {% else %}
+              {% set metrics = [
+                ('Mechanism', 'mechanism'),
+                ('Family', 'family'),
+                ('Category floor', 'category_floor'),
+                ('NIST category', 'nist_category'),
+                ('Classical security (bits)', 'classical_bits'),
+                ('Quantum security (bits)', 'quantum_bits'),
+                ('Shor breakable', 'shor_breakable'),
+              ] %}
+              <table style="width:100%; border-collapse:collapse;">
+                <tbody>
+                  {% for label, key in metrics %}
+                    {% set value = security.get(key) %}
+                    {% if value is not none %}
+                    <tr style="border-bottom:1px dashed rgba(255,255,255,.15);">
+                      <td style="padding:.35rem .2rem; opacity:.9;">{{ label }}</td>
+                      <td style="padding:.35rem .2rem; font-weight:600; text-align:right;">
+                        {% if key in ['classical_bits', 'quantum_bits'] and value is number %}
+                          {{ value|round(2) }}
+                        {% elif key == 'shor_breakable' %}
+                          {{ 'Yes' if value else 'No' }}
+                        {% else %}
+                          {{ value }}
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endif %}
+                  {% endfor %}
+                </tbody>
+              </table>
+              {% if security.notes %}
+                <div style="margin-top:.6rem; font-size:.9rem; opacity:.85;">{{ security.notes }}</div>
+              {% endif %}
+              {% if security.estimator %}
+                {% set estimator = security.estimator %}
+                <div style="margin-top:.6rem; font-size:.9rem;">
+                  <div><strong>Estimator:</strong> {{ estimator.name or 'Unavailable' }}</div>
+                  {% if estimator.profile %}
+                    <div>Profile: {{ estimator.profile }}</div>
+                  {% endif %}
+                  <div>Available: {{ 'Yes' if estimator.available else 'No' }}</div>
+                </div>
+              {% endif %}
+              {% set extras = [
+                ('Parameters', 'parameters'),
+                ('Resources', 'resources'),
+                ('Estimates', 'estimates'),
+                ('Assumptions', 'assumptions'),
+              ] %}
+              {% for label, key in extras %}
+                {% if security.get(key) %}
+                  <details style="margin-top:.6rem;">
+                    <summary style="cursor:pointer;">{{ label }}</summary>
+                    <pre style="margin-top:.35rem; background:rgba(0,0,0,0.3); padding:.6rem .7rem; border-radius:.5rem; white-space:pre-wrap;">{{ security.get(key) | tojson(indent=2) }}</pre>
+                  </details>
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          {% endif %}
+        </div>
       </div>
 
       <div style="background:rgba(0,0,0,.25); padding:1rem; border-radius:.75rem;">
@@ -420,12 +515,6 @@
   <script>
     (function() {
       const kinds = {{ kinds|tojson }};
-      const select = document.getElementById('algo-select');
-      const msgWrap = document.getElementById('msg-size-wrap');
-      const exportPath = document.getElementById('export-path');
-      const exportCheck = document.getElementById('export-check');
-      const exportTracePath = document.getElementById('export-trace-path');
-      const exportTraceCheck = document.getElementById('export-trace-check');
       const result = {{ (result_json or {})|tojson }};
       const chartsEl = document.getElementById('charts');
       const memChartsEl = document.getElementById('mem-charts');
@@ -452,18 +541,7 @@
         return a[lo] * (1-h) + a[hi] * h;
       }
       function refresh() {
-        const name = select.value;
-        const kind = kinds[name] || '';
-        // Show msg size only for signatures
-        msgWrap.style.display = (kind === 'SIG') ? 'block' : 'none';
-        // If exporting and path empty, set sensible default
-        if (exportCheck.checked && (!exportPath.value || exportPath.value.trim()==='')) {
-          exportPath.value = `results/${name.replace('+', 'plus')}.json`;
-        }
-        if (exportTraceCheck.checked && (!exportTracePath.value || exportTracePath.value.trim()==='')) {
-          exportTracePath.value = `results/${name.replace('+', 'plus')}_trace.json`;
-        }
-        // Draw charts if we have a result
+        // Render charts for the current result payload
         if (chartsEl && result && result.ops) {
           chartsEl.innerHTML = '';
           clearCharts();
@@ -636,9 +714,6 @@
           } catch (e) {}
         }
       }
-      select.addEventListener('change', refresh);
-      exportCheck.addEventListener('change', refresh);
-      exportTraceCheck.addEventListener('change', refresh);
       if (autoScaleY) autoScaleY.addEventListener('change', refresh);
       if (trimCtl) trimCtl.addEventListener('change', refresh);
       window.addEventListener('load', () => setTimeout(repaintAll, 200));

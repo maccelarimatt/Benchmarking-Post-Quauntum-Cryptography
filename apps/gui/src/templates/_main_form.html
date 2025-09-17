@@ -1,0 +1,336 @@
+{% import '_form_macros.html' as form %}
+{% set operation = (selected_operation or 'single') %}
+{% set compare_kind = (compare_kind or 'KEM') %}
+{% set compare_mode = (compare_mode or 'pair') %}
+<form method="POST" action="/execute" id="main-form">
+  <div class="form-grid" style="max-width: 680px; margin: 0 auto;">
+    <div class="field" style="grid-column: span 3;">
+      <label for="operation">Mode</label>
+      <select id="operation" name="operation">
+        <option value="single" {% if operation != 'compare' %}selected{% endif %}>Single algorithm run</option>
+        <option value="compare" {% if operation == 'compare' %}selected{% endif %}>Compare mechanisms</option>
+      </select>
+    </div>
+
+    <div id="single-fields" style="display: {{ 'none' if operation == 'compare' else 'contents' }};">
+      <div class="field" style="grid-column: span 6;">
+        <label for="algo">Algorithm</label>
+        <select id="algo" name="algo">
+          {% for name in algos %}
+            <option value="{{name}}" {% if selected_algo==name %}selected{% endif %}>{{ display_names.get(name, name) }} ({{ kinds[name] }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      {{ form.number_field('runs', 'runs', 'Runs', default_runs or 10) }}
+      {{ form.number_field('msg', 'message_size', 'Message size (bytes)', default_message_size or 1024, hint='Used by signature algorithms only.', wrapper_id='msg-field') }}
+      <div class="field field--full"><div class="hint">Choose a KEM for key exchange or a SIG for signatures.</div></div>
+      <div class="field field--full export-row" style="display:flex; gap:.7rem; align-items:center;">
+        <input id="export" type="checkbox" name="do_export" {% if last_export %}checked{% endif %} />
+        <label for="export_path" style="margin:0;">Export summary to</label>
+        <input id="export_path" name="export_path" placeholder="results/<algo>.json" value="{{ last_export or '' }}" />
+      </div>
+      <div class="field field--full export-row" style="display:flex; gap:.7rem; align-items:center;">
+        <input id="export_trace" type="checkbox" name="do_export_trace" />
+        <label for="export_trace_path" style="margin:0;">Export raw trace to</label>
+        <input id="export_trace_path" name="export_trace_path" placeholder="results/<algo>_trace.json" />
+      </div>
+      <div class="field field--full" style="margin-top:.4rem;">
+        <div style="font-weight:600;">Security estimator</div>
+        <div class="hint">Optional: configure the estimator inputs used for security summaries.</div>
+      </div>
+      <div class="field" style="grid-column: span 6;">
+        <div class="checkbox-row">
+          <input id="sec_adv" type="checkbox" name="sec_adv" {% if security_form.sec_adv %}checked{% endif %}/>
+          <label for="sec_adv" style="margin:0;">Advanced lattice estimator</label>
+        </div>
+      </div>
+      <div class="field" style="grid-column: span 6;">
+        <div class="checkbox-row">
+          <input id="sec_rsa_phys" type="checkbox" name="sec_rsa_phys" {% if security_form.sec_rsa_phys %}checked{% endif %}/>
+          <label for="sec_rsa_phys" style="margin:0;">Include RSA surface-code overhead</label>
+        </div>
+      </div>
+      <div class="field" style="grid-column: span 4;">
+        <label for="sec_profile">Security profile</label>
+        <select id="sec_profile" name="sec_profile">
+          {% for profile in security_profile_choices %}
+            <option value="{{ profile }}" {% if security_form.sec_profile == profile %}selected{% endif %}>{{ profile|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field" style="grid-column: span 4;">
+        <label for="sec_phys_error_rate">Physical error rate</label>
+        <input id="sec_phys_error_rate" name="sec_phys_error_rate" type="number" step="any" min="0" value="{{ security_form.sec_phys_error_rate }}" />
+        <div class="hint">Probability per physical operation.</div>
+      </div>
+      <div class="field" style="grid-column: span 4;">
+        <label for="sec_cycle_time_ns">Cycle time (ns)</label>
+        <input id="sec_cycle_time_ns" name="sec_cycle_time_ns" type="number" step="any" min="0" value="{{ security_form.sec_cycle_time_ns }}" />
+      </div>
+      <div class="field" style="grid-column: span 4;">
+        <label for="sec_fail_prob">Target fail probability</label>
+        <input id="sec_fail_prob" name="sec_fail_prob" type="number" step="any" min="0" value="{{ security_form.sec_fail_prob }}" />
+      </div>
+      <div class="field" style="grid-column: span 4;">
+        <label for="quantum_arch">Quantum arch preset</label>
+        <select id="quantum_arch" name="quantum_arch">
+          {% for value, label in quantum_arch_choices %}
+            <option value="{{ value }}" {% if security_form.quantum_arch == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field" style="grid-column: span 4;">
+        <label for="rsa_model">RSA resource model</label>
+        <select id="rsa_model" name="rsa_model">
+          {% for model in rsa_model_choices %}
+            <option value="{{ model }}" {% if security_form.rsa_model == model %}selected{% endif %}>{{ model }}</option>
+          {% endfor %}
+        </select>
+        <div class="hint">Applies to RSA baselines only.</div>
+      </div>
+    </div>
+
+    <div id="compare-fields" style="display: {{ 'contents' if operation == 'compare' else 'none' }};">
+      <div class="field" style="grid-column: span 3;">
+        <label for="cmp_kind">Kind</label>
+        <select id="cmp_kind" name="kind">
+          <option value="KEM" {% if compare_kind != 'SIG' %}selected{% endif %}>KEM</option>
+          <option value="SIG" {% if compare_kind == 'SIG' %}selected{% endif %}>SIG</option>
+        </select>
+      </div>
+      <div class="field" style="grid-column: span 4;">
+        <label for="cmp_mode">Mode</label>
+        <select id="cmp_mode" name="mode">
+          <option value="pair" {% if compare_mode != 'all' %}selected{% endif %}>Compare two</option>
+          <option value="all" {% if compare_mode == 'all' %}selected{% endif %}>All of kind</option>
+        </select>
+      </div>
+      {{ form.number_field('cmp_runs', 'runs', 'Runs', default_runs or 10, column='span 2') }}
+      {{ form.number_field('cmp_msg', 'message_size', 'Message size (SIG)', default_message_size or 1024, column='span 3', wrapper_id='cmp_msg_field') }}
+
+      <div class="field field--full" id="cmp_kem_pair" style="display:none;">
+        <div class="row">
+          <div style="flex:1;">
+            <label for="cmp_kem_a">Algorithm A (KEM)</label>
+            <select id="cmp_kem_a" name="algo_a">
+              {% for name in algos %}
+                {% if kinds[name] == 'KEM' %}
+                  <option value="{{name}}">{{ display_names.get(name, name) }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+          </div>
+          <div style="flex:1;">
+            <label for="cmp_kem_b">Algorithm B (KEM)</label>
+            <select id="cmp_kem_b" name="algo_b">
+              {% for name in algos %}
+                {% if kinds[name] == 'KEM' %}
+                  <option value="{{name}}">{{ display_names.get(name, name) }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="field field--full" id="cmp_sig_pair" style="display:none;">
+        <div class="row">
+          <div style="flex:1;">
+            <label for="cmp_sig_a">Algorithm A (SIG)</label>
+            <select id="cmp_sig_a" name="algo_a">
+              {% for name in algos %}
+                {% if kinds[name] == 'SIG' %}
+                  <option value="{{name}}">{{ display_names.get(name, name) }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+          </div>
+          <div style="flex:1;">
+            <label for="cmp_sig_b">Algorithm B (SIG)</label>
+            <select id="cmp_sig_b" name="algo_b">
+              {% for name in algos %}
+                {% if kinds[name] == 'SIG' %}
+                  <option value="{{name}}">{{ display_names.get(name, name) }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="muted-btn" type="reset">Reset</button>
+    <button type="submit">Run</button>
+  </div>
+</form>
+
+<script>
+  (function(){
+    const kinds = {{ kinds|tojson }};
+    const opSelect = document.getElementById('operation');
+    const singleFields = document.getElementById('single-fields');
+    const compareFields = document.getElementById('compare-fields');
+    const algoSelect = document.getElementById('algo');
+    const msgField = document.getElementById('msg-field');
+    const msgInput = document.getElementById('msg');
+    const exportCheck = document.getElementById('export');
+    const exportPath = document.getElementById('export_path');
+    const exportTraceCheck = document.getElementById('export_trace');
+    const exportTracePath = document.getElementById('export_trace_path');
+    const cmpKind = document.getElementById('cmp_kind');
+    const cmpMode = document.getElementById('cmp_mode');
+    const cmpMsgField = document.getElementById('cmp_msg_field');
+    const cmpMsgInput = document.getElementById('cmp_msg');
+    const cmpKemPair = document.getElementById('cmp_kem_pair');
+    const cmpSigPair = document.getElementById('cmp_sig_pair');
+    const cmpKemA = document.getElementById('cmp_kem_a');
+    const cmpKemB = document.getElementById('cmp_kem_b');
+    const cmpSigA = document.getElementById('cmp_sig_a');
+    const cmpSigB = document.getElementById('cmp_sig_b');
+
+    const mainForm = document.getElementById('main-form');
+    const loadingOverlay = document.getElementById('loading-overlay');
+
+    function showLoadingOverlay(){
+      if (!loadingOverlay) return;
+      loadingOverlay.removeAttribute('hidden');
+      loadingOverlay.classList.add('is-visible');
+    }
+
+    function hideLoadingOverlay(){
+      if (!loadingOverlay) return;
+      loadingOverlay.classList.remove('is-visible');
+      loadingOverlay.setAttribute('hidden', 'hidden');
+    }
+
+    function toggleSection(section, enabled){
+      if (!section) return;
+      section.style.display = enabled ? 'contents' : 'none';
+      const controls = section.querySelectorAll('input, select, textarea');
+      controls.forEach(el => {
+        if (enabled) {
+          if (el.dataset.modeDisabled === '1') {
+            el.disabled = false;
+            delete el.dataset.modeDisabled;
+          }
+        } else {
+          if (!el.disabled) {
+            el.disabled = true;
+            el.dataset.modeDisabled = '1';
+          }
+        }
+      });
+    }
+
+    function togglePair(container, show){
+      if (!container) return;
+      container.style.display = show ? 'block' : 'none';
+      const controls = container.querySelectorAll('select');
+      controls.forEach(el => {
+        if (show) {
+          if (el.dataset.modeDisabled === '1') {
+            el.disabled = false;
+            delete el.dataset.modeDisabled;
+          }
+        } else {
+          if (!el.disabled) {
+            el.disabled = true;
+            el.dataset.modeDisabled = '1';
+          }
+        }
+      });
+    }
+
+    function refreshSingleSection(){
+      if (!algoSelect) return;
+      const isCompare = opSelect && opSelect.value === 'compare';
+      if (isCompare) {
+        if (msgInput) msgInput.disabled = true;
+        if (msgField) msgField.classList.add('is-disabled');
+        return;
+      }
+      const name = algoSelect.value || '';
+      const kind = kinds[name] || '';
+      const isSig = (kind === 'SIG');
+      if (msgInput) msgInput.disabled = !isSig;
+      if (msgField) msgField.classList.toggle('is-disabled', !isSig);
+      if (exportCheck && exportCheck.checked && exportPath && (!exportPath.value || !exportPath.value.trim())) {
+        exportPath.value = `results/${name.replace('+','plus')}.json`;
+      }
+      if (exportTraceCheck && exportTraceCheck.checked && exportTracePath && (!exportTracePath.value || !exportTracePath.value.trim())) {
+        exportTracePath.value = `results/${name.replace('+','plus')}_trace.json`;
+      }
+    }
+
+    function syncCompareOptions(aSel, bSel){
+      if (!aSel || !bSel) return;
+      const valA = aSel.value;
+      Array.from(bSel.options).forEach(o => { o.disabled = (o.value && o.value === valA); });
+      if (bSel.value === valA){
+        const alt = Array.from(bSel.options).find(o => !o.disabled && o.value);
+        if (alt) bSel.value = alt.value;
+      }
+    }
+
+    function refreshCompareSection(){
+      if (!cmpKind) return;
+      const isCompare = opSelect && opSelect.value === 'compare';
+      if (!isCompare) {
+        if (cmpMsgInput) cmpMsgInput.disabled = true;
+        if (cmpMsgField) cmpMsgField.style.opacity = '.65';
+        togglePair(cmpKemPair, false);
+        togglePair(cmpSigPair, false);
+        return;
+      }
+      const isSig = (cmpKind.value === 'SIG');
+      if (cmpMsgInput) cmpMsgInput.disabled = !isSig;
+      if (cmpMsgField) cmpMsgField.style.opacity = isSig ? '1' : '.65';
+      const isPair = cmpMode && cmpMode.value === 'pair';
+      togglePair(cmpKemPair, isPair && !isSig);
+      togglePair(cmpSigPair, isPair && isSig);
+      if (isPair){
+        if (isSig) {
+          syncCompareOptions(cmpSigA, cmpSigB);
+        } else {
+          syncCompareOptions(cmpKemA, cmpKemB);
+        }
+      }
+    }
+
+    hideLoadingOverlay();
+
+    window.addEventListener('pageshow', function(event){
+      if (event && event.persisted) {
+        hideLoadingOverlay();
+      }
+    });
+
+    function refreshMode(){
+      const isCompare = opSelect && opSelect.value === 'compare';
+      toggleSection(singleFields, !isCompare);
+      toggleSection(compareFields, isCompare);
+      refreshSingleSection();
+      refreshCompareSection();
+    }
+
+    if (opSelect) opSelect.addEventListener('change', refreshMode);
+    if (algoSelect) algoSelect.addEventListener('change', refreshSingleSection);
+    if (exportCheck) exportCheck.addEventListener('change', refreshSingleSection);
+    if (exportTraceCheck) exportTraceCheck.addEventListener('change', refreshSingleSection);
+    if (cmpKind) cmpKind.addEventListener('change', refreshCompareSection);
+    if (cmpMode) cmpMode.addEventListener('change', refreshCompareSection);
+    if (cmpKemA) cmpKemA.addEventListener('change', function(){ syncCompareOptions(cmpKemA, cmpKemB); });
+    if (cmpSigA) cmpSigA.addEventListener('change', function(){ syncCompareOptions(cmpSigA, cmpSigB); });
+    if (mainForm) {
+      mainForm.addEventListener('submit', function(){
+        if (typeof mainForm.checkValidity === 'function' && !mainForm.checkValidity()) {
+          return;
+        }
+        window.requestAnimationFrame(showLoadingOverlay);
+      });
+    }
+
+    refreshMode();
+  })();
+</script>

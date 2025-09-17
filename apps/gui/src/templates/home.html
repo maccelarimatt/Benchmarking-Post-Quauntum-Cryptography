@@ -26,7 +26,7 @@
     .two-col { display:grid; grid-template-columns: minmax(360px, 1fr) 1fr; gap: 1.25rem; }
     @media (max-width: 960px) { .two-col { grid-template-columns: 1fr; } }
     .form-card { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.2rem; border: 1px solid rgba(255,255,255,.18); box-shadow: 0 8px 30px rgba(0,0,0,.25) inset; }
-    .form-grid { display:grid; grid-template-columns: repeat(12, 1fr); gap: .9rem; align-items:end; }
+    .form-grid { display:grid; grid-template-columns: repeat(12, 1fr); gap: .9rem; align-items:start; }
     .field { grid-column: span 6; }
     .field--full { grid-column: 1 / -1; }
     label { font-size:.95rem; display:block; margin-bottom:.35rem; letter-spacing:.2px; }
@@ -54,7 +54,9 @@
   appearance: none;
   width: 1.25rem;
   height: 1.25rem;
-  border-radius: 0.9rem;
+  border-radius: 50%;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 1.25rem;
   border: 2px solid rgba(255,255,255,.6);
   background: rgba(255,255,255,.12);
   display: inline-grid;
@@ -86,20 +88,68 @@ input[type="checkbox"]:checked::after { opacity: 1; }
   -moz-appearance: none;
   appearance: none;
   border-radius: 2.8rem; /* rounder corners */
-  padding: 1.1rem 1.4rem; /* larger box */
+  padding: 0.6rem 1rem; /* align height with dropdowns */
   min-width: 460px;       /* bigger base width */
   flex: 1 1 auto;
   width: 100%;
-  font-size: 1.1rem;      /* larger text */
-  line-height: 1.25;
+  font-size: 0.95rem;      /* align text size */
+  line-height: 1.2;
   border: 1px solid rgba(0,0,0,.15);
   background: rgba(255,255,255,.98);
 }
   /* Ensure export path inputs are large and rounded across browsers */
-#export_path, #export_trace_path { -webkit-appearance: none; -moz-appearance: none; appearance: none; border-radius: 1.8rem !important; padding: 0.78rem 1rem !important; font-size: 1rem !important; min-width: 320px !important; max-width: 480px !important; width: auto !important; flex: 1 1 360px !important; line-height: 1.2; border: 1px solid rgba(0,0,0,.15); background: rgba(255,255,255,.98); }
+#export_path, #export_trace_path { -webkit-appearance: none; -moz-appearance: none; appearance: none; border-radius: 1.8rem !important; padding: 0.6rem 0.9rem !important; font-size: 0.95rem !important; min-width: 320px !important; max-width: 480px !important; width: auto !important; flex: 1 1 360px !important; line-height: 1.2; border: 1px solid rgba(0,0,0,.15); background: rgba(255,255,255,.98); }
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(5, 7, 12, 0.72);
+      backdrop-filter: blur(6px);
+      z-index: 9999;
+      color: #fff;
+      text-align: center;
+      padding: 2rem;
+    }
+    .loading-overlay.is-visible {
+      display: flex;
+    }
+    .loading-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.5rem 2rem;
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 1rem;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    }
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 4px solid rgba(255, 255, 255, 0.35);
+      border-top-color: var(--accent);
+      animation: loading-spin 0.85s linear infinite;
+    }
+    .loading-text {
+      font-size: 1.05rem;
+      letter-spacing: 0.04em;
+    }
+    @keyframes loading-spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
   </head>
 <body>
+  <div id="loading-overlay" class="loading-overlay" hidden>
+    <div class="loading-card">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Running benchmarks...</div>
+    </div>
+  </div>
+
   <div class="island" style="margin-bottom:2vh;">
     <div class="title">Post-Quantum Cryptography Bench</div>
     <div class="subtitle">Choose an algorithm and parameters, then run to view results.</div>
@@ -107,131 +157,10 @@ input[type="checkbox"]:checked::after { opacity: 1; }
 
   <div class="island two-col" style="margin-bottom:2vh;">
     <div class="form-card">
-      <div class="title" style="font-size:1.2rem;">Select Algorithm & Parameters</div>
-      <form method="POST" action="/run">
-        <div class="form-grid" style="max-width: 680px; margin: 0 auto;">
-          <div class="field" style="grid-column: span 6;">
-            <label for="algo">Algorithm</label>
-            <select id="algo" name="algo">
-              {% for name in algos %}
-                <option value="{{name}}">{{ display_names.get(name, name) }} ({{ kinds[name] }})</option>
-              {% endfor %}
-            </select>
-            
-          </div>
-          <div class="field" style="grid-column: span 3;">
-            <label for="runs">Runs</label>
-            <input id="runs" name="runs" type="number" min="1" value="{{ default_runs or 10 }}" />
-          </div>
-          <div class="field" id=\"msg-field\" style=\"grid-column: span 3;\">
-            <label for="msg">Message size (bytes)</label>
-            <input id="msg" name="message_size" type="number" min="1" value="{{ default_message_size or 1024 }}" />
-            <div class="hint">Used by signature algorithms only.</div>
-          </div>
-<div class="field field--full"><div class="hint">Choose a KEM for key exchange or a SIG for signatures.</div></div>
-          <div class="field field--full export-row" style="display:flex; gap:.7rem; align-items:center;">
-            <input id="export" type="checkbox" name="do_export" />
-            <label for="export_path" style="margin:0;">Export summary to</label>
-            <input id="export_path" name="export_path" placeholder="results/&lt;algo&gt;.json" />
-          </div>
-          <div class="field field--full export-row" style="display:flex; gap:.7rem; align-items:center;">
-            <input id="export_trace" type="checkbox" name="do_export_trace" />
-            <label for="export_trace_path" style="margin:0;">Export raw trace to</label>
-            <input id="export_trace_path" name="export_trace_path" placeholder="results/&lt;algo&gt;_trace.json" />
-          </div>
-        </div>
-        <div class="actions">
-          <button class="muted-btn" type="reset">Reset</button>
-          <button type="submit">Run</button>
-        </div>
-      </form>
-      <hr style="border:none; border-top:1px solid rgba(255,255,255,.2); margin:1.25rem 0;"/>
-      <div>
-        <div class="title" style="font-size:1.2rem;">Compare Mechanisms</div>
-        <form method="POST" action="/compare/run">
-          <div class="form-grid" style="max-width: 680px; margin: 0 auto;">
-            <div class="field" style="grid-column: span 3;">
-              <label for="cmp_kind">Kind</label>
-              <select id="cmp_kind" name="kind">
-                <option value="KEM">KEM</option>
-                <option value="SIG">SIG</option>
-              </select>
-            </div>
-            <div class="field" style="grid-column: span 4;">
-              <label for="cmp_mode">Mode</label>
-              <select id="cmp_mode" name="mode">
-                <option value="pair">Compare two</option>
-                <option value="all">All of kind</option>
-              </select>
-            </div>
-            <div class="field" style="grid-column: span 2;">
-              <label for="cmp_runs">Runs</label>
-              <input id="cmp_runs" type="number" name="runs" min="1" value="{{ default_runs or 10 }}" />
-            </div>
-            <div class="field" id="cmp_msg_field" style="grid-column: span 3;">
-              <label for="cmp_msg">Message size (SIG)</label>
-              <input id="cmp_msg" type="number" name="message_size" min="1" value="{{ default_message_size or 1024 }}" />
-            </div>
-
-            <!-- Pair selectors for KEM -->
-            <div class="field field--full" id="cmp_kem_pair" style="display:none;">
-              <div class="row">
-                <div style="flex:1;">
-                  <label for="cmp_kem_a">Algorithm A (KEM)</label>
-                  <select id="cmp_kem_a" name="algo_a">
-                    {% for name in algos %}
-                      {% if kinds[name] == 'KEM' %}
-                        <option value="{{name}}">{{ display_names.get(name, name) }}</option>
-                      {% endif %}
-                    {% endfor %}
-                  </select>
-                </div>
-                <div style="flex:1;">
-                  <label for="cmp_kem_b">Algorithm B (KEM)</label>
-                  <select id="cmp_kem_b" name="algo_b">
-                    {% for name in algos %}
-                      {% if kinds[name] == 'KEM' %}
-                        <option value="{{name}}">{{ display_names.get(name, name) }}</option>
-                      {% endif %}
-                    {% endfor %}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <!-- Pair selectors for SIG -->
-            <div class="field field--full" id="cmp_sig_pair" style="display:none;">
-              <div class="row">
-                <div style="flex:1;">
-                  <label for="cmp_sig_a">Algorithm A (SIG)</label>
-                  <select id="cmp_sig_a" name="algo_a">
-                    {% for name in algos %}
-                      {% if kinds[name] == 'SIG' %}
-                        <option value="{{name}}">{{ display_names.get(name, name) }}</option>
-                      {% endif %}
-                    {% endfor %}
-                  </select>
-                </div>
-                <div style="flex:1;">
-                  <label for="cmp_sig_b">Algorithm B (SIG)</label>
-                  <select id="cmp_sig_b" name="algo_b">
-                    {% for name in algos %}
-                      {% if kinds[name] == 'SIG' %}
-                        <option value="{{name}}">{{ display_names.get(name, name) }}</option>
-                      {% endif %}
-                    {% endfor %}
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="actions">
-            <button type="submit">Run comparison</button>
-          </div>
-        </form>
-      </div>
+      <div class="title" style="font-size:1.2rem;">Run or Compare</div>
+      <div class="hint" style="text-align:left; margin-bottom:0.8rem;">Use the mode selector to switch between a single benchmark run and multi-algorithm comparisons.</div>
+      {% include '_main_form.html' %}
     </div>
-
     <div>
       <div class="alg-section" style="margin-bottom:1rem;">
         <div class="title" style="font-size:1.1rem; margin-bottom:.5rem;">Key Encapsulation (KEM)</div>
@@ -268,77 +197,6 @@ input[type="checkbox"]:checked::after { opacity: 1; }
     </div>
   </div>
 
-
-  <script>
-    (function(){
-      const kinds = {{ kinds|tojson }};
-      const select = document.getElementById('algo');
-      const msgField = document.getElementById('msg-field');
-      const msgInput = document.getElementById('msg');
-      const exportC = document.getElementById('export');
-      const exportPath = document.getElementById('export_path');
-      const exportTraceC = document.getElementById('export_trace');
-      const exportTracePath = document.getElementById('export_trace_path');
-      function refresh(){
-        const name = select.value || '';
-        const kind = kinds[name] || '';
-        // Keep message size visible, but disable unless SIG
-        if (msgInput) {
-          const isSig = (kind === 'SIG');
-          msgInput.disabled = !isSig;
-          if (msgField) msgField.classList.toggle('is-disabled', !isSig);
-        }
-        if (exportC && exportC.checked && (!exportPath.value || !exportPath.value.trim())){
-          exportPath.value = `results/${name.replace('+','plus')}.json`;
-        }
-        if (exportTraceC && exportTraceC.checked && (!exportTracePath.value || !exportTracePath.value.trim())){
-          exportTracePath.value = `results/${name.replace('+','plus')}_trace.json`;
-        }
-      }
-      select.addEventListener('change', refresh);
-      if (exportC) exportC.addEventListener('change', refresh);
-      if (exportTraceC) exportTraceC.addEventListener('change', refresh);
-      refresh();
-    })();
-
-    // Inline compare tool logic
-    (function(){
-      const kindSel = document.getElementById('cmp_kind');
-      const modeSel = document.getElementById('cmp_mode');
-      const msgField = document.getElementById('cmp_msg_field');
-      const msgInput = document.getElementById('cmp_msg');
-      const kemPair = document.getElementById('cmp_kem_pair');
-      const sigPair = document.getElementById('cmp_sig_pair');
-      const kemA = document.getElementById('cmp_kem_a');
-      const kemB = document.getElementById('cmp_kem_b');
-      const sigA = document.getElementById('cmp_sig_a');
-      const sigB = document.getElementById('cmp_sig_b');
-
-      function syncOptions(aSel, bSel){
-        if (!aSel || !bSel) return;
-        const valA = aSel.value;
-        Array.from(bSel.options).forEach(o => { o.disabled = (o.value && o.value === valA); });
-        if (bSel.value === valA){
-          const alt = Array.from(bSel.options).find(o => !o.disabled && o.value);
-          if (alt) bSel.value = alt.value;
-        }
-      }
-      function refresh(){
-        const isSig = (kindSel.value === 'SIG');
-        // enable/disable message size
-        if (msgInput) { msgInput.disabled = !isSig; }
-        if (msgField) { msgField.style.opacity = isSig ? '1' : '.65'; }
-        // pair/all toggle
-        const isPair = (modeSel.value === 'pair');
-        if (kemPair) kemPair.style.display = isPair && !isSig ? 'block' : 'none';
-        if (sigPair) sigPair.style.display = isPair && isSig ? 'block' : 'none';
-        if (isPair){ if (isSig) { syncOptions(sigA, sigB); } else { syncOptions(kemA, kemB); } }
-      }
-      kindSel.addEventListener('change', refresh);
-      modeSel.addEventListener('change', refresh);
-      refresh();
-    })();
-  </script>
 
   <script>
     (function(){
