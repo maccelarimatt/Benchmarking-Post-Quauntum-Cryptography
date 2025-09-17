@@ -303,6 +303,10 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
     if estimates:
         out["estimates"] = estimates
 
+    # Brute-force baseline (educational). Copy through directly for visibility.
+    if isinstance(extras.get("bruteforce"), dict):
+        out["bruteforce"] = extras["bruteforce"]
+
     return out
 
 

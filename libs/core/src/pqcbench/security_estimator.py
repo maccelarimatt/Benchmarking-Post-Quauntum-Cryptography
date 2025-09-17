@@ -574,6 +574,21 @@ def estimate_for_summary(summary: Any, options: Optional[EstimatorOptions] = Non
             extras={},
         )
 
+    # Attach a brute-force baseline (educational; toy parameters only)
+    try:
+        from pqcbench.bruteforce import bruteforce_summary  # type: ignore
+        bf = bruteforce_summary(
+            algo=name,
+            kind=kind,
+            mechanism=mech,
+            classical_bits=metrics.classical_bits,
+            extras=metrics.extras,
+        )
+        metrics.extras["bruteforce"] = bf
+    except Exception:
+        # Never fail the estimator on auxiliary features
+        pass
+
     # Return a plain dict for easy JSON embedding
     out = asdict(metrics)
     if mech:

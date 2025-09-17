@@ -15,6 +15,7 @@ This document summarizes the security models and estimators used by pqcbench. Th
 - [SPHINCS+ (stateless hash‑based)](#sphincs-stateless-hashbased)
 - [XMSS / XMSS^MT (stateful hash‑based)](#xmss--xmssmt-stateful-hashbased)
 - [MAYO (multivariate MQ signatures)](#mayo-multivariate-mq-signatures)
+- [Brute-force baseline](#brute-force-baseline)
 - [Implementation status](#implementation-status)
 
 ## RSA (Rivest–Shamir–Adleman)
@@ -135,3 +136,6 @@ Top‑level classical_bits and quantum_bits equal the category floor for MAYO le
 
 RSA is implemented as above and used by the CLI/JSON exports. Other families are integrated at varying levels with clear floor/assumption notes. As advanced estimators and parameters are integrated, the respective sections will be populated with details and references.
 
+## Brute-force baseline
+
+We include an educational brute-force baseline in each security block, labeled by a simple model and a search space size 2^b. For RSA this is "trial_division_factorization" with b≈modulus_bits/2; for KEMs it is "guess_shared_secret" with b≈category floor; for signatures it is "random_forgery" with b≈category floor. Exports report expected time in years at 1e6/1e9/1e12 tries/s. See docs/security/BRUTEFORCE.md for details and assumptions.
