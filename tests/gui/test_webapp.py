@@ -35,6 +35,15 @@ def test_index_lists_algorithms(gui_test_env):
     assert 'name="runs"' in body
 
 
+def test_index_shows_loading_overlay(gui_test_env):
+    client = gui_test_env.client
+    response = client.get("/")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert 'id="loading-overlay"' in body
+    assert 'loading-spinner' in body
+
+
 def test_run_kem_flow_shows_results_and_exports(gui_test_env):
     client = gui_test_env.client
     calls = gui_test_env.calls

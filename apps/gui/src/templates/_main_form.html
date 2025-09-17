@@ -189,6 +189,21 @@
     const cmpSigA = document.getElementById('cmp_sig_a');
     const cmpSigB = document.getElementById('cmp_sig_b');
 
+    const mainForm = document.getElementById('main-form');
+    const loadingOverlay = document.getElementById('loading-overlay');
+
+    function showLoadingOverlay(){
+      if (!loadingOverlay) return;
+      loadingOverlay.removeAttribute('hidden');
+      loadingOverlay.classList.add('is-visible');
+    }
+
+    function hideLoadingOverlay(){
+      if (!loadingOverlay) return;
+      loadingOverlay.classList.remove('is-visible');
+      loadingOverlay.setAttribute('hidden', 'hidden');
+    }
+
     function toggleSection(section, enabled){
       if (!section) return;
       section.style.display = enabled ? 'contents' : 'none';
@@ -283,6 +298,14 @@
       }
     }
 
+    hideLoadingOverlay();
+
+    window.addEventListener('pageshow', function(event){
+      if (event && event.persisted) {
+        hideLoadingOverlay();
+      }
+    });
+
     function refreshMode(){
       const isCompare = opSelect && opSelect.value === 'compare';
       toggleSection(singleFields, !isCompare);
@@ -299,6 +322,14 @@
     if (cmpMode) cmpMode.addEventListener('change', refreshCompareSection);
     if (cmpKemA) cmpKemA.addEventListener('change', function(){ syncCompareOptions(cmpKemA, cmpKemB); });
     if (cmpSigA) cmpSigA.addEventListener('change', function(){ syncCompareOptions(cmpSigA, cmpSigB); });
+    if (mainForm) {
+      mainForm.addEventListener('submit', function(){
+        if (typeof mainForm.checkValidity === 'function' && !mainForm.checkValidity()) {
+          return;
+        }
+        window.requestAnimationFrame(showLoadingOverlay);
+      });
+    }
 
     refreshMode();
   })();
