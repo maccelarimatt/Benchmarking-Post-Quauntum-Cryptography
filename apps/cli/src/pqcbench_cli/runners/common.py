@@ -5,11 +5,19 @@ from __future__ import annotations
 Includes adapter bootstrap, timing/memory measurement, JSON export helpers,
 and per-kind (KEM/SIG) micro-benchmark orchestrators.
 """
-import time, json, pathlib, base64, multiprocessing, threading, sys
+
+import time, json, pathlib, base64, multiprocessing, threading, sys, statistics
+
 from dataclasses import dataclass, asdict
 from typing import Callable, Dict, Any, List, Tuple
 from pqcbench import registry
 from functools import partial
+from pqcbench.key_analysis import (
+    DEFAULT_PAIR_SAMPLE_LIMIT,
+    DEFAULT_SECRET_KEY_SAMPLES,
+    derive_model,
+    summarize_secret_keys,
+)
 
 _MP_CONTEXT = multiprocessing.get_context('spawn')
 _MEMORY_SAMPLE_INTERVAL = 0.0015  # seconds between RSS samples
@@ -77,11 +85,17 @@ class OpStats:
     mean_ms: float
     min_ms: float
     max_ms: float
+    median_ms: float
+    stddev_ms: float
+    range_ms: float
     series: List[float]
     # Memory footprint metrics (per-run process delta / Python peak)
     mem_mean_kb: float | None = None
     mem_min_kb: float | None = None
     mem_max_kb: float | None = None
+    mem_median_kb: float | None = None
+    mem_stddev_kb: float | None = None
+    mem_range_kb: float | None = None
     mem_series_kb: List[float] | None = None
 
 @dataclass
@@ -110,20 +124,32 @@ def measure(fn: Callable[[], None], runs: int) -> OpStats:
             mem_peaks_kb.append(mem_kb)
 
     mean = sum(times) / len(times)
+    median = statistics.median(times)
+    stddev = statistics.pstdev(times) if len(times) > 1 else 0.0
+    range_ms = max(times) - min(times)
 
     if mem_peaks_kb:
         mem_mean = sum(mem_peaks_kb) / len(mem_peaks_kb)
         mem_min = min(mem_peaks_kb)
         mem_max = max(mem_peaks_kb)
+        mem_median = statistics.median(mem_peaks_kb)
+        mem_stddev = statistics.pstdev(mem_peaks_kb) if len(mem_peaks_kb) > 1 else 0.0
+        mem_range = mem_max - mem_min
         return OpStats(
             runs=runs,
             mean_ms=mean,
             min_ms=min(times),
             max_ms=max(times),
+            median_ms=median,
+            stddev_ms=stddev,
+            range_ms=range_ms,
             series=times,
             mem_mean_kb=mem_mean,
             mem_min_kb=mem_min,
             mem_max_kb=mem_max,
+            mem_median_kb=mem_median,
+            mem_stddev_kb=mem_stddev,
+            mem_range_kb=mem_range,
             mem_series_kb=mem_peaks_kb,
         )
     else:
@@ -132,6 +158,9 @@ def measure(fn: Callable[[], None], runs: int) -> OpStats:
             mean_ms=mean,
             min_ms=min(times),
             max_ms=max(times),
+            median_ms=median,
+            stddev_ms=stddev,
+            range_ms=range_ms,
             series=times,
         )
 
@@ -580,6 +609,61 @@ def _repo_root() -> pathlib.Path:
             return p
     return pathlib.Path.cwd()
 
+
+def _sample_secret_key_analysis(name: str, cls, mechanism: str | None, kind: str) -> Dict[str, Any] | None:
+    """Collect lightweight Hamming-weight/distance stats across fresh keygens."""
+    try:
+        keys: List[bytes] = []
+        for _ in range(DEFAULT_SECRET_KEY_SAMPLES):
+            try:
+                _, sk = cls().keygen()
+            except Exception:
+                continue
+            if not isinstance(sk, (bytes, bytearray)):
+                return None
+            sk_bytes = bytes(sk)
+            if not sk_bytes:
+                continue
+            keys.append(sk_bytes)
+        if len(keys) < 4:
+            return None
+
+        family = None
+        hint = None
+        try:
+            from pqcbench.params import find as find_params  # type: ignore
+
+            if mechanism:
+                hint = find_params(mechanism)
+            if not hint:
+                hint = find_params(name)
+            if hint:
+                family = hint.family
+        except Exception:
+            hint = None
+            family = None
+
+        model = derive_model(family, hint)
+        summary = summarize_secret_keys(keys, model=model, pair_sample_limit=DEFAULT_PAIR_SAMPLE_LIMIT)
+        context: Dict[str, Any] = {
+            "algo": name,
+            "kind": kind,
+            "family": family,
+            "mechanism": mechanism,
+            "sampled_keys": len(keys),
+        }
+        if hint:
+            context.update(
+                {
+                    "category_floor": hint.category_floor,
+                    "param_notes": hint.notes,
+                }
+            )
+        summary["context"] = context
+        return summary
+    except Exception as exc:
+        return {"method": "bitstring_hw_hd_v1", "error": repr(exc)}
+
 def run_kem(name: str, runs: int) -> AlgoSummary:
     """Run a KEM micro-benchmark for the registered algorithm `name`.
 
@@ -615,6 +699,9 @@ def run_kem(name: str, runs: int) -> AlgoSummary:
         "ciphertext_expansion_ratio": _ct_expansion,
         "mechanism": getattr(instance, "mech", None) or getattr(instance, "alg", None) or getattr(instance, "_mech", None),
     }
+    analysis = _sample_secret_key_analysis(name, cls, meta.get("mechanism"), "KEM")
+    if analysis:
+        meta["secret_key_analysis"] = analysis
     return AlgoSummary(algo=name, kind="KEM", ops=ops, meta=meta)
 
 
@@ -650,6 +737,9 @@ def run_sig(name: str, runs: int, message_size: int) -> AlgoSummary:
         "signature_expansion_ratio": _sig_expansion,
         "mechanism": getattr(instance, "mech", None) or getattr(instance, "alg", None) or getattr(instance, "_mech", None),
     }
+    analysis = _sample_secret_key_analysis(name, cls, meta.get("mechanism"), "SIG")
+    if analysis:
+        meta["secret_key_analysis"] = analysis
     return AlgoSummary(algo=name, kind="SIG", ops=ops, meta=meta)
 
 
@@ -692,7 +782,4 @@ def export_trace_sig(name: str, message_size: int, export_path: str | None) -> N
         }
     }
     _export_json_blob(trace, export_path)
-
-
-
 
