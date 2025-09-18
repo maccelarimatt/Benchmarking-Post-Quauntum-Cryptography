@@ -5,6 +5,49 @@ This document summarizes the security models and estimators used by pqcbench. Th
 ## Notes
 - Unless a stronger model is available, we report conservative floors based on NIST security categories (128/192/256) or standard mappings. When advanced estimators are unavailable in your environment, results clearly indicate floor usage.
 - Where quantum attacks fundamentally break the scheme (e.g., RSA), we report 0 bits for quantum security and include resource estimates to quantify feasibility.
+- Secret-key Hamming statistics accompany every benchmark (see [Secret-Key Hamming Analysis](#secret-key-hamming-analysis)) so obvious RNG or encoding regressions are surfaced alongside timing metrics.
+
+## Secret-Key Hamming Analysis
+
+### What it measures
+Every benchmark pass samples a batch of fresh secret keys (32 by default) and
+computes lightweight bitstring statistics before anything is persisted:
+- **Hamming weight (HW)** – fraction of `1` bits per secret.
+- **Hamming distance (HD)** – fraction of differing bits between random key pairs
+  (up to 128 sampled pairs).
+- **Byte-wise bias** – maximum and mean deviation per byte from the expected
+  `1` fraction, catching fixed padding or mis-serialised fields.
+Results live under `meta.secret_key_analysis` in exported JSON/CLI output. No raw
+keys or per-sample HW/HD values are written to disk; only aggregates are exposed.
+
+### Interpretation models
+The analyser selects expectations using mechanism hints (`libs/core/src/pqcbench/params.py`):
+| Model | Applies to | Expected HW/HD behaviour |
+| --- | --- | --- |
+| `uniform_bitstring` | RSA, SPHINCS+, XMSSMT, MAYO, uniform seed blobs | HW ≈ 0.5, HD ≈ 0.5; a ±3σ band (`1/(2√N)`) is reported and warnings fire if the mean drifts outside. |
+| `constant_weight` | HQC fixed-weight secrets | HW should equal the published weight `w`; HD expectation uses `2w(1 - w/n) / n`. Any significant deviation triggers a warning. |
+| `structured_lattice_blob` | Kyber/ML-KEM, Dilithium/ML-DSA, Falcon | Secrets mix seeds/compressed state. HW/HD are treated as coarse RNG checks without strict warning bands.
+
+If hints are missing (e.g., a new liboqs mechanism string), the analyser still
+reports the raw aggregates so reviewers can judge them manually.
+
+### Why it matters
+- **RNG sanity:** Drift from the expected HW band flags broken entropy sources or
+  truncated reads before deeper analysis occurs.
+- **Spec conformance:** Constant-weight schemes rely on the exact number of ones;
+  the HW check immediately catches adapter bugs or upstream changes.
+- **Regression guardrail:** Because the analysis runs with every benchmark, any
+  library upgrade that alters key structure is visible before comparing metrics.
+- **Side-channel awareness:** Many leakage models correlate power/EM traces with
+  HW/HD. Recording these aggregates helps frame constant-weight countermeasures.
+
+### Tuning and limitations
+- Default sampling (`DEFAULT_SECRET_KEY_SAMPLES = 32`, `DEFAULT_PAIR_SAMPLE_LIMIT = 128`) keeps CLI
+  runs responsive. Scripts may raise these constants for tighter confidence.
+- Lattice coefficient distributions are outside the scope of this helper. Extend
+  `pqcbench.key_analysis` if you need coefficient-domain statistics.
+- Secrets must be byte-like objects of consistent length; adapters returning other
+  structures should continue to expose raw `bytes` to stay compatible.
 
 ## Table of Contents
 - [RSA (Rivest–Shamir–Adleman)](#rsa-rivestshamiradleman)

@@ -155,6 +155,9 @@ but `PQCBENCH_*` takes precedence when both are set.
 - Memory footprint: peak RSS delta per run (`mem_series_kb`) with summary fields
   `mem_mean_kb`, `mem_min_kb`, `mem_max_kb` when `psutil` is available. If `psutil`
   is not installed, these fields are omitted or null.
+- Secret-key sanity: `meta.secret_key_analysis` reports Hamming weight/distance
+  aggregates across freshly generated secrets, flagging constant-weight deviations
+  (HQC) and suspicious bit biases in uniform schemes.
 
 ## Security estimator options
 

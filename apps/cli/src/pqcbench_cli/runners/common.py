@@ -10,6 +10,12 @@ from dataclasses import dataclass, asdict
 from typing import Callable, Dict, Any, List, Tuple
 from pqcbench import registry
 from functools import partial
+from pqcbench.key_analysis import (
+    DEFAULT_PAIR_SAMPLE_LIMIT,
+    DEFAULT_SECRET_KEY_SAMPLES,
+    derive_model,
+    summarize_secret_keys,
+)
 
 _MP_CONTEXT = multiprocessing.get_context('spawn')
 _MEMORY_SAMPLE_INTERVAL = 0.0015  # seconds between RSS samples
@@ -536,6 +542,61 @@ def _repo_root() -> pathlib.Path:
             return p
     return pathlib.Path.cwd()
 
+
+def _sample_secret_key_analysis(name: str, cls, mechanism: str | None, kind: str) -> Dict[str, Any] | None:
+    """Collect lightweight Hamming-weight/distance stats across fresh keygens."""
+    try:
+        keys: List[bytes] = []
+        for _ in range(DEFAULT_SECRET_KEY_SAMPLES):
+            try:
+                _, sk = cls().keygen()
+            except Exception:
+                continue
+            if not isinstance(sk, (bytes, bytearray)):
+                return None
+            sk_bytes = bytes(sk)
+            if not sk_bytes:
+                continue
+            keys.append(sk_bytes)
+        if len(keys) < 4:
+            return None
+
+        family = None
+        hint = None
+        try:
+            from pqcbench.params import find as find_params  # type: ignore
+
+            if mechanism:
+                hint = find_params(mechanism)
+            if not hint:
+                hint = find_params(name)
+            if hint:
+                family = hint.family
+        except Exception:
+            hint = None
+            family = None
+
+        model = derive_model(family, hint)
+        summary = summarize_secret_keys(keys, model=model, pair_sample_limit=DEFAULT_PAIR_SAMPLE_LIMIT)
+        context: Dict[str, Any] = {
+            "algo": name,
+            "kind": kind,
+            "family": family,
+            "mechanism": mechanism,
+            "sampled_keys": len(keys),
+        }
+        if hint:
+            context.update(
+                {
+                    "category_floor": hint.category_floor,
+                    "param_notes": hint.notes,
+                }
+            )
+        summary["context"] = context
+        return summary
+    except Exception as exc:
+        return {"method": "bitstring_hw_hd_v1", "error": repr(exc)}
+
 def run_kem(name: str, runs: int) -> AlgoSummary:
     """Run a KEM micro-benchmark for the registered algorithm `name`.
 
@@ -571,6 +632,9 @@ def run_kem(name: str, runs: int) -> AlgoSummary:
         "ciphertext_expansion_ratio": _ct_expansion,
         "mechanism": getattr(instance, "mech", None) or getattr(instance, "alg", None) or getattr(instance, "_mech", None),
     }
+    analysis = _sample_secret_key_analysis(name, cls, meta.get("mechanism"), "KEM")
+    if analysis:
+        meta["secret_key_analysis"] = analysis
     return AlgoSummary(algo=name, kind="KEM", ops=ops, meta=meta)
 
 
@@ -606,6 +670,9 @@ def run_sig(name: str, runs: int, message_size: int) -> AlgoSummary:
         "signature_expansion_ratio": _sig_expansion,
         "mechanism": getattr(instance, "mech", None) or getattr(instance, "alg", None) or getattr(instance, "_mech", None),
     }
+    analysis = _sample_secret_key_analysis(name, cls, meta.get("mechanism"), "SIG")
+    if analysis:
+        meta["secret_key_analysis"] = analysis
     return AlgoSummary(algo=name, kind="SIG", ops=ops, meta=meta)
 
 
@@ -648,7 +715,5 @@ def export_trace_sig(name: str, message_size: int, export_path: str | None) -> N
         }
     }
     _export_json_blob(trace, export_path)
-
-
 
 
