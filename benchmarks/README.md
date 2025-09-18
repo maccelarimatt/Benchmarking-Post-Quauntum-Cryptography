@@ -7,6 +7,8 @@
 Usage
 - Run a simple batch over registered adapters: `python benchmarks/run_benchmarks.py`
 - Edit `benchmarks/scenarios.json` to track named experiment settings.
+- Build the native C backend (`native/`) and install `pqcbench_native` if you
+  want adapters to call directly into liboqs/OpenSSL during benchmarks.
 
 Output
 - Default summary path: `results/bench_summary.json`

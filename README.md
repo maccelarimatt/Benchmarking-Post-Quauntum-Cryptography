@@ -62,6 +62,24 @@ run-xmssmt --runs 3 --export results/xmssmt.json
 ## If you add a new PQC, run the following:
 pip install --upgrade pip setuptools wheel
 pip install -r requirements-dev.txt
+
+## Native C backend
+
+For tighter timing measurements, build the bundled C library and install the
+native adapters. This swaps the liboqs/python and cryptography shims for direct
+calls into liboqs/OpenSSL from C.
+
+```
+cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release
+cmake --build native/build --config Release
+
+pip install -e libs/core
+pip install -e libs/adapters/native
+```
+
+If the shared library is not discovered automatically, point
+`PQCBENCH_NATIVE_LIB` at the compiled binary (e.g.,
+`native/build/Release/pqcbench_native.dll`).
 ```
 
 Notes:

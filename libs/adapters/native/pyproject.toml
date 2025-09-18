@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pqcbench-native"
+version = "0.1.0"
+description = "Native C-backed adapters for PQC benchmarks"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name = "Investigation Team"}]
+dependencies = [
+  "pqcbench-core>=0.1.0"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

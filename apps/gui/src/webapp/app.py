@@ -5,12 +5,36 @@ from __future__ import annotations
 Uses the same adapter registry as the CLI to ensure consistent behavior.
 Provides simple single-run traces and JSON summaries in the browser.
 """
+import sys
+from pathlib import Path
+
 from flask import Flask, render_template, request, redirect, url_for
 from jinja2 import TemplateNotFound
 from dataclasses import asdict
 import base64
-from pqcbench import registry
 from typing import Dict, Any, Mapping
+
+
+_HERE = Path(__file__).resolve()
+try:
+    _PROJECT_ROOT = next(p for p in _HERE.parents if (p / "libs").exists())
+except StopIteration:
+    _PROJECT_ROOT = _HERE.parents[0]
+
+for rel in (
+    Path("libs/core/src"),
+    Path("libs/adapters/native/src"),
+    Path("libs/adapters/liboqs/src"),
+    Path("libs/adapters/rsa/src"),
+    Path("apps/cli/src"),
+):
+    candidate = _PROJECT_ROOT / rel
+    if candidate.exists():
+        candidate_str = str(candidate)
+        if candidate_str not in sys.path:
+            sys.path.append(candidate_str)
+
+from pqcbench import registry
 
 # Reuse the CLI runner logic to keep one source of truth for measurements
 try:
@@ -45,6 +69,10 @@ def _ensure_adapters_loaded() -> None:
             pass
         try:
             __import__("pqcbench_liboqs")
+        except Exception:
+            pass
+        try:
+            __import__("pqcbench_native")
         except Exception:
             pass
 
@@ -220,6 +248,7 @@ def _handle_run_submission(form: Mapping[str, Any]):
     trace_sections: list[dict[str, Any]] | None = None
     error: str | None = None
     last_export: str | None = None
+    backend_label: str | None = None
 
     try:
         kind = kinds.get(name) or ""
@@ -242,6 +271,7 @@ def _handle_run_submission(form: Mapping[str, Any]):
             else:
                 export_trace_sig(name, message_size, raw_path)  # type: ignore[misc]
 
+        # Build base result payload
         if _build_export_payload is not None:
             result = _build_export_payload(summary, security_opts=security_opts)
         else:
@@ -252,6 +282,38 @@ def _handle_run_submission(form: Mapping[str, Any]):
                 "meta": summary.meta,
             }
             result["security"] = {"error": "security estimator unavailable"}
+
+        # Enrich with backend/mechanism details for display
+        try:
+            cls = registry.get(name)
+            algo_tmp = cls()
+            module = getattr(cls, "__module__", "")
+            if module.startswith("pqcbench_native"):
+                backend = "native"
+            elif module.startswith("pqcbench_liboqs"):
+                backend = "liboqs"
+            elif module.startswith("pqcbench_rsa"):
+                backend = "rsa"
+            else:
+                backend = module or "python"
+            mech = (
+                getattr(algo_tmp, "algorithm", None)
+                or getattr(algo_tmp, "alg", None)
+                or getattr(algo_tmp, "mech", None)
+                or getattr(algo_tmp, "_mech", None)
+            )
+            # Update meta so it also shows up in the Metadata table
+            if isinstance(result.get("meta"), dict):
+                result["meta"].setdefault("backend", backend)
+                if mech and not result["meta"].get("mechanism"):
+                    result["meta"]["mechanism"] = mech
+            # Compose a compact label for the header
+            if mech:
+                backend_label = f"Backend: {backend} (mechanism: {mech})"
+            else:
+                backend_label = f"Backend: {backend}"
+        except Exception:
+            backend_label = None
 
         try:
             cls = registry.get(name)
@@ -323,6 +385,7 @@ def _handle_run_submission(form: Mapping[str, Any]):
         display_names=display_names,
         last_export=last_export,
         result_json=result,
+        backend_label=backend_label,
         error=error,
         default_runs=runs,
         default_message_size=message_size,
