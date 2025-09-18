@@ -5,7 +5,7 @@ from __future__ import annotations
 Includes adapter bootstrap, timing/memory measurement, JSON export helpers,
 and per-kind (KEM/SIG) micro-benchmark orchestrators.
 """
-import time, json, pathlib, base64, multiprocessing, threading
+import time, json, pathlib, base64, multiprocessing, threading, sys
 from dataclasses import dataclass, asdict
 from typing import Callable, Dict, Any, List, Tuple
 from pqcbench import registry
@@ -13,16 +13,60 @@ from functools import partial
 
 _MP_CONTEXT = multiprocessing.get_context('spawn')
 _MEMORY_SAMPLE_INTERVAL = 0.0015  # seconds between RSS samples
+_HERE = pathlib.Path(__file__).resolve()
+_NATIVE_WARNED = False
+
+try:
+    _PROJECT_ROOT = next(p for p in _HERE.parents if (p / "libs").exists())
+except StopIteration:
+    _PROJECT_ROOT = _HERE.parents[0]
+
+for rel in (
+    pathlib.Path("libs/core/src"),
+    pathlib.Path("libs/adapters/native/src"),
+    pathlib.Path("libs/adapters/liboqs/src"),
+    pathlib.Path("libs/adapters/rsa/src"),
+):
+    candidate = _PROJECT_ROOT / rel
+    if candidate.exists():
+        candidate_str = str(candidate)
+        if candidate_str not in sys.path:
+            sys.path.append(candidate_str)
+
+_ADAPTER_PATHS = {
+    "pqcbench_rsa": _PROJECT_ROOT / "libs" / "adapters" / "rsa" / "src",
+    "pqcbench_liboqs": _PROJECT_ROOT / "libs" / "adapters" / "liboqs" / "src",
+    "pqcbench_native": _PROJECT_ROOT / "libs" / "adapters" / "native" / "src",
+}
 
 
 def _load_adapters() -> None:
-    import importlib, traceback
-    for mod in ("pqcbench_rsa", "pqcbench_liboqs"):
+    import importlib, importlib.util, traceback
+    modules = ("pqcbench_rsa", "pqcbench_liboqs", "pqcbench_native")
+    global _NATIVE_WARNED
+    for mod in modules:
+        spec = importlib.util.find_spec(mod)
+        if spec is None:
+            candidate = _ADAPTER_PATHS.get(mod)
+            if candidate and candidate.exists():
+                if str(candidate) not in sys.path:
+                    sys.path.append(str(candidate))
+                spec = importlib.util.find_spec(mod)
+        if spec is None:
+            if mod == "pqcbench_native" and not _NATIVE_WARNED:
+                print("[adapter optional] pqcbench_native not installed; build native/ or install the package to enable the C backend.")
+                _NATIVE_WARNED = True
+            continue
         try:
-            importlib.import_module(mod)
+            module = importlib.import_module(mod)
         except Exception as e:
             print(f"[adapter import error] {mod}: {e}")
             traceback.print_exc()
+        else:
+            if mod == "pqcbench_native" and not getattr(module, "_available", False):
+                if not _NATIVE_WARNED:
+                    print("[adapter optional] pqcbench_native shared library not found. Build native/ (cmake --build) or set PQCBENCH_NATIVE_LIB to the compiled library path.")
+                    _NATIVE_WARNED = True
 
 _load_adapters()
 

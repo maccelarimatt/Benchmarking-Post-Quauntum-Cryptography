@@ -5,12 +5,36 @@ from __future__ import annotations
 Uses the same adapter registry as the CLI to ensure consistent behavior.
 Provides simple single-run traces and JSON summaries in the browser.
 """
+import sys
+from pathlib import Path
+
 from flask import Flask, render_template, request, redirect, url_for
 from jinja2 import TemplateNotFound
 from dataclasses import asdict
 import base64
-from pqcbench import registry
 from typing import Dict, Any, Mapping
+
+
+_HERE = Path(__file__).resolve()
+try:
+    _PROJECT_ROOT = next(p for p in _HERE.parents if (p / "libs").exists())
+except StopIteration:
+    _PROJECT_ROOT = _HERE.parents[0]
+
+for rel in (
+    Path("libs/core/src"),
+    Path("libs/adapters/native/src"),
+    Path("libs/adapters/liboqs/src"),
+    Path("libs/adapters/rsa/src"),
+    Path("apps/cli/src"),
+):
+    candidate = _PROJECT_ROOT / rel
+    if candidate.exists():
+        candidate_str = str(candidate)
+        if candidate_str not in sys.path:
+            sys.path.append(candidate_str)
+
+from pqcbench import registry
 
 # Reuse the CLI runner logic to keep one source of truth for measurements
 try:
@@ -45,6 +69,10 @@ def _ensure_adapters_loaded() -> None:
             pass
         try:
             __import__("pqcbench_liboqs")
+        except Exception:
+            pass
+        try:
+            __import__("pqcbench_native")
         except Exception:
             pass
 
