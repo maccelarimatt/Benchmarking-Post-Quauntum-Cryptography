@@ -5,13 +5,15 @@ from __future__ import annotations
 Includes adapter bootstrap, timing/memory measurement, JSON export helpers,
 and per-kind (KEM/SIG) micro-benchmark orchestrators.
 """
-import time, json, pathlib, base64, multiprocessing
+import time, json, pathlib, base64, multiprocessing, threading
 from dataclasses import dataclass, asdict
 from typing import Callable, Dict, Any, List, Tuple
 from pqcbench import registry
 from functools import partial
 
 _MP_CONTEXT = multiprocessing.get_context('spawn')
+_MEMORY_SAMPLE_INTERVAL = 0.0015  # seconds between RSS samples
+
 
 def _load_adapters() -> None:
     import importlib, traceback
@@ -50,9 +52,9 @@ def measure(fn: Callable[[], None], runs: int) -> OpStats:
 
     Every iteration executes in a fresh Python process so caches, allocator pools,
     and liboqs state from previous runs cannot influence the measurement.
-    Reported memory is the maximum of the child process unique RSS delta and the
-    Python heap peak (KB). If psutil or tracemalloc are unavailable, the fields
-    remain None.
+    Reported memory captures the peak unique RSS delta observed during the run
+    (sampled every ~1.5 ms) merged with the Python heap peak (KB). If psutil or
+    tracemalloc are unavailable, the fields remain None.
     """
     times: List[float] = []
     mem_peaks_kb: List[float] = []
@@ -139,8 +141,11 @@ def _single_run_metrics(fn: Callable[[], None]) -> Tuple[float, float | None]:
 
     baseline_bytes: int | None = None
     after_bytes: int | None = None
-    rss_delta_kb: float | None = None
+    rss_peak_kb: float | None = None
     proc = None
+    monitor_stop: threading.Event | None = None
+    monitor_thread: threading.Thread | None = None
+    peak_bytes_holder: list[int | None] = []
 
     try:
         import psutil  # type: ignore
@@ -158,8 +163,40 @@ def _single_run_metrics(fn: Callable[[], None]) -> Tuple[float, float | None]:
 
         gc.collect()
         baseline_bytes = _sample_process_bytes()
+        monitor_stop = threading.Event()
+        peak_bytes_holder = [baseline_bytes]
+
+        def _monitor_peak() -> None:
+            base = baseline_bytes if baseline_bytes is not None else 0
+            local_peak = base
+            while not monitor_stop.is_set():
+                try:
+                    sample = _sample_process_bytes()
+                    if sample is not None and sample > local_peak:
+                        local_peak = sample
+                except Exception:
+                    pass
+                if monitor_stop.wait(_MEMORY_SAMPLE_INTERVAL):
+                    break
+            try:
+                sample = _sample_process_bytes()
+                if sample is not None and sample > local_peak:
+                    local_peak = sample
+            except Exception:
+                pass
+            peak_bytes_holder[0] = local_peak
+
+        monitor_thread = threading.Thread(
+            target=_monitor_peak,
+            name="pqcbench-memmon",
+            daemon=True,
+        )
+        monitor_thread.start()
     except Exception:
         proc = None  # type: ignore
+        monitor_stop = None
+        monitor_thread = None
+        peak_bytes_holder = []
 
     try:
         import tracemalloc  # type: ignore
@@ -170,8 +207,20 @@ def _single_run_metrics(fn: Callable[[], None]) -> Tuple[float, float | None]:
         use_tracemalloc = False
 
     t0 = _time.perf_counter()
-    fn()
+    try:
+        fn()
+    finally:
+        if monitor_stop is not None:
+            monitor_stop.set()
+        if monitor_thread is not None:
+            monitor_thread.join(timeout=0.5)
     dt_ms = (_time.perf_counter() - t0) * 1000.0
+
+    rss_peak_bytes: int | None = None
+    if peak_bytes_holder:
+        candidate = peak_bytes_holder[0]
+        if isinstance(candidate, int):
+            rss_peak_bytes = candidate
 
     if proc is not None and baseline_bytes is not None:
         try:
@@ -179,8 +228,15 @@ def _single_run_metrics(fn: Callable[[], None]) -> Tuple[float, float | None]:
         except Exception:
             after_bytes = None
         gc.collect()
+
+    candidate_deltas: List[float] = []
+    if baseline_bytes is not None:
+        if rss_peak_bytes is not None:
+            candidate_deltas.append(max(0.0, float(rss_peak_bytes - baseline_bytes)))
         if after_bytes is not None:
-            rss_delta_kb = max(0.0, (after_bytes - baseline_bytes) / 1024.0)
+            candidate_deltas.append(max(0.0, float(after_bytes - baseline_bytes)))
+    if candidate_deltas:
+        rss_peak_kb = max(candidate_deltas) / 1024.0
 
     py_peak_kb: float | None = None
     if use_tracemalloc and tracemalloc is not None:
@@ -191,10 +247,10 @@ def _single_run_metrics(fn: Callable[[], None]) -> Tuple[float, float | None]:
             tracemalloc.stop()
 
     if py_peak_kb is not None:
-        rss_delta_kb = max(rss_delta_kb or 0.0, py_peak_kb)
+        rss_peak_kb = max(rss_peak_kb or 0.0, py_peak_kb)
 
     gc.collect()
-    return dt_ms, rss_delta_kb
+    return dt_ms, rss_peak_kb
 
 
 def _kem_keygen_once(name: str) -> None:
