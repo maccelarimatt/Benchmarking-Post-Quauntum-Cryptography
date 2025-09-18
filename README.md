@@ -146,15 +146,19 @@ Compatibility: legacy `*_MECH` env vars (e.g., `KYBER_MECH`) are also honored,
 but `PQCBENCH_*` takes precedence when both are set.
 
 ### Metrics captured
-- Latency per operation: `mean_ms`, `min_ms`, `max_ms`, and per-run `series`.
+- Latency per operation: `mean_ms`, `median_ms`, `stddev_ms`, `range_ms`, `min_ms`, `max_ms`, and per-run `series`.
 - Sizes: `public_key_len`, `secret_key_len`, and `ciphertext_len`/`signature_len`.
 - Expansion ratios:
   - KEMs: `ciphertext_expansion_ratio = ciphertext_len / shared_secret_len`.
   - Signatures: `signature_expansion_ratio = signature_len / message_size`.
   These are floats and may be null if inputs are unavailable.
-- Memory footprint: peak RSS delta per run (`mem_series_kb`) with summary fields
-  `mem_mean_kb`, `mem_min_kb`, `mem_max_kb` when `psutil` is available. If `psutil`
-  is not installed, these fields are omitted or null.
+- Memory footprint: peak RSS delta per run (`mem_series_kb`) plus `mem_mean_kb`,
+  `mem_median_kb`, `mem_stddev_kb`, `mem_range_kb`, `mem_min_kb`, `mem_max_kb`
+  when `psutil` is available. If `psutil` is not installed, these fields are
+  omitted or null.
+- Secret-key sanity: `meta.secret_key_analysis` reports Hamming weight/distance
+  aggregates across freshly generated secrets, flagging constant-weight deviations
+  (HQC) and suspicious bit biases in uniform schemes.
 
 ## Security estimator options
 
