@@ -29,7 +29,9 @@ def _default_candidates() -> Sequence[Path]:
         "libpqcbench_native.so",
         "libpqcbench_native.dylib",
     ]
-    subdirs = [Path("."), Path("Release"), Path("Debug"), Path("RelWithDebInfo")]
+    # Prefer RelWithDebInfo over Release/Debug if multiple configs exist
+    # so development builds with additional algorithms (e.g., HQC) win.
+    subdirs = [Path("RelWithDebInfo"), Path("Release"), Path("Debug"), Path(".")]
 
     for parent in here.parents:
         candidates: list[Path] = []

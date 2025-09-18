@@ -11,6 +11,15 @@ set(OQS_DIST_BUILD OFF CACHE BOOL "" FORCE)
 set(OQS_USE_CUPQC OFF CACHE BOOL "" FORCE)
 set(OQS_USE_ICICLE OFF CACHE BOOL "" FORCE)
 
+# Ensure desired algorithms are enabled in liboqs (particularly HQC)
+# These options are consumed by liboqs when added as a subdirectory.
+set(OQS_ENABLE_KEM_HQC ON CACHE BOOL "Enable HQC KEM in liboqs" FORCE)
+# Keep common NIST algorithms enabled (usually ON by default, but make explicit)
+set(OQS_ENABLE_KEM_ML_KEM ON CACHE BOOL "Enable ML-KEM (Kyber) in liboqs" FORCE)
+set(OQS_ENABLE_SIG_ML_DSA ON CACHE BOOL "Enable ML-DSA (Dilithium) in liboqs" FORCE)
+set(OQS_ENABLE_SIG_FALCON ON CACHE BOOL "Enable Falcon in liboqs" FORCE)
+set(OQS_ENABLE_SIG_SPHINCS ON CACHE BOOL "Enable SPHINCS+ in liboqs" FORCE)
+
 set(LIBOQS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../liboqs")
 if(NOT EXISTS "${LIBOQS_SOURCE_DIR}/CMakeLists.txt")
     message(FATAL_ERROR "liboqs source directory not found at ${LIBOQS_SOURCE_DIR}")

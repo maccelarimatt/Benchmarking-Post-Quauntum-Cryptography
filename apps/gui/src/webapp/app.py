@@ -248,6 +248,7 @@ def _handle_run_submission(form: Mapping[str, Any]):
     trace_sections: list[dict[str, Any]] | None = None
     error: str | None = None
     last_export: str | None = None
+    backend_label: str | None = None
 
     try:
         kind = kinds.get(name) or ""
@@ -270,6 +271,7 @@ def _handle_run_submission(form: Mapping[str, Any]):
             else:
                 export_trace_sig(name, message_size, raw_path)  # type: ignore[misc]
 
+        # Build base result payload
         if _build_export_payload is not None:
             result = _build_export_payload(summary, security_opts=security_opts)
         else:
@@ -280,6 +282,38 @@ def _handle_run_submission(form: Mapping[str, Any]):
                 "meta": summary.meta,
             }
             result["security"] = {"error": "security estimator unavailable"}
+
+        # Enrich with backend/mechanism details for display
+        try:
+            cls = registry.get(name)
+            algo_tmp = cls()
+            module = getattr(cls, "__module__", "")
+            if module.startswith("pqcbench_native"):
+                backend = "native"
+            elif module.startswith("pqcbench_liboqs"):
+                backend = "liboqs"
+            elif module.startswith("pqcbench_rsa"):
+                backend = "rsa"
+            else:
+                backend = module or "python"
+            mech = (
+                getattr(algo_tmp, "algorithm", None)
+                or getattr(algo_tmp, "alg", None)
+                or getattr(algo_tmp, "mech", None)
+                or getattr(algo_tmp, "_mech", None)
+            )
+            # Update meta so it also shows up in the Metadata table
+            if isinstance(result.get("meta"), dict):
+                result["meta"].setdefault("backend", backend)
+                if mech and not result["meta"].get("mechanism"):
+                    result["meta"]["mechanism"] = mech
+            # Compose a compact label for the header
+            if mech:
+                backend_label = f"Backend: {backend} (mechanism: {mech})"
+            else:
+                backend_label = f"Backend: {backend}"
+        except Exception:
+            backend_label = None
 
         try:
             cls = registry.get(name)
@@ -351,6 +385,7 @@ def _handle_run_submission(form: Mapping[str, Any]):
         display_names=display_names,
         last_export=last_export,
         result_json=result,
+        backend_label=backend_label,
         error=error,
         default_runs=runs,
         default_message_size=message_size,
