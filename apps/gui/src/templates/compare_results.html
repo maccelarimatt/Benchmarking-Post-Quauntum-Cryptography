@@ -5,13 +5,51 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PQC Bench – Compare Results</title>
   <style>
-    :root { --island-bg: rgba(128,128,128,.7); --island-radius:1.5rem; --text:#fff; }
+    :root { --island-bg: rgba(128,128,128,.9); --island-radius:1.5rem; --text:#fff; }
     body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size:cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
     .island { background:var(--island-bg); border-radius:var(--island-radius); padding:2rem; backdrop-filter: blur(4px); max-width:1200px; margin:0 auto 2vh auto; }
     .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; }
     .card { background: rgba(0,0,0,.25); border-radius:.75rem; padding:1rem; }
     table { width:100%; border-collapse: collapse; }
     th, td { padding:.45rem .35rem; border-bottom: 1px dashed rgba(255,255,255,.2); }
+    /* Vertical lines between columns for comparison tables */
+    table.vlines th:not(:last-child),
+    table.vlines td:not(:last-child) { border-right: 1px solid rgba(255,255,255,.25); }
+    table.vlines thead th { border-bottom: 1px solid rgba(255,255,255,.35); }
+
+    /* Refined details layout */
+    /* Layout: fewer cards per row for better readability */
+    .details-grid { display:grid; grid-template-columns: 1fr; gap:1.25rem; }
+    @media (min-width: 900px) {
+      .details-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (min-width: 1500px) {
+      .details-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    .details-card { background: rgba(0,0,0,.28); border-radius:.7rem; padding:1rem; border:1px solid rgba(255,255,255,.10); box-shadow: 0 6px 18px rgba(0,0,0,.22); }
+    .details-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:.5rem; }
+    .details-title { font-weight:700; letter-spacing:.2px; }
+    .badges { display:flex; gap:.4rem; flex-wrap:wrap; }
+    .badge { font-size:.72rem; padding:.12rem .5rem; border-radius:.4rem; border:1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.08); text-transform:uppercase; letter-spacing:.3px; }
+    table.kv { width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
+    table.kv col.kv-label { width:48%; }
+    table.kv col.kv-value { width:52%; }
+    table.kv td { padding:.42rem .45rem; border-bottom:1px dashed rgba(255,255,255,.12); vertical-align:top; }
+    table.kv tr:last-child td { border-bottom:none; }
+    .kv-label { color: rgba(255,255,255,.85); font-size:.9rem; }
+    .kv-value { color:#fff; font-weight:600; font-size:.95rem; }
+    .kv-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .kv-sub { font-size:.85rem; font-weight:500; opacity:.9; }
+    /* Two-column rows for stats tables */
+    .row-grid-2 { display:grid; grid-template-columns: 1fr; gap:1.25rem; }
+    @media (min-width: 900px) { .row-grid-2 { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    .row-grid-2 + .row-grid-2 { margin-top: 1.25rem; }
+    /* Unified stats grid for all six tables */
+    .stats-grid { display:grid; grid-template-columns: 1fr; gap:1.25rem; }
+    @media (min-width: 900px) { .stats-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    .card { margin: 0; }
+    /* Avoid inner cards touching the outer island outline */
+    .card--full { width: auto; margin: .75rem; }
   </style>
 </head>
 <body>
@@ -38,8 +76,131 @@
   </div>
   {% endif %}
 
+  <!-- Algorithm Details -->
   <div class="island">
-    <div class="grid">
+    <div style="font-weight:700; margin-bottom:.75rem;">Algorithm Details</div>
+    <div class="details-grid">
+      {% for a in compare.algos %}
+      <div class="details-card">
+        <div class="details-header">
+          <div class="details-title">{{ a.label }}</div>
+          <div class="badges">
+            {% set algo_lower = a.name|lower %}
+            {% set is_classical = 'rsa' in algo_lower %}
+            <span class="badge">{{ 'Classical' if is_classical else 'PQC' }}</span>
+            <span class="badge">{{ compare.kind }}</span>
+          </div>
+        </div>
+        {% set backend = a.meta.backend if a.meta and a.meta.backend else '' %}
+        {% if backend == 'liboqs' %}
+          {% set backend_hint = 'liboqs (C via python-oqs)' %}
+        {% elif backend == 'rsa' %}
+          {% set backend_hint = 'cryptography/OpenSSL (classical)' %}
+        {% elif backend == 'native' %}
+          {% set backend_hint = 'native C backend (pqcbench_native)' %}
+        {% else %}
+          {% set backend_hint = 'unknown backend' %}
+        {% endif %}
+        <table class="kv">
+          <colgroup>
+            <col class="kv-label" />
+            <col class="kv-value" />
+          </colgroup>
+          <tbody>
+            <tr>
+              <td class="kv-label">Version</td>
+              <td class="kv-value">
+                {% set version = '-' %}
+                {% set m = a.meta %}
+                {% if m %}
+                  {% if 'mechanism' in m and m['mechanism'] %}{% set version = m['mechanism'] %}
+                  {% elif 'algorithm' in m and m['algorithm'] %}{% set version = m['algorithm'] %}
+                  {% elif 'alg' in m and m['alg'] %}{% set version = m['alg'] %}
+                  {% elif 'mech' in m and m['mech'] %}{% set version = m['mech'] %}
+                  {% elif 'version' in m and m['version'] %}{% set version = m['version'] %}
+                  {% endif %}
+                {% endif %}
+                {{ version }}
+              </td>
+            </tr>
+            <tr>
+              <td class="kv-label">Backend</td>
+              <td class="kv-value">{{ backend_hint }}</td>
+            </tr>
+            <tr>
+              <td class="kv-label">Public key length</td>
+              <td class="kv-value kv-mono">
+                {% if a.meta.public_key_len is not none %}
+                  {{ a.meta.public_key_len }} B ({{ a.meta.public_key_len * 8 }} bits)
+                {% else %}-{% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td class="kv-label">Secret key length</td>
+              <td class="kv-value kv-mono">
+                {% if a.meta.secret_key_len is not none %}
+                  {{ a.meta.secret_key_len }} B ({{ a.meta.secret_key_len * 8 }} bits)
+                {% else %}-{% endif %}
+              </td>
+            </tr>
+            {% if compare.kind == 'KEM' %}
+            <tr>
+              <td class="kv-label">Ciphertext length</td>
+              <td class="kv-value kv-mono">{% if a.meta.ciphertext_len is not none %}{{ a.meta.ciphertext_len }} B{% else %}-{% endif %}</td>
+            </tr>
+            <tr>
+              <td class="kv-label">Shared secret length</td>
+              <td class="kv-value kv-mono">{% if a.meta.shared_secret_len is not none %}{{ a.meta.shared_secret_len }} B{% else %}-{% endif %}</td>
+            </tr>
+            <tr>
+              <td class="kv-label">CT expansion ratio</td>
+              <td class="kv-value">{% if a.meta.ciphertext_expansion_ratio is not none %}{{ '%.3f'|format(a.meta.ciphertext_expansion_ratio) }}{% else %}-{% endif %}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td class="kv-label">Signature length</td>
+              <td class="kv-value kv-mono">{% if a.meta.signature_len is not none %}{{ a.meta.signature_len }} B{% else %}-{% endif %}</td>
+            </tr>
+            <tr>
+              <td class="kv-label">Message size</td>
+              <td class="kv-value kv-mono">{% if a.meta.message_size is not none %}{{ a.meta.message_size }} B{% else %}-{% endif %}</td>
+            </tr>
+            <tr>
+              <td class="kv-label">Sig expansion ratio</td>
+              <td class="kv-value">{% if a.meta.signature_expansion_ratio is not none %}{{ '%.3f'|format(a.meta.signature_expansion_ratio) }}{% else %}-{% endif %}</td>
+            </tr>
+            {% endif %}
+            {% if a.meta.secret_key_analysis %}
+            <tr>
+              <td class="kv-label">Key analysis</td>
+              <td class="kv-value">
+                {% set ana = a.meta.secret_key_analysis %}
+                {% if ana %}
+                  {% set model = 'model' in ana and ana['model'] or None %}
+                  {% set hw = 'hw' in ana and ana['hw'] or None %}
+                  <div class="kv-sub">
+                    {% if model %}
+                      {% if model.name is defined %}<span>{{ model.name }}</span>{% else %}<span>{{ model }}</span>{% endif %}
+                    {% endif %}
+                    {% if 'bits_per_sample' in ana %}<span> · bits/sample: {{ ana['bits_per_sample'] }}</span>{% endif %}
+                    {% if hw %}
+                      <span> · HW mean: {% if hw['mean_fraction'] is not none %}{{ '%.4f'|format(hw['mean_fraction']) }}{% else %}-{% endif %}</span>
+                      {% if hw and hw['expected_fraction'] is not none %}<span> (expected {{ '%.3f'|format(hw['expected_fraction']) }})</span>{% endif %}
+                    {% endif %}
+                  </div>
+                {% else %}-{% endif %}
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="island">
+    <div class="row-grid-2">
       <div class="card">
         <div style="font-weight:700; margin-bottom:.5rem;">Timing (ms)</div>
         <div id="timing-charts" class="grid"></div>
@@ -51,42 +212,172 @@
     </div>
   </div>
 
+  
+
+  <!-- Explicit Timing and Memory tables -->
   <div class="island">
-    <div class="card">
-      <div style="font-weight:700; margin-bottom:.5rem;">Summary</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Algorithm</th>
-            {% set ops = ['keygen','encapsulate','decapsulate'] if compare.kind=='KEM' else ['keygen','sign','verify'] %}
-            {% for op in ops %}
-              <th>{{ op|capitalize }} mean</th>
-            {% endfor %}
-            <th>Mem mean (KB)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for a in compare.algos %}
-          <tr>
-            <td>{{ a.label }}</td>
-            {% for op in ops %}
-              <td>
-                {% if a.ops.get(op) %}{{ '%.3f'|format(a.ops[op].mean_ms) }}{% else %}-{% endif %}
-              </td>
-            {% endfor %}
-            <td>
-              {% set mems = [] %}
+    <div class="stats-grid">
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:.5rem;">Timing Comparison Table (ms)</div>
+        <table class="vlines">
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              {% set ops = ['keygen','encapsulate','decapsulate'] if compare.kind=='KEM' else ['keygen','sign','verify'] %}
               {% for op in ops %}
-                {% if a.ops.get(op) and a.ops[op].mem_mean_kb is not none %}{% set _ = mems.append(a.ops[op].mem_mean_kb) %}{% endif %}
+                <th>{{ op|capitalize }} mean (ms)</th>
               {% endfor %}
-              {% if mems %}{{ '%.2f'|format((mems|sum)/ (mems|length)) }}{% else %}-{% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in compare.algos %}
+            <tr>
+              <td>{{ a.label }}</td>
+              {% for op in ops %}
+                <td>{% if a.ops.get(op) %}{{ '%.3f'|format(a.ops[op].mean_ms) }}{% else %}-{% endif %}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:.5rem;">Memory Comparison Table (KB)</div>
+        <table class="vlines">
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              {% set ops = ['keygen','encapsulate','decapsulate'] if compare.kind=='KEM' else ['keygen','sign','verify'] %}
+              {% for op in ops %}
+                <th>{{ op|capitalize }} mem mean (KB)</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in compare.algos %}
+            <tr>
+              <td>{{ a.label }}</td>
+              {% for op in ops %}
+                <td>
+                  {% if a.ops.get(op) and a.ops[op].mem_mean_kb is not none %}
+                    {{ '%.2f'|format(a.ops[op].mem_mean_kb) }}
+                  {% else %}-{% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:.5rem;">Timing Standard Deviation (ms)</div>
+        <table class="vlines">
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              {% set ops = ['keygen','encapsulate','decapsulate'] if compare.kind=='KEM' else ['keygen','sign','verify'] %}
+              {% for op in ops %}
+                <th>{{ op|capitalize }} stddev (ms)</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in compare.algos %}
+            <tr>
+              <td>{{ a.label }}</td>
+              {% for op in ops %}
+                <td>{% if a.ops.get(op) %}{{ '%.3f'|format(a.ops[op].stddev_ms) }}{% else %}-{% endif %}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:.5rem;">Memory Standard Deviation (KB)</div>
+        <table class="vlines">
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              {% set ops = ['keygen','encapsulate','decapsulate'] if compare.kind=='KEM' else ['keygen','sign','verify'] %}
+              {% for op in ops %}
+                <th>{{ op|capitalize }} stddev (KB)</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in compare.algos %}
+            <tr>
+              <td>{{ a.label }}</td>
+              {% for op in ops %}
+                <td>
+                  {% if a.ops.get(op) and a.ops[op].mem_stddev_kb is not none %}
+                    {{ '%.2f'|format(a.ops[op].mem_stddev_kb) }}
+                  {% else %}-{% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:.5rem;">Timing Median (ms)</div>
+        <table class="vlines">
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              {% set ops = ['keygen','encapsulate','decapsulate'] if compare.kind=='KEM' else ['keygen','sign','verify'] %}
+              {% for op in ops %}
+                <th>{{ op|capitalize }} median (ms)</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in compare.algos %}
+            <tr>
+              <td>{{ a.label }}</td>
+              {% for op in ops %}
+                <td>{% if a.ops.get(op) %}{{ '%.3f'|format(a.ops[op].median_ms) }}{% else %}-{% endif %}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:.5rem;">Memory Median (KB)</div>
+        <table class="vlines">
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              {% set ops = ['keygen','encapsulate','decapsulate'] if compare.kind=='KEM' else ['keygen','sign','verify'] %}
+              {% for op in ops %}
+                <th>{{ op|capitalize }} median (KB)</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in compare.algos %}
+            <tr>
+              <td>{{ a.label }}</td>
+              {% for op in ops %}
+                <td>
+                  {% if a.ops.get(op) and a.ops[op].mem_median_kb is not none %}
+                    {{ '%.2f'|format(a.ops[op].mem_median_kb) }}
+                  {% else %}-{% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
+
+  <!-- Additional statistics tables moved into the island above -->
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
@@ -121,8 +412,9 @@
           backgroundColor: palette[idx % palette.length]+'33',
           tension: 0.25,
           pointRadius: 1.5,
+          pointStyle: 'circle',
         }));
-        new Chart(ctxT, { type:'line', data:{ labels, datasets: tDatasets }, options:{ responsive:true, plugins:{legend:{labels:{color:'#fff'}}}, scales:{ x:{ ticks:{color:'#fff'}}, y:{ ticks:{color:'#fff'}} } } });
+        new Chart(ctxT, { type:'line', data:{ labels, datasets: tDatasets }, options:{ responsive:true, plugins:{legend:{position:'bottom', labels:{color:'#fff', usePointStyle:true, boxWidth:10, boxHeight:10}}}, scales:{ x:{ ticks:{color:'#fff'}}, y:{ ticks:{color:'#fff'}} } } });
 
         // Memory chart
         const ctxM = makePanel(memoryHost, op.charAt(0).toUpperCase()+op.slice(1));
@@ -133,10 +425,51 @@
           backgroundColor: palette[idx % palette.length]+'33',
           tension: 0.25,
           pointRadius: 1.5,
+          pointStyle: 'circle',
         }));
-        new Chart(ctxM, { type:'line', data:{ labels, datasets: mDatasets }, options:{ responsive:true, plugins:{legend:{labels:{color:'#fff'}}}, scales:{ x:{ ticks:{color:'#fff'}}, y:{ ticks:{color:'#fff'}} } } });
+        new Chart(ctxM, { type:'line', data:{ labels, datasets: mDatasets }, options:{ responsive:true, plugins:{legend:{position:'bottom', labels:{color:'#fff', usePointStyle:true, boxWidth:10, boxHeight:10}}}, scales:{ x:{ ticks:{color:'#fff'}}, y:{ ticks:{color:'#fff'}} } } });
       });
     })();
   </script>
+
+  <!-- Raw exports section -->
+  <div class="island">
+    <div class="card card--full">
+      <div style="font-weight:700; margin-bottom:.5rem;">Raw Exports</div>
+      <details style="margin-top:.25rem;">
+        <summary style="cursor:pointer;">View raw JSON</summary>
+        <div style="margin-top:.6rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1rem;">
+          {% for a in compare.algos %}
+          <div style="background:rgba(0,0,0,.25); padding:1rem; border-radius:.5rem; text-align:left;">
+            <div style="font-weight:700; margin-bottom:.35rem;">{{ a.label }}</div>
+            {% set ex = a.exports if a.exports else (a.meta.exports if a.meta and a.meta.exports else None) %}
+            {% if ex and ex.json %}
+              <div><a href="/{{ ex.json }}" target="_blank" style="color:#aee; text-decoration:underline;">Open JSON summary</a></div>
+            {% else %}
+              <div style="opacity:.8;">No JSON export available.</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </details>
+
+      <details style="margin-top:1rem;">
+        <summary style="cursor:pointer;">View raw data (one run)</summary>
+        <div style="margin-top:.6rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1rem;">
+          {% for a in compare.algos %}
+          <div style="background:rgba(0,0,0,.25); padding:1rem; border-radius:.5rem; text-align:left;">
+            <div style="font-weight:700; margin-bottom:.35rem;">{{ a.label }}</div>
+            {% set ex = a.exports if a.exports else (a.meta.exports if a.meta and a.meta.exports else None) %}
+            {% if ex and ex.trace %}
+              <div><a href="/{{ ex.trace }}" target="_blank" style="color:#aee; text-decoration:underline;">Open raw trace</a></div>
+            {% else %}
+              <div style="opacity:.8;">No trace export available.</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </details>
+    </div>
+  </div>
 </body>
 </html>

@@ -7,12 +7,15 @@
   <style>
     * { box-sizing: border-box; }
     :root {
-      --island-bg: rgba(128, 128, 128, 0.7);
+      --island-bg: rgba(128, 128, 128, 0.9);
       --island-radius: 1.5rem;
       --island-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       --accent: #1fb6b8; /* brand teal accent */
       --text: #ffffff;
       --muted: rgba(255,255,255,.85);
+      --btn-bg: linear-gradient(180deg, #1fb6b8, #149ca0);
+      --btn-bg-hover: linear-gradient(180deg, #189a9c, #108589);
+      --btn-radius: .7rem;
     }
 
     body {
@@ -92,19 +95,25 @@
       color: #111;
     }
 
-    .top-island button {
-      padding: 0.6rem 1.5rem;
+    /* Unified button styling */
+    .btn, button, .actions button, .export-row button, input[type="submit"], input[type="button"] {
+      display: inline-block;
+      padding: .65rem 1.4rem;
       border: none;
-      border-radius: 0.5rem;
-      background-color: var(--accent);
-      color: white;
+      border-radius: var(--btn-radius);
+      background: var(--btn-bg);
+      color: #fff;
       font-size: 1rem;
+      line-height: 1.2;
       cursor: pointer;
-      transition: background 0.3s ease;
+      text-decoration: none;
+      box-shadow: 0 4px 14px rgba(31,182,184,.25);
+      transition: background .2s ease, filter .15s ease, box-shadow .2s ease;
     }
-
-    .top-island button:hover {
-      background-color: #149ca0;
+    .btn:hover, button:hover, .actions button:hover, input[type="submit"]:hover, input[type="button"]:hover {
+      background: var(--btn-bg-hover);
+      filter: brightness(0.98);
+      box-shadow: 0 6px 18px rgba(31,182,184,.32);
     }
     .form-grid { display:grid; grid-template-columns: repeat(12, 1fr); gap: .9rem; align-items:end; }
     .field { grid-column: span 6; text-align:left; }
@@ -112,7 +121,7 @@
     .hint { font-size:.85rem; opacity:.9; margin-top:.25rem; }
     .checkbox-row { display:flex; gap:.7rem; align-items:center; }
     .actions { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1rem; }
-    .actions button { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow: 0 2px 6px rgba(0,0,0,.18); }
+    .actions button { padding:.65rem 1.4rem; }
     .muted-btn { background: rgba(255,255,255,.16); color:#fff; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
     .export-row input[type="text"] { -webkit-appearance:none; -moz-appearance:none; appearance:none; border-radius:1.8rem; padding:0.78rem 1rem; font-size:1rem; min-width:320px; max-width:480px; width:auto; flex:1 1 360px; line-height:1.2; border:1px solid rgba(0,0,0,.15); background: rgba(255,255,255,.98); }
     .field.is-disabled { opacity:.65; }
@@ -518,6 +527,17 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
+    // Global legend style: use circular markers instead of rectangles
+    try {
+      if (window.Chart && Chart.defaults && Chart.defaults.plugins && Chart.defaults.plugins.legend) {
+        Chart.defaults.plugins.legend.position = 'bottom';
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+        Chart.defaults.plugins.legend.labels.boxWidth = 10;
+        Chart.defaults.plugins.legend.labels.boxHeight = 10;
+      }
+    } catch (e) {}
+  </script>
+  <script>
     (function() {
       const kinds = {{ kinds|tojson }};
       const result = {{ (result_json or {})|tojson }};
@@ -615,7 +635,7 @@
                       x: { title: { display: true, text: 'Run' }, grid: { color: 'rgba(255,255,255,.08)' }, ticks:{ color:'#fff' } },
                       y: Object.assign({ title: { display: true, text: 'ms' }, grid: { color: 'rgba(255,255,255,.08)' }, ticks:{ color:'#fff', callback:(v)=> (typeof v==='number'? v.toFixed(1): v), maxTicksLimit: 5 } }, scaleOptions)
                     },
-                    plugins: { legend: { display:false }, decimation: { enabled: true, algorithm: 'min-max' } },
+                    plugins: { legend: { display:true, position:'bottom', labels:{ color:'#fff', usePointStyle:true, boxWidth:10, boxHeight:10 } }, decimation: { enabled: true, algorithm: 'min-max' } },
                     animation: false,
                     normalized: true,
                     interaction: { mode: 'nearest', intersect: false }
@@ -695,7 +715,7 @@
                         x: { title: { display: true, text: 'Run' }, grid: { color: 'rgba(255,255,255,.08)' }, ticks:{ color:'#fff' } },
                         y: Object.assign({ title: { display: true, text: 'KB' }, grid: { color: 'rgba(255,255,255,.08)' }, ticks:{ color:'#fff', callback:(v)=> (typeof v==='number'? v.toFixed(1): v), maxTicksLimit: 5 } }, scaleOptions)
                       },
-                      plugins: { legend: { display:false }, decimation: { enabled: true, algorithm: 'min-max' } },
+                      plugins: { legend: { display:true, position:'bottom', labels:{ color:'#fff', usePointStyle:true, boxWidth:10, boxHeight:10 } }, decimation: { enabled: true, algorithm: 'min-max' } },
                       animation: false,
                       normalized: true,
                       interaction: { mode: 'nearest', intersect: false }

@@ -1,0 +1,118 @@
+*** Begin Patch
+*** Update File: apps/gui/src/templates/compare_results.html
+@@
+   <title>PQC Bench ??" Compare Results</title>
+   <style>
+     :root { --island-bg: rgba(128,128,128,.7); --island-radius:1.5rem; --text:#fff; }
+     body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size:cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
+     .island { background:var(--island-bg); border-radius:var(--island-radius); padding:2rem; backdrop-filter: blur(4px); max-width:1200px; margin:0 auto 2vh auto; }
+     .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; }
+     .card { background: rgba(0,0,0,.25); border-radius:.75rem; padding:1rem; }
+     table { width:100%; border-collapse: collapse; }
+-    th, td { padding:.45rem .35rem; border-bottom: 1px dashed rgba(255,255,255,.2); }
++    th, td { padding:.45rem .35rem; border-bottom: 1px dashed rgba(255,255,255,.2); }
++    /* Add vertical lines between columns for tables with the vlines class */
++    table.vlines th:not(:last-child),
++    table.vlines td:not(:last-child) {
++      border-right: 1px solid rgba(255,255,255,.25);
++    }
++    table.vlines thead th { border-bottom: 1px solid rgba(255,255,255,.35); }
+   </style>
+ </head>
+@@
+   <div class="island">
+     <div class="card">
+       <div style="font-weight:700; margin-bottom:.5rem;">Summary</div>
+       <table>
+         <thead>
+           <tr>
+             <th>Algorithm</th>
+             {% set ops = ['keygen','encapsulate','decapsulate'] if compare.kind=='KEM' else ['keygen','sign','verify'] %}
+             {% for op in ops %}
+               <th>{{ op|capitalize }} mean</th>
+             {% endfor %}
+             <th>Mem mean (KB)</th>
+           </tr>
+         </thead>
+         <tbody>
+           {% for a in compare.algos %}
+           <tr>
+             <td>{{ a.label }}</td>
+             {% for op in ops %}
+               <td>
+                 {% if a.ops.get(op) %}{{ '%.3f'|format(a.ops[op].mean_ms) }}{% else %}-{% endif %}
+               </td>
+             {% endfor %}
+             <td>
+               {% set mems = [] %}
+               {% for op in ops %}
+                 {% if a.ops.get(op) and a.ops[op].mem_mean_kb is not none %}{% set _ = mems.append(a.ops[op].mem_mean_kb) %}{% endif %}
+               {% endfor %}
+               {% if mems %}{{ '%.2f'|format((mems|sum)/ (mems|length)) }}{% else %}-{% endif %}
+             </td>
+           </tr>
+           {% endfor %}
+         </tbody>
+       </table>
+     </div>
+   </div>
++
++  <!-- Explicit Timing and Memory tables -->
++  <div class="island">
++    <div class="grid">
++      <div class="card">
++        <div style="font-weight:700; margin-bottom:.5rem;">Timing Comparison Table (ms)</div>
++        <table class="vlines">
++          <thead>
++            <tr>
++              <th>Algorithm</th>
++              {% set ops = ['keygen','encapsulate','decapsulate'] if compare.kind=='KEM' else ['keygen','sign','verify'] %}
++              {% for op in ops %}
++                <th>{{ op|capitalize }} mean (ms)</th>
++              {% endfor %}
++            </tr>
++          </thead>
++          <tbody>
++            {% for a in compare.algos %}
++            <tr>
++              <td>{{ a.label }}</td>
++              {% for op in ops %}
++                <td>{% if a.ops.get(op) %}{{ '%.3f'|format(a.ops[op].mean_ms) }}{% else %}-{% endif %}</td>
++              {% endfor %}
++            </tr>
++            {% endfor %}
++          </tbody>
++        </table>
++      </div>
++
++      <div class="card">
++        <div style="font-weight:700; margin-bottom:.5rem;">Memory Comparison Table (KB)</div>
++        <table class="vlines">
++          <thead>
++            <tr>
++              <th>Algorithm</th>
++              {% set ops = ['keygen','encapsulate','decapsulate'] if compare.kind=='KEM' else ['keygen','sign','verify'] %}
++              {% for op in ops %}
++                <th>{{ op|capitalize }} mem mean (KB)</th>
++              {% endfor %}
++            </tr>
++          </thead>
++          <tbody>
++            {% for a in compare.algos %}
++            <tr>
++              <td>{{ a.label }}</td>
++              {% for op in ops %}
++                <td>
++                  {% if a.ops.get(op) and a.ops[op].mem_mean_kb is not none %}
++                    {{ '%.2f'|format(a.ops[op].mem_mean_kb) }}
++                  {% else %}-{% endif %}
++                </td>
++              {% endfor %}
++            </tr>
++            {% endfor %}
++          </tbody>
++        </table>
++      </div>
++    </div>
++  </div>
+*** End Patch

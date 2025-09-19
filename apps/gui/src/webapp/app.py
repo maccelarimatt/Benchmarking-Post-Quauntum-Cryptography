@@ -8,7 +8,7 @@ Provides simple single-run traces and JSON summaries in the browser.
 import sys
 from pathlib import Path
 
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory
 from jinja2 import TemplateNotFound
 from dataclasses import asdict
 import base64
@@ -462,6 +462,27 @@ def _handle_compare_submission(form: Mapping[str, Any]):
                 summary = run_kem(algo_name, runs, cold=cold)  # type: ignore[misc]
             else:
                 summary = run_sig(algo_name, runs, message_size, cold=cold)  # type: ignore[misc]
+            # Export per-algorithm JSON + one-run trace for quick access on the compare page
+            try:
+                json_path = f"results/{algo_name.replace('+','plus')}_{kind.lower()}_compare.json"
+                export_json(summary, json_path)  # type: ignore[misc]
+            except Exception:
+                json_path = None  # type: ignore[assignment]
+            try:
+                trace_path = f"results/{algo_name.replace('+','plus')}_{kind.lower()}_compare_trace.json"
+                if kind == "KEM":
+                    export_trace_kem(algo_name, trace_path)  # type: ignore[misc]
+                else:
+                    export_trace_sig(algo_name, message_size, trace_path)  # type: ignore[misc]
+            except Exception:
+                trace_path = None  # type: ignore[assignment]
+            # Attach export hints to meta for template convenience
+            if isinstance(summary.meta, dict):
+                summary.meta.setdefault("exports", {})
+                if json_path:
+                    summary.meta["exports"]["json"] = json_path
+                if trace_path:
+                    summary.meta["exports"]["trace"] = trace_path
             results.append(summary)
         except Exception as exc:
             errors[algo_name] = str(exc)
@@ -478,6 +499,7 @@ def _handle_compare_submission(form: Mapping[str, Any]):
                 "label": display_names.get(summary.algo, summary.algo),
                 "ops": {k: asdict(v) for k, v in summary.ops.items()},
                 "meta": summary.meta,
+                "exports": (summary.meta.get("exports") if isinstance(summary.meta, dict) else {}),
             }
             for summary in results
         ],
@@ -573,6 +595,12 @@ def algo_detail(name: str):
                 compare_kind="KEM",
                 compare_mode="pair",
             )
+
+
+@app.route("/results/<path:filename>")
+def serve_results_file(filename: str):
+    directory = _PROJECT_ROOT / "results"
+    return send_from_directory(directory, filename, as_attachment=False)
 
 
 @app.route("/health")

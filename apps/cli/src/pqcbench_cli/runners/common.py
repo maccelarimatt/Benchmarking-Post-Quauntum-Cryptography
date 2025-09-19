@@ -843,6 +843,15 @@ def run_kem(name: str, runs: int, *, cold: bool = True) -> AlgoSummary:
     ops["encapsulate"] = measure_factory(partial(_kem_encapsulate_factory, name), runs, cold=cold)
     ops["decapsulate"] = measure_factory(partial(_kem_decapsulate_factory, name), runs, cold=cold)
     instance = cls()
+    mod = getattr(cls, "__module__", "") or getattr(instance.__class__, "__module__", "")
+    if "pqcbench_liboqs" in mod:
+        _backend = "liboqs"
+    elif "pqcbench_native" in mod:
+        _backend = "native"
+    elif "pqcbench_rsa" in mod:
+        _backend = "rsa"
+    else:
+        _backend = "unknown"
     pk, sk = instance.keygen()
     ct, ss = cls().encapsulate(pk)
     _ct_len = len(ct) if isinstance(ct, (bytes, bytearray)) else None
@@ -859,8 +868,14 @@ def run_kem(name: str, runs: int, *, cold: bool = True) -> AlgoSummary:
         "ciphertext_len": _ct_len,
         "shared_secret_len": _ss_len,
         "ciphertext_expansion_ratio": _ct_expansion,
-        "mechanism": getattr(instance, "mech", None) or getattr(instance, "alg", None) or getattr(instance, "_mech", None),
+        # Prefer common attributes for the concrete mechanism/version name,
+        # and fall back to native adapters' `algorithm` attribute when present.
+        "mechanism": getattr(instance, "mech", None)
+        or getattr(instance, "alg", None)
+        or getattr(instance, "_mech", None)
+        or getattr(instance, "algorithm", None),
         "run_mode": ("cold" if cold else "warm"),
+        "backend": _backend,
     }
     analysis = _sample_secret_key_analysis(name, cls, meta.get("mechanism"), "KEM")
     if analysis:
@@ -883,6 +898,15 @@ def run_sig(name: str, runs: int, message_size: int, *, cold: bool = True) -> Al
     ops["sign"] = measure_factory(partial(_sig_sign_factory, name, message_size), runs, cold=cold)
     ops["verify"] = measure_factory(partial(_sig_verify_factory, name, message_size), runs, cold=cold)
     instance = cls()
+    mod = getattr(cls, "__module__", "") or getattr(instance.__class__, "__module__", "")
+    if "pqcbench_liboqs" in mod:
+        _backend = "liboqs"
+    elif "pqcbench_native" in mod:
+        _backend = "native"
+    elif "pqcbench_rsa" in mod:
+        _backend = "rsa"
+    else:
+        _backend = "unknown"
     pk, sk = instance.keygen()
     msg = b"x" * message_size
     sig = instance.sign(sk, msg)
@@ -899,8 +923,14 @@ def run_sig(name: str, runs: int, message_size: int, *, cold: bool = True) -> Al
         "signature_len": _sig_len,
         "message_size": message_size,
         "signature_expansion_ratio": _sig_expansion,
-        "mechanism": getattr(instance, "mech", None) or getattr(instance, "alg", None) or getattr(instance, "_mech", None),
+        # Prefer common attributes for the concrete mechanism/version name,
+        # and fall back to native adapters' `algorithm` attribute when present.
+        "mechanism": getattr(instance, "mech", None)
+        or getattr(instance, "alg", None)
+        or getattr(instance, "_mech", None)
+        or getattr(instance, "algorithm", None),
         "run_mode": ("cold" if cold else "warm"),
+        "backend": _backend,
     }
     analysis = _sample_secret_key_analysis(name, cls, meta.get("mechanism"), "SIG")
     if analysis:
