@@ -165,6 +165,65 @@ def measure(fn: Callable[[], None], runs: int) -> OpStats:
         )
 
 
+def measure_factory(factory: Callable[[], Callable[[], None]], runs: int) -> OpStats:
+    """Measure only the core operation produced by `factory`.
+
+    The `factory` runs inside the child process before timing starts to prepare
+    fresh inputs (e.g., keygen, message, ciphertext). The returned zero-arg
+    callable is then executed under timing/memory monitoring so that only the
+    stage operation itself is measured.
+    """
+    times: List[float] = []
+    mem_peaks_kb: List[float] = []
+
+    for _ in range(runs):
+        dt_ms, mem_kb = _run_isolated_factory(factory)
+        times.append(dt_ms)
+        if mem_kb is not None:
+            mem_peaks_kb.append(mem_kb)
+
+    mean = sum(times) / len(times)
+    median = statistics.median(times)
+    stddev = statistics.pstdev(times) if len(times) > 1 else 0.0
+    range_ms = max(times) - min(times)
+
+    if mem_peaks_kb:
+        mem_mean = sum(mem_peaks_kb) / len(mem_peaks_kb)
+        mem_min = min(mem_peaks_kb)
+        mem_max = max(mem_peaks_kb)
+        mem_median = statistics.median(mem_peaks_kb)
+        mem_stddev = statistics.pstdev(mem_peaks_kb) if len(mem_peaks_kb) > 1 else 0.0
+        mem_range = mem_max - mem_min
+        return OpStats(
+            runs=runs,
+            mean_ms=mean,
+            min_ms=min(times),
+            max_ms=max(times),
+            median_ms=median,
+            stddev_ms=stddev,
+            range_ms=range_ms,
+            series=times,
+            mem_mean_kb=mem_mean,
+            mem_min_kb=mem_min,
+            mem_max_kb=mem_max,
+            mem_median_kb=mem_median,
+            mem_stddev_kb=mem_stddev,
+            mem_range_kb=mem_range,
+            mem_series_kb=mem_peaks_kb,
+        )
+    else:
+        return OpStats(
+            runs=runs,
+            mean_ms=mean,
+            min_ms=min(times),
+            max_ms=max(times),
+            median_ms=median,
+            stddev_ms=stddev,
+            range_ms=range_ms,
+            series=times,
+        )
+
+
 def _run_isolated(fn: Callable[[], None]) -> Tuple[float, float | None]:
     """Execute `fn` in a fresh process and return (time_ms, memory_kb)."""
     parent_conn, child_conn = _MP_CONTEXT.Pipe(duplex=False)
@@ -190,10 +249,57 @@ def _run_isolated(fn: Callable[[], None]) -> Tuple[float, float | None]:
     raise RuntimeError(message)
 
 
+def _run_isolated_factory(factory: Callable[[], Callable[[], None]]) -> Tuple[float, float | None]:
+    """Execute factory->op in a fresh process and return (time_ms, memory_kb).
+
+    The factory runs before timing to prepare inputs; only the returned op
+    callable is measured under timing/memory monitoring.
+    """
+    parent_conn, child_conn = _MP_CONTEXT.Pipe(duplex=False)
+    proc = _MP_CONTEXT.Process(target=_isolated_worker_factory, args=(factory, child_conn))
+    proc.start()
+    child_conn.close()
+    try:
+        result = parent_conn.recv()
+    except EOFError:
+        proc.join()
+        raise RuntimeError("Benchmark worker exited without reporting results.")
+    finally:
+        parent_conn.close()
+    proc.join()
+    status = result.get("status")
+    if status == "ok":
+        return result["time_ms"], result["mem_kb"]
+    err = result.get("error") or "unknown error"
+    tb = result.get("traceback")
+    message = f"Benchmark worker failed: {err}"
+    if tb:
+        message = f"{message}\n{tb}"
+    raise RuntimeError(message)
+
+
 def _isolated_worker(fn: Callable[[], None], conn) -> None:
     """Child-process entry point for isolated measurements."""
     try:
         dt, mem_kb = _single_run_metrics(fn)
+        conn.send({"status": "ok", "time_ms": dt, "mem_kb": mem_kb})
+    except Exception as exc:
+        import traceback
+        conn.send({
+            "status": "error",
+            "error": repr(exc),
+            "traceback": traceback.format_exc(),
+        })
+    finally:
+        conn.close()
+
+
+def _isolated_worker_factory(factory: Callable[[], Callable[[], None]], conn) -> None:
+    """Child-process entry point for factory-based isolated measurements."""
+    try:
+        # Prepare inputs before timing begins
+        op = factory()
+        dt, mem_kb = _single_run_metrics(op)
         conn.send({"status": "ok", "time_ms": dt, "mem_kb": mem_kb})
     except Exception as exc:
         import traceback
@@ -362,6 +468,54 @@ def _sig_verify_once(name: str, message_size: int) -> None:
     pk, sk = cls().keygen()
     sig = cls().sign(sk, msg)
     cls().verify(pk, msg, sig)
+
+
+def _kem_encapsulate_factory(name: str) -> Callable[[], None]:
+    """Prepare fresh key, return op that only runs encapsulate."""
+    cls = registry.get(name)
+    pk, _ = cls().keygen()
+
+    def _op() -> None:
+        cls().encapsulate(pk)
+
+    return _op
+
+
+def _kem_decapsulate_factory(name: str) -> Callable[[], None]:
+    """Prepare fresh keys and ciphertext, return op that only runs decapsulate."""
+    cls = registry.get(name)
+    pk, sk = cls().keygen()
+    ct, _ = cls().encapsulate(pk)
+
+    def _op() -> None:
+        cls().decapsulate(sk, ct)
+
+    return _op
+
+
+def _sig_sign_factory(name: str, message_size: int) -> Callable[[], None]:
+    """Prepare fresh key and message, return op that only runs sign."""
+    cls = registry.get(name)
+    msg = b"x" * int(message_size)
+    _, sk = cls().keygen()
+
+    def _op() -> None:
+        cls().sign(sk, msg)
+
+    return _op
+
+
+def _sig_verify_factory(name: str, message_size: int) -> Callable[[], None]:
+    """Prepare fresh keys/message/signature, return op that only runs verify."""
+    cls = registry.get(name)
+    msg = b"x" * int(message_size)
+    pk, sk = cls().keygen()
+    sig = cls().sign(sk, msg)
+
+    def _op() -> None:
+        cls().verify(pk, msg, sig)
+
+    return _op
 
 
 def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str, Any]:
@@ -678,8 +832,9 @@ def run_kem(name: str, runs: int) -> AlgoSummary:
     cls = registry.get(name)
     ops: Dict[str, OpStats] = {}
     ops["keygen"] = measure(partial(_kem_keygen_once, name), runs)
-    ops["encapsulate"] = measure(partial(_kem_encapsulate_once, name), runs)
-    ops["decapsulate"] = measure(partial(_kem_decapsulate_once, name), runs)
+    # Ensure encapsulate/decapsulate timings exclude setup (keygen, prior steps)
+    ops["encapsulate"] = measure_factory(partial(_kem_encapsulate_factory, name), runs)
+    ops["decapsulate"] = measure_factory(partial(_kem_decapsulate_factory, name), runs)
     instance = cls()
     pk, sk = instance.keygen()
     ct, ss = cls().encapsulate(pk)
@@ -716,8 +871,9 @@ def run_sig(name: str, runs: int, message_size: int) -> AlgoSummary:
     cls = registry.get(name)
     ops: Dict[str, OpStats] = {}
     ops["keygen"] = measure(partial(_sig_keygen_once, name), runs)
-    ops["sign"] = measure(partial(_sig_sign_once, name, message_size), runs)
-    ops["verify"] = measure(partial(_sig_verify_once, name, message_size), runs)
+    # Ensure sign/verify timings exclude setup (keygen, sign)
+    ops["sign"] = measure_factory(partial(_sig_sign_factory, name, message_size), runs)
+    ops["verify"] = measure_factory(partial(_sig_verify_factory, name, message_size), runs)
     instance = cls()
     pk, sk = instance.keygen()
     msg = b"x" * message_size

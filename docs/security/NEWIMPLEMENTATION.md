@@ -19,6 +19,23 @@ PowerShell
 $env:PQCBENCH_NATIVE_LIB=(Resolve-Path 'native/build/Release/pqcbench_native.dll').Path
 $env:PYTHONPATH='libs/core/src;libs/adapters/native/src'
 python -c "from pqcbench import registry; import pqcbench_native, os; os.environ['PQCBENCH_KYBER_ALG']='ML-KEM-768'; k=registry.get('kyber')(); pk,sk=k.keygen(); ct,ss=k.encapsulate(pk); ss2=k.decapsulate(sk,ct); print('kyber-ok', ss==ss2, len(pk), len(sk), len(ct), len(ss))"
+
+Classical RSA via C backend
+
+To ensure classical RSA baselines use the native C path (OpenSSL), build the native library and point PQCBENCH_NATIVE_LIB to the compiled DLL before running the CLI benchmarks:
+
+PowerShell
+$env:PQCBENCH_NATIVE_LIB=(Resolve-Path 'native/build/Release/pqcbench_native.dll').Path
+$env:PYTHONPATH='apps/cli/src;libs/core/src;libs/adapters/native/src'
+run-rsa-oaep --runs 10 --export results/rsa_oaep.json
+run-rsa-pss --runs 10 --export results/rsa_pss.json
+
+Notes
+- If you built a different CMake config, substitute Release with RelWithDebInfo or Debug.
+- To change the RSA modulus size for benchmarking, set PQCBENCH_RSA_BITS (default 2048):
+  $env:PQCBENCH_RSA_BITS=3072
+- You can verify the C backend is active by checking the adapter module:
+  python -c "from pqcbench_cli.runners import common; from pqcbench import registry; common._load_adapters(); print(registry.get('rsa-oaep').__module__)"  # expects pqcbench_native.rsa
 How Native Calls Work (Deep Dive)
 
 Flow Overview
