@@ -92,6 +92,17 @@ input[type="checkbox"]:checked::after { opacity: 1; }
       filter: brightness(0.92);
       box-shadow: 0 6px 18px rgba(31,182,184,.32);
     }
+    /* Disabled buttons (e.g., Run when no selection) */
+    button:disabled, .actions button:disabled, input[type="submit"]:disabled {
+      background: #6b7280; /* grey */
+      cursor: not-allowed;
+      box-shadow: 0 2px 6px rgba(0,0,0,.12);
+      opacity: 1;
+    }
+    button:disabled:hover, .actions button:disabled:hover, input[type="submit"]:disabled:hover {
+      filter: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,.12);
+    }
     /* Keep secondary as accent, but make Reset (muted) grey */
     .btn-secondary { background: var(--accent); color:#fff; box-shadow: 0 4px 14px rgba(31,182,184,.25); }
     .muted-btn { background: #6b7280; color:#fff; box-shadow: 0 2px 6px rgba(0,0,0,.18); }

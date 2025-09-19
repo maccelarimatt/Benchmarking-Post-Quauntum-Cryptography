@@ -10,6 +10,38 @@
   .fade-layer.is-active { opacity: 1; pointer-events: auto; }
   /* Keep checkbox card sizes constant by fixing item width */
   .algo-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:.6rem; justify-content: stretch; align-content: start; }
+  /* Inline form error for selection validation */
+  .form-error { display:none; margin-top:.5rem; color:#ffdddd; background:#902; padding:.5rem .7rem; border-radius:.5rem; }
+  /* Run button tooltip shown only when disabled and hovered */
+  .run-wrapper { position: relative; display: inline-block; }
+  .run-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,.85);
+    color: #fff;
+    font-size: .85rem;
+    padding: .4rem .6rem;
+    border-radius: .35rem;
+    white-space: nowrap;
+    box-shadow: 0 4px 10px rgba(0,0,0,.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s ease, transform .15s ease;
+    z-index: 5;
+  }
+  .run-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px;
+    border-style: solid;
+    border-color: rgba(0,0,0,.85) transparent transparent transparent;
+  }
+  .run-wrapper:hover button:disabled + .run-tooltip { opacity: 1; }
 </style>
 <form method="POST" action="/execute" id="main-form">
   <input type="hidden" name="operation" value="compare" />
@@ -61,6 +93,7 @@
           {% endfor %}
         </div>
         </div>
+        <div id="algo-error" class="form-error" role="alert" aria-live="polite">Please select at least one algorithm to run.</div>
       </div>
 
       <!-- Cold starts -->
@@ -130,7 +163,10 @@
   </div>
   <div class="actions">
     <button class="muted-btn" type="reset">Reset</button>
-    <button type="submit">Run</button>
+    <span class="run-wrapper">
+      <button type="submit" id="run-btn" disabled>Run</button>
+      <span class="run-tooltip" id="run-tooltip">Select at least one algorithm</span>
+    </span>
   </div>
 </form>
 
@@ -147,6 +183,8 @@
 
     const mainForm = document.getElementById('main-form');
     const loadingOverlay = document.getElementById('loading-overlay');
+    const algoError = document.getElementById('algo-error');
+    const runBtn = mainForm ? mainForm.querySelector('button[type="submit"]') : null;
 
     function showLoadingOverlay(){
       if (!loadingOverlay) return;
@@ -170,6 +208,24 @@
       cmpAlgoListBody.style.height = h + 'px';
     }
 
+    function getActiveAlgoLayer(){
+      const isSig = (cmpKind && cmpKind.value === 'SIG');
+      return isSig ? cmpAlgosSig : cmpAlgosKem;
+    }
+
+    function countSelected(){
+      const layer = getActiveAlgoLayer();
+      if (!layer) return 0;
+      const inputs = layer.querySelectorAll('input[name="algos"]:checked');
+      return inputs ? inputs.length : 0;
+    }
+
+    function refreshRunState(){
+      if (!runBtn) return;
+      const hasSelection = countSelected() > 0;
+      runBtn.disabled = !hasSelection;
+    }
+
     function refreshCompareSection(){
       if (!cmpKind) return;
       const isCompare = true; // Always compare mode on main page
@@ -187,6 +243,7 @@
           setAlgoListHeight(cmpAlgosKem);
         }
       }
+      refreshRunState();
     }
 
     hideLoadingOverlay();
@@ -206,13 +263,36 @@
     }
 
     // single-run UI removed
-    if (cmpKind) cmpKind.addEventListener('change', refreshCompareSection);
+    if (cmpKind) cmpKind.addEventListener('change', function(){
+      if (algoError) algoError.style.display = 'none';
+      refreshCompareSection();
+    });
+    if (cmpAlgoListBody) cmpAlgoListBody.addEventListener('change', function(e){
+      const t = e.target;
+      if (t && t.name === 'algos') {
+        if (algoError) algoError.style.display = 'none';
+        refreshRunState();
+      }
+    });
     if (mainForm) {
-      mainForm.addEventListener('submit', function(){
+      mainForm.addEventListener('submit', function(ev){
+        if (countSelected() === 0) {
+          if (algoError) algoError.style.display = 'block';
+          if (ev) ev.preventDefault();
+          return false;
+        }
         if (typeof mainForm.checkValidity === 'function' && !mainForm.checkValidity()) {
-          return;
+          return false;
         }
         window.requestAnimationFrame(showLoadingOverlay);
+      });
+      mainForm.addEventListener('reset', function(){
+        setTimeout(function(){
+          // Ensure UI reflects reset defaults (KEM becomes active again)
+          refreshCompareSection();
+          refreshRunState();
+          if (algoError) algoError.style.display = 'none';
+        }, 0);
       });
     }
 
@@ -222,6 +302,7 @@
       else if (cmpAlgosSig && cmpAlgosSig.classList.contains('is-active')) setAlgoListHeight(cmpAlgosSig);
     }, 0);
     refreshCompareSection();
+    refreshRunState();
 
     window.addEventListener('resize', function(){
       if (cmpAlgosKem && cmpAlgosKem.classList.contains('is-active')) setAlgoListHeight(cmpAlgosKem);
