@@ -1,0 +1,5 @@
+algorithm,variant,operation,platform,metric,value,units,source_url
+MAYO,MAYO-1 (example set),sizes,Spec,pk_bytes,1168.0,bytes,https://pqmayo.org/assets/specs/mayo-round1.pdf
+MAYO,MAYO-1 (example set),sizes,Spec,sig_bytes,321.0,bytes,https://pqmayo.org/assets/specs/mayo-round1.pdf
+MAYO,(headline),sign,"Intel Ice Lake (2.0 GHz), AVX2",time_avg,0.111,ms,https://csrc.nist.gov/csrc/media/Projects/post-quantum-cryptography/documents/pqc-seminars/presentations/20-mayo-09242024.pdf
+MAYO,(headline),verify,"Intel Ice Lake (2.0 GHz), AVX2",time_avg,0.03,ms,https://csrc.nist.gov/csrc/media/Projects/post-quantum-cryptography/documents/pqc-seminars/presentations/20-mayo-09242024.pdf

@@ -1,0 +1,17 @@
+algorithm,variant,operation,platform,metric,value,units,source
+Falcon,Falcon-512 (FPU),verify,"STM32F767ZI (Cortex-M7, 216 MHz)",time_avg,2.6,ms,citeturn6view0
+Falcon,Falcon-1024 (FPU),verify,"STM32F767ZI (Cortex-M7, 216 MHz)",time_avg,5.3,ms,citeturn6view0
+Falcon,Falcon-512 (FPU),expand_sk,"STM32F767ZI (Cortex-M7, 216 MHz)",time_avg,6.5,ms,citeturn6view0
+Falcon,Falcon-1024 (FPU),expand_sk,"STM32F767ZI (Cortex-M7, 216 MHz)",time_avg,14.2,ms,citeturn6view0
+Falcon,Falcon-512 (FPU),keygen,Cortex-M7,stack_peak,1156.0,bytes,citeturn6view1
+Falcon,Falcon-512 (FPU),sign_dyn,Cortex-M7,stack_peak,1920.0,bytes,citeturn6view1
+Falcon,Falcon-512 (FPU),sign_tree,Cortex-M7,stack_peak,1872.0,bytes,citeturn6view1
+Falcon,Falcon-512 (FPU),verify,Cortex-M7,stack_peak,556.0,bytes,citeturn6view1
+Falcon,Falcon-1024 (FPU),keygen,Cortex-M7,stack_peak,1156.0,bytes,citeturn6view1
+Falcon,Falcon-1024 (FPU),sign_dyn,Cortex-M7,stack_peak,1920.0,bytes,citeturn6view1
+Falcon,Falcon-1024 (FPU),sign_tree,Cortex-M7,stack_peak,1872.0,bytes,citeturn6view1
+Falcon,Falcon-1024 (FPU),verify,Cortex-M7,stack_peak,556.0,bytes,citeturn6view1
+Falcon,Falcon-512 (FPU),overall_dyn,Cortex-M7,ram_peak,133048.0,bytes,citeturn6view1
+Falcon,Falcon-512 (FPU),overall_tree,Cortex-M7,ram_peak,63384.0,bytes,citeturn6view1
+Falcon,Falcon-1024 (FPU),overall_dyn,Cortex-M7,ram_peak,273464.0,bytes,citeturn6view1
+Falcon,Falcon-1024 (FPU),overall_tree,Cortex-M7,ram_peak,125976.0,bytes,citeturn6view1

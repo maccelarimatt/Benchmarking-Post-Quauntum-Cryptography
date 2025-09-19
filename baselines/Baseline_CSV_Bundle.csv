@@ -1,0 +1,11 @@
+,file,description
+0,baseline_mlkem.csv,ML-KEM (Kyber) timings on STM32 M4 (wolfSSL) + sizes from FIPS 203 + M4 stack peaks (Botros et al.)
+1,baseline_dilithium.csv,"Dilithium timings, stack & RAM on STM32 M7 (Howe et al., NIST PQC 2022)"
+2,baseline_falcon.csv,"Falcon verify/expand timings + stack/RAM on STM32 M7 (Howe et al., NIST PQC 2022)"
+3,baseline_hqc.csv,HQC sizes and AVX2 cycle counts on i7-11850H from the official HQC site
+4,baseline_mayo.csv,MAYO sizes (spec) + desktop latencies (NIST PQC seminar headline)
+5,baseline_sphincs.csv,SPHINCS+ sizes from official specification (Table 6)
+6,baseline_xmss.csv,XMSS/XMSSMT ops/sec and derived ms/op on i7-8700 (wolfSSL blog)
+7,baseline_rsa.csv,RSA-2048 sign/verify baselines from OpenSSL speed examples; OAEP mapped to RSA ops
+8,baseline_rsapss.csv,RSA-PSS (RSA-2048) sign/verify timings from wolfSSL and OpenSSL examples; BearSSL private ops/sec.
+9,baseline_rsaoaep.csv,RSA-OAEP (RSA-2048) encrypt/decrypt timings from wolfSSL (x86_64) and Intel SGX section.
