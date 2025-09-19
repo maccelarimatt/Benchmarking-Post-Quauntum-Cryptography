@@ -6,7 +6,8 @@
   <title>PQC Bench – Compare Results</title>
   <style>
     :root { --island-bg: rgba(128,128,128,.9); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
-    body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size:cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
+    /* Reduce top padding so header sits closer to top */
+    body { margin:0; padding:0.1vh 5vw 5vh; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size:cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
     .island { background:var(--island-bg); border-radius:var(--island-radius); padding:2rem; backdrop-filter: blur(4px); max-width:1200px; margin:0 auto 2vh auto; }
     .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; }
     .card { background: rgba(0,0,0,.25); border-radius:.75rem; padding:1rem; }
@@ -62,8 +63,8 @@
     .brand { display:flex; align-items:center; gap: 1.25rem; }
     .brand-logo { height: 56px; width:auto; object-fit:contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
     .brand-text { display:flex; flex-direction:column; }
-    .brand-title { font-size:1.6rem; font-weight:900 !important; line-height:1.1; letter-spacing:.2px; }
-    .brand-title strong { font-weight:900 !important; }
+    .brand-title { font-size:1.6rem; font-weight:900 !important; font-variation-settings: "wght" 900; line-height:1.1; letter-spacing:.2px; }
+    .brand-title strong { font-weight:900 !important; font-variation-settings: "wght" 900; }
     .brand-subtitle { opacity:.85; font-size:.98rem; }
   </style>
 </head>

@@ -8,7 +8,8 @@
   :root { --island-bg: rgba(128, 128, 128, 0.9); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
     body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
     .island { background:var(--island-bg); border-radius:var(--island-radius); padding:2rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 2vh auto; }
-    .btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.18); text-decoration:none; }
+    .btn, button, input[type="submit"], input[type="button"], a.btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow: 0 4px 14px rgba(31,182,184,.25); text-decoration:none; transition: background-color .2s ease, filter .15s ease, box-shadow .2s ease; }
+    .btn:hover, button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover { filter: brightness(0.92); box-shadow: 0 6px 18px rgba(31,182,184,.32); }
     .badge { font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem; display:inline-block; }
     .muted { opacity:.9; }
     h2, h3 { margin: 0 0 .6rem 0; }

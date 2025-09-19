@@ -13,8 +13,6 @@
       --accent: #1fb6b8; /* brand teal accent */
       --text: #ffffff;
       --muted: rgba(255,255,255,.85);
-      --btn-bg: linear-gradient(180deg, #1fb6b8, #149ca0);
-      --btn-bg-hover: linear-gradient(180deg, #189a9c, #108589);
       --btn-radius: .7rem;
     }
 
@@ -95,24 +93,23 @@
       color: #111;
     }
 
-    /* Unified button styling */
-    .btn, button, .actions button, .export-row button, input[type="submit"], input[type="button"] {
+    /* Unified button styling (match main page "Run") */
+    .btn, button, .actions button, .export-row button, input[type="submit"], input[type="button"], a.btn {
       display: inline-block;
       padding: .65rem 1.4rem;
       border: none;
       border-radius: var(--btn-radius);
-      background: var(--btn-bg);
+      background: var(--accent);
       color: #fff;
       font-size: 1rem;
       line-height: 1.2;
       cursor: pointer;
       text-decoration: none;
       box-shadow: 0 4px 14px rgba(31,182,184,.25);
-      transition: background .2s ease, filter .15s ease, box-shadow .2s ease;
+      transition: background-color .2s ease, filter .15s ease, box-shadow .2s ease;
     }
-    .btn:hover, button:hover, .actions button:hover, input[type="submit"]:hover, input[type="button"]:hover {
-      background: var(--btn-bg-hover);
-      filter: brightness(0.98);
+    .btn:hover, button:hover, .actions button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover {
+      filter: brightness(0.92);
       box-shadow: 0 6px 18px rgba(31,182,184,.32);
     }
     .form-grid { display:grid; grid-template-columns: repeat(12, 1fr); gap: .9rem; align-items:end; }
@@ -122,7 +119,8 @@
     .checkbox-row { display:flex; gap:.7rem; align-items:center; }
     .actions { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1rem; }
     .actions button { padding:.65rem 1.4rem; }
-    .muted-btn { background: rgba(255,255,255,.16); color:#fff; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+    /* Keep muted-btn same look to unify all buttons */
+    .muted-btn { background: var(--accent); color:#fff; box-shadow: 0 4px 14px rgba(31,182,184,.25); }
     .export-row input[type="text"] { -webkit-appearance:none; -moz-appearance:none; appearance:none; border-radius:1.8rem; padding:0.78rem 1rem; font-size:1rem; min-width:320px; max-width:480px; width:auto; flex:1 1 360px; line-height:1.2; border:1px solid rgba(0,0,0,.15); background: rgba(255,255,255,.98); }
     .field.is-disabled { opacity:.65; }
     .field.is-disabled input { pointer-events:none; }
