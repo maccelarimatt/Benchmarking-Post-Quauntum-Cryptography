@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PQC Bench – Setup</title>
+  <title>Post Quantum Cryptography Bench – Setup</title>
   <style>
     * { box-sizing: border-box; }
     :root {
@@ -14,7 +14,7 @@
       --text: #ffffff;
     }
     body {
-      margin: 0; padding: 5vh 5vw; color: var(--text);
+      margin: 0; padding: 0 5vw 5vh; color: var(--text);
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
       background-image: url('/static/Images/background.gif');
       background-size: cover; background-position: center center; background-repeat: no-repeat; background-attachment: fixed;`n      background-color: #0b0f14;
@@ -23,9 +23,10 @@
     .island { background: var(--island-bg); border-radius: var(--island-radius); box-shadow: var(--island-shadow); backdrop-filter: blur(4px); padding: 2rem; width:100%; max-width:1200px; }
     .title { font-size:1.7rem; font-weight:700; margin:0 0 .5rem 0; }
     .subtitle { opacity:.9; }
+    /* Brand header styles are defined near the end of the style block */
     .two-col { display:grid; grid-template-columns: minmax(360px, 1fr) 1fr; gap: 1.25rem; }
     @media (max-width: 960px) { .two-col { grid-template-columns: 1fr; } }
-    .form-card { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.2rem; border: 1px solid rgba(255,255,255,.18); box-shadow: 0 8px 30px rgba(0,0,0,.25) inset; }
+    .form-card { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.2rem; border: 1px solid rgba(0, 0, 0, 0.18); box-shadow: 0 8px 30px rgba(0,0,0,.25) inset; }
     .form-grid { display:grid; grid-template-columns: repeat(12, 1fr); gap: .9rem; align-items:start; }
     .field { grid-column: span 6; }
     .field--full { grid-column: 1 / -1; }
@@ -140,6 +141,21 @@ input[type="checkbox"]:checked::after { opacity: 1; }
     @keyframes loading-spin {
       to { transform: rotate(360deg); }
     }
+
+    /* Header strip */
+    .header-strip {
+      width: 100%;
+      background: #060a0f; /* very dark */
+      color: var(--text);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      padding: .7rem 0;
+      margin-bottom: 2vh;
+    }
+    .brand { display:flex; align-items:center; gap: 1.25rem; }
+    .brand-logo { height: 56px; width:auto; object-fit:contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
+    .brand-text { display:flex; flex-direction:column; }
+    .brand-title { font-size:1.6rem; font-weight:800; line-height:1.1; letter-spacing:.2px; }
+    .brand-subtitle { opacity:.85; font-size:.98rem; }
   </style>
   </head>
 <body>
@@ -150,10 +166,15 @@ input[type="checkbox"]:checked::after { opacity: 1; }
     </div>
   </div>
 
-  <div class="island" style="margin-bottom:2vh;">
-    <div class="title">Post-Quantum Cryptography Bench</div>
-    <div class="subtitle">Choose an algorithm and parameters, then run to view results.</div>
-  </div>
+  <header class="header-strip">
+    <div class="brand">
+      <img src="/static/Images/pqc-bench-logo.png" alt="Post-Quantum Cryptography Bench" class="brand-logo" />
+      <div class="brand-text">
+        <div class="brand-title">      Post-Quantum Cryptography Benchmarking</div>
+        <div class="brand-subtitle">      Run and Compare Different Cryptographic Algorithms</div>
+      </div>
+    </div>
+  </header>
 
   <div class="island two-col" style="margin-bottom:2vh;">
     <div class="form-card">

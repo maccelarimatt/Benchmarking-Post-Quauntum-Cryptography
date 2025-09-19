@@ -9,7 +9,7 @@
   .fade-layer { position: absolute; inset: 0; opacity: 0; transition: opacity 180ms ease; pointer-events: none; }
   .fade-layer.is-active { opacity: 1; pointer-events: auto; }
   /* Keep checkbox card sizes constant by fixing item width */
-  .algo-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 220px)); gap:.6rem; justify-content: start; align-content: start; }
+  .algo-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:.6rem; justify-content: stretch; align-content: start; }
 </style>
 <form method="POST" action="/execute" id="main-form">
   <input type="hidden" name="operation" value="compare" />
@@ -37,7 +37,7 @@
       </div>
 
       <!-- Algorithms list (checkboxes) -->
-      <div class="field field--full" id="cmp_algo_list" style="padding-top:.5rem; padding-bottom:.6rem; margin-top:.2rem; margin-bottom:.25rem;">
+      <div class="field field--full" id="cmp_algo_list" style="padding-top:.5rem; padding-bottom:.6rem; margin-top:.2rem; margin-bottom:0;">
         <label>Algorithms</label>
         <div id="cmp_algo_list_body" class="algo-lists">
         <div id="cmp_algos_kem" class="fade-layer is-active algo-grid">
@@ -64,7 +64,7 @@
       </div>
 
       <!-- Cold starts -->
-      <div class="field" style="grid-column: span 10;">
+      <div class="field" style="grid-column: span 10; margin-top:-0.35rem;">
         <div class="checkbox-row">
           <input id="cmp_cold" type="checkbox" name="cold" checked />
           <label for="cmp_cold" style="margin:0;">Cold starts (fresh process per run)</label>
