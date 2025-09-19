@@ -75,7 +75,7 @@
         <div id="cmp_algos_kem" class="fade-layer is-active algo-grid">
           {% for name in algos %}
             {% if kinds[name] == 'KEM' %}
-            <label style="display:flex; gap:.5rem; align-items:center; background: rgba(0,0,0,.20); padding:.6rem .7rem; border-radius:.5rem;">
+            <label style="display:flex; gap:.5rem; align-items:center; background: rgba(0,0,0,.20); padding:.5rem .6rem; border-radius:.5rem;">
               <input type="checkbox" name="algos" value="{{name}}" />
               <span>{{ display_names.get(name, name) }}</span>
             </label>
@@ -204,7 +204,14 @@
 
     function setAlgoListHeight(target){
       if (!cmpAlgoListBody || !target) return;
+      // Measure the intrinsic content height of the target layer.
+      // Because .fade-layer uses `inset:0` (bottom:0), its scrollHeight can equal the
+      // container height rather than content height. Temporarily set bottom:auto to
+      // let it size to its content, measure, then restore.
+      const prevBottom = target.style.bottom;
+      target.style.bottom = 'auto';
       const h = target.scrollHeight;
+      target.style.bottom = prevBottom || '';
       cmpAlgoListBody.style.height = h + 'px';
     }
 
@@ -236,11 +243,11 @@
         if (isSig) {
           cmpAlgosSig.classList.add('is-active');
           cmpAlgosKem.classList.remove('is-active');
-          setAlgoListHeight(cmpAlgosSig);
+          requestAnimationFrame(() => setAlgoListHeight(cmpAlgosSig));
         } else {
           cmpAlgosKem.classList.add('is-active');
           cmpAlgosSig.classList.remove('is-active');
-          setAlgoListHeight(cmpAlgosKem);
+          requestAnimationFrame(() => setAlgoListHeight(cmpAlgosKem));
         }
       }
       refreshRunState();
