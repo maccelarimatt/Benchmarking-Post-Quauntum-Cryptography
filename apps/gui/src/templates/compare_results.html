@@ -18,7 +18,7 @@
   <div class="island" style="display:flex; justify-content:space-between; align-items:center;">
     <div>
       <div style="font-size:1.6rem; font-weight:700;">Compare Results – {{ compare.kind }}</div>
-      <div style="opacity:.9;">Runs: {{ compare.runs }}{% if compare.kind=='SIG' %}, Message size: {{ compare.message_size }} B{% endif %}</div>
+      <div style="opacity:.9;">Runs: {{ compare.runs }}{% if compare.kind=='SIG' %}, Message size: {{ compare.message_size }} B{% endif %} • Mode: {{ (compare.mode or 'cold')|capitalize }}</div>
     </div>
     <div>
       <a href="/" style="text-decoration:none;">

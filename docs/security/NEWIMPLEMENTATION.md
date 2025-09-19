@@ -36,6 +36,7 @@ Notes
   $env:PQCBENCH_RSA_BITS=3072
 - You can verify the C backend is active by checking the adapter module:
   python -c "from pqcbench_cli.runners import common; from pqcbench import registry; common._load_adapters(); print(registry.get('rsa-oaep').__module__)"  # expects pqcbench_native.rsa
+- Timing mode toggle: by default, each run is a cold start (fresh process). Add `--no-cold` to reuse the same process and allow CPU caches, JIT, and allocator state to persist between runs for a warm-run comparison.
 How Native Calls Work (Deep Dive)
 
 Flow Overview

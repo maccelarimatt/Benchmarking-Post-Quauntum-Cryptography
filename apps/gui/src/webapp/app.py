@@ -252,10 +252,12 @@ def _handle_run_submission(form: Mapping[str, Any]):
 
     try:
         kind = kinds.get(name) or ""
+        raw_cold = form.get("cold")
+        cold = str(raw_cold).lower() in ("on", "true", "1", "yes")
         if kind == "KEM":
-            summary = run_kem(name, runs)  # type: ignore[misc]
+            summary = run_kem(name, runs, cold=cold)  # type: ignore[misc]
         elif kind == "SIG":
-            summary = run_sig(name, runs, message_size)  # type: ignore[misc]
+            summary = run_sig(name, runs, message_size, cold=cold)  # type: ignore[misc]
         else:
             raise RuntimeError(f"Unknown or unsupported algorithm: {name}")
 
@@ -446,14 +448,16 @@ def _handle_compare_submission(form: Mapping[str, Any]):
     if not selected:
         return redirect(url_for("index"))
 
+    raw_cold = form.get("cold")
+    cold = str(raw_cold).lower() in ("on", "true", "1", "yes")
     results = []
     errors: Dict[str, str] = {}
     for algo_name in selected:
         try:
             if kind == "KEM":
-                summary = run_kem(algo_name, runs)  # type: ignore[misc]
+                summary = run_kem(algo_name, runs, cold=cold)  # type: ignore[misc]
             else:
-                summary = run_sig(algo_name, runs, message_size)  # type: ignore[misc]
+                summary = run_sig(algo_name, runs, message_size, cold=cold)  # type: ignore[misc]
             results.append(summary)
         except Exception as exc:
             errors[algo_name] = str(exc)
@@ -463,6 +467,7 @@ def _handle_compare_submission(form: Mapping[str, Any]):
         "kind": kind,
         "runs": runs,
         "message_size": message_size,
+        "mode": ("cold" if cold else "warm"),
         "algos": [
             {
                 "name": summary.algo,

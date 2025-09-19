@@ -10,6 +10,7 @@ app = typer.Typer(add_completion=False)
 def main(
     runs: int = 10,
     message_size: int = 1024,
+    cold: bool = typer.Option(True, help="Cold starts: isolate each run in a fresh process (use --no-cold for warm, cache-friendly runs)"),
     export: str = "results/falcon_summary.json",
     export_raw: str = "",
     print_json: bool = True,
@@ -25,7 +26,7 @@ def main(
     """
     Run falcon signature micro-bench (keygen/sign/verify).
     """
-    summary = run_sig("falcon", runs, message_size)
+    summary = run_sig("falcon", runs, message_size, cold=cold)
     _opts = {
         "lattice_use_estimator": bool(sec_adv),
         "lattice_profile": sec_profile,

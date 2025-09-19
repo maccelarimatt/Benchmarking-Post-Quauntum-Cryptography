@@ -19,6 +19,7 @@ One-command runners
 Examples
 - `run-kyber --runs 20 --export results/kyber.json`
 - `run-dilithium --runs 50 --message-size 4096 --export results/dilithium.json`
+- Warm runs (reuse process/caches): add `--no-cold` to any runner, e.g. `run-rsa-oaep --no-cold --runs 50`
 
 Environment overrides
 - Prefer `PQCBENCH_*` variables to select a mechanism; legacy `*_MECH` also works.
@@ -32,3 +33,4 @@ Environment overrides
 Notes
 - Memory metrics are included when `psutil` is available.
 - On Windows use PowerShell wrappers under `scripts/` if preferred.
+- By default runs are "cold" (each iteration in a fresh process). Use `--no-cold` to keep CPU caches/warmed code paths between runs for in-process benchmarking.

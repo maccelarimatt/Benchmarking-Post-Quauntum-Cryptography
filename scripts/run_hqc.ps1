@@ -1,2 +1,2 @@
 .\.venv\Scripts\Activate.ps1
-run-hqc 
+run-hqc @args 

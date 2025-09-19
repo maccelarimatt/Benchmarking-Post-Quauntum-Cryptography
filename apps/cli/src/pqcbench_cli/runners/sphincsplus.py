@@ -10,6 +10,7 @@ app = typer.Typer(add_completion=False)
 def main(
     runs: int = 10,
     message_size: int = 1024,
+    cold: bool = typer.Option(True, help="Cold starts: isolate each run in a fresh process (use --no-cold for warm, cache-friendly runs)"),
     export: str = "results/sphincsplus_summary.json",
     export_raw: str = "",
     print_json: bool = True,
@@ -23,7 +24,7 @@ def main(
     """
     Run sphincsplus signature micro-bench (keygen/sign/verify).
     """
-    summary = run_sig("sphincs+", runs, message_size)
+    summary = run_sig("sphincs+", runs, message_size, cold=cold)
     _opts = {
         "lattice_use_estimator": bool(sec_adv),
         "rsa_surface": bool(sec_rsa_phys),

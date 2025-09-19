@@ -105,7 +105,7 @@ class AlgoSummary:
     ops: Dict[str, OpStats]
     meta: Dict[str, Any]
 
-def measure(fn: Callable[[], None], runs: int) -> OpStats:
+def measure(fn: Callable[[], None], runs: int, *, cold: bool = True) -> OpStats:
     """Measure time and memory footprint in isolated runs.
 
     Every iteration executes in a fresh Python process so caches, allocator pools,
@@ -118,7 +118,10 @@ def measure(fn: Callable[[], None], runs: int) -> OpStats:
     mem_peaks_kb: List[float] = []
 
     for _ in range(runs):
-        dt_ms, mem_kb = _run_isolated(fn)
+        if cold:
+            dt_ms, mem_kb = _run_isolated(fn)
+        else:
+            dt_ms, mem_kb = _single_run_metrics(fn)
         times.append(dt_ms)
         if mem_kb is not None:
             mem_peaks_kb.append(mem_kb)
@@ -165,7 +168,7 @@ def measure(fn: Callable[[], None], runs: int) -> OpStats:
         )
 
 
-def measure_factory(factory: Callable[[], Callable[[], None]], runs: int) -> OpStats:
+def measure_factory(factory: Callable[[], Callable[[], None]], runs: int, *, cold: bool = True) -> OpStats:
     """Measure only the core operation produced by `factory`.
 
     The `factory` runs inside the child process before timing starts to prepare
@@ -177,7 +180,11 @@ def measure_factory(factory: Callable[[], Callable[[], None]], runs: int) -> OpS
     mem_peaks_kb: List[float] = []
 
     for _ in range(runs):
-        dt_ms, mem_kb = _run_isolated_factory(factory)
+        if cold:
+            dt_ms, mem_kb = _run_isolated_factory(factory)
+        else:
+            op = factory()
+            dt_ms, mem_kb = _single_run_metrics(op)
         times.append(dt_ms)
         if mem_kb is not None:
             mem_peaks_kb.append(mem_kb)
@@ -818,7 +825,7 @@ def _sample_secret_key_analysis(name: str, cls, mechanism: str | None, kind: str
     except Exception as exc:
         return {"method": "bitstring_hw_hd_v1", "error": repr(exc)}
 
-def run_kem(name: str, runs: int) -> AlgoSummary:
+def run_kem(name: str, runs: int, *, cold: bool = True) -> AlgoSummary:
     """Run a KEM micro-benchmark for the registered algorithm `name`.
 
     Measures wall-clock latency (and optional memory deltas) for:
@@ -831,10 +838,10 @@ def run_kem(name: str, runs: int) -> AlgoSummary:
     """
     cls = registry.get(name)
     ops: Dict[str, OpStats] = {}
-    ops["keygen"] = measure(partial(_kem_keygen_once, name), runs)
+    ops["keygen"] = measure(partial(_kem_keygen_once, name), runs, cold=cold)
     # Ensure encapsulate/decapsulate timings exclude setup (keygen, prior steps)
-    ops["encapsulate"] = measure_factory(partial(_kem_encapsulate_factory, name), runs)
-    ops["decapsulate"] = measure_factory(partial(_kem_decapsulate_factory, name), runs)
+    ops["encapsulate"] = measure_factory(partial(_kem_encapsulate_factory, name), runs, cold=cold)
+    ops["decapsulate"] = measure_factory(partial(_kem_decapsulate_factory, name), runs, cold=cold)
     instance = cls()
     pk, sk = instance.keygen()
     ct, ss = cls().encapsulate(pk)
@@ -853,6 +860,7 @@ def run_kem(name: str, runs: int) -> AlgoSummary:
         "shared_secret_len": _ss_len,
         "ciphertext_expansion_ratio": _ct_expansion,
         "mechanism": getattr(instance, "mech", None) or getattr(instance, "alg", None) or getattr(instance, "_mech", None),
+        "run_mode": ("cold" if cold else "warm"),
     }
     analysis = _sample_secret_key_analysis(name, cls, meta.get("mechanism"), "KEM")
     if analysis:
@@ -860,7 +868,7 @@ def run_kem(name: str, runs: int) -> AlgoSummary:
     return AlgoSummary(algo=name, kind="KEM", ops=ops, meta=meta)
 
 
-def run_sig(name: str, runs: int, message_size: int) -> AlgoSummary:
+def run_sig(name: str, runs: int, message_size: int, *, cold: bool = True) -> AlgoSummary:
     """Run a signature micro-benchmark for the registered algorithm `name`.
 
     Measures wall-clock latency (and optional memory deltas) for:
@@ -870,10 +878,10 @@ def run_sig(name: str, runs: int, message_size: int) -> AlgoSummary:
     """
     cls = registry.get(name)
     ops: Dict[str, OpStats] = {}
-    ops["keygen"] = measure(partial(_sig_keygen_once, name), runs)
+    ops["keygen"] = measure(partial(_sig_keygen_once, name), runs, cold=cold)
     # Ensure sign/verify timings exclude setup (keygen, sign)
-    ops["sign"] = measure_factory(partial(_sig_sign_factory, name, message_size), runs)
-    ops["verify"] = measure_factory(partial(_sig_verify_factory, name, message_size), runs)
+    ops["sign"] = measure_factory(partial(_sig_sign_factory, name, message_size), runs, cold=cold)
+    ops["verify"] = measure_factory(partial(_sig_verify_factory, name, message_size), runs, cold=cold)
     instance = cls()
     pk, sk = instance.keygen()
     msg = b"x" * message_size
@@ -892,6 +900,7 @@ def run_sig(name: str, runs: int, message_size: int) -> AlgoSummary:
         "message_size": message_size,
         "signature_expansion_ratio": _sig_expansion,
         "mechanism": getattr(instance, "mech", None) or getattr(instance, "alg", None) or getattr(instance, "_mech", None),
+        "run_mode": ("cold" if cold else "warm"),
     }
     analysis = _sample_secret_key_analysis(name, cls, meta.get("mechanism"), "SIG")
     if analysis:

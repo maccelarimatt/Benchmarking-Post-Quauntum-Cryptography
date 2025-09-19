@@ -9,6 +9,7 @@ app = typer.Typer(add_completion=False)
 @app.command()
 def main(
     runs: int = 10,
+    cold: bool = typer.Option(True, help="Cold starts: isolate each run in a fresh process (use --no-cold for warm, cache-friendly runs)"),
     export: str = "results/hqc_summary.json",
     export_raw: str = "",
     print_json: bool = True,
@@ -24,7 +25,7 @@ def main(
     """
     Run hqc KEM micro-bench (keygen/encapsulate/decapsulate).
     """
-    summary = run_kem("hqc", runs)
+    summary = run_kem("hqc", runs, cold=cold)
     _opts = {
         "lattice_use_estimator": bool(sec_adv),
         "lattice_profile": sec_profile,

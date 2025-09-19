@@ -22,6 +22,13 @@
         </select>
       </div>
       {{ form.number_field('runs', 'runs', 'Runs', default_runs or 10) }}
+      <div class="field" style="grid-column: span 3;">
+        <div class="checkbox-row">
+          <input id="cold" type="checkbox" name="cold" checked />
+          <label for="cold" style="margin:0;">Cold starts (fresh process per run)</label>
+        </div>
+        <div class="hint">Uncheck for warm runs that keep CPU caches and allocator state.</div>
+      </div>
       {{ form.number_field('msg', 'message_size', 'Message size (bytes)', default_message_size or 1024, hint='Used by signature algorithms only.', wrapper_id='msg-field') }}
       <div class="field field--full"><div class="hint">Choose a KEM for key exchange or a SIG for signatures.</div></div>
       <div class="field field--full export-row" style="display:flex; gap:.7rem; align-items:center;">
@@ -106,6 +113,12 @@
         </select>
       </div>
       {{ form.number_field('cmp_runs', 'runs', 'Runs', default_runs or 10, column='span 2') }}
+      <div class="field" style="grid-column: span 3;">
+        <div class="checkbox-row">
+          <input id="cmp_cold" type="checkbox" name="cold" checked />
+          <label for="cmp_cold" style="margin:0;">Cold starts (fresh process per run)</label>
+        </div>
+      </div>
       {{ form.number_field('cmp_msg', 'message_size', 'Message size (SIG)', default_message_size or 1024, column='span 3', wrapper_id='cmp_msg_field') }}
 
       <div class="field field--full" id="cmp_kem_pair" style="display:none;">

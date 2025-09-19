@@ -15,5 +15,8 @@ foreach ($c in $dllCandidates) {
     }
   } catch {}
 }
-
-run-rsa-oaep 
+if ($args.Count -gt 0) {
+  run-rsa-oaep @args
+} else {
+  run-rsa-oaep
+}

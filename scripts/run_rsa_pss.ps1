@@ -16,4 +16,8 @@ foreach ($c in $dllCandidates) {
   } catch {}
 }
 
-run-rsa-pss 
+if ($args.Count -gt 0) {
+  run-rsa-pss @args
+} else {
+  run-rsa-pss
+}
