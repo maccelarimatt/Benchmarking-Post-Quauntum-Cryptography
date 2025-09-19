@@ -75,10 +75,29 @@ input[type="checkbox"]:checked::after { opacity: 1; }
     .checkbox-row { display:flex; gap:.7rem; align-items:center; }
     .hint { font-size:.85rem; opacity:.9; margin-top:.25rem; }
     .actions { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1rem; }
-    button { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow: 0 2px 6px rgba(0,0,0,.18); transition: transform .05s ease, filter .15s ease; }
-    .btn-secondary { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: rgba(255,255,255,.16); color:#fff; text-decoration:none; display:inline-block; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
-    button:hover { filter: brightness(1.03); }
-    .muted-btn { background: rgba(255,255,255,.16); color:#fff; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+    /* Unified button styling (match main page "Run") */
+    .btn, button, .actions button, input[type="submit"], input[type="button"], a.btn {
+      display:inline-block;
+      padding:.65rem 1.4rem;
+      border:none;
+      border-radius:.7rem;
+      background: var(--accent);
+      color:#fff;
+      cursor:pointer;
+      text-decoration:none;
+      box-shadow: 0 4px 14px rgba(31,182,184,.25);
+      transition: background-color .2s ease, filter .15s ease, box-shadow .2s ease;
+    }
+    .btn:hover, button:hover, .actions button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover {
+      filter: brightness(0.92);
+      box-shadow: 0 6px 18px rgba(31,182,184,.32);
+    }
+    /* Keep secondary as accent, but make Reset (muted) grey */
+    .btn-secondary { background: var(--accent); color:#fff; box-shadow: 0 4px 14px rgba(31,182,184,.25); }
+    .muted-btn { background: #6b7280; color:#fff; box-shadow: 0 2px 6px rgba(0,0,0,.18); }
+    /* Ensure Reset in actions area is grey overriding general button styles */
+    .actions button.muted-btn { background: #6b7280; color:#fff; box-shadow: 0 2px 6px rgba(0,0,0,.18); }
+    .actions button.muted-btn:hover { filter: brightness(0.92); box-shadow: 0 4px 10px rgba(0,0,0,.25); }
     .alg-section { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.2rem; }
     .alg-list { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:1rem; }
     .alg-item { background: rgba(0,0,0,.2); border-radius:.6rem; padding:.8rem; cursor: pointer; transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease; }
@@ -157,7 +176,7 @@ input[type="checkbox"]:checked::after { opacity: 1; }
     .brand { display:flex; align-items:center; gap: 1.25rem; }
     .brand-logo { height: 56px; width:auto; object-fit:contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
     .brand-text { display:flex; flex-direction:column; }
-    .brand-title { font-size:1.6rem; font-weight:800; line-height:1.1; letter-spacing:.2px; }
+    .brand-title { font-size:1.6rem; font-weight:900; line-height:1.1; letter-spacing:.2px; }
     .brand-subtitle { opacity:.85; font-size:.98rem; }
   </style>
   </head>
@@ -173,7 +192,7 @@ input[type="checkbox"]:checked::after { opacity: 1; }
     <div class="brand">
       <img src="/static/Images/pqc-bench-logo.png" alt="Post-Quantum Cryptography Bench" class="brand-logo" />
       <div class="brand-text">
-        <div class="brand-title">      Post-Quantum Cryptography Benchmarking</div>
+        <div class="brand-title"><strong>Post-Quantum Cryptography Benchmarking</strong></div>
         <div class="brand-subtitle">      Run and Compare Different Cryptographic Algorithms</div>
       </div>
     </div>

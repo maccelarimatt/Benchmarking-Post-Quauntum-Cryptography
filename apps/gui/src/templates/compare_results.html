@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PQC Bench – Compare Results</title>
   <style>
-    :root { --island-bg: rgba(128,128,128,.9); --island-radius:1.5rem; --text:#fff; }
+    :root { --island-bg: rgba(128,128,128,.9); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
     body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size:cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
     .island { background:var(--island-bg); border-radius:var(--island-radius); padding:2rem; backdrop-filter: blur(4px); max-width:1200px; margin:0 auto 2vh auto; }
     .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; }
@@ -50,18 +50,40 @@
     .card { margin: 0; }
     /* Avoid inner cards touching the outer island outline */
     .card--full { width: auto; margin: .75rem; }
+    /* Unified button styling (match main page "Run") */
+    .btn, button, input[type="submit"], input[type="button"], a.btn {
+      display:inline-block; padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; text-decoration:none; box-shadow: 0 4px 14px rgba(31,182,184,.25); transition: background-color .2s ease, filter .15s ease, box-shadow .2s ease;
+    }
+    .btn:hover, button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover {
+      filter: brightness(0.92); box-shadow: 0 6px 18px rgba(31,182,184,.32);
+    }
+    /* Header strip (reuse from home) */
+    .header-strip { width: 100%; background: #060a0f; color: var(--text); border-bottom: 1px solid rgba(255,255,255,.08); padding: .7rem 0; margin-bottom: 2vh; }
+    .brand { display:flex; align-items:center; gap: 1.25rem; }
+    .brand-logo { height: 56px; width:auto; object-fit:contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
+    .brand-text { display:flex; flex-direction:column; }
+    .brand-title { font-size:1.6rem; font-weight:900 !important; line-height:1.1; letter-spacing:.2px; }
+    .brand-title strong { font-weight:900 !important; }
+    .brand-subtitle { opacity:.85; font-size:.98rem; }
   </style>
 </head>
 <body>
+  <header class="header-strip">
+    <div class="brand">
+      <img src="/static/Images/pqc-bench-logo.png" alt="Post-Quantum Cryptography Bench" class="brand-logo" />
+      <div class="brand-text">
+        <div class="brand-title"><strong>Post-Quantum Cryptography Benchmarking</strong></div>
+        <div class="brand-subtitle">Run and Compare Different Cryptographic Algorithms</div>
+      </div>
+    </div>
+  </header>
   <div class="island" style="display:flex; justify-content:space-between; align-items:center;">
     <div>
       <div style="font-size:1.6rem; font-weight:700;">Compare Results – {{ compare.kind }}</div>
       <div style="opacity:.9;">Runs: {{ compare.runs }}{% if compare.kind=='SIG' %}, Message size: {{ compare.message_size }} B{% endif %} • Mode: {{ (compare.mode or 'cold')|capitalize }}</div>
     </div>
     <div>
-      <a href="/" style="text-decoration:none;">
-        <button type="button" style="padding:.7rem 1.6rem; border:none; border-radius:.7rem; background: linear-gradient(180deg, #1fb6b8, #149ca0); color:#fff; cursor:pointer; box-shadow: 0 4px 14px rgba(31,182,184,.25);">Back to setup</button>
-      </a>
+      <a href="/" class="btn">Back to setup</a>
     </div>
   </div>
 
