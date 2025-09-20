@@ -6,9 +6,12 @@ Uses the same adapter registry as the CLI to ensure consistent behavior.
 Provides simple single-run traces and JSON summaries in the browser.
 """
 import sys
+import logging
+import importlib.util
+from types import ModuleType
 from pathlib import Path
 
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, jsonify
 from jinja2 import TemplateNotFound
 from dataclasses import asdict
 import base64
@@ -34,6 +37,14 @@ for rel in (
         if candidate_str not in sys.path:
             sys.path.append(candidate_str)
 
+# Ensure this webapp directory itself is importable so sibling modules (e.g., llm.py) resolve
+_WEBAPP_DIR = _HERE.parent
+_WEBAPP_DIR_STR = str(_WEBAPP_DIR)
+if _WEBAPP_DIR_STR in sys.path:
+    # Move to front to prefer local modules over similarly named site packages
+    sys.path.remove(_WEBAPP_DIR_STR)
+sys.path.insert(0, _WEBAPP_DIR_STR)
+
 from pqcbench import registry
 
 # Reuse the CLI runner logic to keep one source of truth for measurements
@@ -55,6 +66,40 @@ except Exception:
     _build_export_payload = None  # type: ignore
 
 app = Flask(__name__, template_folder="../templates", static_folder="../static")
+
+log = logging.getLogger(__name__)
+
+
+def _import_llm() -> ModuleType | None:
+    # Prefer normal import
+    try:
+        import llm as _llm  # type: ignore
+        return _llm
+    except Exception as e:
+        log.debug("import llm failed: %s", e)
+    # Try relative import (if running as a package)
+    try:
+        from . import llm as _llm  # type: ignore
+        return _llm
+    except Exception as e:
+        log.debug("relative import .llm failed: %s", e)
+    # Last resort: load by path
+    try:
+        llm_path = _WEBAPP_DIR / "llm.py"
+        if llm_path.exists():
+            spec = importlib.util.spec_from_file_location("llm", str(llm_path))
+            if spec and spec.loader:
+                _llm = importlib.util.module_from_spec(spec)
+                sys.modules["llm"] = _llm
+                spec.loader.exec_module(_llm)
+                return _llm
+    except Exception as e:
+        log.error("loading llm from path failed: %s", e)
+    return None
+
+
+# Optional LLM helper (modular, safe fallback if unavailable)
+llm = _import_llm()
 
 
 def _ensure_adapters_loaded() -> None:
@@ -606,6 +651,86 @@ def serve_results_file(filename: str):
 @app.route("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.route("/api/analysis", methods=["POST"])
+def api_analysis():
+    """Analyze compare payload via modular LLM provider.
+
+    The provider is configured via environment variables (see llm.LLMConfig).
+    Falls back to a local heuristic summary if no provider is configured.
+    """
+    data = request.get_json(silent=True) or {}
+    compare = data.get("compare")
+    if not isinstance(compare, dict):
+        return jsonify({"ok": False, "error": "invalid or missing 'compare' payload"}), 400
+    # If llm helper is missing, fall back to a heuristic summary so UI remains useful
+    if llm is None:
+        log.warning("LLM module unavailable; using heuristic fallback")
+        text = _heuristic_analysis(compare)
+        return jsonify({
+            "ok": True,
+            "provider": "none",
+            "model": "heuristic(local)",
+            "analysis": text,
+            "used_fallback": True,
+            "error": "LLM module unavailable",
+        })
+    try:
+        result = llm.analyze_compare_results(compare)  # type: ignore[attr-defined]
+        return jsonify(result)
+    except Exception as exc:
+        log.exception("LLM analysis failed; using heuristic fallback")
+        text = _heuristic_analysis(compare)
+        return jsonify({
+            "ok": True,
+            "provider": getattr(llm, "LLMConfig", lambda: None)().__dict__.get("provider", "unknown") if hasattr(llm, "LLMConfig") else "unknown",
+            "model": "heuristic(local)",
+            "analysis": text,
+            "used_fallback": True,
+            "error": str(exc),
+        })
+
+
+def _heuristic_analysis(compare: dict) -> str:
+    """Simple local summary when LLM is not available."""
+    kind = compare.get("kind")
+    ops = ["keygen", "encapsulate", "decapsulate"] if kind == "KEM" else ["keygen", "sign", "verify"]
+
+    def best_for(op: str):
+        best = None
+        for a in compare.get("algos", []):
+            s = (a.get("ops") or {}).get(op) or {}
+            m = s.get("mean_ms")
+            if isinstance(m, (int, float)):
+                best = (a.get("label") or a.get("name") or "?", float(m)) if best is None or m < best[1] else best
+        return best
+
+    lines = ["Automatic analysis (local fallback):"]
+    for op in ops:
+        b = best_for(op)
+        if b:
+            lines.append(f"- Fastest {op}: {b[0]} (≈{b[1]:.3f} ms mean)")
+    for op in ops:
+        best_mem = None
+        for a in compare.get("algos", []):
+            s = (a.get("ops") or {}).get(op) or {}
+            mm = s.get("mem_mean_kb")
+            if isinstance(mm, (int, float)):
+                best_mem = (a.get("label") or a.get("name") or "?", float(mm)) if best_mem is None or mm < best_mem[1] else best_mem
+        if best_mem:
+            lines.append(f"- Lowest memory {op}: {best_mem[0]} (≈{best_mem[1]:.2f} KB)")
+    for a in compare.get("algos", []):
+        md = a.get("meta") or {}
+        sizes = []
+        for k, label in (("public_key_len", "pk"), ("secret_key_len", "sk"), ("ciphertext_len", "ct"), ("signature_len", "sig")):
+            v = md.get(k)
+            if isinstance(v, (int, float)):
+                sizes.append(f"{label}:{int(v)}B")
+        if sizes:
+            lines.append(f"- {a.get('label') or a.get('name')}: " + ", ".join(sizes))
+    lines.append("- Note: Configure an LLM provider for richer interpretation.")
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":

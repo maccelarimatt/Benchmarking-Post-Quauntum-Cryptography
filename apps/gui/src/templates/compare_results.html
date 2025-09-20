@@ -455,6 +455,75 @@
     })();
   </script>
 
+  <!-- LLM Analysis section (appears before Raw Exports) -->
+  <div class="island">
+    <div class="card card--full" style="display:flex; flex-direction:column; gap:.6rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+        <div style="font-weight:700;">AI-Assisted Analysis</div>
+        <div style="opacity:.9; font-size:.9rem;">
+          <span id="llm-provider-hint">Provider: auto (configurable)</span>
+        </div>
+      </div>
+      <div id="llm-analysis-output" style="background:rgba(0,0,0,.25); padding:1rem; border-radius:.5rem; min-height: 80px; white-space:pre-wrap; line-height:1.35;">
+        Click "Generate Analysis" to summarize these results.
+      </div>
+      <div style="display:flex; gap:.5rem; justify-content:flex-end; align-items:center;">
+        <button id="llm-generate" type="button">Generate Analysis</button>
+        <button id="llm-regenerate" type="button" style="display:none;" class="btn">Regenerate</button>
+      </div>
+      <div id="llm-analysis-error" style="display:none; color:#ffdddd; background:#902; padding:.5rem .75rem; border-radius:.4rem;"></div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const compareData = {{ compare|tojson }};
+      const out = document.getElementById('llm-analysis-output');
+      const btn = document.getElementById('llm-generate');
+      const btnRe = document.getElementById('llm-regenerate');
+      const err = document.getElementById('llm-analysis-error');
+      const hint = document.getElementById('llm-provider-hint');
+
+      async function runAnalysis() {
+        err.style.display = 'none';
+        err.textContent = '';
+        btn.disabled = true; btnRe.disabled = true;
+        const prev = out.textContent;
+        out.textContent = 'Generating analysis...';
+        try {
+          const res = await fetch('/api/analysis', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ compare: compareData })
+          });
+          const data = await res.json();
+          if (!data || data.ok === false) {
+            throw new Error((data && data.error) || 'Analysis failed');
+          }
+          const provider = (data.provider || 'auto');
+          const model = (data.model || '');
+          const usedFallback = !!data.used_fallback;
+          if (hint) {
+            hint.textContent = 'Provider: ' + provider + (model ? (' • ' + model) : '') + (usedFallback ? ' (fallback)' : '');
+          }
+          out.textContent = (data.analysis || '').trim() || 'No analysis returned.';
+          btnRe.style.display = 'inline-block';
+        } catch (e) {
+          out.textContent = prev;
+          err.style.display = 'block';
+          err.textContent = String(e);
+        } finally {
+          btn.disabled = false; btnRe.disabled = false;
+        }
+      }
+
+      btn.addEventListener('click', runAnalysis);
+      btnRe.addEventListener('click', runAnalysis);
+      // Auto-run once when the section loads
+      try { runAnalysis(); } catch (e) {}
+    })();
+  </script>
+
   <!-- Raw exports section -->
   <div class="island">
     <div class="card card--full">
