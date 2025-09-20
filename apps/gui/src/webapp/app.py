@@ -11,11 +11,14 @@ import importlib.util
 from types import ModuleType
 from pathlib import Path
 
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory, jsonify
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, jsonify, Response
 from jinja2 import TemplateNotFound
 from dataclasses import asdict
 import base64
 from typing import Dict, Any, Mapping
+import threading
+import time
+import uuid
 
 
 _HERE = Path(__file__).resolve()
@@ -68,6 +71,79 @@ except Exception:
 app = Flask(__name__, template_folder="../templates", static_folder="../static")
 
 log = logging.getLogger(__name__)
+
+
+# ---------------- Progress/job management (SSE) ----------------
+
+Jobs: Dict[str, Dict[str, Any]] = {}
+JobsLock = threading.Lock()
+
+
+def _new_job() -> str:
+    jid = uuid.uuid4().hex
+    with JobsLock:
+        Jobs[jid] = {
+            "status": "pending",
+            "percent": 0,
+            "stage": "",
+            "detail": "",
+            "created": time.time(),
+            "view": None,  # 'compare' | 'single'
+            "payload": None,  # context for template
+            "errors": None,
+        }
+    return jid
+
+
+def _update_job(jid: str, *, percent: int | None = None, stage: str | None = None, detail: str | None = None, status: str | None = None) -> None:
+    with JobsLock:
+        job = Jobs.get(jid)
+        if not job:
+            return
+        if percent is not None:
+            # Ensure monotonic non-decreasing percentage
+            newp = max(0, min(100, int(percent)))
+            job["percent"] = max(int(job.get("percent", 0) or 0), newp)
+        if stage is not None:
+            job["stage"] = stage
+        if detail is not None:
+            job["detail"] = detail
+        if status is not None:
+            job["status"] = status
+
+
+def _sse_from_job(jid: str):
+    # Stream current job status every 300ms until completion
+    last_payload = None
+    while True:
+        with JobsLock:
+            job = Jobs.get(jid)
+            if not job:
+                payload = {"ok": False, "error": "job not found"}
+                done = True
+            else:
+                payload = {
+                    "ok": True,
+                    "status": job.get("status"),
+                    "percent": job.get("percent", 0),
+                    "stage": job.get("stage", ""),
+                    "detail": job.get("detail", ""),
+                }
+                done = job.get("status") in ("done", "error")
+        import json as _json
+        data = _json.dumps(payload)
+        if data != last_payload:
+            yield f"event: progress\n"
+            yield f"data: {data}\n\n"
+            last_payload = data
+        if done:
+            break
+        time.sleep(0.3)
+
+
+@app.route("/progress/<jid>")
+def progress_stream(jid: str):
+    return Response(_sse_from_job(jid), mimetype="text/event-stream")
 
 
 def _import_llm() -> ModuleType | None:
@@ -592,6 +668,335 @@ def execute():
     if mode == "compare":
         return _handle_compare_submission(request.form)
     return _handle_run_submission(request.form)
+
+
+@app.route("/execute_async", methods=["POST"])
+def execute_async():
+    """Start a benchmark job asynchronously and return a job id.
+
+    Frontend should listen to /progress/<job_id> (SSE) and then navigate to
+    /job/<job_id>/view when status==done.
+    """
+    form = request.form
+    mode = str(form.get("operation", "single") or "single").lower()
+    jid = _new_job()
+
+    def _worker_compare(jid: str, form: Mapping[str, Any]) -> None:
+        try:
+            _update_job(jid, status="running", stage="Preparing", detail="", percent=1)
+            _ensure_adapters_loaded()
+            kinds = _algo_kinds()
+            all_names = list(kinds.keys())
+            kind = str(form.get("kind", "KEM") or "KEM").upper()
+            try:
+                runs = int(form.get("runs", "10"))
+            except Exception:
+                runs = 10
+            try:
+                message_size = int(form.get("message_size", "1024"))
+            except Exception:
+                message_size = 1024
+
+            def _getlist(key: str) -> list[str]:
+                getter = getattr(form, "getlist", None)
+                if callable(getter):
+                    return list(getter(key))
+                value = form.get(key)
+                if isinstance(value, (list, tuple)):
+                    return [v for v in value if v]
+                if value:
+                    return [value]
+                return []
+
+            selected = [n for n in _getlist("algos") if n and kinds.get(n) == kind]
+            if not selected:
+                mode_fallback = str(form.get("mode", "pair") or "pair").lower()
+                if mode_fallback == "all":
+                    selected = [n for n in all_names if kinds.get(n) == kind]
+                else:
+                    # mimic legacy pair selection
+                    def pick_for_kind(key: str) -> str:
+                        vals = _getlist(key)
+                        seq = vals if kind == "KEM" else list(reversed(vals))
+                        for v in seq:
+                            if v and v.strip():
+                                return v
+                        return ""
+                    a = pick_for_kind("algo_a")
+                    b = pick_for_kind("algo_b")
+                    selected = [x for x in [a, b] if x and kinds.get(x) == kind and x.strip()]
+                    seen = set()
+                    selected = [x for x in selected if not (x in seen or seen.add(x))]
+
+            if not selected:
+                _update_job(jid, status="error", stage="No algorithms selected", detail="", percent=100)
+                return
+
+            raw_cold = form.get("cold")
+            cold = str(raw_cold).lower() in ("on", "true", "1", "yes")
+            total_tasks = max(1, len(selected) * runs * 3)
+            stage_offset = (
+                {"keygen": 0, "encapsulate": 1, "decapsulate": 2}
+                if kind == "KEM"
+                else {"keygen": 0, "sign": 1, "verify": 2}
+            )
+
+            results = []
+            errors: Dict[str, str] = {}
+            for algo_index, algo_name in enumerate(selected):
+                _update_job(jid, stage="Preparing", detail=algo_name)
+                def _progress(stage: str, algo: str, i: int, total: int) -> None:
+                    # Global, monotonic progress across all algorithms and stages
+                    # Map stage to offset, then compute global tasks done
+                    base = algo_index * runs * 3
+                    so = int(stage_offset.get(stage, 0))
+                    # Clamp i within [1, runs]
+                    ii = i if i >= 1 else 1
+                    if ii > runs:
+                        ii = runs
+                    global_done = base + so * runs + ii
+                    pct = int((global_done / float(total_tasks)) * 100)
+                    label = {
+                        "keygen": "Keygen",
+                        "encapsulate": "Encapsulate",
+                        "decapsulate": "Decapsulate",
+                        "sign": "Sign",
+                        "verify": "Verify",
+                    }.get(stage, stage.title())
+                    _update_job(jid, stage=f"{label} — Trial {ii}/{runs}", detail=algo, percent=pct)
+                try:
+                    if kind == "KEM":
+                        summary = run_kem(algo_name, runs, cold=cold, progress=_progress)  # type: ignore[misc]
+                    else:
+                        summary = run_sig(algo_name, runs, message_size, cold=cold, progress=_progress)  # type: ignore[misc]
+                    results.append(summary)
+                except Exception as exc:
+                    errors[algo_name] = str(exc)
+
+            _update_job(jid, stage="Compiling Results", detail="", percent=99)
+            display_names = _display_names([s.algo for s in results])
+            compare = {
+                "kind": kind,
+                "runs": runs,
+                "message_size": message_size,
+                "mode": ("cold" if cold else "warm"),
+                "algos": [
+                    {
+                        "name": summary.algo,
+                        "label": display_names.get(summary.algo, summary.algo),
+                        "ops": {k: asdict(v) for k, v in summary.ops.items()},
+                        "meta": summary.meta,
+                        "exports": (summary.meta.get("exports") if isinstance(summary.meta, dict) else {}),
+                    }
+                    for summary in results
+                ],
+            }
+            with JobsLock:
+                job = Jobs.get(jid)
+                if job is not None:
+                    job["view"] = "compare"
+                    job["payload"] = {"compare": compare, "errors": errors}
+            _update_job(jid, status="done", stage="Complete", detail="", percent=100)
+        except Exception as exc:
+            _update_job(jid, status="error", stage="Error", detail=str(exc), percent=100)
+
+    def _worker_single(jid: str, form: Mapping[str, Any]) -> None:
+        try:
+            _update_job(jid, status="running", stage="Preparing", detail="", percent=1)
+            payload_response = _handle_run_submission(form)
+            # We cannot render Response to HTML easily without request context duplication.
+            # Instead, recompute the context similarly to _handle_run_submission here.
+            # Minimal approach: re-run the same logic (duplicated subset) to build context.
+            _ensure_adapters_loaded()
+            algos = list(registry.list().keys())
+            kinds = _algo_kinds()
+
+            name = (form.get("algo", "") or "").strip()
+            try:
+                runs = int(form.get("runs", "10"))
+            except Exception:
+                runs = 10
+            try:
+                message_size = int(form.get("message_size", "1024"))
+            except Exception:
+                message_size = 1024
+            security_form, security_opts = _parse_security_form(form)
+            export_path = (form.get("export_path", "") or "")
+            do_export = str(form.get("do_export") or "").lower() in ("on", "true", "1", "yes")
+            do_export_trace = str(form.get("do_export_trace") or "").lower() in ("on", "true", "1", "yes")
+            export_trace_path = (form.get("export_trace_path", "") or "")
+
+            result: Dict[str, Any] | None = None
+            trace_sections: list[dict[str, Any]] | None = None
+            last_export: str | None = None
+            backend_label: str | None = None
+            error: str | None = None
+
+            total_tasks = max(1, runs * 3)
+            stage_offset = (
+                {"keygen": 0, "encapsulate": 1, "decapsulate": 2}
+                if kind == "KEM"
+                else {"keygen": 0, "sign": 1, "verify": 2}
+            )
+            def _progress(stage: str, algo: str, i: int, total: int) -> None:
+                label = {
+                    "keygen": "Keygen",
+                    "encapsulate": "Encapsulate",
+                    "decapsulate": "Decapsulate",
+                    "sign": "Sign",
+                    "verify": "Verify",
+                }.get(stage, stage.title())
+                so = int(stage_offset.get(stage, 0))
+                # clamp i within [1, runs]
+                ii = i if i >= 1 else 1
+                if ii > runs:
+                    ii = runs
+                global_done = so * runs + ii
+                pct = int((global_done / float(total_tasks)) * 100)
+                _update_job(jid, stage=f"{label} — Trial {ii}/{runs}", detail=name, percent=pct)
+
+            kind = kinds.get(name) or ""
+            raw_cold = form.get("cold")
+            cold = str(raw_cold).lower() in ("on", "true", "1", "yes")
+            if kind == "KEM":
+                summary = run_kem(name, runs, cold=cold, progress=_progress)  # type: ignore[misc]
+            elif kind == "SIG":
+                summary = run_sig(name, runs, message_size, cold=cold, progress=_progress)  # type: ignore[misc]
+            else:
+                raise RuntimeError(f"Unknown or unsupported algorithm: {name}")
+
+            _update_job(jid, stage="Compiling Results", detail="", percent=99)
+            if do_export:
+                out_path = export_path.strip() or f"results/{name.replace('+','plus')}.json"
+                export_json(summary, out_path, security_opts=security_opts)  # type: ignore[misc]
+                last_export = out_path
+
+            if do_export_trace:
+                raw_path = export_trace_path.strip() or f"results/{name.replace('+','plus')}_trace.json"
+                if kind == "KEM":
+                    export_trace_kem(name, raw_path)  # type: ignore[misc]
+                else:
+                    export_trace_sig(name, message_size, raw_path)  # type: ignore[misc]
+
+            if _build_export_payload is not None:
+                result = _build_export_payload(summary, security_opts=security_opts)
+            else:
+                result = {
+                    "algo": summary.algo,
+                    "kind": summary.kind,
+                    "ops": {k: vars(v) for k, v in summary.ops.items()},
+                    "meta": summary.meta,
+                }
+                result["security"] = {"error": "security estimator unavailable"}
+
+            try:
+                cls = registry.get(name)
+                algo = cls()
+                if kind == "KEM":
+                    pk, sk = algo.keygen()
+                    ct, ss = algo.encapsulate(pk)
+                    ss_dec = algo.decapsulate(sk, ct)
+                    trace_sections = [
+                        {
+                            "title": "Keygen",
+                            "items": [
+                                {"label": "public_key", "len": len(pk), "b64": base64.b64encode(pk).decode("ascii")},
+                                {"label": "secret_key", "len": len(sk), "b64": base64.b64encode(sk).decode("ascii")},
+                            ],
+                        },
+                        {
+                            "title": "Encapsulate",
+                            "items": [
+                                {"label": "ciphertext", "len": len(ct), "b64": base64.b64encode(ct).decode("ascii")},
+                                {"label": "shared_secret", "len": len(ss), "b64": base64.b64encode(ss).decode("ascii")},
+                            ],
+                        },
+                        {
+                            "title": "Decapsulate",
+                            "items": [
+                                {"label": "shared_secret", "len": len(ss_dec), "b64": base64.b64encode(ss_dec).decode("ascii")},
+                                {"label": "matches", "len": None, "text": "true" if ss == ss_dec else "false"},
+                            ],
+                        },
+                    ]
+                else:
+                    pk, sk = algo.keygen()
+                    msg = b"x" * int(message_size)
+                    sig = algo.sign(sk, msg)
+                    ok = algo.verify(pk, msg, sig)
+                    trace_sections = [
+                        {
+                            "title": "Keygen",
+                            "items": [
+                                {"label": "public_key", "len": len(pk), "b64": base64.b64encode(pk).decode("ascii")},
+                                {"label": "secret_key", "len": len(sk), "b64": base64.b64encode(sk).decode("ascii")},
+                            ],
+                        },
+                        {
+                            "title": "Sign",
+                            "items": [
+                                {"label": "message", "len": len(msg), "b64": base64.b64encode(msg).decode("ascii")},
+                                {"label": "signature", "len": len(sig), "b64": base64.b64encode(sig).decode("ascii")},
+                            ],
+                        },
+                        {
+                            "title": "Verify",
+                            "items": [
+                                {"label": "ok", "len": None, "text": "true" if ok else "false"},
+                            ],
+                        },
+                    ]
+            except Exception:
+                trace_sections = None
+
+            display_names = {algo_name: (ALGO_INFO.get(algo_name, {}).get("label") or algo_name.replace("-", "-").replace("sphincs+", "SPHINCS+").title()) for algo_name in algos}
+            context = {
+                "algos": algos,
+                "kinds": kinds,
+                "display_names": display_names,
+                "last_export": last_export,
+                "result_json": result,
+                "backend_label": backend_label,
+                "error": error,
+                "default_runs": runs,
+                "default_message_size": message_size,
+                "selected_algo": name,
+                "trace_sections": trace_sections,
+                "security_form": security_form,
+                "security_profile_choices": SECURITY_PROFILE_CHOICES,
+                "quantum_arch_choices": QUANTUM_ARCH_CHOICES,
+                "rsa_model_choices": RSA_MODEL_CHOICES,
+                "selected_operation": "single",
+            }
+            with JobsLock:
+                job = Jobs.get(jid)
+                if job is not None:
+                    job["view"] = "single"
+                    job["payload"] = context
+            _update_job(jid, status="done", stage="Complete", detail="", percent=100)
+        except Exception as exc:
+            _update_job(jid, status="error", stage="Error", detail=str(exc), percent=100)
+
+    t = threading.Thread(target=_worker_compare if mode == "compare" else _worker_single, args=(jid, request.form.copy()), daemon=True)
+    t.start()
+    return jsonify({"ok": True, "job_id": jid})
+
+
+@app.route("/job/<jid>/view")
+def job_view(jid: str):
+    with JobsLock:
+        job = Jobs.get(jid)
+        if not job:
+            return "Job not found", 404
+        if job.get("status") != "done":
+            return "Job not complete", 400
+        view = job.get("view")
+        payload = job.get("payload") or {}
+    if view == "compare":
+        return render_template("compare_results.html", **payload)
+    elif view == "single":
+        return render_template("base.html", **payload)
+    return "Invalid job view", 400
 
 
 

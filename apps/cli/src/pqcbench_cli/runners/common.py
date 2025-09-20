@@ -9,7 +9,7 @@ and per-kind (KEM/SIG) micro-benchmark orchestrators.
 import time, json, pathlib, base64, multiprocessing, threading, sys, statistics
 
 from dataclasses import dataclass, asdict
-from typing import Callable, Dict, Any, List, Tuple
+from typing import Callable, Dict, Any, List, Tuple, Optional
 from pqcbench import registry
 from functools import partial
 from pqcbench.key_analysis import (
@@ -105,7 +105,13 @@ class AlgoSummary:
     ops: Dict[str, OpStats]
     meta: Dict[str, Any]
 
-def measure(fn: Callable[[], None], runs: int, *, cold: bool = True) -> OpStats:
+def measure(
+    fn: Callable[[], None],
+    runs: int,
+    *,
+    cold: bool = True,
+    progress_cb: Optional[Callable[[int, int], None]] = None,
+) -> OpStats:
     """Measure time and memory footprint in isolated runs.
 
     Every iteration executes in a fresh Python process so caches, allocator pools,
@@ -117,7 +123,7 @@ def measure(fn: Callable[[], None], runs: int, *, cold: bool = True) -> OpStats:
     times: List[float] = []
     mem_peaks_kb: List[float] = []
 
-    for _ in range(runs):
+    for i in range(runs):
         if cold:
             dt_ms, mem_kb = _run_isolated(fn)
         else:
@@ -125,6 +131,12 @@ def measure(fn: Callable[[], None], runs: int, *, cold: bool = True) -> OpStats:
         times.append(dt_ms)
         if mem_kb is not None:
             mem_peaks_kb.append(mem_kb)
+        try:
+            if progress_cb is not None:
+                progress_cb(i + 1, runs)
+        except Exception:
+            # Never let progress reporting break measurements
+            pass
 
     mean = sum(times) / len(times)
     median = statistics.median(times)
@@ -168,7 +180,13 @@ def measure(fn: Callable[[], None], runs: int, *, cold: bool = True) -> OpStats:
         )
 
 
-def measure_factory(factory: Callable[[], Callable[[], None]], runs: int, *, cold: bool = True) -> OpStats:
+def measure_factory(
+    factory: Callable[[], Callable[[], None]],
+    runs: int,
+    *,
+    cold: bool = True,
+    progress_cb: Optional[Callable[[int, int], None]] = None,
+) -> OpStats:
     """Measure only the core operation produced by `factory`.
 
     The `factory` runs inside the child process before timing starts to prepare
@@ -179,7 +197,7 @@ def measure_factory(factory: Callable[[], Callable[[], None]], runs: int, *, col
     times: List[float] = []
     mem_peaks_kb: List[float] = []
 
-    for _ in range(runs):
+    for i in range(runs):
         if cold:
             dt_ms, mem_kb = _run_isolated_factory(factory)
         else:
@@ -188,6 +206,11 @@ def measure_factory(factory: Callable[[], Callable[[], None]], runs: int, *, col
         times.append(dt_ms)
         if mem_kb is not None:
             mem_peaks_kb.append(mem_kb)
+        try:
+            if progress_cb is not None:
+                progress_cb(i + 1, runs)
+        except Exception:
+            pass
 
     mean = sum(times) / len(times)
     median = statistics.median(times)
@@ -825,7 +848,16 @@ def _sample_secret_key_analysis(name: str, cls, mechanism: str | None, kind: str
     except Exception as exc:
         return {"method": "bitstring_hw_hd_v1", "error": repr(exc)}
 
-def run_kem(name: str, runs: int, *, cold: bool = True) -> AlgoSummary:
+from typing import Callable as _CallableOptional
+
+
+def run_kem(
+    name: str,
+    runs: int,
+    *,
+    cold: bool = True,
+    progress: Optional[_CallableOptional[[str, str, int, int], None]] = None,
+) -> AlgoSummary:
     """Run a KEM micro-benchmark for the registered algorithm `name`.
 
     Measures wall-clock latency (and optional memory deltas) for:
@@ -838,10 +870,21 @@ def run_kem(name: str, runs: int, *, cold: bool = True) -> AlgoSummary:
     """
     cls = registry.get(name)
     ops: Dict[str, OpStats] = {}
-    ops["keygen"] = measure(partial(_kem_keygen_once, name), runs, cold=cold)
+    def _p(stage: str):
+        if progress is None:
+            return None
+        return lambda i, total: progress(stage, name, i, total)
+
+    ops["keygen"] = measure(
+        partial(_kem_keygen_once, name), runs, cold=cold, progress_cb=_p("keygen")
+    )
     # Ensure encapsulate/decapsulate timings exclude setup (keygen, prior steps)
-    ops["encapsulate"] = measure_factory(partial(_kem_encapsulate_factory, name), runs, cold=cold)
-    ops["decapsulate"] = measure_factory(partial(_kem_decapsulate_factory, name), runs, cold=cold)
+    ops["encapsulate"] = measure_factory(
+        partial(_kem_encapsulate_factory, name), runs, cold=cold, progress_cb=_p("encapsulate")
+    )
+    ops["decapsulate"] = measure_factory(
+        partial(_kem_decapsulate_factory, name), runs, cold=cold, progress_cb=_p("decapsulate")
+    )
     instance = cls()
     mod = getattr(cls, "__module__", "") or getattr(instance.__class__, "__module__", "")
     if "pqcbench_liboqs" in mod:
@@ -883,7 +926,14 @@ def run_kem(name: str, runs: int, *, cold: bool = True) -> AlgoSummary:
     return AlgoSummary(algo=name, kind="KEM", ops=ops, meta=meta)
 
 
-def run_sig(name: str, runs: int, message_size: int, *, cold: bool = True) -> AlgoSummary:
+def run_sig(
+    name: str,
+    runs: int,
+    message_size: int,
+    *,
+    cold: bool = True,
+    progress: Optional[_CallableOptional[[str, str, int, int], None]] = None,
+) -> AlgoSummary:
     """Run a signature micro-benchmark for the registered algorithm `name`.
 
     Measures wall-clock latency (and optional memory deltas) for:
@@ -893,10 +943,21 @@ def run_sig(name: str, runs: int, message_size: int, *, cold: bool = True) -> Al
     """
     cls = registry.get(name)
     ops: Dict[str, OpStats] = {}
-    ops["keygen"] = measure(partial(_sig_keygen_once, name), runs, cold=cold)
+    def _p(stage: str):
+        if progress is None:
+            return None
+        return lambda i, total: progress(stage, name, i, total)
+
+    ops["keygen"] = measure(
+        partial(_sig_keygen_once, name), runs, cold=cold, progress_cb=_p("keygen")
+    )
     # Ensure sign/verify timings exclude setup (keygen, sign)
-    ops["sign"] = measure_factory(partial(_sig_sign_factory, name, message_size), runs, cold=cold)
-    ops["verify"] = measure_factory(partial(_sig_verify_factory, name, message_size), runs, cold=cold)
+    ops["sign"] = measure_factory(
+        partial(_sig_sign_factory, name, message_size), runs, cold=cold, progress_cb=_p("sign")
+    )
+    ops["verify"] = measure_factory(
+        partial(_sig_verify_factory, name, message_size), runs, cold=cold, progress_cb=_p("verify")
+    )
     instance = cls()
     mod = getattr(cls, "__module__", "") or getattr(instance.__class__, "__module__", "")
     if "pqcbench_liboqs" in mod:

@@ -188,14 +188,34 @@
 
     function showLoadingOverlay(){
       if (!loadingOverlay) return;
+      const stageEl = document.getElementById('loading-stage');
+      const detailEl = document.getElementById('loading-detail');
+      const barEl = document.getElementById('loading-progress');
+      if (stageEl) stageEl.textContent = 'Setting Up Environment';
+      if (detailEl) detailEl.textContent = '';
+      if (barEl) barEl.style.width = '2%';
       loadingOverlay.removeAttribute('hidden');
       loadingOverlay.classList.add('is-visible');
+    }
+
+    function updateLoading(stage, detail, percent){
+      const stageEl = document.getElementById('loading-stage');
+      const detailEl = document.getElementById('loading-detail');
+      const barEl = document.getElementById('loading-progress');
+      if (typeof stage === 'string' && stageEl) stageEl.textContent = stage;
+      if (typeof detail === 'string' && detailEl) detailEl.textContent = detail;
+      if (typeof percent === 'number' && barEl) barEl.style.width = Math.min(100, Math.max(0, percent)) + '%';
     }
 
     function hideLoadingOverlay(){
       if (!loadingOverlay) return;
       loadingOverlay.classList.remove('is-visible');
-      loadingOverlay.setAttribute('hidden', 'hidden');
+      // Allow fade-out to complete before hiding from layout again
+      setTimeout(function(){
+        if (!loadingOverlay.classList.contains('is-visible')) {
+          loadingOverlay.setAttribute('hidden', 'hidden');
+        }
+      }, 220);
     }
 
     function refreshSingleSection(){
@@ -282,16 +302,52 @@
       }
     });
     if (mainForm) {
-      mainForm.addEventListener('submit', function(ev){
+      mainForm.addEventListener('submit', async function(ev){
         if (countSelected() === 0) {
           if (algoError) algoError.style.display = 'block';
           if (ev) ev.preventDefault();
           return false;
         }
         if (typeof mainForm.checkValidity === 'function' && !mainForm.checkValidity()) {
+          if (ev) ev.preventDefault();
           return false;
         }
+        if (ev) ev.preventDefault();
         window.requestAnimationFrame(showLoadingOverlay);
+        try {
+          const fd = new FormData(mainForm);
+          // Ensure compare mode
+          if (!fd.get('operation')) fd.set('operation', 'compare');
+          const resp = await fetch('/execute_async', { method: 'POST', body: fd });
+          if (!resp.ok) throw new Error('Failed to start job');
+          const data = await resp.json();
+          if (!data || !data.job_id) throw new Error(data && data.error ? data.error : 'Invalid response');
+          const jobId = data.job_id;
+          const es = new EventSource('/progress/' + encodeURIComponent(jobId));
+          const handler = function(evt) {
+            try {
+              const msg = JSON.parse(evt.data || '{}');
+              if (!msg || msg.ok === false) return;
+              updateLoading(msg.stage || '', msg.detail || '', typeof msg.percent === 'number' ? msg.percent : undefined);
+              if (msg.status === 'done') {
+                es.close();
+                // Navigate to the rendered results for this job
+                window.location.href = '/job/' + encodeURIComponent(jobId) + '/view';
+              }
+              if (msg.status === 'error') {
+                es.close();
+                updateLoading('Error', msg.detail || 'Job failed', 100);
+                setTimeout(hideLoadingOverlay, 1200);
+              }
+            } catch (e) { /* ignore parse errors */ }
+          }
+          es.addEventListener('progress', handler);
+          es.onerror = function(){ /* keep connection; SSE auto-retries */ };
+        } catch (e) {
+          updateLoading('Error', (e && e.message) ? e.message : 'Failed to start job', 100);
+          setTimeout(hideLoadingOverlay, 1200);
+        }
+        return false;
       });
       mainForm.addEventListener('reset', function(){
         setTimeout(function(){
