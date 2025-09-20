@@ -27,6 +27,7 @@
     .note { font-size:.95rem; opacity:.95; }
     code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
     ol.refs { list-style: none; margin: 0; padding-left: 0; }
+    ol.refs > li::marker { content: ""; }
   </style>
   <!-- MathJax for LaTeX-style math -->
   <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -64,9 +65,9 @@
     <h2>Origins & history</h2>
     <p class="muted">
       RSA (Rivest–Shamir–Adleman, 1977) is a trapdoor permutation over \(\mathbb{Z}_n^*\). <strong>OAEP</strong> (Optimal Asymmetric Encryption Padding)
-      was proposed by Bellare–Rogaway (1994/95) to transform a trapdoor permutation into a probabilistic, semantically secure PKE in the Random Oracle Model (ROM).
-      Shoup (2001) revisited the proof for general TDPs; subsequent results establish CCA2 security of RSA–OAEP under RSA-type assumptions in the ROM.
-      PKCS #1 v2.2 (RFC 8017, 2016) specifies RSAES-OAEP precisely; NIST SP 800-56B and SP 800-57 provide parameter guidance.
+      was proposed by Bellare–Rogaway (1994/95) to transform a trapdoor permutation into a probabilistic, semantically secure PKE in the Random Oracle Model (ROM) [2].
+      Shoup (2001) revisited the proof for general TDPs [3]; subsequent results establish CCA2 security of RSA–OAEP under RSA-type assumptions in the ROM [4].
+      PKCS #1 v2.2 (RFC 8017, 2016) specifies RSAES-OAEP precisely [1]; NIST SP 800-56B and SP 800-57 provide parameter guidance [5], [6].
     </p>
   </div>
 
@@ -74,9 +75,9 @@
     <h2>Design overview</h2>
     <p class="muted">
       Naïve RSA is deterministic \(c=m^e\bmod n\), leaking equality and enabling malleability. OAEP wraps the message in a randomised
-      encoding using two masks derived via MGF1 from a fresh seed and the data block. The resulting <em>encoded message</em> (EM) is
+      encoding using two masks derived via MGF1 from a fresh seed and the data block [1], [2]. The resulting <em>encoded message</em> (EM) is
       then mapped to an integer and exponentiated. Correct decoding removes the masks and checks fixed headers, providing IND-CCA2
-      security in the ROM when combined with RSA.
+      security in the ROM when combined with RSA [2]–[4].
     </p>
   </div>
 
@@ -96,7 +97,7 @@
       <div>
         <h3>OAEP components</h3>
         <p class="muted">
-          Fix a hash \(H\) (output \(hLen\) bytes) and MGF1 (based on \(H\)). For label \(L\), set \(\mathtt{lHash}=H(L)\).
+          Fix a hash \(H\) (output \(hLen\) bytes) and MGF1 (based on \(H\)). For label \(L\), set \(\mathtt{lHash}=H(L)\) [1].
         </p>
       </div>
     </div>
@@ -105,15 +106,15 @@
     <p class="muted">
       Let \(k\) be the modulus length in bytes and \(mLen=|M|\). Valid messages satisfy
     </p>
-    <p class="mono">\( mLen \le k - 2\,hLen - 2. \)</p>
+    <p class="mono">\( mLen \le k - 2\,hLen - 2 \) [1].</p>
     <ol class="muted">
-      <li>Form \(\mathtt{DB}=\mathtt{lHash}\ \| \ \mathtt{PS}\ \|\ \texttt{0x01}\ \| \ M\), with \(\mathtt{PS}\) all-zero padding.</li>
-      <li>Sample random seed \(S\in\{0,1\}^{8\,hLen}\).</li>
-      <li>\(\mathtt{maskedDB} = \mathtt{DB} \oplus \mathrm{MGF1}(S,\ k-hLen-1)\).</li>
-      <li>\(\mathtt{maskedSeed} = S \oplus \mathrm{MGF1}(\mathtt{maskedDB},\ hLen)\).</li>
-      <li>\(\mathtt{EM}=\texttt{0x00}\ \|\ \mathtt{maskedSeed}\ \|\ \mathtt{maskedDB}\).</li>
+      <li>Form \(\mathtt{DB}=\mathtt{lHash}\ \| \ \mathtt{PS}\ \|\ \texttt{0x01}\ \| \ M\), with \(\mathtt{PS}\) all-zero padding [1].</li>
+      <li>Sample random seed \(S\in\{0,1\}^{8\,hLen}\) [1].</li>
+      <li>\(\mathtt{maskedDB} = \mathtt{DB} \oplus \mathrm{MGF1}(S,\ k-hLen-1)\) [1].</li>
+      <li>\(\mathtt{maskedSeed} = S \oplus \mathrm{MGF1}(\mathtt{maskedDB},\ hLen)\) [1].</li>
+      <li>\(\mathtt{EM}=\texttt{0x00}\ \|\ \mathtt{maskedSeed}\ \|\ \mathtt{maskedDB}\) [1].</li>
     </ol>
-    <p class="note">Decryption reverses masking, checks \(\mathtt{lHash}\) and the delimiter <code>0x01</code>, then parses \(M\).</p>
+    <p class="note">Decryption reverses masking, checks \(\mathtt{lHash}\) and the delimiter <code>0x01</code>, then parses \(M\) [1].</p>
   </div>
 
   <div class="island" id="params">
@@ -122,10 +123,10 @@
       <div>
         <h3>Recommended choices</h3>
         <ul class="muted">
-          <li>Hash \(H\): SHA-256 (or SHA-384/512 for higher strength).</li>
-          <li>MGF: MGF1 using the <em>same</em> hash as \(H\).</li>
-          <li>Label \(L\): usually empty and fixed per key.</li>
-          <li>Public exponent: \(e=65537\).</li>
+          <li>Hash \(H\): SHA-256 (or SHA-384/512 for higher strength) [1], [6].</li>
+          <li>MGF: MGF1 using the <em>same</em> hash as \(H\) [1].</li>
+          <li>Label \(L\): usually empty and fixed per key [1].</li>
+          <li>Public exponent: \(e=65537\) [1].</li>
         </ul>
       </div>
       <div>
@@ -139,13 +140,12 @@
             <tr><td>256-bit</td><td>RSA-15360</td><td>SHA-512</td></tr>
           </tbody>
         </table>
-        <p class="note" style="margin-top:.5rem;">Per NIST SP 800-57 guidance.</p>
+        <p class="note" style="margin-top:.5rem;">Per NIST SP 800-57 Part 1, Rev. 5 [6].</p>
       </div>
     </div>
     <p class="muted" style="margin-top:.5rem;">
-      <b>Message size:</b> with modulus \(k\) bytes and hash \(hLen\) bytes, \(|M|\le k-2hLen-2\).
-      Example: RSA-2048 (\(k=256\)) and SHA-256 (\(hLen=32\)) → max plaintext 190 bytes.
-      In practice, RSA-OAEP encrypts a random session key for hybrid encryption.
+      <b>Message size:</b> with modulus \(k\) bytes and hash \(hLen\) bytes, \(|M|\le k-2hLen-2\) (e.g., RSA-2048 with SHA-256 → 190 bytes) [1].
+      In practice, RSA-OAEP encrypts a random session key for hybrid encryption [5].
     </p>
   </div>
 
@@ -154,40 +154,40 @@
 
     <h3>Key generation</h3>
     <p class="muted">
-      Generate \(p,q\); compute \(n, \lambda(n), e, d\); store CRT values \(d_p, d_q, q^{-1}\bmod p\) for fast private ops.
+      Generate \(p,q\); compute \(n, \lambda(n), e, d\); store CRT values \(d_p, d_q, q^{-1}\bmod p\) for fast private ops [1].
     </p>
 
     <h3>Encryption (RSAES-OAEP)</h3>
     <ol class="muted">
-      <li>Build \(\mathtt{EM}\leftarrow\mathrm{EME\mbox{-}OAEP\mbox{-}ENCODE}(M,L,H,\mathrm{MGF1})\).</li>
-      <li>Output \( C = \mathrm{I2OSP}\big(\mathrm{OS2IP}(\mathtt{EM})^e \bmod n,\ k\big) \).</li>
+      <li>Build \(\mathtt{EM}\leftarrow\mathrm{EME\mbox{-}OAEP\mbox{-}ENCODE}(M,L,H,\mathrm{MGF1})\) [1].</li>
+      <li>Output \( C = \mathrm{I2OSP}\big(\mathrm{OS2IP}(\mathtt{EM})^e \bmod n,\ k\big) \) [1].</li>
     </ol>
 
     <h3>Decryption</h3>
     <ol class="muted">
-      <li>Recover \(\hat{\mathtt{EM}}=\mathrm{I2OSP}(C^d\bmod n,\ k)\).</li>
-      <li>Parse and verify via \(\mathrm{EME\mbox{-}OAEP\mbox{-}DECODE}\); on any check failure, return a uniform error (constant-time).</li>
+      <li>Recover \(\hat{\mathtt{EM}}=\mathrm{I2OSP}(C^d\bmod n,\ k)\) [1].</li>
+      <li>Parse and verify via \(\mathrm{EME\mbox{-}OAEP\mbox{-}DECODE}\); on any check failure, return a uniform error (constant-time) [1].</li>
     </ol>
   </div>
 
   <div class="island" id="security">
     <h2>Security at a glance</h2>
     <ul class="muted">
-      <li><b>Goal:</b> IND-CCA2 in the ROM when combined with RSA.</li>
-      <li><b>Assumptions:</b> RSA inversion hardness; \(H\) and MGF1 modeled as random oracles.</li>
-      <li><b>Proof notes:</b> Padded encoding plus trapdoor permutation yields tight security for RSA-OAEP (with RSA-specific refinements in the proofs).</li>
-      <li><b>Side-channels:</b> use RSA blinding, constant-time exponentiation/parsing, and CRT fault checks (re-encrypt and compare).</li>
-      <li><b>Quantum note:</b> RSA is vulnerable to Shor’s algorithm; prefer hybrid/PQ transitions for long-term confidentiality.</li>
+      <li><b>Goal:</b> IND-CCA2 in the ROM when combined with RSA [2]–[4].</li>
+      <li><b>Assumptions:</b> RSA inversion hardness; \(H\) and MGF1 modeled as random oracles [2]–[4].</li>
+      <li><b>Proof notes:</b> Padded encoding plus trapdoor permutation yields tight security for RSA-OAEP (RSA-specific refinements) [3], [4].</li>
+      <li><b>Side-channels:</b> use RSA blinding, constant-time exponentiation/parsing, and CRT fault checks (re-encrypt and compare) [7]–[9].</li>
+      <li><b>Quantum note:</b> RSA is vulnerable to Shor’s algorithm; prefer hybrid/PQ transitions for long-term confidentiality [6], [10].</li>
     </ul>
   </div>
 
   <div class="island" id="impl">
     <h2>Implementation notes</h2>
     <ul class="muted">
-      <li>Fix \(H\), MGF1, and label \(L\) per key; don’t mix parameters with the same key.</li>
-      <li>Use vetted libraries; enable CRT with verification; zeroise sensitive buffers.</li>
-      <li>Uniform error handling on decode; never surface padding-oracle differences.</li>
-      <li>Use RSA-OAEP to wrap symmetric keys; use AEAD (AES-GCM/ChaCha20-Poly1305) for bulk data.</li>
+      <li>Fix \(H\), MGF1, and label \(L\) per key; don’t mix parameters with the same key [1].</li>
+      <li>Use vetted libraries; enable CRT with verification; zeroise sensitive buffers [1], [8].</li>
+      <li>Uniform error handling on decode; never surface padding-oracle differences [1].</li>
+      <li>Use RSA-OAEP to wrap symmetric keys; use AEAD (AES-GCM/ChaCha20-Poly1305) for bulk data [5].</li>
     </ul>
   </div>
 
@@ -197,17 +197,17 @@
       <div>
         <h3>Pros</h3>
         <ul class="muted">
-          <li>Widely standardized/interoperable (RFC 8017, NIST guidance).</li>
-          <li>Provable CCA2 security in ROM with clear parameterisation.</li>
-          <li>Excellent fit for hybrid key establishment.</li>
+          <li>Widely standardized/interoperable (RFC 8017; NIST guidance) [1], [5], [6].</li>
+          <li>Provable CCA2 security in ROM with clear parameterisation [2]–[4].</li>
+          <li>Excellent fit for hybrid key establishment [5].</li>
         </ul>
       </div>
       <div>
         <h3>Cons</h3>
         <ul class="muted">
-          <li>Large keys/ciphertexts and slower private ops vs modern KEMs.</li>
-          <li>Implementation pitfalls (timing/oracles/faults) if countermeasures are absent.</li>
-          <li>No post-quantum security.</li>
+          <li>Large keys/ciphertexts and slower private ops vs modern KEMs [5], [6].</li>
+          <li>Implementation pitfalls (timing/oracles/faults) if countermeasures are absent [7]–[9].</li>
+          <li>No post-quantum security [6], [10].</li>
         </ul>
       </div>
     </div>
@@ -216,17 +216,27 @@
   <div class="island" id="references">
     <h2>References</h2>
     <ol class="refs muted">
-      <li>[1] K. Moriarty, B. Kaliski, J. Jonsson, and A. Rusch, “<i>PKCS #1: RSA Cryptography Specifications Version 2.2</i>,” RFC 8017, Nov. 2016.</li>
-      <li>[2] M. Bellare and P. Rogaway, “Optimal Asymmetric Encryption: How to Encrypt with RSA,” in <i>EUROCRYPT ’94</i>, LNCS 950, 1995.</li>
-      <li>[3] V. Shoup, “OAEP Reconsidered,” in <i>CRYPTO 2001</i>, LNCS 2139, 2001.</li>
-      <li>[4] E. Fujisaki, T. Okamoto, D. Pointcheval, and J. Stern, “RSA–OAEP is Secure under the RSA Assumption,” in <i>CRYPTO 2001</i>, 2001.</li>
-      <li>[5] E. Barker <i>et&nbsp;al.</i>, “<i>SP 800-56B Rev.2: Recommendation for Pair-Wise Key-Establishment Using Integer Factorization Cryptography</i>,” NIST, 2019.</li>
-      <li>[6] E. Barker, “<i>SP 800-57 Part 1 Rev.5: Recommendation for Key Management</i>,” NIST, 2020.</li>
-      <li>[7] P. C. Kocher, “Timing Attacks on Implementations of Diffie-Hellman, RSA, DSS, and Others,” in <i>CRYPTO ’96</i>, 1996.</li>
-      <li>[8] D. Boneh, R. A. DeMillo, and R. J. Lipton, “On the Importance of Eliminating Errors in Cryptographic Computations,” <i>J. Cryptology</i>, 2001.</li>
-      <li>[9] É. Brier, D. Naccache, P.-A. Fouque, and Q. Nguyen, “Modulus Fault Attacks Against RSA-CRT Signatures,” in <i>CHES 2011</i>, 2011.</li>
-      <li>[10] E. Barker and A. Roginsky, “<i>SP 800-131A Rev.2: Transitioning the Use of Cryptographic Algorithms and Key Lengths</i>,” NIST, 2019.</li>
-    </ol>
+  <li>[1] K. Moriarty, B. Kaliski, J. Jonsson, and A. Rusch, “<i>PKCS #1: RSA Cryptography Specifications Version 2.2</i>,” RFC 8017, Nov. 2016. Available: <a href="https://www.rfc-editor.org/rfc/rfc8017" target="_blank" rel="noopener">https://www.rfc-editor.org/info/rfc8017</a></li>
+
+  <li>[2] M. Bellare and P. Rogaway, “Optimal Asymmetric Encryption: How to Encrypt with RSA,” in <i>EUROCRYPT ’94</i>, LNCS 950, 1995. Available: <a href="https://cseweb.ucsd.edu/~mihir/papers/oaep.pdf" target="_blank" rel="noopener">https://cseweb.ucsd.edu/~mihir/papers/oaep.pdf</a></li>
+
+  <li>[3] V. Shoup, “OAEP Reconsidered,” in <i>CRYPTO 2001</i>, LNCS 2139, 2001. Available: <a href="https://shoup.net/papers/oaep.pdf" target="_blank" rel="noopener">https://shoup.net/papers/oaep.pdf</a></li>
+
+  <li>[4] E. Fujisaki, T. Okamoto, D. Pointcheval, and J. Stern, “RSA–OAEP Is Secure under the RSA Assumption,” in <i>CRYPTO 2001</i>, 2001. Available: <a href="https://www.iacr.org/archive/crypto2001/21390259.pdf" target="_blank" rel="noopener">https://www.iacr.org/archive/crypto2001/21390259.pdf</a></li>
+
+  <li>[5] E. Barker <i>et al.</i>, “<i>SP 800-56B Rev. 2: Recommendation for Pair-Wise Key-Establishment Using Integer Factorization Cryptography</i>,” NIST, Mar. 2019. DOI: <a href="https://doi.org/10.6028/NIST.SP.800-56Br2" target="_blank" rel="noopener">10.6028/NIST.SP.800-56Br2</a>. Available: <a href="https://doi.org/10.6028/NIST.SP.800-56Br2" target="_blank" rel="noopener">https://doi.org/10.6028/NIST.SP.800-56Br2</a></li>
+
+  <li>[6] E. Barker, “<i>SP 800-57 Part 1 Rev. 5: Recommendation for Key Management</i>,” NIST, May 2020. DOI: <a href="https://doi.org/10.6028/NIST.SP.800-57pt1r5" target="_blank" rel="noopener">10.6028/NIST.SP.800-57pt1r5</a>. Available: <a href="https://doi.org/10.6028/NIST.SP.800-57pt1r5" target="_blank" rel="noopener">https://doi.org/10.6028/NIST.SP.800-57pt1r5</a></li>
+
+  <li>[7] P. C. Kocher, “Timing Attacks on Implementations of Diffie-Hellman, RSA, DSS, and Others,” in <i>CRYPTO ’96</i>, 1996. Available: <a href="https://paulkocher.com/doc/TimingAttacks.pdf" target="_blank" rel="noopener">https://paulkocher.com/doc/TimingAttacks.pdf</a></li>
+
+  <li>[8] D. Boneh, R. A. DeMillo, and R. J. Lipton, “On the Importance of Eliminating Errors in Cryptographic Computations,” <i>Journal of Cryptology</i>, vol. 14, pp. 101–119, 2001. DOI: <a href="https://doi.org/10.1007/s001450010003" target="_blank" rel="noopener">10.1007/s001450010003</a></li>
+
+  <li>[9] É. Brier, D. Naccache, P.-A. Fouque, and Q. Nguyen, “Modulus Fault Attacks Against RSA-CRT Signatures,” in <i>CHES 2011</i>, 2011. DOI: <a href="https://doi.org/10.1007/978-3-642-23951-9_13" target="_blank" rel="noopener">10.1007/978-3-642-23951-9_13</a></li>
+
+  <li>[10] E. Barker and A. Roginsky, “<i>SP 800-131A Rev. 2: Transitioning the Use of Cryptographic Algorithms and Key Lengths</i>,” NIST, 2019. DOI: <a href="https://doi.org/10.6028/NIST.SP.800-131Ar2" target="_blank" rel="noopener">10.6028/NIST.SP.800-131Ar2</a>. Available: <a href="https://doi.org/10.6028/NIST.SP.800-131Ar2" target="_blank" rel="noopener">https://doi.org/10.6028/NIST.SP.800-131Ar2</a></li>
+</ol>
+
   </div>
 </body>
 </html>

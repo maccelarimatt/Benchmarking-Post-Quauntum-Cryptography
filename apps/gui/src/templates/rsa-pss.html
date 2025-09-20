@@ -26,8 +26,9 @@
     .toc a:hover { text-decoration:underline; }
     .note { font-size:.95rem; opacity:.95; }
     code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
-    .pill { display:inline-block; padding:.2rem .6rem; border-radius:999px; background:rgba(255,255,255,.18); margin-right:.35rem; font-size:.85rem;}
+    /* show only the bracketed numbers in each <li> (we generate [n] in the text) */
     ol.refs { list-style: none; margin: 0; padding-left: 0; }
+    ol.refs > li::marker { content: ""; }
   </style>
   <!-- MathJax for LaTeX-style math -->
   <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -37,7 +38,6 @@
     <div>
       <div style="font-size:1.6rem; font-weight:700;">{{ label }}</div>
       {% if kind %}<div class="badge" title="Kind">{{ kind }}</div>{% endif %}
-      <div class="pill">Classical RSA</div><div class="pill">EUF-CMA (ROM)</div><div class="pill">Not PQ-resistant</div>
     </div>
     <div>
       <a href="/" class="btn">Back to home</a>
@@ -47,7 +47,8 @@
   <div class="island">
     <div style="font-weight:700; margin-bottom:.5rem;">About</div>
     <p class="muted">
-      RSASSA-PSS (Probabilistic Signature Scheme) is the modern, provably secure RSA signature encoding defined in PKCS #1 v2.2 (RFC 8017) and profiled by NIST (FIPS 186-5). It replaces older deterministic encodings (RSASSA-PKCS1 v1.5) and achieves <em>existential unforgeability under adaptive chosen-message attack</em> (EUF-CMA) in the random-oracle model, assuming the RSA function is hard to invert.
+      RSASSA-PSS is the modern, provably secure RSA signature encoding defined in PKCS #1 v2.2 (RFC 8017) and profiled by NIST (FIPS 186-5) [1], [3].
+      It replaces deterministic RSASSA-PKCS1 v1.5 and achieves EUF-CMA security in the Random-Oracle Model under RSA-inversion assumptions [2].
     </p>
     <div class="toc muted">
       <span class="chip"><a href="#history">Origins & history</a></span>
@@ -65,14 +66,17 @@
   <div class="island" id="history">
     <h2>Origins & history</h2>
     <p class="muted">
-      RSA (1977) provides a trapdoor permutation \(x\mapsto x^e \bmod n\). In 1996, Bellare and Rogaway proposed the <em>PSS</em> paradigm (“Exact Security of Digital Signatures”) giving tight ROM proofs for RSA signatures. PSS was adopted into PKCS #1 v2 (later v2.2 / RFC 8017), and NIST standardised its use within the Digital Signature Standard (FIPS 186-5). Today, RSA-PSS is the recommended RSA signature scheme in TLS, X.509, and many PKI profiles.
+      RSA (1977) provides a trapdoor permutation \(x\mapsto x^e \bmod n\). In 1996, Bellare and Rogaway introduced the
+      <em>PSS</em> paradigm with tight ROM proofs for RSA signatures [2]. PSS was adopted into PKCS #1 v2 (now v2.2 / RFC 8017) [1],
+      and NIST standardized its use in FIPS 186-5 (2023) [3]. Today, RSA-PSS is the recommended RSA signature in X.509/PKIX via RFC 4055 [8].
     </p>
   </div>
 
   <div class="island" id="overview">
     <h2>Design overview</h2>
     <p class="muted">
-      PSS signs a hash of the message with a randomised <em>encoding</em> (EMSA-PSS) that mixes a per-signature salt via MGF1 into a Feistel-like structure. The encoded message <span class="mono">EM</span> is then turned into an integer and exponentiated with the private exponent \(d\). Verification recomputes the encoding from the message and checks it against the RSA “message representative” recovered with the public exponent \(e\).
+      PSS signs a hash of the message using a randomized encoding (EMSA-PSS) that blends a per-signature salt via MGF1; the encoded
+      message is exponentiated with \(d\), and verification recomputes the encoding and checks against the recovered representative [1], [2].
     </p>
   </div>
 
@@ -81,8 +85,8 @@
     <div class="muted">
       <h3>RSA keys</h3>
       <p>
-        Generate primes \(p,q\), set \(n=pq\), choose \(e\) coprime to \(\lambda(n)=\mathrm{lcm}(p-1,q-1)\), and compute \(d\equiv e^{-1}\bmod \lambda(n)\).
-        The signing and verification maps are:
+        Generate primes \(p,q\), set \(n=pq\), choose \(e\) coprime to \(\lambda(n)=\mathrm{lcm}(p-1,q-1)\), and compute \(d\equiv e^{-1}\bmod \lambda(n)\) [1].
+        Signing and verification use:
       </p>
       <p class="mono">
         \( s \equiv \mathrm{EM}^d \bmod n,\qquad \hat{\mathrm{EM}} \equiv s^e \bmod n. \)
@@ -90,18 +94,11 @@
 
       <h3>EMSA-PSS encoding</h3>
       <p>
-        Let \(H\) be a hash (output length \(hLen\)), and MGF1 be the mask generator (typically based on \(H\)). Let \(k\) be the modulus length in bytes and \(\text{emBits}=\lfloor \log_2(n-1)\rfloor\), \(\text{emLen}=\lceil \text{emBits}/8\rceil\).
+        Let \(H\) be a hash (output \(hLen\)), and MGF1 be the mask generator (based on \(H\)). With \(\text{emBits}=\lfloor \log_2(n-1)\rfloor\),
+        \(\text{emLen}=\lceil \text{emBits}/8\rceil\): compute \(mHash=H(M)\), pick a random salt, form \(M'\), compute \(H'\), construct
+        \(DB\), mask with MGF1, clear leading bits, and output \(\mathrm{EM}=\text{maskedDB}\,\|\,H'\,\|\,0xBC\) [1], [2].
       </p>
-      <ol>
-        <li>Compute \(mHash = H(M)\). Choose a random salt of length \(sLen\).</li>
-        <li>Form \( M' = \underbrace{0x00\ldots 0x00}_{8\ \text{octets}} \,\|\, mHash \,\|\, \text{salt} \).</li>
-        <li>Compute \( H' = H(M') \).</li>
-        <li>Let \( PS \) be zeros so that \( |DB| = \text{emLen} - hLen - 1 \). Set \( DB = PS \,\|\, 0x01 \,\|\, \text{salt} \).</li>
-        <li>Compute \( dbMask = \mathrm{MGF1}(H', \text{emLen}-hLen-1) \) and \( \text{maskedDB} = DB \oplus dbMask \).</li>
-        <li>Clear the leftmost \(8\cdot\text{emLen} - \text{emBits}\) bits of \(\text{maskedDB}[0]\).</li>
-        <li>Output \( \mathrm{EM} = \text{maskedDB} \,\|\, H' \,\|\, 0xBC \).</li>
-      </ol>
-      <p class="note">Verification reverses these steps on \(\hat{\mathrm{EM}}\): check the trailer 0xBC, unmask DB with MGF1, confirm the leftmost bits are zeroed, recompute \(H'\) from \(M'\), and compare.</p>
+      <p class="note">Verification inverts these steps on \(\hat{\mathrm{EM}}\) and checks the trailer and bit-clearing conditions [1].</p>
     </div>
   </div>
 
@@ -111,10 +108,10 @@
       <div class="muted">
         <h3>Recommended choices</h3>
         <ul>
-          <li>Hash: SHA-256 (or SHA-384/512 for higher strength).</li>
-          <li>MGF: MGF1 with the <em>same</em> hash as above.</li>
-          <li>Salt length: \(sLen = hLen\) (typical PKI/TLS profiles); \(sLen=0\) is allowed but <em>not</em> recommended.</li>
-          <li>Public exponent: \(e=65537\).</li>
+          <li>Hash: SHA-256 (or SHA-384/512 for higher strength) [1], [3].</li>
+          <li>MGF: MGF1 with the same hash as above [1].</li>
+          <li>Salt length: \(sLen=hLen\) (typical PKI/TLS profiles) [1], [8].</li>
+          <li>Public exponent: \(e=65537\) [1].</li>
         </ul>
       </div>
       <div class="muted">
@@ -128,10 +125,10 @@
             <tr><td>~256-bit</td><td>RSA-15360</td><td>SHA-512</td></tr>
           </tbody>
         </table>
-        <p class="note">Mapping per NIST SP 800-57 Pt.1; choose hash output ≥ desired security strength.</p>
+        <p class="note">Per NIST SP 800-57 Part 1, Rev. 5 mapping [4].</p>
       </div>
     </div>
-    <p class="muted">Signature size equals the modulus length (e.g., 256 B for RSA-2048).</p>
+    <p class="muted">Signature size equals the modulus length (e.g., 256 B for RSA-2048) [1].</p>
   </div>
 
   <div class="island" id="algorithms">
@@ -139,43 +136,40 @@
 
     <h3>Key generation</h3>
     <p class="muted">
-      Generate \(p,q\) (with primality/self-tests), compute \(n, \lambda(n), e, d\). Store CRT values \(d_p, d_q, q^{-1}\bmod p\) for fast signing.
+      Generate \(p,q\), compute \(n,\lambda(n),e,d\); store CRT values \(d_p,d_q,q^{-1}\bmod p\) for fast signing [1].
     </p>
 
     <h3>Signing (RSASSA-PSS)</h3>
     <ol class="muted">
-      <li>Compute \(mHash = H(M)\). Sample random \(\text{salt}\in\{0,1\}^{8\,sLen}\).</li>
-      <li>Build \( \mathrm{EM} \leftarrow \mathrm{EMSA\mbox{-}PSS\mbox{-}ENCODE}(mHash, \text{emBits}, sLen) \).</li>
-      <li>Output signature \( s \equiv \mathrm{EM}^d \bmod n \) (use CRT and RSA blinding).</li>
+      <li>Compute \(mHash=H(M)\); sample random \(\text{salt}\) [1], [2].</li>
+      <li>EM \(\leftarrow\) EMSA-PSS-ENCODE\((mHash,\text{emBits},sLen)\) [1].</li>
+      <li>Output \( s \equiv \mathrm{EM}^d \bmod n \) (use CRT and blinding) [1], [6], [5].</li>
     </ol>
 
     <h3>Verification</h3>
     <ol class="muted">
-      <li>Compute \( mHash = H(M) \) and recover \( \hat{\mathrm{EM}} \equiv s^e \bmod n \).</li>
-      <li>Check \( \mathrm{EMSA\mbox{-}PSS\mbox{-}VERIFY}(mHash, \hat{\mathrm{EM}}, \text{emBits}, sLen) \) including trailer 0xBC and leading-bit clear.</li>
-      <li>Accept iff all checks pass.</li>
+      <li>Recover \(\hat{\mathrm{EM}} \equiv s^e \bmod n\) and run EMSA-PSS-VERIFY (check trailer 0xBC, leading-bit clear, and recomputed \(H'\)) [1].</li>
     </ol>
   </div>
 
   <div class="island" id="security">
     <h2>Security at a glance</h2>
     <ul class="muted">
-      <li><b>Goal:</b> EUF-CMA in the Random-Oracle Model (ROM).</li>
-      <li><b>Assumption:</b> RSA inversion is hard; \(H\) and MGF1 behave as random oracles.</li>
-      <li><b>Proofs:</b> PSS achieves tight security bounds (exact security) relative to RSA; PKCS #1 fixes domain separation and bit-clearing (emBits) details.</li>
-      <li><b>Comparison:</b> Prefer PSS over PKCS#1 v1.5 signatures for new designs; PSS is robust against classic forgeries applicable to v1.5 encodings.</li>
-      <li><b>Quantum note:</b> RSA (including PSS) is broken by Shor’s algorithm → plan for PQ migration or hybrid deployments.</li>
+      <li><b>Goal:</b> EUF-CMA in the ROM [2].</li>
+      <li><b>Assumptions:</b> RSA-inversion hardness; \(H\) and MGF1 modeled as random oracles [2].</li>
+      <li><b>Standards:</b> Encoding and verification rules fixed by PKCS #1 v2.2 [1]; profiled in FIPS 186-5 [3]; identifiers and use in X.509 by RFC 4055 [8].</li>
+      <li><b>Side-channels:</b> timing-attack resistance (blinding) and fault-attack checks (e.g., re-encrypt after CRT) are required [6], [5].</li>
+      <li><b>Quantum note:</b> RSA (incl. PSS) is broken by Shor’s algorithm; plan hybrid/PQ transition guided by NIST key-management advice [4].</li>
     </ul>
   </div>
 
   <div class="island" id="impl">
     <h2>Implementation notes</h2>
     <ul class="muted">
-      <li>Use vetted libraries; fix \(H\), MGF1, and \(sLen\) per key (don’t mix).</li>
-      <li>Strong RNG for salts; <em>never</em> reuse salt deterministically across signatures.</li>
-      <li>Enable CRT with <em>verification step</em> (re-encrypt signature with \(e\)) to catch faults; use RSA blinding to mitigate timing/leakage.</li>
-      <li>Constant-time parsing and masking in EMSA-PSS; uniform error handling on verification.</li>
-      <li>Keys: validate modulus structure, ensure minimum prime sizes and protections against small-exponent/low-entropy pitfalls.</li>
+      <li>Use vetted libraries; fix \(H\), MGF1, and \(sLen\) per key (do not mix) [1], [3].</li>
+      <li>Strong RNG for salts; never reuse salt deterministically [1], [3].</li>
+      <li>Enable CRT <em>and</em> verify the signature with \(e\) to catch faults; use RSA blinding to mitigate timing/leakage [1], [6], [5].</li>
+      <li>Follow PKIX conventions/identifiers when integrating with X.509 and CMS/PKI [8].</li>
     </ul>
   </div>
 
@@ -185,17 +179,17 @@
       <div>
         <h3>Pros</h3>
         <ul class="muted">
-          <li>Provably secure (ROM), widely standardised (RFC 8017, FIPS 186-5).</li>
-          <li>Interoperable and well-supported in TLS, X.509, JOSE, SSH, etc.</li>
-          <li>Flexible: hashes and salt lengths tune performance/security.</li>
+          <li>Provably secure in ROM with tight bounds; widely standardized (PKCS #1, FIPS, PKIX) [1]–[3], [8].</li>
+          <li>Interoperable in TLS, X.509, JOSE, SSH ecosystems [8].</li>
+          <li>Configurable via hash and salt length [1], [3].</li>
         </ul>
       </div>
       <div>
         <h3>Cons</h3>
         <ul class="muted">
-          <li>Large keys and slower private operations vs. modern lattice signatures.</li>
-          <li>Requires high-quality randomness for salts; RNG failures can be catastrophic.</li>
-          <li>No post-quantum security.</li>
+          <li>Larger keys and slower private ops than many PQ/lattice signatures [4].</li>
+          <li>Requires high-quality randomness for salts; RNG failures are catastrophic [1], [3].</li>
+          <li>No post-quantum security; migration planning required [4].</li>
         </ul>
       </div>
     </div>
@@ -204,15 +198,49 @@
   <div class="island" id="references">
     <h2>References</h2>
     <ol class="refs muted">
-      <li>[1] K. Moriarty, B. Kaliski, J. Jonsson, and A. Rusch, “<i>PKCS #1: RSA Cryptography Specifications Version 2.2</i>,” RFC 8017, Nov. 2016.</li>
-      <li>[2] M. Bellare and P. Rogaway, “The Exact Security of Digital Signatures: How to Sign with RSA and Rabin,” in <i>EUROCRYPT ’96</i>, LNCS 1070, 1996.</li>
-      <li>[3] E. Barker, J. Kelsey, et al., “<i>FIPS 186-5: Digital Signature Standard (DSS)</i>,” NIST, Feb. 2023.</li>
-      <li>[4] E. Barker, “<i>SP 800-57 Part 1 Rev. 5: Recommendation for Key Management</i>,” NIST, May 2020.</li>
-      <li>[5] D. Boneh, R. A. DeMillo, and R. J. Lipton, “On the Importance of Eliminating Errors in Cryptographic Computations,” <i>J. Cryptology</i>, 2001 (Eurocrypt ’97).</li>
-      <li>[6] P. Kocher, “Timing Attacks on Implementations of Diffie-Hellman, RSA, DSS, and Others,” in <i>CRYPTO ’96</i>, 1996.</li>
-      <li>[7] A. Lenstra and E. Verheul, “Selecting Cryptographic Key Sizes,” <i>J. of Cryptology</i>, 2001 (context for historical sizing).</li>
-      <li>[8] ANSI X9.31 / X9.62 and later PKI profiles (TLS/X.509) adopting RSA-PSS, various years.</li>
-    </ol>
+  <li>[1] K. Moriarty, B. Kaliski, J. Jonsson, and A. Rusch, “<i>PKCS #1: RSA Cryptography Specifications Version 2.2</i>,” RFC 8017, Nov. 2016. Available:
+    <a href="https://www.rfc-editor.org/rfc/rfc8017" target="_blank" rel="noopener">https://www.rfc-editor.org/rfc/rfc8017</a>
+    • DOI (ACM):
+    <a href="https://doi.org/10.17487/RFC8017" target="_blank" rel="noopener">10.17487/RFC8017</a>
+  </li>
+
+  <li>[2] M. Bellare and P. Rogaway, “The Exact Security of Digital Signatures: How to Sign with RSA and Rabin,” in <i>Advances in Cryptology—EUROCRYPT ’96</i>, LNCS 1070. Springer, 1996. DOI:
+    <a href="https://doi.org/10.1007/3-540-68339-9_34" target="_blank" rel="noopener">10.1007/3-540-68339-9_34</a>
+    • Preprint:
+    <a href="https://www.cs.ucdavis.edu/~rogaway/papers/exact.pdf" target="_blank" rel="noopener">https://www.cs.ucdavis.edu/~rogaway/papers/exact.pdf</a>
+  </li>
+
+  <li>[3] E. Barker <i>et al.</i>, “<i>FIPS 186-5: Digital Signature Standard (DSS)</i>,” NIST, Feb. 2023. DOI:
+    <a href="https://doi.org/10.6028/NIST.FIPS.186-5" target="_blank" rel="noopener">10.6028/NIST.FIPS.186-5</a>
+    • PDF:
+    <a href="https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-5.pdf" target="_blank" rel="noopener">https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-5.pdf</a>
+  </li>
+
+  <li>[4] E. Barker, “<i>SP 800-57 Part 1 Rev. 5: Recommendation for Key Management</i>,” NIST, May 2020. DOI:
+    <a href="https://doi.org/10.6028/NIST.SP.800-57pt1r5" target="_blank" rel="noopener">10.6028/NIST.SP.800-57pt1r5</a>
+    • PDF:
+    <a href="https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-57pt1r5.pdf" target="_blank" rel="noopener">https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-57pt1r5.pdf</a>
+  </li>
+
+  <li>[5] D. Boneh, R. A. DeMillo, and R. J. Lipton, “On the Importance of Eliminating Errors in Cryptographic Computations,” <i>Journal of Cryptology</i>, vol. 14, pp. 101–119, 2001. DOI:
+    <a href="https://doi.org/10.1007/s001450010016" target="_blank" rel="noopener">10.1007/s001450010016</a>
+  </li>
+
+  <li>[6] P. C. Kocher, “Timing Attacks on Implementations of Diffie–Hellman, RSA, DSS, and Other Systems,” in <i>CRYPTO ’96</i>, LNCS 1109. Springer, 1996. DOI:
+    <a href="https://doi.org/10.1007/3-540-68697-5_9" target="_blank" rel="noopener">10.1007/3-540-68697-5_9</a>
+    • Preprint:
+    <a href="https://paulkocher.com/doc/TimingAttacks.pdf" target="_blank" rel="noopener">https://paulkocher.com/doc/TimingAttacks.pdf</a>
+  </li>
+
+  <li>[7] A. K. Lenstra and E. R. Verheul, “Selecting Cryptographic Key Sizes,” <i>Journal of Cryptology</i>, 2001. DOI:
+    <a href="https://doi.org/10.1007/s00145-001-0009-4" target="_blank" rel="noopener">10.1007/s00145-001-0009-4</a>
+  </li>
+
+  <li>[8] J. Schaad and R. Housley, “<i>RFC 4055: Additional Algorithms and Identifiers for RSA in PKIX</i>,” Jun. 2005. Available:
+    <a href="https://www.rfc-editor.org/info/rfc4055" target="_blank" rel="noopener">https://www.rfc-editor.org/info/rfc4055</a>
+  </li>
+</ol>
+
   </div>
 </body>
 </html>
