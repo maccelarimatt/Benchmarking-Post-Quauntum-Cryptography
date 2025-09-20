@@ -1,0 +1,5 @@
+algorithm,variant,operation,platform,metric,value,units,source
+RSA-OAEP,RSA-2048,encrypt,wolfCrypt x86_64 (typical output),time_avg,0.362,ms,"wolfSSL benchmarks page, typical output"
+RSA-OAEP,RSA-2048,decrypt,wolfCrypt x86_64 (typical output),time_avg,4.359,ms,"wolfSSL benchmarks page, typical output"
+RSA-OAEP,RSA-2048,encrypt,Intel SGX (non-enclave),time_avg,0.238,ms,wolfSSL SGX section (non-SGX baseline)
+RSA-OAEP,RSA-2048,decrypt,Intel SGX (non-enclave),time_avg,6.239,ms,wolfSSL SGX section (non-SGX baseline)

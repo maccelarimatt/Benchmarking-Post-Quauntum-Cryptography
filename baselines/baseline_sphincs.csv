@@ -1,0 +1,19 @@
+algorithm,variant,operation,platform,metric,value,units,source_url
+SPHINCS+,SHAKE-128s,sizes,Spec Table 6,pk_bytes,32,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-128s,sizes,Spec Table 6,sk_bytes,64,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-128s,sizes,Spec Table 6,sig_bytes,8080,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-128f,sizes,Spec Table 6,pk_bytes,32,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-128f,sizes,Spec Table 6,sk_bytes,64,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-128f,sizes,Spec Table 6,sig_bytes,16976,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-192s,sizes,Spec Table 6,pk_bytes,48,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-192s,sizes,Spec Table 6,sk_bytes,96,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-192s,sizes,Spec Table 6,sig_bytes,17064,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-192f,sizes,Spec Table 6,pk_bytes,48,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-192f,sizes,Spec Table 6,sk_bytes,96,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-192f,sizes,Spec Table 6,sig_bytes,35664,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-256s,sizes,Spec Table 6,pk_bytes,64,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-256s,sizes,Spec Table 6,sk_bytes,128,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-256s,sizes,Spec Table 6,sig_bytes,29792,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-256f,sizes,Spec Table 6,pk_bytes,64,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-256f,sizes,Spec Table 6,sk_bytes,128,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf
+SPHINCS+,SHAKE-256f,sizes,Spec Table 6,sig_bytes,49216,bytes,https://sphincs.org/data/sphincs%2B-specification.pdf

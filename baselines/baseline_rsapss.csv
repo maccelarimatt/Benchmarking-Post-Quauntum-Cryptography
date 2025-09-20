@@ -1,0 +1,7 @@
+algorithm,variant,operation,platform,metric,value,units,source
+RSA-PSS,RSA-2048,sign,wolfCrypt x86_64 (typical output),time_avg,4.359,ms,"wolfSSL benchmarks page, typical output"
+RSA-PSS,RSA-2048,verify,wolfCrypt x86_64 (typical output),time_avg,0.362,ms,"wolfSSL benchmarks page, typical output"
+RSA-PSS,RSA-2048,sign,OpenSSL speed example (community),time_avg,3.656,ms,StackOverflow OpenSSL speed rsa 2048 sign/verify
+RSA-PSS,RSA-2048,verify,OpenSSL speed example (community),time_avg,0.105,ms,StackOverflow OpenSSL speed rsa 2048 sign/verify
+RSA-PSS,RSA-2048,sign,BearSSL amd64 i62 (Clang),ops_per_sec,472.0,ops/s,BearSSL speed page (RSA private 472 ops/s with Clang)
+RSA-PSS,RSA-2048,sign,BearSSL amd64 i62 (GCC),ops_per_sec,355.0,ops/s,BearSSL speed page (RSA private 355 ops/s with GCC)

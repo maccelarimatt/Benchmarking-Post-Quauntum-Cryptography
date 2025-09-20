@@ -1,0 +1,7 @@
+algorithm,variant,operation,platform,metric,value,units,source_url
+RSA-PSS,RSA-2048,sign,OpenSSL speed (community example),time_avg,3.656,ms,https://stackoverflow.com/questions/20840805/openssl-rsa-benchmark-vs-actual-rsa-sign-speed
+RSA-PSS,RSA-2048,verify,OpenSSL speed (community example),time_avg,0.105,ms,https://stackoverflow.com/questions/20840805/openssl-rsa-benchmark-vs-actual-rsa-sign-speed
+RSA-PSS,RSA-2048,sign,"OpenSSL speed (macOS, blog)",ops_per_sec,953.4,ops/s,https://robservatory.com/digging-into-an-unexpected-encryption-speed-boost/
+RSA-PSS,RSA-2048,verify,"OpenSSL speed (macOS, blog)",ops_per_sec,17176.6,ops/s,https://robservatory.com/digging-into-an-unexpected-encryption-speed-boost/
+RSA-OAEP,RSA-2048,enc,OpenSSL speed tool,method,0.0,,https://docs.openssl.org/3.2/man1/openssl-speed/
+RSA-OAEP,RSA-2048,dec,OpenSSL speed tool,method,0.0,,https://docs.openssl.org/3.2/man1/openssl-speed/

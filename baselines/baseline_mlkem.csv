@@ -1,0 +1,31 @@
+algorithm,variant,operation,platform,metric,value,units,source
+ML-KEM,ML-KEM-512,keygen,"STM32 NUCLEO-F439ZI (Cortex-M4, 168 MHz)",time_avg,4.032,ms,citeturn1view0
+ML-KEM,ML-KEM-512,encaps,"STM32 NUCLEO-F439ZI (Cortex-M4, 168 MHz)",time_avg,3.817,ms,citeturn1view0
+ML-KEM,ML-KEM-512,decaps,"STM32 NUCLEO-F439ZI (Cortex-M4, 168 MHz)",time_avg,5.051,ms,citeturn1view0
+ML-KEM,ML-KEM-768,keygen,"STM32 NUCLEO-F439ZI (Cortex-M4, 168 MHz)",time_avg,6.519,ms,citeturn1view0
+ML-KEM,ML-KEM-768,encaps,"STM32 NUCLEO-F439ZI (Cortex-M4, 168 MHz)",time_avg,6.571,ms,citeturn1view0
+ML-KEM,ML-KEM-768,decaps,"STM32 NUCLEO-F439ZI (Cortex-M4, 168 MHz)",time_avg,8.333,ms,citeturn1view0
+ML-KEM,ML-KEM-1024,keygen,"STM32 NUCLEO-F439ZI (Cortex-M4, 168 MHz)",time_avg,10.723,ms,citeturn1view0
+ML-KEM,ML-KEM-1024,encaps,"STM32 NUCLEO-F439ZI (Cortex-M4, 168 MHz)",time_avg,10.809,ms,citeturn1view0
+ML-KEM,ML-KEM-1024,decaps,"STM32 NUCLEO-F439ZI (Cortex-M4, 168 MHz)",time_avg,13.128,ms,citeturn1view0
+ML-KEM,ML-KEM-512,sizes,FIPS 203,ek_bytes,800.0,bytes,citeturn2view0
+ML-KEM,ML-KEM-512,sizes,FIPS 203,dk_bytes,1632.0,bytes,citeturn2view0
+ML-KEM,ML-KEM-512,sizes,FIPS 203,ct_bytes,768.0,bytes,citeturn2view0
+ML-KEM,ML-KEM-512,sizes,FIPS 203,ss_bytes,32.0,bytes,citeturn2view0
+ML-KEM,ML-KEM-768,sizes,FIPS 203,ek_bytes,1184.0,bytes,citeturn2view0
+ML-KEM,ML-KEM-768,sizes,FIPS 203,dk_bytes,2400.0,bytes,citeturn2view0
+ML-KEM,ML-KEM-768,sizes,FIPS 203,ct_bytes,1088.0,bytes,citeturn2view0
+ML-KEM,ML-KEM-768,sizes,FIPS 203,ss_bytes,32.0,bytes,citeturn2view0
+ML-KEM,ML-KEM-1024,sizes,FIPS 203,ek_bytes,1568.0,bytes,citeturn2view0
+ML-KEM,ML-KEM-1024,sizes,FIPS 203,dk_bytes,3168.0,bytes,citeturn2view0
+ML-KEM,ML-KEM-1024,sizes,FIPS 203,ct_bytes,1568.0,bytes,citeturn2view0
+ML-KEM,ML-KEM-1024,sizes,FIPS 203,ss_bytes,32.0,bytes,citeturn2view0
+ML-KEM,Kyber-512 (v2),keygen,Cortex-M4 (optimized impl.),stack_peak,3136.0,bytes,citeturn8view1
+ML-KEM,Kyber-512 (v2),encaps,Cortex-M4 (optimized impl.),stack_peak,2720.0,bytes,citeturn8view1
+ML-KEM,Kyber-512 (v2),decaps,Cortex-M4 (optimized impl.),stack_peak,2744.0,bytes,citeturn8view1
+ML-KEM,Kyber-768 (v2),keygen,Cortex-M4 (optimized impl.),stack_peak,3648.0,bytes,citeturn8view1
+ML-KEM,Kyber-768 (v2),encaps,Cortex-M4 (optimized impl.),stack_peak,3232.0,bytes,citeturn8view1
+ML-KEM,Kyber-768 (v2),decaps,Cortex-M4 (optimized impl.),stack_peak,3248.0,bytes,citeturn8view1
+ML-KEM,Kyber-1024 (v2),keygen,Cortex-M4 (optimized impl.),stack_peak,4160.0,bytes,citeturn8view1
+ML-KEM,Kyber-1024 (v2),encaps,Cortex-M4 (optimized impl.),stack_peak,3752.0,bytes,citeturn8view1
+ML-KEM,Kyber-1024 (v2),decaps,Cortex-M4 (optimized impl.),stack_peak,3776.0,bytes,citeturn8view1

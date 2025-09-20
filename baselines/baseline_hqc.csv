@@ -1,0 +1,19 @@
+algorithm,variant,operation,platform,metric,value,units,source
+HQC,HQC-1,keygen,Intel i7-11850H (AVX2),cycles_avg,76000,cycles,citeturn4view0
+HQC,HQC-1,encaps,Intel i7-11850H (AVX2),cycles_avg,150000,cycles,citeturn4view0
+HQC,HQC-1,decaps,Intel i7-11850H (AVX2),cycles_avg,353000,cycles,citeturn4view0
+HQC,HQC-3,keygen,Intel i7-11850H (AVX2),cycles_avg,181000,cycles,citeturn4view0
+HQC,HQC-3,encaps,Intel i7-11850H (AVX2),cycles_avg,355000,cycles,citeturn4view0
+HQC,HQC-3,decaps,Intel i7-11850H (AVX2),cycles_avg,732000,cycles,citeturn4view0
+HQC,HQC-5,keygen,Intel i7-11850H (AVX2),cycles_avg,363000,cycles,citeturn4view0
+HQC,HQC-5,encaps,Intel i7-11850H (AVX2),cycles_avg,720000,cycles,citeturn4view0
+HQC,HQC-5,decaps,Intel i7-11850H (AVX2),cycles_avg,1435000,cycles,citeturn4view0
+HQC,HQC-1,sizes,Spec site,ek_bytes,2241,bytes,citeturn4view0
+HQC,HQC-1,sizes,Spec site,dk_bytes,2321,bytes,citeturn4view0
+HQC,HQC-1,sizes,Spec site,ct_bytes,4433,bytes,citeturn4view0
+HQC,HQC-3,sizes,Spec site,ek_bytes,4514,bytes,citeturn4view0
+HQC,HQC-3,sizes,Spec site,dk_bytes,4602,bytes,citeturn4view0
+HQC,HQC-3,sizes,Spec site,ct_bytes,8978,bytes,citeturn4view0
+HQC,HQC-5,sizes,Spec site,ek_bytes,7237,bytes,citeturn4view0
+HQC,HQC-5,sizes,Spec site,dk_bytes,7333,bytes,citeturn4view0
+HQC,HQC-5,sizes,Spec site,ct_bytes,14421,bytes,citeturn4view0
