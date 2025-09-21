@@ -6,10 +6,22 @@ Includes adapter bootstrap, timing/memory measurement, JSON export helpers,
 and per-kind (KEM/SIG) micro-benchmark orchestrators.
 """
 
-import time, json, pathlib, base64, multiprocessing, threading, sys, statistics
+import base64
+import copy
+import json
+import math
+import multiprocessing
+import os
+import pathlib
+import platform
+import statistics
+import subprocess
+import sys
+import threading
+import time
 
 from dataclasses import dataclass, asdict
-from typing import Callable, Dict, Any, List, Tuple, Optional
+from typing import Callable, Dict, Any, List, Tuple, Optional, Sequence
 from pqcbench import registry
 from functools import partial
 from pqcbench.key_analysis import (
@@ -46,6 +58,191 @@ _ADAPTER_PATHS = {
     "pqcbench_liboqs": _PROJECT_ROOT / "libs" / "adapters" / "liboqs" / "src",
     "pqcbench_native": _PROJECT_ROOT / "libs" / "adapters" / "native" / "src",
 }
+
+_ENVIRONMENT_CACHE: Dict[str, Any] | None = None
+
+try:
+    _CI_Z = statistics.NormalDist().inv_cdf(0.975)
+except Exception:
+    _CI_Z = 1.959964
+
+
+def _read_git_commit(repo_path: pathlib.Path) -> str | None:
+    if not repo_path.exists():
+        return None
+    try:
+        out = subprocess.check_output(
+            ["git", "-C", str(repo_path), "rev-parse", "HEAD"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        if out:
+            return out
+    except Exception:
+        pass
+    git_dir = repo_path / ".git"
+    try:
+        if git_dir.is_file():
+            content = git_dir.read_text(encoding="utf-8").strip()
+            if content.startswith("gitdir:"):
+                git_dir = (repo_path / content.split(":", 1)[1].strip()).resolve()
+    except Exception:
+        return None
+    head_path = git_dir / "HEAD"
+    if not head_path.exists():
+        return None
+    try:
+        head = head_path.read_text(encoding="utf-8").strip()
+    except Exception:
+        return None
+    if head.startswith("ref:"):
+        ref = head.split(":", 1)[1].strip()
+        ref_path = git_dir / ref
+        if ref_path.exists():
+            try:
+                return ref_path.read_text(encoding="utf-8").strip() or None
+            except Exception:
+                return None
+        return None
+    return head or None
+
+
+def _detect_cpu_model() -> str | None:
+    system = platform.system()
+    try:
+        if system == "Darwin":
+            out = subprocess.check_output(
+                ["sysctl", "-n", "machdep.cpu.brand_string"],
+                stderr=subprocess.DEVNULL,
+                text=True,
+            ).strip()
+            if out:
+                return out
+        elif system == "Linux":
+            cpuinfo = pathlib.Path("/proc/cpuinfo")
+            if cpuinfo.exists():
+                for line in cpuinfo.read_text(encoding="utf-8", errors="ignore").splitlines():
+                    if line.lower().startswith("model name"):
+                        return line.split(":", 1)[1].strip()
+        elif system == "Windows":
+            val = os.environ.get("PROCESSOR_IDENTIFIER")
+            if val:
+                return val
+    except Exception:
+        pass
+    uname = platform.uname()
+    fallbacks = [
+        getattr(uname, "processor", ""),
+        getattr(uname, "machine", ""),
+        platform.processor(),
+    ]
+    for val in fallbacks:
+        if val:
+            return val
+    return None
+
+
+def _detect_pqclean_commit() -> str | None:
+    config = _PROJECT_ROOT / "liboqs" / "scripts" / "copy_from_upstream" / "copy_from_upstream.yml"
+    if not config.exists():
+        return None
+    try:
+        lines = config.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except Exception:
+        return None
+    active_name = None
+    fallback_commit = None
+    for raw in lines:
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("name:"):
+            active_name = line.split(":", 1)[1].strip()
+            continue
+        if line.startswith("git_commit:") and active_name:
+            commit = line.split(":", 1)[1].strip().strip("'\"")
+            if active_name == "pqclean" and commit:
+                return commit
+            if active_name == "oldpqclean" and commit and not fallback_commit:
+                fallback_commit = commit
+    return fallback_commit
+
+
+def _collect_cmake_flags(cache_path: pathlib.Path) -> Dict[str, str]:
+    flags: Dict[str, str] = {}
+    if not cache_path.exists():
+        return flags
+    try:
+        for raw in cache_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if not raw or raw.startswith("#") or raw.startswith("//"):
+                continue
+            if "=" not in raw:
+                continue
+            key_part, value = raw.split("=", 1)
+            key = key_part.split(":", 1)[0]
+            if "FLAGS" in key or key in {"CMAKE_BUILD_TYPE"}:
+                val = value.strip()
+                if val:
+                    flags[key] = val
+    except Exception:
+        return {}
+    return flags
+
+
+def _detect_build_flags() -> Dict[str, Dict[str, str]] | None:
+    out: Dict[str, Dict[str, str]] = {}
+    native_cache = _PROJECT_ROOT / "native" / "build" / "CMakeCache.txt"
+    native_flags = _collect_cmake_flags(native_cache)
+    if native_flags:
+        out["native"] = native_flags
+    liboqs_cache = _PROJECT_ROOT / "native" / "build" / "liboqs_build" / "CMakeCache.txt"
+    liboqs_flags = _collect_cmake_flags(liboqs_cache)
+    if liboqs_flags:
+        out["liboqs"] = liboqs_flags
+    return out or None
+
+
+def _collect_environment_meta() -> Dict[str, Any]:
+    global _ENVIRONMENT_CACHE
+    if _ENVIRONMENT_CACHE is None:
+        info: Dict[str, Any] = {}
+        cpu_model = _detect_cpu_model()
+        if cpu_model:
+            info["cpu_model"] = cpu_model
+        try:
+            info["os"] = platform.platform(aliased=True)
+        except Exception:
+            pass
+        info["python"] = platform.python_version()
+        deps: Dict[str, str] = {}
+        liboqs_commit = _read_git_commit(_PROJECT_ROOT / "liboqs")
+        if liboqs_commit:
+            deps["liboqs_commit"] = liboqs_commit
+        pqclean_commit = _detect_pqclean_commit()
+        if pqclean_commit:
+            deps["pqclean_commit"] = pqclean_commit
+        if deps:
+            info["dependencies"] = deps
+        build_flags = _detect_build_flags()
+        if build_flags:
+            info["build_flags"] = build_flags
+        _ENVIRONMENT_CACHE = info
+    return copy.deepcopy(_ENVIRONMENT_CACHE)
+
+
+def _compute_ci95(mean: float, samples: Sequence[float]) -> Tuple[float, float]:
+    if not samples:
+        return mean, mean
+    if len(samples) < 2:
+        return mean, mean
+    try:
+        std = statistics.stdev(samples)
+    except statistics.StatisticsError:
+        return mean, mean
+    if std == 0:
+        return mean, mean
+    margin = _CI_Z * (std / math.sqrt(len(samples)))
+    return mean - margin, mean + margin
 
 
 def _load_adapters() -> None:
@@ -87,6 +284,8 @@ class OpStats:
     max_ms: float
     median_ms: float
     stddev_ms: float
+    ci95_low_ms: float
+    ci95_high_ms: float
     range_ms: float
     series: List[float]
     # Memory footprint metrics (per-run process delta / Python peak)
@@ -95,6 +294,8 @@ class OpStats:
     mem_max_kb: float | None = None
     mem_median_kb: float | None = None
     mem_stddev_kb: float | None = None
+    mem_ci95_low_kb: float | None = None
+    mem_ci95_high_kb: float | None = None
     mem_range_kb: float | None = None
     mem_series_kb: List[float] | None = None
 
@@ -141,7 +342,10 @@ def measure(
     mean = sum(times) / len(times)
     median = statistics.median(times)
     stddev = statistics.pstdev(times) if len(times) > 1 else 0.0
-    range_ms = max(times) - min(times)
+    min_time = min(times)
+    max_time = max(times)
+    range_ms = max_time - min_time
+    ci_low, ci_high = _compute_ci95(mean, times)
 
     if mem_peaks_kb:
         mem_mean = sum(mem_peaks_kb) / len(mem_peaks_kb)
@@ -150,13 +354,16 @@ def measure(
         mem_median = statistics.median(mem_peaks_kb)
         mem_stddev = statistics.pstdev(mem_peaks_kb) if len(mem_peaks_kb) > 1 else 0.0
         mem_range = mem_max - mem_min
+        mem_ci_low, mem_ci_high = _compute_ci95(mem_mean, mem_peaks_kb)
         return OpStats(
             runs=runs,
             mean_ms=mean,
-            min_ms=min(times),
-            max_ms=max(times),
+            min_ms=min_time,
+            max_ms=max_time,
             median_ms=median,
             stddev_ms=stddev,
+            ci95_low_ms=ci_low,
+            ci95_high_ms=ci_high,
             range_ms=range_ms,
             series=times,
             mem_mean_kb=mem_mean,
@@ -164,6 +371,8 @@ def measure(
             mem_max_kb=mem_max,
             mem_median_kb=mem_median,
             mem_stddev_kb=mem_stddev,
+            mem_ci95_low_kb=mem_ci_low,
+            mem_ci95_high_kb=mem_ci_high,
             mem_range_kb=mem_range,
             mem_series_kb=mem_peaks_kb,
         )
@@ -171,10 +380,12 @@ def measure(
         return OpStats(
             runs=runs,
             mean_ms=mean,
-            min_ms=min(times),
-            max_ms=max(times),
+            min_ms=min_time,
+            max_ms=max_time,
             median_ms=median,
             stddev_ms=stddev,
+            ci95_low_ms=ci_low,
+            ci95_high_ms=ci_high,
             range_ms=range_ms,
             series=times,
         )
@@ -215,7 +426,10 @@ def measure_factory(
     mean = sum(times) / len(times)
     median = statistics.median(times)
     stddev = statistics.pstdev(times) if len(times) > 1 else 0.0
-    range_ms = max(times) - min(times)
+    min_time = min(times)
+    max_time = max(times)
+    range_ms = max_time - min_time
+    ci_low, ci_high = _compute_ci95(mean, times)
 
     if mem_peaks_kb:
         mem_mean = sum(mem_peaks_kb) / len(mem_peaks_kb)
@@ -224,13 +438,16 @@ def measure_factory(
         mem_median = statistics.median(mem_peaks_kb)
         mem_stddev = statistics.pstdev(mem_peaks_kb) if len(mem_peaks_kb) > 1 else 0.0
         mem_range = mem_max - mem_min
+        mem_ci_low, mem_ci_high = _compute_ci95(mem_mean, mem_peaks_kb)
         return OpStats(
             runs=runs,
             mean_ms=mean,
-            min_ms=min(times),
-            max_ms=max(times),
+            min_ms=min_time,
+            max_ms=max_time,
             median_ms=median,
             stddev_ms=stddev,
+            ci95_low_ms=ci_low,
+            ci95_high_ms=ci_high,
             range_ms=range_ms,
             series=times,
             mem_mean_kb=mem_mean,
@@ -238,6 +455,8 @@ def measure_factory(
             mem_max_kb=mem_max,
             mem_median_kb=mem_median,
             mem_stddev_kb=mem_stddev,
+            mem_ci95_low_kb=mem_ci_low,
+            mem_ci95_high_kb=mem_ci_high,
             mem_range_kb=mem_range,
             mem_series_kb=mem_peaks_kb,
         )
@@ -245,10 +464,12 @@ def measure_factory(
         return OpStats(
             runs=runs,
             mean_ms=mean,
-            min_ms=min(times),
-            max_ms=max(times),
+            min_ms=min_time,
+            max_ms=max_time,
             median_ms=median,
             stddev_ms=stddev,
+            ci95_low_ms=ci_low,
+            ci95_high_ms=ci_high,
             range_ms=range_ms,
             series=times,
         )
@@ -923,6 +1144,9 @@ def run_kem(
     analysis = _sample_secret_key_analysis(name, cls, meta.get("mechanism"), "KEM")
     if analysis:
         meta["secret_key_analysis"] = analysis
+    env_meta = _collect_environment_meta()
+    if env_meta:
+        meta["environment"] = env_meta
     return AlgoSummary(algo=name, kind="KEM", ops=ops, meta=meta)
 
 
@@ -996,6 +1220,9 @@ def run_sig(
     analysis = _sample_secret_key_analysis(name, cls, meta.get("mechanism"), "SIG")
     if analysis:
         meta["secret_key_analysis"] = analysis
+    env_meta = _collect_environment_meta()
+    if env_meta:
+        meta["environment"] = env_meta
     return AlgoSummary(algo=name, kind="SIG", ops=ops, meta=meta)
 
 
@@ -1038,4 +1265,3 @@ def export_trace_sig(name: str, message_size: int, export_path: str | None) -> N
         }
     }
     _export_json_blob(trace, export_path)
-

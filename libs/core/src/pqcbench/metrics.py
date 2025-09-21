@@ -17,6 +17,8 @@ class MetricRecord:
     mean_ms: float
     stddev_ms: float
     extra: Dict[str, Any] = field(default_factory=dict)
+    ci95_low_ms: float | None = None
+    ci95_high_ms: float | None = None
 
 @dataclass
 class BenchmarkResult:

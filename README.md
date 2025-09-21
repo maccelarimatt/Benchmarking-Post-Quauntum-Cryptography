@@ -214,33 +214,33 @@ Examples (all flags enabled)
 
 ```bash
 # KEMs
-run-kyber        --runs 1 --export results/kyber_sec.json \
-  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+run-kyber        --runs 2 --export results/kyber_sec.json \
+  --sec-adv --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 
-run-hqc          --runs 1 --export results/hqc_sec.json \
-  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+run-hqc          --runs 2 --export results/hqc_sec.json \
+  --sec-adv --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 
-run-rsa-oaep     --runs 1 --export results/rsa_oaep_sec.json \
+run-rsa-oaep     --runs 2 --export results/rsa_oaep_sec.json \
   --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 
 # Signatures
-run-dilithium    --runs 1 --message-size 4096 --export results/dilithium_sec.json \
+run-dilithium    --runs 2 --message-size 4096 --export results/dilithium_sec.json \
+  --sec-adv --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+
+run-falcon       --runs 2 --message-size 4096 --export results/falcon_sec.json \
+  --sec-adv --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+
+run-sphincsplus  --runs 2 --message-size 4096 --export results/sphincsplus_sec.json \
+  --sec-adv --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+
+run-rsa-pss      --runs 2 --message-size 2048 --export results/rsa_pss_sec.json \
   --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 
-run-falcon       --runs 1 --message-size 4096 --export results/falcon_sec.json \
-  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+run-mayo         --runs 2 --message-size 4096 --export results/mayo_sec.json \
+  --sec-adv --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 
-run-sphincsplus  --runs 1 --message-size 4096 --export results/sphincsplus_sec.json \
-  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
-
-run-rsa-pss      --runs 1 --message-size 2048 --export results/rsa_pss_sec.json \
-  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
-
-run-mayo         --runs 1 --message-size 4096 --export results/mayo_sec.json \
-  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
-
-run-xmssmt       --runs 1 --message-size 2048 --export results/xmssmt_sec.json \
-  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+run-xmssmt       --runs 2 --message-size 2048 --export results/xmssmt_sec.json \
+  --sec-adv --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 ```
 
 Notes:
