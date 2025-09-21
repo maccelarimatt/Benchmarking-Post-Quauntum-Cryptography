@@ -158,7 +158,29 @@ Example:
 ```
 export PQCBENCH_KYBER_ALG=ML-KEM-1024
 export PQCBENCH_DILITHIUM_ALG=ML-DSA-65
+
 ```
+
+## Optional: AI-assisted analysis in the GUI
+
+The Flask GUI can summarise benchmark comparisons with a local or hosted LLM.  By
+default the feature stays in a deterministic fallback mode, so no extra setup is
+required.  To enable one of the providers:
+
+1. Choose a provide in `apps/gui/.env`:
+   - `LLM_PROVIDER=openai_compatible` for OpenAI, vLLM, LM Studio, etc. Configure
+     `LLM_BASE_URL`, `LLM_MODEL`, and (if needed) `LLM_API_KEY`.
+   - `LLM_PROVIDER=huggingface` for the Hugging Face Inference API. Supply
+     `HF_API_KEY` and optionally override `HF_MODEL`.
+   - `LLM_PROVIDER=ollama` for a local Ollama server. Ensure Ollama is running and
+     set `LLM_MODEL` if you want something other than the default `llama3.1:8b`.
+2. Install the optional dependency used for HTTP calls: `pip install requests`
+   (the package is listed in `requirements-dev.txt` for convenience).
+3. Restart `flask run` so the GUI picks up the new environment.
+
+When the configuration is missing or the provider cannot be reached the GUI falls
+back to the built-in heuristic summariser and surfaces a warning banner instead of
+failing the benchmark workflow.
 
 Compatibility: legacy `*_MECH` env vars (e.g., `KYBER_MECH`) are also honored,
 but `PQCBENCH_*` takes precedence when both are set.
