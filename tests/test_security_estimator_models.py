@@ -14,6 +14,7 @@ from pqcbench_cli.runners.common import _standardize_security
 from pqcbench.security_estimator import (
     _estimate_dilithium_from_name,
     _estimate_falcon_from_name,
+    _estimate_hqc_from_name,
     _estimate_kyber_from_name,
     EstimatorOptions,
 )
@@ -88,3 +89,17 @@ def test_standardize_security_falcon_exposes_bkz_details():
     assert model
     curve = model.get("attacks", [])[0]["beta_curve"][0]
     assert "calibrated_margin_bits" in curve
+
+
+def test_hqc_isd_models_present():
+    metrics = _estimate_hqc_from_name("HQC-128", EstimatorOptions())
+    isd = (metrics.extras.get("isd") or {})
+    assert "stern_entropy" in isd and "bjmm" in isd
+    assert isd["stern_entropy"]["time_bits_classical"] >= 0.0
+    assert len(isd.get("w_sensitivity", [])) >= 3
+    sec_dict = asdict(metrics)
+    sec_dict["extras"] = metrics.extras
+    sec_dict["mechanism"] = "HQC-128"
+    summary = SimpleNamespace(algo="hqc", kind="KEM", meta={"mechanism": "HQC-128"})
+    formatted = _standardize_security(summary, sec_dict)
+    assert formatted.get("estimates", {}).get("hqc_isd")

@@ -909,17 +909,19 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         if xx.get("hash_costs"):
             estimates["hash_costs"] = xx.get("hash_costs")
     elif algo == "hqc":
-        # Coarse ISD exponents (if present)
-        keys = [
-            "isd_model",
-            "isd_time_bits_classical",
-            "isd_mem_bits_classical",
-            "isd_time_bits_quantum_grover",
-            "isd_time_bits_quantum_conservative",
-        ]
-        isd = {k: extras.get(k) for k in keys if k in extras}
-        if isd:
-            estimates["hqc_isd"] = isd
+        if isinstance(extras.get("isd"), dict):
+            estimates["hqc_isd"] = extras["isd"]
+        else:
+            keys = [
+                "isd_model",
+                "isd_time_bits_classical",
+                "isd_mem_bits_classical",
+                "isd_time_bits_quantum_grover",
+                "isd_time_bits_quantum_conservative",
+            ]
+            isd = {k: extras.get(k) for k in keys if k in extras}
+            if isd:
+                estimates["hqc_isd"] = isd
     elif algo == "mayo":
         my = extras.get("mayo") or {}
         if my.get("curated_estimates"):

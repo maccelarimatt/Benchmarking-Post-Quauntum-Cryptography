@@ -653,10 +653,11 @@ def _estimate_hqc_from_name(name: str, opts: Optional[EstimatorOptions]) -> SecM
     - Baseline: report NIST category floors in classical_bits/quantum_bits to keep
       outputs comparable and resilient without external tools.
     - Enrichment: when (n, k, w) parameters are available (from pqcbench.params),
-      attach a coarse Stern-style entropy approximation of log2 time and memory.
-      This provides an order-of-magnitude sense of ISD costs without implementing
-      the full BJMM/May–Ozerov pipeline. Quantum “Grover-limited” speedups are
-      noted as reductions on the exponent to illustrate impact on search-like steps.
+      attach both a Stern-style entropy approximation and a coarse BJMM-style
+      meet-in-the-middle heuristic (log2 time and memory). Grover-style reductions
+      and “conservative” partial quantum speedups are included, along with a
+      small w-sensitivity sweep (Δw ∈ {−2,…,+2}). These provide order-of-magnitude
+      intuition without implementing the full BJMM/May–Ozerov pipeline.
     """
     floor = _nist_floor_from_name(name) or 128
     nist_category = {128: 1, 192: 3, 256: 5}.get(int(floor), None)
@@ -682,30 +683,61 @@ def _estimate_hqc_from_name(name: str, opts: Optional[EstimatorOptions]) -> SecM
             k = int(ph.extras.get("k", 0) or 0)
             w = int(ph.extras.get("w", 0) or 0)
             if n > 0 and k > 0 and 0 < w <= n:
-                # Coarse Stern-style time exponent: success probability ~ C(k, ⌊w/2⌋) / C(n, w)
-                # so expected trials ~ C(n, w) / C(k, ⌊w/2⌋); take log2 to get bit cost.
                 logNw = _log2_binom(n, w)
                 logKwh = _log2_binom(k, max(0, w // 2))
-                time_bits_classical = max(0.0, logNw - logKwh)
-                # Memory: heuristic fraction of time exponent (BJMM/MMT tend to trade memory for time)
-                mem_bits_classical = max(0.0, 0.5 * time_bits_classical)
-                # Quantum: two illustrative models
-                #  (i) Grover-limited search on the dominant loop → √ speedup on trials
-                time_bits_q_grover = 0.5 * time_bits_classical
-                #  (ii) Conservative “partial speedup” (e.g., sieving-like steps only)
-                time_bits_q_cons = 0.9 * time_bits_classical
+                stern_time = max(0.0, logNw - logKwh)
+                stern_mem = max(0.0, 0.5 * stern_time)
+
+                def _bjmm_time(n: int, k: int, w: int) -> float:
+                    # Simple heuristic inspired by BJMM/MMT: split weight into 4 partitions
+                    half = max(1, w // 2)
+                    quarter = max(1, w // 4)
+                    log_kh = _log2_binom(k, half)
+                    log_kq = _log2_binom(k, quarter)
+                    log_nh = _log2_binom(n, half)
+                    return max(0.0, logNw - 2.0 * log_kh + log_nh - log_kq)
+
+                bjmm_time = _bjmm_time(n, k, w)
+                bjmm_mem = max(0.0, 0.3 * bjmm_time)
+
+                grover_factor = 0.5
+                stern_quantum = stern_time * grover_factor
+                bjmm_quantum = bjmm_time * grover_factor
+                stern_conservative = stern_time * 0.9
+                bjmm_conservative = bjmm_time * 0.9
+
+                def _w_sensitivity(delta: int) -> Dict[str, float]:
+                    w_adj = max(1, min(n, w + delta))
+                    logNw_adj = _log2_binom(n, w_adj)
+                    logKhalf = _log2_binom(k, max(0, w_adj // 2))
+                    stern = max(0.0, logNw_adj - logKhalf)
+                    bjmm = _bjmm_time(n, k, w_adj)
+                    return {"stern": stern, "bjmm": bjmm, "w": w_adj}
+
+                sensitivity = [_w_sensitivity(delta) for delta in (-2, -1, 0, 1, 2)]
+
                 extras.update({
-                    "isd_model": "Stern-entropy (coarse)",
-                    "isd_time_bits_classical": time_bits_classical,
-                    "isd_mem_bits_classical": mem_bits_classical,
-                    "isd_time_bits_quantum_grover": time_bits_q_grover,
-                    "isd_time_bits_quantum_conservative": time_bits_q_cons,
                     "params": ph.to_dict(),
-                    # Notes to the reader about scope and assumptions
                     "notes": {
-                        "scope": "Coarse Stern-style estimate; BJMM/May–Ozerov not explicitly modeled.",
-                        "qc_structure": "Quasi-cyclic structure ignored in this coarse model.",
-                        "quantum": "No known polynomial-time quantum decoder; Grover-like speedups only.",
+                        "scope": "Coarse ISD heuristics; quasicyclic speedups ignored.",
+                        "families": "Stern entropy vs. BJMM-style meet-in-the-middle.",
+                        "quantum": "Grover-style √ speedup applied to dominant loops.",
+                    },
+                    "isd": {
+                        "stern_entropy": {
+                            "time_bits_classical": stern_time,
+                            "memory_bits_classical": stern_mem,
+                            "time_bits_quantum_grover": stern_quantum,
+                            "time_bits_quantum_conservative": stern_conservative,
+                        },
+                        "bjmm": {
+                            "time_bits_classical": bjmm_time,
+                            "memory_bits_classical": bjmm_mem,
+                            "time_bits_quantum_grover": bjmm_quantum,
+                            "time_bits_quantum_conservative": bjmm_conservative,
+                        },
+                        "grover_factor": grover_factor,
+                        "w_sensitivity": sensitivity,
                     },
                 })
     except Exception:
@@ -716,8 +748,8 @@ def _estimate_hqc_from_name(name: str, opts: Optional[EstimatorOptions]) -> SecM
         quantum_bits=float(floor),
         shor_breakable=False,
         notes=(
-            "Code-based (HQC): NIST category floor; attaches coarse ISD exponents when (n,k,w) available. "
-            "No known polynomial-time quantum attack; Grover-limited speedups may apply to search components."
+            "Code-based (HQC): NIST category floor; Stern/BJMM-style ISD heuristics attached when parameters available. "
+            "No known polynomial-time quantum attack; Grover-limited speedups applied to dominant loops."
         ),
         extras=extras,
     )

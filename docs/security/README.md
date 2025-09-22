@@ -131,13 +131,13 @@ We report NIST category floors at top level and attach NTRU parameters (n,q) plu
 HQC is a quasi‑cyclic code‑based KEM whose security reduces to decoding random linear codes (syndrome decoding). Given a parity‑check matrix H and a noisy codeword with error weight w, recover the error/message. Best classical attacks are information‑set decoding (ISD) and improvements (Prange, Stern, Dumer, BJMM, May–Ozerov), with sub‑exponential costs depending on (n, k, w).
 
 ### Estimation approach
-The HQC submission selects parameters so that the minimum ISD workfactor across state‑of‑the‑art algorithms exceeds the target security (2^128/2^192/2^256). For rough estimation without external tools, a Stern‑style entropy approximation can be used: expected trials ≈ C(n, w) / C(k, ⌊w/2⌋); taking log2 yields a coarse time exponent. Modern ISD (BJMM/May–Ozerov) typically reduces this exponent; integrating a dedicated estimator (e.g., Esser et al., PKC 2022) gives more accurate figures.
+The HQC submission selects parameters so that the minimum ISD workfactor across state-of-the-art algorithms exceeds the target security (2^128/2^192/2^256). pqcbench now contrasts two heuristics: a Stern-style entropy approximation (expected trials ≈ C(n,w)/C(k,⌊w/2⌋)) and a simple BJMM-style meet-in-the-middle approximation. Both report classical time/memory exponents, Grover-style (√) reductions, and a “conservative” 10% reduction to illustrate partial quantum improvements. We also display how the exponents shift as the error weight varies slightly (Δw ∈ {−2,…,+2}). Modern ISD refinements (e.g., Esser et al., PKC 2022) typically lower these numbers further; integrating those tools would tighten the bounds.
 
 ### Quantum considerations
 There is no Shor‑style polynomial‑time decoder. Quantum speedups mainly apply to search components (e.g., Grover), which can reduce the dominant loop by ≈√; in practice, reductions are often modelled as modest (a handful of bits) for recommended parameters. We report classical floors and attach Grover‑limited/conservative exponents when parameters are available.
 
 ### Implementation in pqcbench
-The HQC path reports category floors in classical_bits/quantum_bits. When (n,k,w) are available via params, we attach coarse ISD exponents (log2 time/memory) and two quantum illustrations (Grover‑limited and conservative partial speedup). See `libs/core/src/pqcbench/security_estimator.py` (`_estimate_hqc_from_name`).
+The HQC path reports category floors in classical_bits/quantum_bits. When (n,k,w) are available via params, we attach both Stern and BJMM-style heuristics, including classical/quantum/memory exponents and the w-sensitivity samples, under `extras.isd` (surfaced in CLI exports). See `libs/core/src/pqcbench/security_estimator.py` (`_estimate_hqc_from_name`).
 
 ## SPHINCS+ (stateless hash‑based)
 
