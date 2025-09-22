@@ -2,7 +2,7 @@
 from __future__ import annotations
 import typer, json
 from .common import run_sig, export_json, export_trace_sig
-from .common import _build_export_payload
+from .common import _build_export_payload, run_acvp_validation
 
 app = typer.Typer(add_completion=False)
 
@@ -14,6 +14,7 @@ def main(
     export: str = "results/xmssmt_summary.json",
     export_raw: str = "",
     print_json: bool = True,
+    tests: bool = typer.Option(False, help="Run ACVP functional validation when available"),
     # Security estimator flags
     sec_adv: bool = typer.Option(False, help="Enable advanced lattice estimator when available"),
     sec_rsa_phys: bool = typer.Option(False, help="Include surface-code physical overhead (RSA only)"),
@@ -27,6 +28,12 @@ def main(
     Run xmssmt signature micro-bench (keygen/sign/verify).
     """
     summary = run_sig("xmssmt", runs, message_size, cold=cold)
+    validation = None
+    validation_logs: list[str] = []
+    if tests:
+        validation, validation_logs = run_acvp_validation(summary)
+        for line in validation_logs:
+            typer.echo(line)
     _opts = {
         "lattice_use_estimator": bool(sec_adv),
         "lattice_profile": sec_profile,
@@ -36,12 +43,16 @@ def main(
         "target_total_fail_prob": float(sec_fail_prob),
         "quantum_arch": quantum_arch or None,
     }
-    export_json(summary, export, security_opts=_opts)
+    export_json(summary, export, security_opts=_opts, validation=validation)
     if export_raw:
         export_trace_sig("xmssmt", message_size, export_raw)
     if print_json:
-        import json
-        typer.echo(json.dumps(_build_export_payload(summary, security_opts=_opts), indent=2))
+        typer.echo(
+            json.dumps(
+                _build_export_payload(summary, security_opts=_opts, validation=validation),
+                indent=2,
+            )
+        )
 
 def app_main():
     app()

@@ -6,7 +6,14 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Build liboqs as a subproject with only the library target.
-set(OQS_BUILD_ONLY_LIB ON CACHE BOOL "" FORCE)
+# Allow callers to opt-in to liboqs test/ACVP utilities when required.
+option(PQCBENCH_ENABLE_LIBOQS_TESTS "Build liboqs test utilities (vectors_kem/sig)" OFF)
+
+if(PQCBENCH_ENABLE_LIBOQS_TESTS)
+    set(OQS_BUILD_ONLY_LIB OFF CACHE BOOL "" FORCE)
+else()
+    set(OQS_BUILD_ONLY_LIB ON CACHE BOOL "" FORCE)
+endif()
 set(OQS_DIST_BUILD OFF CACHE BOOL "" FORCE)
 set(OQS_USE_CUPQC OFF CACHE BOOL "" FORCE)
 set(OQS_USE_ICICLE OFF CACHE BOOL "" FORCE)

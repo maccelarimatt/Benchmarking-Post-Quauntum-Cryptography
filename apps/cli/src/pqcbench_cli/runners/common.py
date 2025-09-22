@@ -990,7 +990,12 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
     return out
 
 
-def _build_export_payload(summary: AlgoSummary, *, security_opts: dict | None = None) -> dict:
+def _build_export_payload(
+    summary: AlgoSummary,
+    *,
+    security_opts: dict | None = None,
+    validation: Dict[str, Any] | None = None,
+) -> dict:
     """Construct the JSON payload including security estimates, standardized."""
     # Attach security estimates (best-effort; never fail export on estimator issues)
     try:
@@ -1014,16 +1019,356 @@ def _build_export_payload(summary: AlgoSummary, *, security_opts: dict | None = 
         security_raw = {"error": "security estimator unavailable"}
         security_std = security_raw
 
-    return {
+    payload = {
         "algo": summary.algo,
         "kind": summary.kind,
         "ops": {k: asdict(v) for k, v in summary.ops.items()},
         "meta": summary.meta,
         "security": security_std,
     }
+    if validation is not None:
+        payload["validation"] = validation
+    return payload
 
 
-def export_json(summary: AlgoSummary, export_path: str | None, *, security_opts: dict | None = None) -> None:
+class _ACVPTally:
+    __slots__ = ("cases", "passes", "fails", "fail_examples")
+
+    def __init__(self) -> None:
+        self.cases = 0
+        self.passes = 0
+        self.fails = 0
+        self.fail_examples: List[Dict[str, Any]] = []
+
+    def record(self, ok: bool, context: str, output: str) -> None:
+        self.cases += 1
+        if ok:
+            self.passes += 1
+            return
+        self.fails += 1
+        if len(self.fail_examples) < 3:
+            self.fail_examples.append({
+                "context": context,
+                "output": output.strip(),
+            })
+
+
+def _acvp_skip(reason: str, *, mechanism: str | None, status: str = "skipped") -> Dict[str, Any]:
+    return {
+        "vectorset": None,
+        "mechanism": mechanism,
+        "cases": 0,
+        "passes": 0,
+        "fails": 0,
+        "status": status,
+        "reason": reason,
+    }
+
+
+def _liboqs_build_dir() -> pathlib.Path:
+    return _PROJECT_ROOT / "native" / "build" / "liboqs_build"
+
+
+def _liboqs_vectors_dir() -> pathlib.Path:
+    return _PROJECT_ROOT / "liboqs" / "tests" / "ACVP_Vectors"
+
+
+def _prepend_path(value: str | None, path: str) -> str:
+    if not value:
+        return path
+    return f"{path}:{value}"
+
+
+def _run_acvp_binary(binary: pathlib.Path, args: Sequence[str]) -> Tuple[bool, str]:
+    env = os.environ.copy()
+    build_dir = _liboqs_build_dir()
+    lib_dir = build_dir / "lib"
+    env.setdefault("OQS_BUILD_DIR", str(build_dir))
+    env["LD_LIBRARY_PATH"] = _prepend_path(env.get("LD_LIBRARY_PATH"), str(lib_dir))
+    if sys.platform == "darwin":  # ensure dyld can load liboqs.dylib
+        env["DYLD_LIBRARY_PATH"] = _prepend_path(env.get("DYLD_LIBRARY_PATH"), str(lib_dir))
+    proc = subprocess.run(
+        [str(binary), *args],
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=str(binary.parent),
+    )
+    combined = proc.stdout
+    if proc.stderr:
+        if combined:
+            combined += "\n"
+        combined += proc.stderr
+    return proc.returncode == 0, combined
+
+
+def _normalise_ml_kem_name(mechanism: str | None) -> str | None:
+    if not mechanism:
+        return None
+    mech = mechanism.strip()
+    if mech in {"ML-KEM-512", "ML-KEM-768", "ML-KEM-1024"}:
+        return mech
+    alias = mech.replace(" ", "").replace("_", "-").upper()
+    mapping = {
+        "KYBER512": "ML-KEM-512",
+        "KYBER768": "ML-KEM-768",
+        "KYBER1024": "ML-KEM-1024",
+    }
+    return mapping.get(alias)
+
+
+def _normalise_ml_dsa_name(mechanism: str | None) -> str | None:
+    if not mechanism:
+        return None
+    mech = mechanism.strip()
+    if mech in {"ML-DSA-44", "ML-DSA-65", "ML-DSA-87"}:
+        return mech
+    mapping = {
+        "DILITHIUM2": "ML-DSA-44",
+        "DILITHIUM3": "ML-DSA-65",
+        "DILITHIUM5": "ML-DSA-87",
+    }
+    alias = mech.replace("-", "").replace("_", "").upper()
+    return mapping.get(alias)
+
+
+def _load_acvp_json(path: pathlib.Path) -> Dict[str, Any]:
+    with path.open("r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _run_acvp_ml_kem(mechanism: str | None) -> Dict[str, Any]:
+    mech = _normalise_ml_kem_name(mechanism)
+    if mech is None:
+        return _acvp_skip("Mechanism not covered by ML-KEM ACVP vectors", mechanism=mechanism)
+
+    binary = _liboqs_build_dir() / "tests" / "vectors_kem"
+    if not binary.exists():
+        return _acvp_skip(
+            "liboqs vectors_kem binary not available (configure native/ with -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON)",
+            mechanism=mech,
+            status="missing_binary",
+        )
+
+    vectors_dir = _liboqs_vectors_dir()
+    keygen_path = vectors_dir / "ML-KEM-keyGen-FIPS203" / "internalProjection.json"
+    encdec_path = vectors_dir / "ML-KEM-encapDecap-FIPS203" / "internalProjection.json"
+    if not keygen_path.exists() or not encdec_path.exists():
+        return _acvp_skip(
+            "ACVP vector files for ML-KEM are missing (ensure Git LFS assets are fetched)",
+            mechanism=mech,
+            status="missing_vectors",
+        )
+
+    tally = _ACVPTally()
+
+    def _record(ok: bool, group: str, tc: Any, output: str) -> None:
+        context = f"{group} tcId={tc}"
+        tally.record(ok, context, output)
+
+    keygen = _load_acvp_json(keygen_path)
+    for variant in keygen.get("testGroups", []):
+        if variant.get("parameterSet") != mech:
+            continue
+        for test_case in variant.get("tests", []):
+            d = test_case.get("d")
+            z = test_case.get("z")
+            pk = test_case.get("ek")
+            sk = test_case.get("dk")
+            if None in (d, z, pk, sk):
+                _record(False, "keygen", test_case.get("tcId"), "missing fields in vector")
+                continue
+            ok, output = _run_acvp_binary(binary, [mech, "keyGen", d + z, pk, sk])
+            _record(ok, "keygen", test_case.get("tcId"), output)
+
+    encdec = _load_acvp_json(encdec_path)
+    for variant in encdec.get("testGroups", []):
+        if variant.get("parameterSet") != mech:
+            continue
+        func = variant.get("function")
+        if func == "encapsulation":
+            stage = "encap"
+            for test_case in variant.get("tests", []):
+                pk = test_case.get("ek")
+                msg = test_case.get("m")
+                k = test_case.get("k")
+                ct = test_case.get("c")
+                if None in (pk, msg, k, ct):
+                    _record(False, stage, test_case.get("tcId"), "missing fields in vector")
+                    continue
+                ok, output = _run_acvp_binary(binary, [mech, "encDecAFT", msg, pk, k, ct])
+                _record(ok, stage, test_case.get("tcId"), output)
+        elif func == "decapsulation":
+            stage = "decap"
+            for test_case in variant.get("tests", []):
+                sk = test_case.get("dk")
+                k = test_case.get("k")
+                ct = test_case.get("c")
+                if None in (sk, k, ct):
+                    _record(False, stage, test_case.get("tcId"), "missing fields in vector")
+                    continue
+                ok, output = _run_acvp_binary(binary, [mech, "encDecVAL", sk, k, ct])
+                _record(ok, stage, test_case.get("tcId"), output)
+
+    status = "ok" if tally.fails == 0 and tally.cases > 0 else ("failed" if tally.fails else "no_cases")
+    result = {
+        "vectorset": "ML-KEM:FIPS203",
+        "mechanism": mech,
+        "cases": tally.cases,
+        "passes": tally.passes,
+        "fails": tally.fails,
+        "status": status,
+    }
+    if tally.fail_examples:
+        result["fail_examples"] = tally.fail_examples
+    return result
+
+
+def _run_acvp_ml_dsa(mechanism: str | None) -> Dict[str, Any]:
+    mech = _normalise_ml_dsa_name(mechanism)
+    if mech is None:
+        return _acvp_skip("Mechanism not covered by ML-DSA ACVP vectors", mechanism=mechanism)
+
+    binary = _liboqs_build_dir() / "tests" / "vectors_sig"
+    if not binary.exists():
+        return _acvp_skip(
+            "liboqs vectors_sig binary not available (configure native/ with -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON)",
+            mechanism=mech,
+            status="missing_binary",
+        )
+
+    vectors_dir = _liboqs_vectors_dir()
+    keygen_path = vectors_dir / "ML-DSA-keyGen-FIPS204" / "internalProjection.json"
+    siggen_path = vectors_dir / "ML-DSA-sigGen-FIPS204" / "internalProjection.json"
+    sigver_path = vectors_dir / "ML-DSA-sigVer-FIPS204" / "internalProjection.json"
+    for p in (keygen_path, siggen_path, sigver_path):
+        if not p.exists():
+            return _acvp_skip(
+                "ACVP vector files for ML-DSA are missing (ensure Git LFS assets are fetched)",
+                mechanism=mech,
+                status="missing_vectors",
+            )
+
+    tally = _ACVPTally()
+
+    def _record(ok: bool, stage: str, tc: Any, output: str) -> None:
+        context = f"{stage} tcId={tc}"
+        tally.record(ok, context, output)
+
+    keygen = _load_acvp_json(keygen_path)
+    for variant in keygen.get("testGroups", []):
+        if variant.get("parameterSet") != mech:
+            continue
+        for test_case in variant.get("tests", []):
+            seed = test_case.get("seed")
+            pk = test_case.get("pk")
+            sk = test_case.get("sk")
+            if None in (seed, pk, sk):
+                _record(False, "sig.keygen", test_case.get("tcId"), "missing fields in vector")
+                continue
+            ok, output = _run_acvp_binary(binary, [mech, "keyGen", seed, pk, sk])
+            _record(ok, "sig.keygen", test_case.get("tcId"), output)
+
+    siggen = _load_acvp_json(siggen_path)
+    for variant in siggen.get("testGroups", []):
+        if variant.get("parameterSet") != mech:
+            continue
+        signature_interface = variant.get("signatureInterface")
+        deterministic = bool(variant.get("deterministic"))
+        for test_case in variant.get("tests", []):
+            sk = test_case.get("sk")
+            message = test_case.get("message")
+            signature = test_case.get("signature")
+            if None in (sk, message, signature):
+                _record(False, "sig.gen", test_case.get("tcId"), "missing fields in vector")
+                continue
+            rnd = "0" * 64 if deterministic else (test_case.get("rnd") or test_case.get("additionalRandomness") or "")
+            if signature_interface == "internal":
+                ok, output = _run_acvp_binary(binary, [mech, "sigGen_int", sk, message, signature, rnd])
+            else:
+                context_val = test_case.get("context", "")
+                ok, output = _run_acvp_binary(binary, [mech, "sigGen_ext", sk, message, signature, context_val, rnd])
+            _record(ok, "sig.gen", test_case.get("tcId"), output)
+
+    sigver = _load_acvp_json(sigver_path)
+    for variant in sigver.get("testGroups", []):
+        if variant.get("parameterSet") != mech:
+            continue
+        signature_interface = variant.get("signatureInterface")
+        for test_case in variant.get("tests", []):
+            pk = test_case.get("pk")
+            message = test_case.get("message")
+            signature = test_case.get("signature")
+            test_passed = "1" if test_case.get("testPassed") else "0"
+            if None in (pk, message, signature):
+                _record(False, "sig.ver", test_case.get("tcId"), "missing fields in vector")
+                continue
+            if signature_interface == "internal":
+                ok, output = _run_acvp_binary(binary, [mech, "sigVer_int", pk, message, signature, test_passed])
+            else:
+                context_val = test_case.get("context", "")
+                ok, output = _run_acvp_binary(binary, [mech, "sigVer_ext", pk, message, signature, context_val, test_passed])
+            _record(ok, "sig.ver", test_case.get("tcId"), output)
+
+    status = "ok" if tally.fails == 0 and tally.cases > 0 else ("failed" if tally.fails else "no_cases")
+    result = {
+        "vectorset": "ML-DSA:FIPS204",
+        "mechanism": mech,
+        "cases": tally.cases,
+        "passes": tally.passes,
+        "fails": tally.fails,
+        "status": status,
+    }
+    if tally.fail_examples:
+        result["fail_examples"] = tally.fail_examples
+    return result
+
+
+def run_acvp_validation(summary: AlgoSummary) -> Tuple[Dict[str, Any], List[str]]:
+    mechanism = summary.meta.get("mechanism") if isinstance(summary.meta, dict) else None
+    if summary.kind == "KEM":
+        result = _run_acvp_ml_kem(mechanism)
+    elif summary.kind == "SIG":
+        result = _run_acvp_ml_dsa(mechanism)
+    else:
+        result = _acvp_skip("Unsupported algorithm kind for ACVP runner", mechanism=mechanism, status="unsupported")
+
+    git_sha = _read_git_commit(_PROJECT_ROOT / "liboqs")
+    if git_sha:
+        result.setdefault("git_sha", git_sha)
+    else:
+        result.setdefault("git_sha", None)
+
+    logs: List[str] = []
+    algo_label = mechanism or summary.algo
+    status = result.get("status")
+    if status == "ok":
+        logs.append(f"[ACVP] {algo_label}: {result.get('passes', 0)}/{result.get('cases', 0)} cases passed")
+    elif status in {"skipped", "missing_binary", "missing_vectors", "unsupported"}:
+        reason = result.get("reason") or "not run"
+        logs.append(f"[ACVP] {algo_label}: skipped ({reason})")
+    elif status == "no_cases":
+        logs.append(f"[ACVP] {algo_label}: no matching ACVP test cases")
+    else:
+        logs.append(
+            f"[ACVP] {algo_label}: {result.get('fails', 0)} failures out of {result.get('cases', 0)} cases"
+        )
+        for fail in result.get("fail_examples", [])[:3]:
+            ctx = fail.get("context")
+            tail = fail.get("output", "").splitlines()
+            msg = tail[-1] if tail else ""
+            logs.append(f"        {ctx}: {msg}")
+
+    return result, logs
+
+
+def export_json(
+    summary: AlgoSummary,
+    export_path: str | None,
+    *,
+    security_opts: dict | None = None,
+    validation: Dict[str, Any] | None = None,
+) -> None:
     if not export_path:
         return
     # Normalize Windows-style separators on POSIX if users pass e.g. "results\file.json"
@@ -1035,7 +1380,15 @@ def export_json(summary: AlgoSummary, export_path: str | None, *, security_opts:
         path = _repo_root() / path
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
-        json.dump(_build_export_payload(summary, security_opts=security_opts), f, indent=2)
+        json.dump(
+            _build_export_payload(
+                summary,
+                security_opts=security_opts,
+                validation=validation,
+            ),
+            f,
+            indent=2,
+        )
 
 def _export_json_blob(data: dict, export_path: str | None) -> None:
     if not export_path:
