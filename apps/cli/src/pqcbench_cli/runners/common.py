@@ -1053,7 +1053,13 @@ class _ACVPTally:
             })
 
 
-def _acvp_skip(reason: str, *, mechanism: str | None, status: str = "skipped") -> Dict[str, Any]:
+def _acvp_skip(
+    reason: str,
+    *,
+    mechanism: str | None,
+    status: str = "skipped",
+    source: str = "acvp",
+) -> Dict[str, Any]:
     return {
         "vectorset": None,
         "mechanism": mechanism,
@@ -1062,6 +1068,7 @@ def _acvp_skip(reason: str, *, mechanism: str | None, status: str = "skipped") -
         "fails": 0,
         "status": status,
         "reason": reason,
+        "source": source,
     }
 
 
@@ -1324,14 +1331,352 @@ def _run_acvp_ml_dsa(mechanism: str | None) -> Dict[str, Any]:
     return result
 
 
+_SPHINCS_TO_SLH: Dict[str, Tuple[str, str]] = {
+    "SPHINCS+-SHA2-128f-simple": ("SLH_DSA_PURE_SHA2_128F", "SLH-DSA-SHA2-128f"),
+    "SPHINCS+-SHA2-128s-simple": ("SLH_DSA_PURE_SHA2_128S", "SLH-DSA-SHA2-128s"),
+    "SPHINCS+-SHAKE-128f-simple": ("SLH_DSA_PURE_SHAKE_128F", "SLH-DSA-SHAKE-128f"),
+    "SPHINCS+-SHAKE-128s-simple": ("SLH_DSA_PURE_SHAKE_128S", "SLH-DSA-SHAKE-128s"),
+}
+
+
+def _b64d(data: str) -> bytes:
+    return base64.b64decode(data.encode("ascii"))
+
+
+_RSA_STATIC_VECTORS = {
+    "sk_der": _b64d(
+        "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC1jsJOD3Zn9H1op+YGJOY6DDXyaS6loFMt9IEddRT5RyqDj1Sp6xIsm1A4BCBnGV4wGHt75BkKQKXyxFQj/6NIjd42OAdNiz7OtqqELVI5RDZ3DsfT1OqhztYig/AOAScWH8qESBIt5L7IE7uS8Ao5yza5mO3Wds+GSizPWAvIfMqK5K9iqIoXm2DIlmIf4VZsd6lFkY6I0NPHXjMG/Rla5yvd9ahgkUdAL7gyqH2dWKhWfXcTA+JWXeqrlNur7WESie5XKl+d3KYHLIQIvvzDSO6fJTTHuVdDnRWCCRMeF8cers+E4BMqsbm77g+Dem5bAJlbktPlb7rFDMIdWnGbAgMBAAECggEAKlcKCjFB8DlMm8D3/DvTsvrRA+Cyn651Z3SrPablxsJpcDfXSy8GVH+94+pWciSw2e+DsJ8/lawA504QvzppJkzrYuKLFXLhKUzhFCULlU5Kk1ZPlJ+FPknhlzgEngd3yYmNbW7vSmObeEZdyoUPJW42K282G/smJ0+aBpqmWNEYzwlfJz6qGFghAQRqwf30mvJVrSqZO0uptrJB8q70mtI35xgInfJOTKPNMCxqWNOwP4mrHzbNiJmGGRWG4XcZtAPq9DJ4//kn7AmLSs8VxHWnNNa4j1bMuhQEZCHzzZgJj6z+T3rZcqCEX0BMAdlC9Dh9WgmgpJ5Y8b884sacaQKBgQDX4KBE8L01MI8cN9R7nvU6zJXZofv4YghpY3g/kojO/+3LwuCI+Kjwldmxia8Udf9zTZVHosGEVqe+UJJq/7JIQDH1pRhsIxqvzy9UFAJUB9qTkqHZhJbr1zCXbyLTkepeb+ACY1KWpFFOr2e7BMpahF841vfQouPBXczWuZnfUwKBgQDXTTWHuOJSofvJzTW23AflCaKAhz83ZeP+lKQ4oj4D7MuErskuv9JbuY1DJ0bN4FX7RLB/OJ3gjPsdAre8Pa4502WZImfkexCfOVAWHPKVsebPp57C5wUJ8swcYoG/r1rxAh0MsJIV5cK3UOMr5gor0QL8qXB26CWOBFQ352IDmQKBgQDQS3H48xxtbQw42vnPygGumWZhVnWsJNMe9RY6qOYObU0CFWfXYa6IbN5e+o2PPYectpg6RaVZTs+Nx2pviYZ5Rk+uSH03IewHBO8Svje84tMZHxvBqLiCmODOzTIaWCl+s42+YB15MtUtCfwZrLae/ihuzKTSj8kYc6xI50679wKBgEyTFF/iPPSg0hmzF9Cir1ghth86exxr68wm98WAxsfEl5noRHuRE/M1qm1g8cjVah9FDfUhoN01pzZpOgoEcgv1COSPHR5hOsc2rio/P3RIYswmVMwDOIKSTVAnJPiVGKYxVz2lK0AIiNmENlftqF5vJz3P0cUoyfqZxY5giDa5AoGANWf/dI45LHCpBL1chcsTOR/E5tHIwC3LFUIMdrGaXcRuRtp52MLCv51ceMP2zNbdcvfz8jje1TJKrC4AHCsvpwfwOhfWoCvbEuWlreh9yuP8o3422soNOnkA4/rIb2LajKHFi/pUvS5RgYSM6ymehdUovOwEUySqqA9b9XWivww="
+    ),
+    "pk_der": _b64d(
+        "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtY7CTg92Z/R9aKfmBiTmOgw18mkupaBTLfSBHXUU+Ucqg49UqesSLJtQOAQgZxleMBh7e+QZCkCl8sRUI/+jSI3eNjgHTYs+zraqhC1SOUQ2dw7H09Tqoc7WIoPwDgEnFh/KhEgSLeS+yBO7kvAKOcs2uZjt1nbPhkosz1gLyHzKiuSvYqiKF5tgyJZiH+FWbHepRZGOiNDTx14zBv0ZWucr3fWoYJFHQC+4Mqh9nVioVn13EwPiVl3qq5Tbq+1hEonuVypfndymByyECL78w0junyU0x7lXQ50VggkTHhfHHq7PhOATKrG5u+4Pg3puWwCZW5LT5W+6xQzCHVpxmwIDAQAB"
+    ),
+    "oaep": {
+        "ciphertext": _b64d(
+            "eE91giavI7HD6b2kH1goIJrP+arV+ea8McpQnLNeOku6+6BumFOXoIuA5LRrJPtArDyvtznSII+uY1EOrIx4WFlPVVlsbchaPSt2KLdUM/72Psdf+gywB6VxHWKW7Fb9gb9j+na2r+tr0iCdXPZa7mXyEv1eCQxKK+Ao6qBc/5FgFXSY9Ab1sr/kmzVJI/ZREfBI5FCSOgaPA8JuXoGNp9Y0l2nFVr+ruebdTlOvhl3hUx7yVu+9b25GIGbWoIybr98aDCGQVVI9M4tsZqZtIrkK4yE928ZDqCRBmwR6SjP0TqDb5SnNNLjx88QGNocvqai5XaG8EYqgqGgFwuG2MQ=="
+        ),
+        "secret": _b64d("bytuIjX5yRxmvbHsmbKlLZtwTrSshF+ladz1/KD3YS0="),
+    },
+    "pss": {
+        "message": _b64d("UlNBIFBTUyBzYW1wbGUgbWVzc2FnZSBmb3IgcHFjYmVuY2g="),
+        "signature": _b64d(
+            "G5NBnFBxqPgtQHNL/Zr4Gir0+StWYmUxR4XINSyy9tFzFXfgOmI+X+Z6BP8k7L6u50zCBEyuC873tQaK2PMcmJQ++N5OKEiLQ9sapY50U28AA5iNUc2ahr42pObqExmeRk2ZS6Etzxnq8Zxpt5luoVgMgcAFSenpfcKJ5EHgIcUsk1VG9ks0jKbWrY+mCkTpKUbXQtBVzZJOJ4De4pd96upag9GsWe0JCggyQfnEfMwTMjTw/qnR+EriU953zcokAIQkZmEjet1oOi+hlECiW0VcIXPbSINkGDIap76uTJCFJX1QBjIzHXrbHXuSdnm2H1HNkjBvUwDUrPX1ZhMWfw=="
+        ),
+    },
+}
+
+
+def _slh_format_name(sig_name: str) -> str:
+    name = sig_name.replace("PURE_", "")
+    start = 8
+    idx = name.find("PREHASH_")
+    if idx >= 0:
+        end = idx + 8
+        name = name[:start] + name[end:]
+    name = name.replace("_", "-")
+    name = name[:-1] + name[-1].lower()
+    return name
+
+
+def _slh_test_sig_name(variant: Dict[str, Any], test_case: Dict[str, Any]) -> str:
+    sig_name = variant.get("parameterSet", "")
+    sig_name = sig_name.replace("-", "_")
+    sig_name = sig_name[:-1] + sig_name[-1].upper()
+    if variant.get("preHash") != "preHash":
+        sig_name = sig_name[:7] + "_PURE" + sig_name[7:]
+    else:
+        hash_alg = str(test_case.get("hashAlg", "")).replace("-", "_")
+        sig_name = sig_name[:7] + "_" + hash_alg + "_PREHASH" + sig_name[7:]
+    return sig_name
+
+
+def _run_acvp_slh_dsa(mechanism: str | None) -> Dict[str, Any]:
+    mapping = _SPHINCS_TO_SLH.get(mechanism or "")
+    if mapping is None:
+        return _acvp_skip(
+            "ACVP vectors currently cover SPHINCS+ (SLH-DSA) simple profiles only",
+            mechanism=mechanism,
+        )
+
+    sig_name, expected_param = mapping
+    param_set = expected_param
+
+    binary = _liboqs_build_dir() / "tests" / "vectors_sig"
+    if not binary.exists():
+        return _acvp_skip(
+            "liboqs vectors_sig binary not available (configure native/ with -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON)",
+            mechanism=mechanism,
+            status="missing_binary",
+        )
+
+    vectors_dir = _liboqs_vectors_dir()
+    keygen_path = vectors_dir / "SLH-DSA-keyGen-FIPS205" / "internalProjection.json"
+    siggen_path = vectors_dir / "SLH-DSA-sigGen-FIPS205" / "internalProjection.json"
+    sigver_path = vectors_dir / "SLH-DSA-sigVer-FIPS205" / "internalProjection.json"
+    for path in (keygen_path, siggen_path, sigver_path):
+        if not path.exists():
+            return _acvp_skip(
+                "ACVP vector files for SLH-DSA are missing (ensure Git LFS assets are fetched)",
+                mechanism=mechanism,
+                status="missing_vectors",
+            )
+
+    tally = _ACVPTally()
+
+    def _record(ok: bool, stage: str, tc: Any, output: str) -> None:
+        context = f"{stage} tcId={tc}"
+        tally.record(ok, context, output)
+
+    keygen = _load_acvp_json(keygen_path)
+    for variant in keygen.get("testGroups", []):
+        if variant.get("parameterSet") != param_set:
+            continue
+        for test_case in variant.get("tests", []):
+            sk_seed = test_case.get("skSeed")
+            sk_prf = test_case.get("skPrf")
+            pk_seed = test_case.get("pkSeed")
+            pk = test_case.get("pk")
+            sk = test_case.get("sk")
+            if None in (sk_seed, sk_prf, pk_seed, pk, sk):
+                _record(False, "sig.keygen", test_case.get("tcId"), "missing fields in vector")
+                continue
+            ok, output = _run_acvp_binary(
+                binary,
+                [sig_name, "keyGen", sk_seed, sk_prf, pk_seed, pk, sk],
+            )
+            _record(ok, "sig.keygen", test_case.get("tcId"), output)
+
+    siggen = _load_acvp_json(siggen_path)
+    for variant in siggen.get("testGroups", []):
+        for test_case in variant.get("tests", []):
+            if _slh_test_sig_name(variant, test_case) != sig_name:
+                continue
+            sk = test_case.get("sk")
+            message = test_case.get("message")
+            signature = test_case.get("signature")
+            if None in (sk, message, signature):
+                _record(False, "sig.gen", test_case.get("tcId"), "missing fields in vector")
+                continue
+            deterministic = bool(variant.get("deterministic"))
+            rnd = "" if deterministic else (test_case.get("additionalRandomness") or test_case.get("rnd") or "")
+            if variant.get("signatureInterface") == "internal":
+                ok, output = _run_acvp_binary(
+                    binary,
+                    [sig_name, "sigGen_int", sk, message, signature, rnd],
+                )
+            else:
+                context_val = test_case.get("context", "")
+                ok, output = _run_acvp_binary(
+                    binary,
+                    [sig_name, "sigGen_ext", sk, message, signature, context_val, rnd],
+                )
+            _record(ok, "sig.gen", test_case.get("tcId"), output)
+
+    sigver = _load_acvp_json(sigver_path)
+    for variant in sigver.get("testGroups", []):
+        for test_case in variant.get("tests", []):
+            if _slh_test_sig_name(variant, test_case) != sig_name:
+                continue
+            message = test_case.get("message")
+            signature = test_case.get("signature")
+            pk = test_case.get("pk")
+            test_passed = "1" if test_case.get("testPassed") else "0"
+            if None in (message, signature, pk):
+                _record(False, "sig.ver", test_case.get("tcId"), "missing fields in vector")
+                continue
+            if variant.get("signatureInterface") == "internal":
+                ok, output = _run_acvp_binary(
+                    binary,
+                    [sig_name, "sigVer_int", pk, message, signature, test_passed],
+                )
+            else:
+                context_val = test_case.get("context", "")
+                ok, output = _run_acvp_binary(
+                    binary,
+                    [sig_name, "sigVer_ext", pk, message, signature, context_val, test_passed],
+                )
+            _record(ok, "sig.ver", test_case.get("tcId"), output)
+
+    status = "ok" if tally.fails == 0 and tally.cases > 0 else ("failed" if tally.fails else "no_cases")
+    result = {
+        "source": "acvp",
+        "vectorset": "SLH-DSA:FIPS205",
+        "mechanism": mechanism,
+        "cases": tally.cases,
+        "passes": tally.passes,
+        "fails": tally.fails,
+        "status": status,
+    }
+    if tally.fail_examples:
+        result["fail_examples"] = tally.fail_examples
+    return result
+
+
+def _run_kat_falcon(mechanism: str | None) -> Dict[str, Any]:
+    mech = (mechanism or "").strip()
+    if mech not in {"Falcon-512", "Falcon-1024"}:
+        return _acvp_skip(
+            "Falcon mechanism not recognised for liboqs KAT fallback",
+            mechanism=mechanism,
+            source="liboqs_kat",
+        )
+
+    binary = _liboqs_build_dir() / "tests" / "kat_sig"
+    if not binary.exists():
+        return _acvp_skip(
+            "liboqs kat_sig binary not available (configure native/ with -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON)",
+            mechanism=mechanism,
+            status="missing_binary",
+            source="liboqs_kat",
+        )
+
+    ok, output = _run_acvp_binary(binary, [mech, "--all"])
+    tally = _ACVPTally()
+    tally.record(ok, "kat --all", output)
+
+    status = "ok" if ok else "failed"
+    result = {
+        "source": "liboqs_kat",
+        "vectorset": f"kat_sig:{mech}",
+        "mechanism": mechanism,
+        "cases": tally.cases,
+        "passes": tally.passes,
+        "fails": tally.fails,
+        "status": status,
+    }
+    if not ok:
+        result["fail_examples"] = tally.fail_examples
+    return result
+
+
+def _run_kat_rsa_oaep() -> Dict[str, Any]:
+    try:
+        rsa_cls = registry.get("rsa-oaep")
+    except KeyError:
+        return _acvp_skip(
+            "rsa-oaep adapter not available",
+            mechanism="rsa-oaep",
+            status="missing_adapter",
+            source="builtin_kat",
+        )
+
+    rsa_kem = rsa_cls()
+    tally = _ACVPTally()
+    try:
+        recovered = rsa_kem.decapsulate(
+            _RSA_STATIC_VECTORS["sk_der"],
+            _RSA_STATIC_VECTORS["oaep"]["ciphertext"],
+        )
+        ok = recovered == _RSA_STATIC_VECTORS["oaep"]["secret"]
+        output = "match" if ok else "mismatch"
+    except Exception as exc:
+        ok = False
+        output = f"error: {exc}"
+    tally.record(ok, "rsa-oaep kat", output)
+
+    result = {
+        "source": "builtin_kat",
+        "vectorset": "rsa-oaep:static-v1",
+        "mechanism": "rsa-oaep",
+        "cases": tally.cases,
+        "passes": tally.passes,
+        "fails": tally.fails,
+        "status": "ok" if ok else "failed",
+    }
+    if not ok:
+        result["fail_examples"] = tally.fail_examples
+    return result
+
+
+def _run_kat_rsa_pss() -> Dict[str, Any]:
+    try:
+        rsa_cls = registry.get("rsa-pss")
+    except KeyError:
+        return _acvp_skip(
+            "rsa-pss adapter not available",
+            mechanism="rsa-pss",
+            status="missing_adapter",
+            source="builtin_kat",
+        )
+
+    rsa_sig = rsa_cls()
+    tally = _ACVPTally()
+    try:
+        ok = rsa_sig.verify(
+            _RSA_STATIC_VECTORS["pk_der"],
+            _RSA_STATIC_VECTORS["pss"]["message"],
+            _RSA_STATIC_VECTORS["pss"]["signature"],
+        )
+        output = "verified" if ok else "verification failed"
+    except Exception as exc:
+        ok = False
+        output = f"error: {exc}"
+    tally.record(ok, "rsa-pss kat", output)
+
+    result = {
+        "source": "builtin_kat",
+        "vectorset": "rsa-pss:static-v1",
+        "mechanism": "rsa-pss",
+        "cases": tally.cases,
+        "passes": tally.passes,
+        "fails": tally.fails,
+        "status": "ok" if ok else "failed",
+    }
+    if not ok:
+        result["fail_examples"] = tally.fail_examples
+    return result
+
+
 def run_acvp_validation(summary: AlgoSummary) -> Tuple[Dict[str, Any], List[str]]:
     mechanism = summary.meta.get("mechanism") if isinstance(summary.meta, dict) else None
     if summary.kind == "KEM":
-        result = _run_acvp_ml_kem(mechanism)
+        algo = summary.algo.lower()
+        if algo in {"kyber", "ml-kem"} or (mechanism and "ML-KEM" in mechanism):
+            result = _run_acvp_ml_kem(mechanism)
+        elif algo in {"hqc"}:
+            result = _acvp_skip(
+                "No ACVP vectors published for HQC",
+                mechanism=mechanism,
+            )
+        elif algo in {"rsa-oaep"}:
+            result = _run_kat_rsa_oaep()
+        else:
+            result = _acvp_skip(
+                "Unsupported KEM for automated validation",
+                mechanism=mechanism,
+                status="unsupported",
+            )
     elif summary.kind == "SIG":
-        result = _run_acvp_ml_dsa(mechanism)
+        algo = summary.algo.lower()
+        if algo in {"dilithium", "ml-dsa"} or (mechanism and ("ML-DSA" in mechanism or "Dilithium" in mechanism)):
+            result = _run_acvp_ml_dsa(mechanism)
+        elif algo in {"sphincs+", "sphincsplus"} or (mechanism and mechanism.startswith("SPHINCS+")):
+            result = _run_acvp_slh_dsa(mechanism)
+        elif algo == "falcon" or (mechanism and mechanism.startswith("Falcon")):
+            result = _run_kat_falcon(mechanism)
+        elif algo == "rsa-pss":
+            result = _run_kat_rsa_pss()
+        elif algo == "xmssmt":
+            result = _acvp_skip(
+                "No ACVP vectors published for XMSS^MT",
+                mechanism=mechanism,
+            )
+        elif algo == "mayo":
+            result = _acvp_skip(
+                "No ACVP vectors published for MAYO",
+                mechanism=mechanism,
+            )
+        else:
+            result = _acvp_skip(
+                "Unsupported signature algorithm for validation",
+                mechanism=mechanism,
+                status="unsupported",
+            )
     else:
-        result = _acvp_skip("Unsupported algorithm kind for ACVP runner", mechanism=mechanism, status="unsupported")
+        result = _acvp_skip(
+            "Unsupported algorithm kind for ACVP runner",
+            mechanism=mechanism,
+            status="unsupported",
+        )
 
     git_sha = _read_git_commit(_PROJECT_ROOT / "liboqs")
     if git_sha:
@@ -1342,16 +1687,20 @@ def run_acvp_validation(summary: AlgoSummary) -> Tuple[Dict[str, Any], List[str]
     logs: List[str] = []
     algo_label = mechanism or summary.algo
     status = result.get("status")
+    source = result.get("source", "acvp")
+    prefix = "[ACVP]" if source == "acvp" else "[KAT]"
     if status == "ok":
-        logs.append(f"[ACVP] {algo_label}: {result.get('passes', 0)}/{result.get('cases', 0)} cases passed")
+        logs.append(
+            f"{prefix} {algo_label}: {result.get('passes', 0)}/{result.get('cases', 0)} cases passed"
+        )
     elif status in {"skipped", "missing_binary", "missing_vectors", "unsupported"}:
         reason = result.get("reason") or "not run"
-        logs.append(f"[ACVP] {algo_label}: skipped ({reason})")
+        logs.append(f"{prefix} {algo_label}: skipped ({reason})")
     elif status == "no_cases":
-        logs.append(f"[ACVP] {algo_label}: no matching ACVP test cases")
+        logs.append(f"{prefix} {algo_label}: no matching validation cases")
     else:
         logs.append(
-            f"[ACVP] {algo_label}: {result.get('fails', 0)} failures out of {result.get('cases', 0)} cases"
+            f"{prefix} {algo_label}: {result.get('fails', 0)} failures out of {result.get('cases', 0)} cases"
         )
         for fail in result.get("fail_examples", [])[:3]:
             ctx = fail.get("context")
