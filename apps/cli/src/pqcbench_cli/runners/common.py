@@ -1339,6 +1339,32 @@ _SPHINCS_TO_SLH: Dict[str, Tuple[str, str]] = {
 }
 
 
+def _b64d(data: str) -> bytes:
+    return base64.b64decode(data.encode("ascii"))
+
+
+_RSA_STATIC_VECTORS = {
+    "sk_der": _b64d(
+        "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC1jsJOD3Zn9H1op+YGJOY6DDXyaS6loFMt9IEddRT5RyqDj1Sp6xIsm1A4BCBnGV4wGHt75BkKQKXyxFQj/6NIjd42OAdNiz7OtqqELVI5RDZ3DsfT1OqhztYig/AOAScWH8qESBIt5L7IE7uS8Ao5yza5mO3Wds+GSizPWAvIfMqK5K9iqIoXm2DIlmIf4VZsd6lFkY6I0NPHXjMG/Rla5yvd9ahgkUdAL7gyqH2dWKhWfXcTA+JWXeqrlNur7WESie5XKl+d3KYHLIQIvvzDSO6fJTTHuVdDnRWCCRMeF8cers+E4BMqsbm77g+Dem5bAJlbktPlb7rFDMIdWnGbAgMBAAECggEAKlcKCjFB8DlMm8D3/DvTsvrRA+Cyn651Z3SrPablxsJpcDfXSy8GVH+94+pWciSw2e+DsJ8/lawA504QvzppJkzrYuKLFXLhKUzhFCULlU5Kk1ZPlJ+FPknhlzgEngd3yYmNbW7vSmObeEZdyoUPJW42K282G/smJ0+aBpqmWNEYzwlfJz6qGFghAQRqwf30mvJVrSqZO0uptrJB8q70mtI35xgInfJOTKPNMCxqWNOwP4mrHzbNiJmGGRWG4XcZtAPq9DJ4//kn7AmLSs8VxHWnNNa4j1bMuhQEZCHzzZgJj6z+T3rZcqCEX0BMAdlC9Dh9WgmgpJ5Y8b884sacaQKBgQDX4KBE8L01MI8cN9R7nvU6zJXZofv4YghpY3g/kojO/+3LwuCI+Kjwldmxia8Udf9zTZVHosGEVqe+UJJq/7JIQDH1pRhsIxqvzy9UFAJUB9qTkqHZhJbr1zCXbyLTkepeb+ACY1KWpFFOr2e7BMpahF841vfQouPBXczWuZnfUwKBgQDXTTWHuOJSofvJzTW23AflCaKAhz83ZeP+lKQ4oj4D7MuErskuv9JbuY1DJ0bN4FX7RLB/OJ3gjPsdAre8Pa4502WZImfkexCfOVAWHPKVsebPp57C5wUJ8swcYoG/r1rxAh0MsJIV5cK3UOMr5gor0QL8qXB26CWOBFQ352IDmQKBgQDQS3H48xxtbQw42vnPygGumWZhVnWsJNMe9RY6qOYObU0CFWfXYa6IbN5e+o2PPYectpg6RaVZTs+Nx2pviYZ5Rk+uSH03IewHBO8Svje84tMZHxvBqLiCmODOzTIaWCl+s42+YB15MtUtCfwZrLae/ihuzKTSj8kYc6xI50679wKBgEyTFF/iPPSg0hmzF9Cir1ghth86exxr68wm98WAxsfEl5noRHuRE/M1qm1g8cjVah9FDfUhoN01pzZpOgoEcgv1COSPHR5hOsc2rio/P3RIYswmVMwDOIKSTVAnJPiVGKYxVz2lK0AIiNmENlftqF5vJz3P0cUoyfqZxY5giDa5AoGANWf/dI45LHCpBL1chcsTOR/E5tHIwC3LFUIMdrGaXcRuRtp52MLCv51ceMP2zNbdcvfz8jje1TJKrC4AHCsvpwfwOhfWoCvbEuWlreh9yuP8o3422soNOnkA4/rIb2LajKHFi/pUvS5RgYSM6ymehdUovOwEUySqqA9b9XWivww="
+    ),
+    "pk_der": _b64d(
+        "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtY7CTg92Z/R9aKfmBiTmOgw18mkupaBTLfSBHXUU+Ucqg49UqesSLJtQOAQgZxleMBh7e+QZCkCl8sRUI/+jSI3eNjgHTYs+zraqhC1SOUQ2dw7H09Tqoc7WIoPwDgEnFh/KhEgSLeS+yBO7kvAKOcs2uZjt1nbPhkosz1gLyHzKiuSvYqiKF5tgyJZiH+FWbHepRZGOiNDTx14zBv0ZWucr3fWoYJFHQC+4Mqh9nVioVn13EwPiVl3qq5Tbq+1hEonuVypfndymByyECL78w0junyU0x7lXQ50VggkTHhfHHq7PhOATKrG5u+4Pg3puWwCZW5LT5W+6xQzCHVpxmwIDAQAB"
+    ),
+    "oaep": {
+        "ciphertext": _b64d(
+            "eE91giavI7HD6b2kH1goIJrP+arV+ea8McpQnLNeOku6+6BumFOXoIuA5LRrJPtArDyvtznSII+uY1EOrIx4WFlPVVlsbchaPSt2KLdUM/72Psdf+gywB6VxHWKW7Fb9gb9j+na2r+tr0iCdXPZa7mXyEv1eCQxKK+Ao6qBc/5FgFXSY9Ab1sr/kmzVJI/ZREfBI5FCSOgaPA8JuXoGNp9Y0l2nFVr+ruebdTlOvhl3hUx7yVu+9b25GIGbWoIybr98aDCGQVVI9M4tsZqZtIrkK4yE928ZDqCRBmwR6SjP0TqDb5SnNNLjx88QGNocvqai5XaG8EYqgqGgFwuG2MQ=="
+        ),
+        "secret": _b64d("bytuIjX5yRxmvbHsmbKlLZtwTrSshF+ladz1/KD3YS0="),
+    },
+    "pss": {
+        "message": _b64d("UlNBIFBTUyBzYW1wbGUgbWVzc2FnZSBmb3IgcHFjYmVuY2g="),
+        "signature": _b64d(
+            "G5NBnFBxqPgtQHNL/Zr4Gir0+StWYmUxR4XINSyy9tFzFXfgOmI+X+Z6BP8k7L6u50zCBEyuC873tQaK2PMcmJQ++N5OKEiLQ9sapY50U28AA5iNUc2ahr42pObqExmeRk2ZS6Etzxnq8Zxpt5luoVgMgcAFSenpfcKJ5EHgIcUsk1VG9ks0jKbWrY+mCkTpKUbXQtBVzZJOJ4De4pd96upag9GsWe0JCggyQfnEfMwTMjTw/qnR+EriU953zcokAIQkZmEjet1oOi+hlECiW0VcIXPbSINkGDIap76uTJCFJX1QBjIzHXrbHXuSdnm2H1HNkjBvUwDUrPX1ZhMWfw=="
+        ),
+    },
+}
+
+
 def _slh_format_name(sig_name: str) -> str:
     name = sig_name.replace("PURE_", "")
     start = 8
@@ -1522,6 +1548,84 @@ def _run_kat_falcon(mechanism: str | None) -> Dict[str, Any]:
     return result
 
 
+def _run_kat_rsa_oaep() -> Dict[str, Any]:
+    try:
+        rsa_cls = registry.get("rsa-oaep")
+    except KeyError:
+        return _acvp_skip(
+            "rsa-oaep adapter not available",
+            mechanism="rsa-oaep",
+            status="missing_adapter",
+            source="builtin_kat",
+        )
+
+    rsa_kem = rsa_cls()
+    tally = _ACVPTally()
+    try:
+        recovered = rsa_kem.decapsulate(
+            _RSA_STATIC_VECTORS["sk_der"],
+            _RSA_STATIC_VECTORS["oaep"]["ciphertext"],
+        )
+        ok = recovered == _RSA_STATIC_VECTORS["oaep"]["secret"]
+        output = "match" if ok else "mismatch"
+    except Exception as exc:
+        ok = False
+        output = f"error: {exc}"
+    tally.record(ok, "rsa-oaep kat", output)
+
+    result = {
+        "source": "builtin_kat",
+        "vectorset": "rsa-oaep:static-v1",
+        "mechanism": "rsa-oaep",
+        "cases": tally.cases,
+        "passes": tally.passes,
+        "fails": tally.fails,
+        "status": "ok" if ok else "failed",
+    }
+    if not ok:
+        result["fail_examples"] = tally.fail_examples
+    return result
+
+
+def _run_kat_rsa_pss() -> Dict[str, Any]:
+    try:
+        rsa_cls = registry.get("rsa-pss")
+    except KeyError:
+        return _acvp_skip(
+            "rsa-pss adapter not available",
+            mechanism="rsa-pss",
+            status="missing_adapter",
+            source="builtin_kat",
+        )
+
+    rsa_sig = rsa_cls()
+    tally = _ACVPTally()
+    try:
+        ok = rsa_sig.verify(
+            _RSA_STATIC_VECTORS["pk_der"],
+            _RSA_STATIC_VECTORS["pss"]["message"],
+            _RSA_STATIC_VECTORS["pss"]["signature"],
+        )
+        output = "verified" if ok else "verification failed"
+    except Exception as exc:
+        ok = False
+        output = f"error: {exc}"
+    tally.record(ok, "rsa-pss kat", output)
+
+    result = {
+        "source": "builtin_kat",
+        "vectorset": "rsa-pss:static-v1",
+        "mechanism": "rsa-pss",
+        "cases": tally.cases,
+        "passes": tally.passes,
+        "fails": tally.fails,
+        "status": "ok" if ok else "failed",
+    }
+    if not ok:
+        result["fail_examples"] = tally.fail_examples
+    return result
+
+
 def run_acvp_validation(summary: AlgoSummary) -> Tuple[Dict[str, Any], List[str]]:
     mechanism = summary.meta.get("mechanism") if isinstance(summary.meta, dict) else None
     if summary.kind == "KEM":
@@ -1534,10 +1638,7 @@ def run_acvp_validation(summary: AlgoSummary) -> Tuple[Dict[str, Any], List[str]
                 mechanism=mechanism,
             )
         elif algo in {"rsa-oaep"}:
-            result = _acvp_skip(
-                "ACVP RSA-OAEP vectors not bundled; import required",
-                mechanism=mechanism,
-            )
+            result = _run_kat_rsa_oaep()
         else:
             result = _acvp_skip(
                 "Unsupported KEM for automated validation",
@@ -1553,10 +1654,7 @@ def run_acvp_validation(summary: AlgoSummary) -> Tuple[Dict[str, Any], List[str]
         elif algo == "falcon" or (mechanism and mechanism.startswith("Falcon")):
             result = _run_kat_falcon(mechanism)
         elif algo == "rsa-pss":
-            result = _acvp_skip(
-                "ACVP RSA-PSS vectors not bundled; import required",
-                mechanism=mechanism,
-            )
+            result = _run_kat_rsa_pss()
         elif algo == "xmssmt":
             result = _acvp_skip(
                 "No ACVP vectors published for XMSS^MT",
