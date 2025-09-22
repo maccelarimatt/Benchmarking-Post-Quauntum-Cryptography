@@ -6,6 +6,7 @@ from pqcbench.key_analysis import (
     DEFAULT_PAIR_SAMPLE_LIMIT,
     DEFAULT_SECRET_KEY_SAMPLES,
     derive_model,
+    prepare_keys_for_analysis,
     summarize_secret_keys,
 )
 
@@ -75,3 +76,20 @@ def test_constant_weight_model_matches_expectations():
 def test_defaults_exported_constants():
     assert DEFAULT_SECRET_KEY_SAMPLES > 0
     assert DEFAULT_PAIR_SAMPLE_LIMIT > 0
+
+
+def test_prepare_keys_for_analysis_invokes_hqc_parser():
+    from pqcbench.hqc_secret_parser import resolve_variant  # local import to avoid cycles
+
+    variant = resolve_variant("HQC-128", None)
+    assert variant is not None
+    seed = bytes(range(variant.seed_bytes))
+    sigma = bytes(variant.sigma_bytes)
+    pk = bytes(variant.public_key_bytes)
+    secret_key = seed + sigma + pk
+    prepared = prepare_keys_for_analysis([secret_key], family="HQC", mechanism="HQC-128")
+    assert len(prepared.keys) == 1
+    bitstring = prepared.keys[0]
+    assert len(bitstring) == variant.vector_byte_length
+    assert sum(byte.bit_count() for byte in bitstring) == variant.w
+    assert prepared.context.get("parser") == "hqc_seed_constant_weight_v1"

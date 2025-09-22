@@ -28,6 +28,7 @@ from pqcbench.key_analysis import (
     DEFAULT_PAIR_SAMPLE_LIMIT,
     DEFAULT_SECRET_KEY_SAMPLES,
     derive_model,
+    prepare_keys_for_analysis,
     summarize_secret_keys,
 )
 
@@ -1049,7 +1050,16 @@ def _sample_secret_key_analysis(name: str, cls, mechanism: str | None, kind: str
             family = None
 
         model = derive_model(family, hint)
-        summary = summarize_secret_keys(keys, model=model, pair_sample_limit=DEFAULT_PAIR_SAMPLE_LIMIT)
+        prepared = prepare_keys_for_analysis(
+            keys, family=family, mechanism=mechanism
+        )
+        if not prepared.keys:
+            return None
+        summary = summarize_secret_keys(
+            prepared.keys,
+            model=model,
+            pair_sample_limit=DEFAULT_PAIR_SAMPLE_LIMIT,
+        )
         context: Dict[str, Any] = {
             "algo": name,
             "kind": kind,
@@ -1064,7 +1074,11 @@ def _sample_secret_key_analysis(name: str, cls, mechanism: str | None, kind: str
                     "param_notes": hint.notes,
                 }
             )
+        if prepared.context:
+            context.update(prepared.context)
         summary["context"] = context
+        if prepared.warnings:
+            summary.setdefault("warnings", []).extend(prepared.warnings)
         return summary
     except Exception as exc:
         return {"method": "bitstring_hw_hd_v1", "error": repr(exc)}

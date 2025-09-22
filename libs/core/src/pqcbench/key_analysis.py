@@ -12,6 +12,12 @@ import math
 import statistics
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple, TYPE_CHECKING
 
+try:  # Local import guarded to avoid circular dependency during typing.
+    from .hqc_secret_parser import HQCSecretParseResult, parse_secret_keys
+except Exception:  # pragma: no cover - parser availability verified at runtime.
+    HQCSecretParseResult = None  # type: ignore
+    parse_secret_keys = None  # type: ignore
+
 _BYTE_POPCOUNT = tuple(bin(i).count("1") for i in range(256))
 
 # Keep sampling modest so CLI runs stay responsive.
@@ -40,6 +46,50 @@ class KeyAnalysisModel:
     per_bit_reference: Optional[float] = None
     notes: List[str] = field(default_factory=list)
     extras: Dict[str, object] = field(default_factory=dict)
+
+
+@dataclass
+class PreparedKeyBundle:
+    """Secret-key material normalised for downstream bitstring analysis."""
+
+    keys: Sequence[bytes]
+    context: Dict[str, object] = field(default_factory=dict)
+    warnings: List[str] = field(default_factory=list)
+
+
+def prepare_keys_for_analysis(
+    keys: Sequence[bytes],
+    *,
+    family: Optional[str],
+    mechanism: Optional[str],
+) -> PreparedKeyBundle:
+    """Apply scheme-aware parsing before bit-level analysis.
+
+    Currently only HQC requires special handling (seed-based constant-weight
+    vectors). Other families return the original byte strings untouched.
+    """
+
+    bundle = PreparedKeyBundle(keys=list(keys))
+
+    if not keys:
+        return bundle
+
+    if family and family.upper() == "HQC" and parse_secret_keys is not None:
+        try:
+            parsed: Optional[HQCSecretParseResult] = parse_secret_keys(
+                keys, mechanism=mechanism
+            )
+        except Exception as exc:  # pragma: no cover - defensive guard
+            bundle.warnings.append(f"HQC parser error: {exc}")
+            return bundle
+        if parsed:
+            bundle.keys = parsed.bitstrings
+            bundle.context.update(parsed.context)
+            bundle.context.setdefault("parser", parsed.parser)
+            bundle.warnings.extend(parsed.warnings)
+            bundle.context.setdefault("parsed_components", "constant_weight_vectors")
+
+    return bundle
 
 
 def derive_model(family: Optional[str], hint: Optional["ParamHint"]) -> KeyAnalysisModel:
@@ -136,6 +186,17 @@ def summarize_secret_keys(
     expected_hd = model.expected_hd_fraction
     per_bit_reference = model.per_bit_reference if model.per_bit_reference is not None else expected_hw
 
+    expected_bits_value: Optional[float]
+    expected_fraction_value: Optional[float]
+    if model.name == "constant_weight" and model.extras.get("w") is not None:
+        expected_bits_value = float(model.extras["w"])
+        expected_fraction_value = (
+            expected_bits_value / float(bit_len) if bit_len > 0 else None
+        )
+    else:
+        expected_bits_value = (expected_hw * bit_len) if expected_hw is not None else None
+        expected_fraction_value = expected_hw
+
     byte_width = len(first)
     max_abs_byte_dev = 0.0
     mean_abs_byte_dev = 0.0
@@ -186,8 +247,8 @@ def summarize_secret_keys(
             "max_fraction": hw_max,
             "mean_bits": hw_mean * bit_len,
             "std_bits": hw_std * bit_len,
-            "expected_fraction": expected_hw,
-            "expected_bits": (expected_hw * bit_len) if expected_hw is not None else None,
+            "expected_fraction": expected_fraction_value,
+            "expected_bits": expected_bits_value,
         },
         "hd": {
             "samples": hd_samples,
@@ -233,6 +294,8 @@ __all__ = [
     "DEFAULT_SECRET_KEY_SAMPLES",
     "DEFAULT_PAIR_SAMPLE_LIMIT",
     "KeyAnalysisModel",
+    "PreparedKeyBundle",
     "derive_model",
+    "prepare_keys_for_analysis",
     "summarize_secret_keys",
 ]
