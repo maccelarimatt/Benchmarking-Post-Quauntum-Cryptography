@@ -508,6 +508,56 @@
     </div>
   </div>
 
+  <!-- Secret-Key Hamming Weight section -->
+  <div class="island">
+    <div class="row-grid-2">
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:.5rem;">Secret-Key Hamming Weight (HW)</div>
+        <div style="opacity:.9; font-size:.92rem; margin-bottom:.35rem;">Mean fraction of 1-bits in secret keys (per algorithm).</div>
+        <canvas id="hw-bar" style="width:100%; height:260px;"></canvas>
+      </div>
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:.5rem;">HW Statistics (fraction)</div>
+        <table class="vlines">
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              <th>Samples</th>
+              <th>Mean</th>
+              <th>Stddev</th>
+              <th>Min</th>
+              <th>Max</th>
+              <th>Expected</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in compare.algos %}
+            {% set ana = a.meta.secret_key_analysis if a.meta and a.meta.secret_key_analysis else None %}
+            {% set hw = ana.hw if ana and ana.hw else None %}
+            <tr>
+              <td>{{ a.label }}</td>
+              <td>{% if ana and compare and compare.runs is not none %}{{ ana.samples or '-' }}{% else %}{% if hw and hw.mean_fraction is not none %}{{ ana.samples or '-' }}{% else %}-{% endif %}{% endif %}</td>
+              <td>{% if hw and hw.mean_fraction is not none %}{{ '%.4f'|format(hw.mean_fraction) }}{% else %}-{% endif %}</td>
+              <td>{% if hw and hw.std_fraction is not none %}{{ '%.4f'|format(hw.std_fraction) }}{% else %}-{% endif %}</td>
+              <td>{% if hw and hw.min_fraction is not none %}{{ '%.4f'|format(hw.min_fraction) }}{% else %}-{% endif %}</td>
+              <td>{% if hw and hw.max_fraction is not none %}{{ '%.4f'|format(hw.max_fraction) }}{% else %}-{% endif %}</td>
+              <td>{% if hw and hw.expected_fraction is not none %}{{ '%.4f'|format(hw.expected_fraction) }}{% else %}-{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="hint" style="margin-top:.5rem; opacity:.85; font-size:.9rem;">Expected depends on scheme/family (uniform random bits ≈0.5; constant‑weight secrets use <code>w/n</code> where <code>w</code> is the weight and <code>n</code> the length).</div>
+        <div style="margin-top:.6rem; font-size:.95rem; line-height:1.4;">
+          <strong>What is Hamming weight?</strong>
+          The Hamming weight of a bitstring is the number of 1‑bits it contains. Normalising by bit length gives a fraction in [0, 1].
+          For uniformly random secrets, the expected fraction is ≈0.5. Some constructions are not uniform; for example, constant‑weight
+          schemes fix exactly <em>w</em> ones among <em>n</em> bits so the expected fraction is <em>w/n</em>. Comparing observed vs expected
+          helps flag RNG or encoding anomalies in key generation.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     (function(){
       const compareData = {{ compare|tojson }};
@@ -549,6 +599,79 @@
                 label: 'HD mean fraction',
                 data: means,
                 backgroundColor: '#1fb6b8',
+              },
+              ...(hasAnyExpected ? [{
+                label: 'Expected fraction',
+                data: expects,
+                backgroundColor: '#ffd166',
+                borderColor: '#ffd166',
+              }] : [])
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                title: { display: true, text: 'Fraction' },
+                beginAtZero: true,
+                suggestedMin: 0,
+                suggestedMax: 1,
+                ticks: { color: '#fff', callback: (v) => (typeof v === 'number' ? v.toFixed(2) : v) }
+              },
+              x: { ticks: { color: '#fff' } }
+            },
+            plugins: {
+              legend: { position: 'bottom', labels: { color: '#fff', usePointStyle: true, boxWidth: 10, boxHeight: 10 } },
+              tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': ' + (typeof ctx.parsed.y === 'number' ? ctx.parsed.y.toFixed(4) : ctx.parsed.y) } }
+            },
+            animation: false,
+            normalized: true,
+          }
+        });
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
+
+  <script>
+    (function(){
+      const compareData = {{ compare|tojson }};
+      const el = document.getElementById('hw-bar');
+      if (!el || !compareData || !Array.isArray(compareData.algos)) return;
+      const rows = [];
+      for (const a of compareData.algos) {
+        const ana = a && a.meta && a.meta.secret_key_analysis;
+        const hw = ana && ana.hw;
+        if (hw && hw.mean_fraction != null) {
+          rows.push({
+            label: a.label || a.name || '?',
+            mean: +hw.mean_fraction,
+            exp: (hw.expected_fraction != null ? +hw.expected_fraction : null)
+          });
+        }
+      }
+      if (!rows.length) {
+        const msg = document.createElement('div');
+        msg.textContent = 'No HW data available for the selected algorithms.';
+        msg.style.opacity = '0.9';
+        msg.style.fontSize = '.95rem';
+        el.parentElement.appendChild(msg);
+        return;
+      }
+      const labels = rows.map(r => r.label);
+      const means = rows.map(r => r.mean);
+      const expects = rows.map(r => r.exp);
+      const hasAnyExpected = expects.some(v => v != null);
+      try {
+        const ctx = el.getContext('2d');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'HW mean fraction',
+                data: means,
+                backgroundColor: '#7ed957',
               },
               ...(hasAnyExpected ? [{
                 label: 'Expected fraction',
