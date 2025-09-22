@@ -15,6 +15,7 @@ from pqcbench.security_estimator import (
     _estimate_dilithium_from_name,
     _estimate_falcon_from_name,
     _estimate_hqc_from_name,
+    _estimate_sphincs_from_name,
     _estimate_kyber_from_name,
     EstimatorOptions,
 )
@@ -103,3 +104,20 @@ def test_hqc_isd_models_present():
     summary = SimpleNamespace(algo="hqc", kind="KEM", meta={"mechanism": "HQC-128"})
     formatted = _standardize_security(summary, sec_dict)
     assert formatted.get("estimates", {}).get("hqc_isd")
+
+
+def test_sphincs_sanity_and_structure():
+    metrics = _estimate_sphincs_from_name("SPHINCS+-SHAKE-128s-simple")
+    sx = metrics.extras["sphincs"]
+    sanity = sx["sanity"]
+    assert sanity["classical_floor_bits"] == float(metrics.classical_bits)
+    assert sanity.get("fors_height") is not None
+    structure = sx.get("structure") or {}
+    assert structure.get("layers") == 7
+    sec_dict = asdict(metrics)
+    sec_dict["extras"] = metrics.extras
+    sec_dict["mechanism"] = "SPHINCS+-SHAKE-128s-simple"
+    summary = SimpleNamespace(algo="sphincsplus", kind="SIG", meta={"mechanism": "SPHINCS+-SHAKE-128s-simple"})
+    formatted = _standardize_security(summary, sec_dict)
+    estimates = formatted.get("estimates", {})
+    assert estimates.get("sanity")

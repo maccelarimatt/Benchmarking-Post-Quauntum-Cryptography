@@ -145,10 +145,10 @@ The HQC path reports category floors in classical_bits/quantum_bits. When (n,k,w
 SPHINCS+ relies only on the security of underlying hash functions (collision and preimage resistance). Forgery boils down to attacks on FORS/WOTS+/Merkle components and thus to hash outputs of length n bits.
 
 ### Estimation approach
-Designers targeted ≈128/192/256 classical bits for standard parameter sets. We therefore report the NIST category floor at top level and attach variant‑specific curated mid/range estimates: e.g., 128s ~133, 128f ~128; 192s ~196, 192f ~194; 256s ~255, 256f ~254 (classical). Quantum attacks do not break hashes, but Grover‑type search halves exponents; we therefore present quantum ≈ classical/2 for context.
+Designers targeted ≈128/192/256 classical bits for standard parameter sets. We therefore report the NIST category floor at top level and attach variant-specific curated mid/range estimates: e.g., 128s ~133, 128f ~128; 192s ~196, 192f ~194; 256s ~255, 256f ~254 (classical). Quantum attacks do not break hashes, but Grover-type search halves exponents; we therefore present quantum ≈ classical/2 for context.
 
 ### Implementation in pqcbench
-The SPHINCS+ path parses the mechanism string (family SHA2/SHAKE; variant s/f; 128/192/256) and attaches hash output size, indicative preimage/collision costs, and curated estimates under extras.sphincs. Top‑level classical_bits = floor; quantum_bits = floor/2 for comparability. See `libs/core/src/pqcbench/security_estimator.py` (`_estimate_sphincs_from_name`).
+The SPHINCS+ path parses the mechanism string (family SHA2/SHAKE; variant s/f; 128/192/256) and attaches hash output size, indicative preimage/collision costs, curated estimates, and a small sanity table (`classical_floor`, `quantum_floor`, hash output bits) under `extras.sphincs`. When the mechanism encodes structure (hypertree height/layers, Winternitz w, FORS t), these are surfaced as well. Top-level classical_bits = floor; quantum_bits = floor/2 for comparability. See `libs/core/src/pqcbench/security_estimator.py` (`_estimate_sphincs_from_name`).
 
 ## XMSS / XMSS^MT (stateful hash‑based)
 

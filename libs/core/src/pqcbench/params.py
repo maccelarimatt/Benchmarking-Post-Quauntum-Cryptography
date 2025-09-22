@@ -91,14 +91,43 @@ _add(["HQC-256-1-CCA2"], family="HQC", category_floor=256,
      extras={"n": 57637, "k": 32, "w": 131, "n1": 90, "n2": 640, "omega": 131, "omega_e": 149, "omega_r": 149, "delta": 29})
 
 # SPHINCS+ (hash-based) — many variants; approximate by suffix
-_add(["SPHINCS+-SHA2-128s-simple", "SPHINCS+-SHA2-128f-simple"], family="SPHINCS+", category_floor=128)
-_add(["SPHINCS+-SHA2-192s-simple", "SPHINCS+-SHA2-192f-simple"], family="SPHINCS+", category_floor=192)
-_add(["SPHINCS+-SHA2-256s-simple", "SPHINCS+-SHA2-256f-simple"], family="SPHINCS+", category_floor=256)
-_add(["SPHINCS+-SHA2-128f-robust"], family="SPHINCS+", category_floor=128)
-_add(["SPHINCS+-SHAKE-128s-simple", "SPHINCS+-SHAKE-128f-simple"], family="SPHINCS+", category_floor=128)
-_add(["SPHINCS+-SHA2-128s-robust", "SPHINCS+-SHA2-192s-robust", "SPHINCS+-SHA2-192f-robust", "SPHINCS+-SHA2-256s-robust", "SPHINCS+-SHA2-256f-robust"], family="SPHINCS+", category_floor=128)
-_add(["SPHINCS+-SHAKE-192s-simple", "SPHINCS+-SHAKE-192f-simple"], family="SPHINCS+", category_floor=192)
-_add(["SPHINCS+-SHAKE-256s-simple", "SPHINCS+-SHAKE-256f-simple"], family="SPHINCS+", category_floor=256)
+_SPHINCS_EXTRAS = {
+    "128s": {"n": 16, "full_height": 63, "layers": 7, "fors_height": 12, "fors_trees": 14, "wots_w": 16},
+    "128f": {"n": 16, "full_height": 66, "layers": 22, "fors_height": 6, "fors_trees": 33, "wots_w": 16},
+    "192s": {"n": 24, "full_height": 63, "layers": 7, "fors_height": 14, "fors_trees": 17, "wots_w": 16},
+    "192f": {"n": 24, "full_height": 66, "layers": 22, "fors_height": 8, "fors_trees": 33, "wots_w": 16},
+    "256s": {"n": 32, "full_height": 64, "layers": 8, "fors_height": 14, "fors_trees": 22, "wots_w": 16},
+    "256f": {"n": 32, "full_height": 68, "layers": 17, "fors_height": 9, "fors_trees": 35, "wots_w": 16},
+}
+
+def _sphincs_extras(tag: str) -> Dict[str, Any]:
+    return dict(_SPHINCS_EXTRAS.get(tag, {}))
+
+
+_add(["SPHINCS+-SHA2-128s-simple"], family="SPHINCS+", category_floor=128, extras=_sphincs_extras("128s"))
+_add(["SPHINCS+-SHA2-128f-simple"], family="SPHINCS+", category_floor=128, extras=_sphincs_extras("128f"))
+_add(["SPHINCS+-SHA2-192s-simple"], family="SPHINCS+", category_floor=192, extras=_sphincs_extras("192s"))
+_add(["SPHINCS+-SHA2-192f-simple"], family="SPHINCS+", category_floor=192, extras=_sphincs_extras("192f"))
+_add(["SPHINCS+-SHA2-256s-simple"], family="SPHINCS+", category_floor=256, extras=_sphincs_extras("256s"))
+_add(["SPHINCS+-SHA2-256f-simple"], family="SPHINCS+", category_floor=256, extras=_sphincs_extras("256f"))
+_add(["SPHINCS+-SHAKE-128s-simple"], family="SPHINCS+", category_floor=128, extras=_sphincs_extras("128s"))
+_add(["SPHINCS+-SHAKE-128f-simple"], family="SPHINCS+", category_floor=128, extras=_sphincs_extras("128f"))
+_add(["SPHINCS+-SHAKE-192s-simple"], family="SPHINCS+", category_floor=192, extras=_sphincs_extras("192s"))
+_add(["SPHINCS+-SHAKE-192f-simple"], family="SPHINCS+", category_floor=192, extras=_sphincs_extras("192f"))
+_add(["SPHINCS+-SHAKE-256s-simple"], family="SPHINCS+", category_floor=256, extras=_sphincs_extras("256s"))
+_add(["SPHINCS+-SHAKE-256f-simple"], family="SPHINCS+", category_floor=256, extras=_sphincs_extras("256f"))
+_add(["SPHINCS+-SHA2-128s-robust"], family="SPHINCS+", category_floor=128, extras=_sphincs_extras("128s"))
+_add(["SPHINCS+-SHA2-128f-robust"], family="SPHINCS+", category_floor=128, extras=_sphincs_extras("128f"))
+_add(["SPHINCS+-SHA2-192s-robust"], family="SPHINCS+", category_floor=192, extras=_sphincs_extras("192s"))
+_add(["SPHINCS+-SHA2-192f-robust"], family="SPHINCS+", category_floor=192, extras=_sphincs_extras("192f"))
+_add(["SPHINCS+-SHA2-256s-robust"], family="SPHINCS+", category_floor=256, extras=_sphincs_extras("256s"))
+_add(["SPHINCS+-SHA2-256f-robust"], family="SPHINCS+", category_floor=256, extras=_sphincs_extras("256f"))
+_add(["SPHINCS+-SHAKE-128s-robust"], family="SPHINCS+", category_floor=128, extras=_sphincs_extras("128s"))
+_add(["SPHINCS+-SHAKE-128f-robust"], family="SPHINCS+", category_floor=128, extras=_sphincs_extras("128f"))
+_add(["SPHINCS+-SHAKE-192s-robust"], family="SPHINCS+", category_floor=192, extras=_sphincs_extras("192s"))
+_add(["SPHINCS+-SHAKE-192f-robust"], family="SPHINCS+", category_floor=192, extras=_sphincs_extras("192f"))
+_add(["SPHINCS+-SHAKE-256s-robust"], family="SPHINCS+", category_floor=256, extras=_sphincs_extras("256s"))
+_add(["SPHINCS+-SHAKE-256f-robust"], family="SPHINCS+", category_floor=256, extras=_sphincs_extras("256f"))
 
 # XMSSMT — security target depends on the parameter set; provide common examples
 _add(["XMSSMT-SHA2_20/2_256"], family="XMSSMT", category_floor=128)

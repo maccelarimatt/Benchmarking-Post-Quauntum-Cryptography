@@ -755,6 +755,30 @@ def _estimate_hqc_from_name(name: str, opts: Optional[EstimatorOptions]) -> SecM
     )
 
 
+def _sphincs_parse_layers(name: str) -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
+    import re
+
+    hl_match = re.search(r"_(\d+)/(\d+)_", name)
+    if hl_match:
+        out["layers"] = int(hl_match.group(2))
+        out["hypertree_height"] = int(hl_match.group(1))
+    else:
+        ht_match = re.search(r"_(\d+)_", name)
+        if ht_match:
+            out["hypertree_height"] = int(ht_match.group(1))
+
+    fors_match = re.search(r"f(\d+)", name, re.IGNORECASE)
+    if fors_match:
+        out["fors_trees"] = int(fors_match.group(1))
+
+    w_match = re.search(r"_w(\d+)", name, re.IGNORECASE)
+    if w_match:
+        out["winternitz_w"] = int(w_match.group(1))
+
+    return out
+
+
 def _estimate_sphincs_from_name(name: str) -> SecMetrics:
     """Enriched estimator for SPHINCS+ (stateless hash-based signatures).
 
@@ -798,6 +822,45 @@ def _estimate_sphincs_from_name(name: str) -> SecMetrics:
     curated_lo = curated_mid - 2.0
     curated_hi = curated_mid + 2.0
 
+    structure = {k: v for k, v in _sphincs_parse_layers(name).items() if v is not None}
+    hint_extras: Dict[str, Any] = {}
+    try:
+        from pqcbench.params import find as find_params  # type: ignore
+        ph = find_params(name)
+        if ph and ph.extras:
+            hint_extras = dict(ph.extras)
+    except Exception:
+        hint_extras = {}
+
+    if hint_extras:
+        if "full_height" in hint_extras:
+            structure.setdefault("hypertree_height", hint_extras.get("full_height"))
+        if "layers" in hint_extras:
+            structure.setdefault("layers", hint_extras.get("layers"))
+        if "wots_w" in hint_extras:
+            structure.setdefault("winternitz_w", hint_extras.get("wots_w"))
+        if "fors_trees" in hint_extras:
+            structure.setdefault("fors_trees", hint_extras.get("fors_trees"))
+        if "fors_height" in hint_extras:
+            structure.setdefault("fors_height", hint_extras.get("fors_height"))
+
+    if hint_extras:
+        for key in list(structure.keys()):
+            if structure[key] is None:
+                structure.pop(key)
+        hint_struct = {
+            "hypertree_height": hint_extras.get("full_height"),
+            "layers": hint_extras.get("layers"),
+            "winternitz_w": hint_extras.get("wots_w"),
+            "fors_trees": hint_extras.get("fors_trees"),
+            "fors_height": hint_extras.get("fors_height"),
+        }
+        for k, v in hint_struct.items():
+            if v is not None and k not in structure:
+                structure[k] = v
+
+    structure = {k: v for k, v in structure.items() if v is not None}
+
     extras = {
         "category_floor": floor,
         "nist_category": {128: 1, 192: 3, 256: 5}.get(int(floor), None),
@@ -816,6 +879,15 @@ def _estimate_sphincs_from_name(name: str) -> SecMetrics:
                 "quantum_bits_mid": round(curated_mid / 2.0, 1),
                 "quantum_bits_range": [round(curated_lo / 2.0, 1), round(curated_hi / 2.0, 1)],
             },
+            "structure": structure or None,
+            "sanity": {
+                "classical_floor_bits": float(floor),
+                "quantum_floor_bits": float(floor) / 2.0,
+                "hash_output_bits": n_bits,
+                "fors_height": hint_extras.get("fors_height"),
+                "fors_trees": hint_extras.get("fors_trees"),
+            },
+            "hint_params": hint_extras or None,
         },
     }
 

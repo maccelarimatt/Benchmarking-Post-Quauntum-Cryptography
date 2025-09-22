@@ -904,6 +904,18 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
             estimates["curated"] = sx.get("curated_estimates")
         if sx.get("hash_costs"):
             estimates["hash_costs"] = sx.get("hash_costs")
+        sanity = sx.get("sanity")
+        if sanity:
+            estimates["sanity"] = sanity
+        structure = sx.get("structure")
+        if structure:
+            out.setdefault("parameters", {}).update({
+                "layers": structure.get("layers"),
+                "hypertree_height": structure.get("hypertree_height"),
+                "fors_trees": structure.get("fors_trees"),
+                "fors_height": structure.get("fors_height"),
+                "winternitz_w": structure.get("winternitz_w"),
+            })
     elif algo == "xmssmt":
         xx = extras.get("xmss") or {}
         if xx.get("hash_costs"):
