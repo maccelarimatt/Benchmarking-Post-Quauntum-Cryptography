@@ -558,6 +558,113 @@
     </div>
   </div>
 
+  <!-- Security Analysis section -->
+  <div class="island">
+    <div class="row-grid-2">
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:.5rem;">Classical Security (bits)</div>
+        <div style="opacity:.9; font-size:.92rem; margin-bottom:.35rem;">Estimated classical attack cost per algorithm.</div>
+        <canvas id="sec-classical" style="width:100%; height:260px;"></canvas>
+      </div>
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:.5rem;">Quantum Security (bits)</div>
+        <div style="opacity:.9; font-size:.92rem; margin-bottom:.35rem;">Estimated quantum attack cost per algorithm.</div>
+        <canvas id="sec-quantum" style="width:100%; height:260px;"></canvas>
+      </div>
+    </div>
+    <div class="card" style="margin-top:1.25rem;">
+      <div style="font-weight:700; margin-bottom:.5rem;">Security Summary</div>
+      <table class="vlines">
+        <thead>
+          <tr>
+            <th>Algorithm</th>
+            <th>NIST category</th>
+            <th>Category floor</th>
+            <th>Classical bits</th>
+            <th>Quantum bits</th>
+            <th>Shor breakable</th>
+            <th>Estimator</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in compare.algos %}
+          {% set s = a.security if a.security else {} %}
+          {% set est = s.estimator if s and s.estimator else {} %}
+          <tr>
+            <td>{{ a.label }}</td>
+            <td>{% if s.nist_category is not none %}{{ s.nist_category }}{% else %}-{% endif %}</td>
+            <td>{% if s.category_floor is not none %}{{ s.category_floor }}{% else %}-{% endif %}</td>
+            <td>{% if s.classical_bits is number %}{{ '%.2f'|format(s.classical_bits) }}{% else %}-{% endif %}</td>
+            <td>{% if s.quantum_bits is number %}{{ '%.2f'|format(s.quantum_bits) }}{% else %}-{% endif %}</td>
+            <td>
+              {% if s.shor_breakable is not none %}
+                {% if s.shor_breakable %}<span style="color:#ffb3b3;">Yes</span>{% else %}<span style="color:#b3ffb3;">No</span>{% endif %}
+              {% else %}-{% endif %}
+            </td>
+            <td>{% if est.name %}{{ est.name }}{% else %}-{% endif %}{% if est.profile %} <span class="kv-sub">({{ est.profile }})</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div style="margin-top:.6rem; font-size:.95rem; line-height:1.4;">
+        <strong>How to read this:</strong> “Bits” are estimated work factors: higher is better (harder to break). Classical bits approximate cost under classical attacks; quantum bits under realistic quantum models. “Shor breakable” highlights schemes vulnerable to Shor’s algorithm (e.g., RSA, ECC). Values depend on estimator settings (profile, physical error rates, etc.).
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const data = {{ compare|tojson }};
+      const algos = Array.isArray(data.algos) ? data.algos : [];
+      const labels = [];
+      const classical = [];
+      const quantum = [];
+      for (const a of algos) {
+        const s = a && a.security || {};
+        const cb = (typeof s.classical_bits === 'number') ? s.classical_bits : null;
+        const qb = (typeof s.quantum_bits === 'number') ? s.quantum_bits : null;
+        labels.push(a.label || a.name || '?');
+        classical.push(cb);
+        quantum.push(qb);
+      }
+      function buildBar(elId, ds, color, title){
+        const el = document.getElementById(elId);
+        if (!el) return;
+        const filtered = ds.map((v) => (typeof v === 'number' ? v : null));
+        if (filtered.every(v => v == null)) {
+          const msg = document.createElement('div');
+          msg.textContent = 'No data available.';
+          msg.style.opacity = '0.9';
+          msg.style.fontSize = '.95rem';
+          el.parentElement.appendChild(msg);
+          return;
+        }
+        try {
+          const ctx = el.getContext('2d');
+          new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels,
+              datasets: [{ label: title, data: filtered, backgroundColor: color }]
+            },
+            options: {
+              responsive: true,
+              scales: {
+                y: { beginAtZero: true, title: { display: true, text: 'Bits' }, ticks: { color:'#fff' } },
+                x: { ticks: { color:'#fff' } }
+              },
+              plugins: { legend: { display: false } },
+              animation: false,
+              normalized: true,
+            }
+          });
+        } catch (e) {}
+      }
+      buildBar('sec-classical', classical, '#4d9dff', 'Classical bits');
+      buildBar('sec-quantum', quantum, '#c792ea', 'Quantum bits');
+    })();
+  </script>
+
   <script>
     (function(){
       const compareData = {{ compare|tojson }};
@@ -791,6 +898,9 @@
               <div style="opacity:.8;">No JSON export available.</div>
             {% endif %}
             {% set inline_export = { 'algo': a.name, 'kind': compare.kind, 'ops': a.ops, 'meta': a.meta } %}
+            {% if a.meta and a.meta.validation %}
+              {% set _ = inline_export.update({'validation': a.meta.validation}) %}
+            {% endif %}
             <details style="margin-top:.5rem;">
               <summary style="cursor:pointer;">Inline JSON</summary>
               <pre style="white-space:pre-wrap; word-break:break-word; background:rgba(0,0,0,0.3); padding:0.75rem; border-radius:0.5rem; max-height:40vh; overflow:auto; margin-top:.45rem;">{{ inline_export | tojson(indent=2) }}</pre>

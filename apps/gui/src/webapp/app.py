@@ -60,6 +60,7 @@ try:
         export_trace_kem,
         export_trace_sig,
         _build_export_payload,
+        run_acvp_validation,
     )
 except Exception:
     # If CLI package isn't installed, try best-effort import of adapters directly
@@ -67,6 +68,7 @@ except Exception:
     run_kem = run_sig = export_json = None  # type: ignore
     export_trace_kem = export_trace_sig = None  # type: ignore
     _build_export_payload = None  # type: ignore
+    run_acvp_validation = None  # type: ignore
 
 app = Flask(__name__, template_folder="../templates", static_folder="../static")
 
@@ -364,6 +366,8 @@ def _handle_run_submission(form: Mapping[str, Any]):
     do_export = str(form.get("do_export") or "").lower() in ("on", "true", "1", "yes")
     do_export_trace = str(form.get("do_export_trace") or "").lower() in ("on", "true", "1", "yes")
     export_trace_path = (form.get("export_trace_path", "") or "")
+    # Optional ACVP tests toggle
+    do_tests = str(form.get("tests") or "").lower() in ("on", "true", "1", "yes")
 
     result: Dict[str, Any] | None = None
     trace_sections: list[dict[str, Any]] | None = None
@@ -382,9 +386,19 @@ def _handle_run_submission(form: Mapping[str, Any]):
         else:
             raise RuntimeError(f"Unknown or unsupported algorithm: {name}")
 
+        validation = None
+        if do_tests and run_acvp_validation is not None:
+            try:
+                validation, _logs = run_acvp_validation(summary)  # type: ignore[misc]
+                # Also attach into meta so it shows in compare inline JSON if needed
+                if isinstance(summary.meta, dict):
+                    summary.meta.setdefault("validation", validation)
+            except Exception:
+                validation = None
+
         if do_export:
             out_path = export_path.strip() or f"results/{name.replace('+','plus')}.json"
-            export_json(summary, out_path, security_opts=security_opts)  # type: ignore[misc]
+            export_json(summary, out_path, security_opts=security_opts, validation=validation)  # type: ignore[misc]
             last_export = out_path
 
         if do_export_trace:
@@ -396,7 +410,7 @@ def _handle_run_submission(form: Mapping[str, Any]):
 
         # Build base result payload
         if _build_export_payload is not None:
-            result = _build_export_payload(summary, security_opts=security_opts)
+            result = _build_export_payload(summary, security_opts=security_opts, validation=validation)
         else:
             result = {
                 "algo": summary.algo,
@@ -405,6 +419,8 @@ def _handle_run_submission(form: Mapping[str, Any]):
                 "meta": summary.meta,
             }
             result["security"] = {"error": "security estimator unavailable"}
+            if validation is not None:
+                result["validation"] = validation
 
         # Enrich with backend/mechanism details for display
         try:
@@ -537,6 +553,10 @@ def _handle_compare_submission(form: Mapping[str, Any]):
     except Exception:
         message_size = 1024
 
+    # Security + tests options
+    security_form, security_opts = _parse_security_form(form)
+    do_tests = str(form.get("tests") or "").lower() in ("on", "true", "1", "yes")
+
     def _getlist(key: str) -> list[str]:
         getter = getattr(form, "getlist", None)
         if callable(getter):
@@ -586,7 +606,16 @@ def _handle_compare_submission(form: Mapping[str, Any]):
             # Export per-algorithm JSON + one-run trace for quick access on the compare page
             try:
                 json_path = f"results/{algo_name.replace('+','plus')}_{kind.lower()}_compare.json"
-                export_json(summary, json_path)  # type: ignore[misc]
+                validation = None
+                if do_tests and run_acvp_validation is not None:
+                    try:
+                        validation, _logs = run_acvp_validation(summary)  # type: ignore[misc]
+                    except Exception:
+                        validation = None
+                # Attach validation to meta for inline visibility
+                if validation is not None and isinstance(summary.meta, dict):
+                    summary.meta.setdefault("validation", validation)
+                export_json(summary, json_path, security_opts=security_opts, validation=validation)  # type: ignore[misc]
             except Exception:
                 json_path = None  # type: ignore[assignment]
             try:
@@ -609,21 +638,26 @@ def _handle_compare_submission(form: Mapping[str, Any]):
             errors[algo_name] = str(exc)
 
     display_names = _display_names(selected)
+    algos_out = []
+    for summary in results:
+        try:
+            sec = _build_export_payload(summary, security_opts=security_opts).get("security") if _build_export_payload else None
+        except Exception:
+            sec = None
+        algos_out.append({
+            "name": summary.algo,
+            "label": display_names.get(summary.algo, summary.algo),
+            "ops": {k: asdict(v) for k, v in summary.ops.items()},
+            "meta": summary.meta,
+            "security": sec,
+            "exports": (summary.meta.get("exports") if isinstance(summary.meta, dict) else {}),
+        })
     compare = {
         "kind": kind,
         "runs": runs,
         "message_size": message_size,
         "mode": ("cold" if cold else "warm"),
-        "algos": [
-            {
-                "name": summary.algo,
-                "label": display_names.get(summary.algo, summary.algo),
-                "ops": {k: asdict(v) for k, v in summary.ops.items()},
-                "meta": summary.meta,
-                "exports": (summary.meta.get("exports") if isinstance(summary.meta, dict) else {}),
-            }
-            for summary in results
-        ],
+        "algos": algos_out,
     }
     return render_template("compare_results.html", compare=compare, errors=errors)
 
@@ -696,6 +730,9 @@ def execute_async():
                 message_size = int(form.get("message_size", "1024"))
             except Exception:
                 message_size = 1024
+            # Parse security + tests
+            _security_form, security_opts = _parse_security_form(form)
+            do_tests = str(form.get("tests") or "").lower() in ("on", "true", "1", "yes")
 
             def _getlist(key: str) -> list[str]:
                 getter = getattr(form, "getlist", None)
@@ -769,27 +806,57 @@ def execute_async():
                         summary = run_kem(algo_name, runs, cold=cold, progress=_progress)  # type: ignore[misc]
                     else:
                         summary = run_sig(algo_name, runs, message_size, cold=cold, progress=_progress)  # type: ignore[misc]
+                    # Optional ACVP validation
+                    validation = None
+                    if do_tests and run_acvp_validation is not None:
+                        try:
+                            validation, _logs = run_acvp_validation(summary)  # type: ignore[misc]
+                        except Exception:
+                            validation = None
+                    if validation is not None and isinstance(summary.meta, dict):
+                        summary.meta.setdefault("validation", validation)
+                    # Export artifacts for parity with sync compare
+                    try:
+                        json_path = f"results/{algo_name.replace('+','plus')}_{kind.lower()}_compare.json"
+                        export_json(summary, json_path, security_opts=security_opts, validation=validation)  # type: ignore[misc]
+                        summary.meta.setdefault("exports", {})["json"] = json_path
+                    except Exception:
+                        pass
+                    try:
+                        trace_path = f"results/{algo_name.replace('+','plus')}_{kind.lower()}_compare_trace.json"
+                        if kind == "KEM":
+                            export_trace_kem(algo_name, trace_path)  # type: ignore[misc]
+                        else:
+                            export_trace_sig(algo_name, message_size, trace_path)  # type: ignore[misc]
+                        summary.meta.setdefault("exports", {})["trace"] = trace_path
+                    except Exception:
+                        pass
                     results.append(summary)
                 except Exception as exc:
                     errors[algo_name] = str(exc)
 
             _update_job(jid, stage="Compiling Results", detail="", percent=99)
             display_names = _display_names([s.algo for s in results])
+            algos_out = []
+            for summary in results:
+                try:
+                    sec = _build_export_payload(summary, security_opts=security_opts).get("security") if _build_export_payload else None
+                except Exception:
+                    sec = None
+                algos_out.append({
+                    "name": summary.algo,
+                    "label": display_names.get(summary.algo, summary.algo),
+                    "ops": {k: asdict(v) for k, v in summary.ops.items()},
+                    "meta": summary.meta,
+                    "security": sec,
+                    "exports": (summary.meta.get("exports") if isinstance(summary.meta, dict) else {}),
+                })
             compare = {
                 "kind": kind,
                 "runs": runs,
                 "message_size": message_size,
                 "mode": ("cold" if cold else "warm"),
-                "algos": [
-                    {
-                        "name": summary.algo,
-                        "label": display_names.get(summary.algo, summary.algo),
-                        "ops": {k: asdict(v) for k, v in summary.ops.items()},
-                        "meta": summary.meta,
-                        "exports": (summary.meta.get("exports") if isinstance(summary.meta, dict) else {}),
-                    }
-                    for summary in results
-                ],
+                "algos": algos_out,
             }
             with JobsLock:
                 job = Jobs.get(jid)
@@ -825,6 +892,7 @@ def execute_async():
             do_export = str(form.get("do_export") or "").lower() in ("on", "true", "1", "yes")
             do_export_trace = str(form.get("do_export_trace") or "").lower() in ("on", "true", "1", "yes")
             export_trace_path = (form.get("export_trace_path", "") or "")
+            do_tests = str(form.get("tests") or "").lower() in ("on", "true", "1", "yes")
 
             result: Dict[str, Any] | None = None
             trace_sections: list[dict[str, Any]] | None = None
@@ -864,11 +932,19 @@ def execute_async():
                 summary = run_sig(name, runs, message_size, cold=cold, progress=_progress)  # type: ignore[misc]
             else:
                 raise RuntimeError(f"Unknown or unsupported algorithm: {name}")
+            validation = None
+            if do_tests and run_acvp_validation is not None:
+                try:
+                    validation, _logs = run_acvp_validation(summary)  # type: ignore[misc]
+                except Exception:
+                    validation = None
+            if validation is not None and isinstance(summary.meta, dict):
+                summary.meta.setdefault("validation", validation)
 
             _update_job(jid, stage="Compiling Results", detail="", percent=99)
             if do_export:
                 out_path = export_path.strip() or f"results/{name.replace('+','plus')}.json"
-                export_json(summary, out_path, security_opts=security_opts)  # type: ignore[misc]
+                export_json(summary, out_path, security_opts=security_opts, validation=validation)  # type: ignore[misc]
                 last_export = out_path
 
             if do_export_trace:
@@ -879,7 +955,7 @@ def execute_async():
                     export_trace_sig(name, message_size, raw_path)  # type: ignore[misc]
 
             if _build_export_payload is not None:
-                result = _build_export_payload(summary, security_opts=security_opts)
+                result = _build_export_payload(summary, security_opts=security_opts, validation=validation)
             else:
                 result = {
                     "algo": summary.algo,
@@ -888,6 +964,8 @@ def execute_async():
                     "meta": summary.meta,
                 }
                 result["security"] = {"error": "security estimator unavailable"}
+                if validation is not None:
+                    result["validation"] = validation
 
             try:
                 cls = registry.get(name)
