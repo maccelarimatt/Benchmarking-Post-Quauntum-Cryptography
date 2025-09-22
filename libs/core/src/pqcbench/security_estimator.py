@@ -1296,23 +1296,66 @@ def _estimate_mayo_from_name(name: str) -> SecMetrics:
                 "vinegar": ex.get("vinegar"),
                 "k_submaps": ex.get("k"),
             }
-            # Heuristic checks (documented; non-fatal unless blatantly broken)
             n = int(ex.get("n", 0) or 0)
             m = int(ex.get("m", 0) or 0)
             q = int(ex.get("q", 0) or 0)
             o = int(ex.get("oil", 0) or 0)
+            v = int(ex.get("vinegar", 0) or 0)
+            log2_q = math.log2(q) if q > 1 else None
+
             underdef_ks = (n >= m * (m + 1)) if (n and m) else False
+            ks_margin = (m * (m + 1) - n) if (n and m) else None
             underdef_miura = (n >= (m * (m + 3)) // 2) if (n and m) else False
-            oil_guess_bits = (o * math.log2(q)) if (o and q) else None
+            miura_margin = ((m * (m + 3)) // 2 - n) if (n and m) else None
+
+            oil_guess_bits = (o * log2_q) if (o and log2_q is not None) else None
+
+            rank_bits = None
+            rank_risk = None
+            if o and v and log2_q is not None:
+                rank_bits = max(0.0, (v - o) * o * log2_q / max(1.0, v))
+                rank_risk = "high" if rank_bits < 60 else ("medium" if rank_bits < 90 else "low")
+
+            minrank_bits = None
+            if o and log2_q is not None:
+                minrank_bits = ((o + 1) / 2.0) * log2_q
+
+            f4_degree = None
+            f4_risk = None
+            if n and m:
+                f4_degree = max(2, math.ceil((n + o) / max(1, o + 1)))
+                if f4_degree <= 6:
+                    f4_risk = "high"
+                elif f4_degree <= 8:
+                    f4_risk = "medium"
+                else:
+                    f4_risk = "low"
+
             extras["mayo"] = {
                 "params": mayo_params,
                 "checks": {
-                    "underdefined_ks": underdef_ks,
-                    "underdefined_miura": underdef_miura,
+                    "relinearization": {
+                        "underdefined_ks": underdef_ks,
+                        "ks_margin": ks_margin,
+                        "underdefined_miura": underdef_miura,
+                        "miura_margin": miura_margin,
+                    },
                     "oil_guess_bits": oil_guess_bits,
+                    "rank_attack": {
+                        "bits": rank_bits,
+                        "risk": rank_risk,
+                    },
+                    "minrank": {
+                        "bits": minrank_bits,
+                        "rank": (o + 1) if o else None,
+                    },
+                    "f4": {
+                        "degree": f4_degree,
+                        "risk": f4_risk,
+                    },
                     "notes": (
-                        "Whipping construction is intended to invalidate naive oil-guessing;"
-                        " checks are informational and do not override floors."
+                        "Whipping construction aims to resist naive oil guessing and rank attacks;"
+                        " these heuristics are qualitative flags only."
                     ),
                 },
             }

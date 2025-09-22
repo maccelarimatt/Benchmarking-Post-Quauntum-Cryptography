@@ -167,10 +167,10 @@ We parse the mechanism string to recover hash output size n and (for XMSSMT) tre
 MAYO follows the multivariate (MQ) paradigm, related to UOV‑style schemes. Forgery reduces to solving systems of quadratic equations over GF(q). Best‑known attacks include Gröbner basis (F4/F5), relinearization/XL family, and structure‑specific strategies. Hardness depends on variables n, equations m, field size q, and oil/vinegar partition; random systems are hardest near m≈n.
 
 ### Estimation approach
-Designers choose parameters to meet NIST levels. Without an integrated MQ estimator, pqcbench reports the category floor and attaches heuristic checks when parameters are available: (i) underdefined thresholds (Kipnis–Shamir n≥m(m+1), Miura n≥m(m+3)/2), and (ii) naive oil‑guess cost q^o expressed in bits (informational only; MAYO’s “whipping” aims to invalidate simple oil guessing). If any underdefined threshold is met, treat as a red flag for insecurity.
+Designers choose parameters to meet NIST levels. Without an integrated MQ estimator, pqcbench reports the category floor and attaches heuristic checks when parameters are available: (i) underdefined thresholds (Kipnis–Shamir n≥m(m+1), Miura n≥m(m+3)/2), (ii) naive oil‑guess cost q^o expressed in bits, (iii) qualitative rank-attack indicators (bits + low/medium/high flags), and (iv) MinRank/F4 heuristics (approximate bit costs and degree-of-regularity warnings). These do not replace full MQ cryptanalysis but highlight obviously risky inputs even though MAYO’s “whipping” structure aims to blunt simple attacks.
 
 ### Implementation in pqcbench
-Top‑level classical_bits and quantum_bits equal the category floor for MAYO levels. Extras include any provided parameters and the results of the above checks under extras.mayo. See `libs/core/src/pqcbench/security_estimator.py` (`_estimate_mayo_from_name`).
+Top‑level classical_bits and quantum_bits equal the category floor for MAYO levels. Extras include any provided parameters and the full qualitative flag table (extras.mayo.checks). See `libs/core/src/pqcbench/security_estimator.py` (`_estimate_mayo_from_name`).
 
 ## Implementation status
 

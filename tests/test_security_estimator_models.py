@@ -16,6 +16,7 @@ from pqcbench.security_estimator import (
     _estimate_falcon_from_name,
     _estimate_hqc_from_name,
     _estimate_rsa_from_meta,
+    _estimate_mayo_from_name,
     _estimate_sphincs_from_name,
     _estimate_kyber_from_name,
     EstimatorOptions,
@@ -122,6 +123,20 @@ def test_sphincs_sanity_and_structure():
     formatted = _standardize_security(summary, sec_dict)
     estimates = formatted.get("estimates", {})
     assert estimates.get("sanity")
+
+
+def test_mayo_checks_present():
+    metrics = _estimate_mayo_from_name("MAYO-1")
+    mayo = metrics.extras.get("mayo", {})
+    checks = mayo.get("checks", {})
+    assert "rank_attack" in checks and checks["rank_attack"].get("risk")
+    assert "minrank" in checks and checks["minrank"].get("bits") is not None
+    sec_dict = asdict(metrics)
+    sec_dict["extras"] = metrics.extras
+    sec_dict["mechanism"] = "MAYO-1"
+    summary = SimpleNamespace(algo="mayo", kind="SIG", meta={"mechanism": "MAYO-1"})
+    formatted = _standardize_security(summary, sec_dict)
+    assert formatted.get("estimates", {}).get("checks")
 
 
 def test_rsa_shor_profiles_present():
