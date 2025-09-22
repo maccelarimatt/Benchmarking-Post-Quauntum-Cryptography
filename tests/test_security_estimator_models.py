@@ -15,6 +15,7 @@ from pqcbench.security_estimator import (
     _estimate_dilithium_from_name,
     _estimate_falcon_from_name,
     _estimate_hqc_from_name,
+    _estimate_rsa_from_meta,
     _estimate_sphincs_from_name,
     _estimate_kyber_from_name,
     EstimatorOptions,
@@ -121,3 +122,16 @@ def test_sphincs_sanity_and_structure():
     formatted = _standardize_security(summary, sec_dict)
     estimates = formatted.get("estimates", {})
     assert estimates.get("sanity")
+
+
+def test_rsa_shor_profiles_present():
+    metrics = _estimate_rsa_from_meta("SIG", {"signature_len": 256}, EstimatorOptions())
+    profiles = metrics.extras.get("shor_profiles")
+    assert profiles
+    moduli = profiles.get("moduli", [])
+    bits_list = [entry.get("modulus_bits") for entry in moduli]
+    assert set([2048, 3072, 4096]).issubset(set(bits_list))
+    first_entry = moduli[0]
+    scenarios = first_entry.get("scenarios")
+    assert scenarios and {s.get("label") for s in scenarios} == {"optimistic", "median", "conservative"}
+    assert "phys_qubits_total" in scenarios[0]

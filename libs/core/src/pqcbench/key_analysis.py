@@ -18,6 +18,13 @@ except Exception:  # pragma: no cover - parser availability verified at runtime.
     HQCSecretParseResult = None  # type: ignore
     parse_secret_keys = None  # type: ignore
 
+try:
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+except Exception:  # pragma: no cover - cryptography optional at runtime
+    serialization = None  # type: ignore
+    rsa = None  # type: ignore
+
 _BYTE_POPCOUNT = tuple(bin(i).count("1") for i in range(256))
 
 # Keep sampling modest so CLI runs stay responsive.
@@ -74,7 +81,9 @@ def prepare_keys_for_analysis(
     if not keys:
         return bundle
 
-    if family and family.upper() == "HQC" and parse_secret_keys is not None:
+    fam = (family or "").upper()
+
+    if fam == "HQC" and parse_secret_keys is not None:
         try:
             parsed: Optional[HQCSecretParseResult] = parse_secret_keys(
                 keys, mechanism=mechanism
@@ -88,6 +97,27 @@ def prepare_keys_for_analysis(
             bundle.context.setdefault("parser", parsed.parser)
             bundle.warnings.extend(parsed.warnings)
             bundle.context.setdefault("parsed_components", "constant_weight_vectors")
+
+    elif fam == "RSA" and serialization is not None and rsa is not None:
+        parsed_keys: List[bytes] = []
+        for idx, raw in enumerate(keys):
+            try:
+                sk = serialization.load_der_private_key(raw, password=None)
+            except Exception as exc:
+                bundle.warnings.append(f"RSA key {idx} parse error: {exc}")
+                continue
+            if not isinstance(sk, rsa.RSAPrivateKey):
+                bundle.warnings.append(f"RSA key {idx} type mismatch ({type(sk)!r})")
+                continue
+            numbers = sk.private_numbers()
+            modulus = numbers.public_numbers.n
+            priv_exp = numbers.d
+            n_bytes = (modulus.bit_length() + 7) // 8
+            parsed_keys.append(priv_exp.to_bytes(n_bytes, "big"))
+        if parsed_keys:
+            bundle.keys = parsed_keys
+            bundle.context.setdefault("parser", "rsa_private_exponent_v1")
+            bundle.context.setdefault("parsed_components", "private_exponent")
 
     return bundle
 

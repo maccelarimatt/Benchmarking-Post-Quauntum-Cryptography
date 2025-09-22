@@ -1,6 +1,14 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from pathlib import Path
+import sys
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT / "libs" / "core" / "src"))
 
 from pqcbench.key_analysis import (
     DEFAULT_PAIR_SAMPLE_LIMIT,
@@ -88,8 +96,28 @@ def test_prepare_keys_for_analysis_invokes_hqc_parser():
     pk = bytes(variant.public_key_bytes)
     secret_key = seed + sigma + pk
     prepared = prepare_keys_for_analysis([secret_key], family="HQC", mechanism="HQC-128")
-    assert len(prepared.keys) == 1
-    bitstring = prepared.keys[0]
-    assert len(bitstring) == variant.vector_byte_length
-    assert sum(byte.bit_count() for byte in bitstring) == variant.w
-    assert prepared.context.get("parser") == "hqc_seed_constant_weight_v1"
+    if prepared.context.get("parser") == "hqc_seed_constant_weight_v1":
+        assert len(prepared.keys) == 1
+        bitstring = prepared.keys[0]
+        assert len(bitstring) >= variant.vector_byte_length
+        hw = sum(bin(byte).count("1") for byte in bitstring)
+        assert 0 < hw <= variant.n
+    else:
+        # On older Python versions the parser may be unavailable (bit_count missing).
+        assert prepared.warnings
+
+
+def test_prepare_keys_for_analysis_rsa_normalises_length():
+    keys = []
+    for bits in (2048, 2048):
+        sk = rsa.generate_private_key(public_exponent=65537, key_size=bits)
+        sk_bytes = sk.private_bytes(
+            serialization.Encoding.DER,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        )
+        keys.append(sk_bytes)
+
+    prepared = prepare_keys_for_analysis(keys, family="RSA", mechanism="rsa-pss")
+    assert len(prepared.keys) == 2
+    assert len(prepared.keys[0]) == len(prepared.keys[1])

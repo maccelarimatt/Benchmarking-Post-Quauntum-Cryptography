@@ -425,6 +425,51 @@ def _apply_quantum_arch_presets(opts: EstimatorOptions | None) -> EstimatorOptio
     return opts
 
 
+def _shor_logical_resources(
+    n_bits: int,
+    qubit_coeff: float,
+    toffoli_coeff: float,
+    depth_coeff: float,
+    t_per_toffoli: float,
+) -> Dict[str, float]:
+    Q = qubit_coeff * n_bits
+    toffoli = toffoli_coeff * (n_bits ** 3)
+    depth = depth_coeff * (n_bits ** 2) * max(1.0, math.log2(max(2, n_bits)))
+    t_count = toffoli * t_per_toffoli
+    return {
+        "modulus_bits": n_bits,
+        "logical_qubits": Q,
+        "toffoli": toffoli,
+        "meas_depth": depth,
+        "t_count": t_count,
+    }
+
+
+def _shor_surface_overhead(
+    logical: Dict[str, float],
+    p_phys: float,
+    cycle_time_ns: float,
+    target_fail: float,
+    kq: float = 2.0,
+) -> Dict[str, float | int]:
+    p_th = 1e-2
+    cycles = max(logical["toffoli"], logical["meas_depth"])
+    target = max(1e-18, target_fail / 10.0 / max(1.0, cycles))
+    base = max(1e-12, p_phys / p_th)
+    if base >= 1.0:
+        d = 100
+    else:
+        exp = math.log(target / 0.1, base)
+        d = max(3, int(2 * exp - 1))
+    phys_qubits = int(kq * (d ** 2) * logical["logical_qubits"])
+    runtime_s = logical["meas_depth"] * d * (cycle_time_ns * 1e-9)
+    return {
+        "code_distance": d,
+        "phys_qubits_total": phys_qubits,
+        "runtime_seconds": runtime_s,
+    }
+
+
 def _estimate_rsa_from_meta(kind: str, meta: Dict[str, Any], opts: Optional[EstimatorOptions]) -> SecMetrics:
     """Security estimate for RSA variants (PSS, OAEP).
 
@@ -491,6 +536,33 @@ def _estimate_rsa_from_meta(kind: str, meta: Dict[str, Any], opts: Optional[Esti
     t_per_toffoli = 7.0
     t_count = toffoli * t_per_toffoli
 
+    scenarios = [
+        {
+            "label": "optimistic",
+            "phys_error_rate": 5e-4,
+            "cycle_time_ns": 200.0,
+            "target_total_fail_prob": 1e-3,
+        },
+        {
+            "label": "median",
+            "phys_error_rate": 1e-3,
+            "cycle_time_ns": 1000.0,
+            "target_total_fail_prob": 1e-2,
+        },
+        {
+            "label": "conservative",
+            "phys_error_rate": 2e-3,
+            "cycle_time_ns": 5000.0,
+            "target_total_fail_prob": 1e-1,
+        },
+    ]
+
+    modulus_set = sorted({2048, 3072, 4096, n_bits})
+    logical_entries = {
+        bits: _shor_logical_resources(bits, qubit_coeff, toffoli_coeff, depth_coeff, t_per_toffoli)
+        for bits in modulus_set
+    }
+
     metrics = SecMetrics(
         classical_bits=float(_rsa_classical_strength(n_bits)),
         quantum_bits=0.0,  # Shor polynomial-time break → effectively 0-bit quantum security
@@ -510,6 +582,42 @@ def _estimate_rsa_from_meta(kind: str, meta: Dict[str, Any], opts: Optional[Esti
             "rsa_model": (opts.rsa_model if opts and opts.rsa_model else "ge2019"),
         },
     )
+
+    scenario_entries = []
+    for bits in modulus_set:
+        logical = logical_entries[bits]
+        profiles = []
+        for scenario in scenarios:
+            overhead = _shor_surface_overhead(
+                logical,
+                p_phys=scenario["phys_error_rate"],
+                cycle_time_ns=scenario["cycle_time_ns"],
+                target_fail=scenario["target_total_fail_prob"],
+            )
+            profile = {
+                "label": scenario["label"],
+                "phys_error_rate": scenario["phys_error_rate"],
+                "cycle_time_ns": scenario["cycle_time_ns"],
+                "target_total_fail_prob": scenario["target_total_fail_prob"],
+                **overhead,
+            }
+            profiles.append(profile)
+        scenario_entries.append({
+            "modulus_bits": bits,
+            "logical": logical,
+            "scenarios": profiles,
+        })
+
+    metrics.extras["shor_profiles"] = {
+        "coefficients": {
+            "qubit_coeff": qubit_coeff,
+            "toffoli_coeff": toffoli_coeff,
+            "depth_coeff": depth_coeff,
+            "t_per_toffoli": t_per_toffoli,
+            "depth_form": depth_form,
+        },
+        "moduli": scenario_entries,
+    }
 
     # Optional: convert to surface-code physical qubits and runtime.
     # Assumptions (communicated in the output):

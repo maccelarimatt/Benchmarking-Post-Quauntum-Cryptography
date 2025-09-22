@@ -77,7 +77,7 @@ Shor’s algorithm factors integers in polynomial time. We therefore set quantum
 - Optional surface‑code overhead: given a physical error rate and cycle time, we estimate code distance, total physical qubits, and runtime (very coarse, for comparison only).
 
 ### Implementation in pqcbench
-The RSA estimator applies SP 800‑57 mapping for classical_bits, sets quantum_bits to 0, and reports Q/Toffoli/T/depth with optional surface‑code overhead. Constants can be switched with a model flag (e.g., “ge2019”, “ge2025”). See `libs/core/src/pqcbench/security_estimator.py`.
+The RSA estimator applies SP 800‑57 mapping for classical_bits, sets quantum_bits to 0, and reports Q/Toffoli/T/depth with optional surface-code overhead. In addition, we publish three Shor surface-code scenarios (optimistic/median/conservative) across 2048/3072/4096-bit moduli, listing code distance, physical qubits, and runtime for each. Constants can be switched with a model flag (e.g., “ge2019”, “ge2025”). See `libs/core/src/pqcbench/security_estimator.py`.
 
 ### Limitations & notes
 These resource estimates are illustrative, not prescriptive. Actual implementations vary significantly with circuit design, error correction, and target architecture. Always consult current literature for precise budgets.

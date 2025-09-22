@@ -866,6 +866,8 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         res = {k: extras.get(k) for k in ("logical_qubits", "toffoli", "t_count", "meas_depth", "depth_form", "t_per_toffoli", "rsa_model")}
         if extras.get("surface"):
             res["surface"] = extras.get("surface")
+        if extras.get("shor_profiles"):
+            res["shor_profiles"] = extras.get("shor_profiles")
         out["resources"] = res
 
     # Estimates (curated or algorithm-specific)
