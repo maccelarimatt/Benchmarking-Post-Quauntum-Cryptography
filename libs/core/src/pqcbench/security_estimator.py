@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, asdict
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Iterable, Tuple
 import math
 
 """Lightweight, per-algorithm security estimators.
@@ -38,6 +38,277 @@ class EstimatorOptions:
     phys_error_rate: float = 1e-3  # physical error rate per operation (default ~0.1%)
     cycle_time_s: float = 1e-6     # surface-code cycle time in seconds (default 1 µs)
     target_total_fail_prob: float = 1e-2  # acceptable total failure probability for the run
+
+
+def _bkz_root_hermite(beta: float) -> float:
+    """Return the root-Hermite factor δ0 associated with blocksize β."""
+    if beta <= 2.0:
+        return 1.0
+    beta_f = float(beta)
+    return ((beta_f / (2.0 * math.pi * math.e)) ** (1.0 / (2.0 * (beta_f - 1.0)))) * (
+        (math.pi * beta_f) ** (1.0 / (2.0 * beta_f))
+    )
+
+
+def _stddev_centered_binomial(eta: Optional[int]) -> Optional[float]:
+    if eta is None:
+        return None
+    if eta <= 0:
+        return None
+    return math.sqrt(float(eta) / 2.0)
+
+
+def _stddev_uniform_eta(eta: Optional[int]) -> Optional[float]:
+    if eta is None:
+        return None
+    if eta <= 0:
+        return None
+    # Variance for uniform {-eta, ..., eta}
+    return math.sqrt(float(eta) * (float(eta) + 1.0) / 3.0)
+
+
+def _module_lwe_sigma(extras: Dict[str, Any]) -> Optional[float]:
+    if "sigma_e" in extras:
+        try:
+            sigma = float(extras["sigma_e"])
+            return sigma if sigma > 0.0 else None
+        except Exception:
+            return None
+    eta2 = extras.get("eta2")
+    if eta2 is not None:
+        return _stddev_centered_binomial(int(eta2))
+    eta = extras.get("eta")
+    if eta is not None:
+        return _stddev_uniform_eta(int(eta))
+    return None
+
+
+def _module_lwe_secret_span(extras: Dict[str, Any]) -> Optional[int]:
+    if "eta1" in extras:
+        return max(1, int(extras["eta1"]))
+    if "eta" in extras:
+        return max(1, int(extras["eta"]))
+    if "secret_bound" in extras:
+        return max(1, int(extras["secret_bound"]))
+    return None
+
+
+def _module_lwe_dimension(extras: Dict[str, Any]) -> Optional[int]:
+    try:
+        n = int(extras.get("n", 0) or 0)
+        k = int(extras.get("k", 0) or 0)
+    except Exception:
+        return None
+    if n <= 0 or k <= 0:
+        return None
+    return n * k
+
+
+def _module_lwe_alpha(q: int, sigma: float) -> Optional[float]:
+    if q <= 0 or sigma <= 0.0:
+        return None
+    return math.sqrt(2.0 * math.pi) * sigma / float(q)
+
+
+def _module_lwe_exponent_factor(k: int, q: int, adjustment: float = 0.0) -> float:
+    # Tuned to reproduce published BKZ block sizes for Kyber/Dilithium families.
+    k_eff = max(1, int(k))
+    base = 0.565 + 1.4 / float(k_eff)
+    if q > 0:
+        q_norm = max(1.0, float(q) / 3000.0)
+        base += 0.05 * math.log10(q_norm)
+        if q >= 1_000_000:
+            base += 0.025
+    return max(0.35, base + adjustment)
+
+
+def _solve_beta_for_alpha(alpha: float, n_eff: int, k_eff: int, q: int, adjustment: float = 0.0) -> Optional[int]:
+    if alpha <= 0.0 or n_eff <= 0 or k_eff <= 0:
+        return None
+    exponent = _module_lwe_exponent_factor(k_eff, q, adjustment) * float(n_eff)
+    target = 1.0 / alpha
+    if target <= 1.0:
+        return None
+    for beta in range(40, 901):
+        if _bkz_root_hermite(beta) ** exponent <= target:
+            return beta
+    return None
+
+
+def _module_lwe_guess_cost_bits(guess_modules: int, n: int, secret_span: Optional[int]) -> float:
+    if guess_modules <= 0 or n <= 0:
+        return 0.0
+    if secret_span is None:
+        return float(guess_modules * n)
+    return float(guess_modules * n * math.log2(2 * secret_span + 1))
+
+
+def _module_lwe_attack_catalog(k: int) -> Iterable[Tuple[str, float, int]]:
+    # (name, adjustment, max_guess_modules)
+    yield ("primal-usvp", 0.0, 0)
+    yield ("dual", -0.02, 0)
+    # Allow small secret guessing for hybrid variants
+    yield ("hybrid-1", -0.08, 1)
+    yield ("hybrid-2", -0.10, 2)
+
+
+def _module_lwe_cost_profiles(alpha: float, extras: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    dim = _module_lwe_dimension(extras)
+    if dim is None:
+        return None
+    n = int(extras.get("n", 0) or 0)
+    k = int(extras.get("k", 0) or 0)
+    try:
+        q = int(extras.get("q", 0) or 0)
+    except Exception:
+        q = 0
+    if n <= 0 or k <= 0:
+        return None
+    secret_span = _module_lwe_secret_span(extras)
+
+    profiles = [
+        {
+            "label": "aggressive",
+            "classical_consts": (0.285, 0.292),
+            "quantum_consts": (0.250, 0.260),
+        },
+        {
+            "label": "conservative",
+            "classical_consts": (0.292, 0.300),
+            "quantum_consts": (0.260, 0.270),
+        },
+    ]
+
+    profile_constants = {
+        prof["label"]: {
+            "classical_consts": list(prof["classical_consts"]),
+            "quantum_consts": list(prof["quantum_consts"]),
+        }
+        for prof in profiles
+    }
+
+    attacks: list[Dict[str, Any]] = []
+    for attack_name, adjustment, max_guess in _module_lwe_attack_catalog(k):
+        best_entry: Optional[Dict[str, Any]] = None
+        for guess in range(0, max_guess + 1):
+            k_eff = max(1, k - guess)
+            n_eff = n * k_eff
+            beta = _solve_beta_for_alpha(alpha, n_eff, k_eff, q, adjustment)
+            if beta is None:
+                continue
+            guess_bits = _module_lwe_guess_cost_bits(guess, n, secret_span)
+            delta0 = _bkz_root_hermite(beta)
+            attack_profiles: list[Dict[str, Any]] = []
+            for prof in profiles:
+                c_lo, c_hi = prof["classical_consts"]
+                q_lo, q_hi = prof["quantum_consts"]
+                classical_range = [c_lo * beta + guess_bits, c_hi * beta + guess_bits]
+                quantum_range = [q_lo * beta + 0.5 * guess_bits, q_hi * beta + 0.5 * guess_bits]
+                attack_profiles.append(
+                    {
+                        "profile": prof["label"],
+                        "classical_bits_range": classical_range,
+                        "quantum_bits_range": quantum_range,
+                    }
+                )
+            entry = {
+                "attack": attack_name,
+                "guess_modules": guess,
+                "beta": beta,
+                "delta0": delta0,
+                "profiles": attack_profiles,
+            }
+            if best_entry is None or beta < best_entry["beta"]:
+                best_entry = entry
+        if best_entry is not None:
+            attacks.append(best_entry)
+
+    if not attacks:
+        return None
+
+    # Aggregate best per profile
+    per_profile: Dict[str, Dict[str, float]] = {}
+    for prof in profiles:
+        label = prof["label"]
+        classical_lo = math.inf
+        classical_hi = math.inf
+        quantum_lo = math.inf
+        quantum_hi = math.inf
+        best_attack = None
+        for attack in attacks:
+            for detail in attack["profiles"]:
+                if detail["profile"] != label:
+                    continue
+                c_lo, c_hi = detail["classical_bits_range"]
+                q_lo, q_hi = detail["quantum_bits_range"]
+                if c_lo < classical_lo:
+                    classical_lo = c_lo
+                    classical_hi = c_hi
+                    quantum_lo = q_lo
+                    quantum_hi = q_hi
+                    best_attack = attack["attack"]
+                elif math.isclose(c_lo, classical_lo, rel_tol=1e-9) and c_hi < classical_hi:
+                    classical_hi = c_hi
+                    quantum_lo = q_lo
+                    quantum_hi = q_hi
+                    best_attack = attack["attack"]
+        if best_attack is None:
+            continue
+        per_profile[label] = {
+            "attack": best_attack,
+            "classical_bits_range": [classical_lo, classical_hi],
+            "quantum_bits_range": [quantum_lo, quantum_hi],
+            "headline_mid_classical": (classical_lo + classical_hi) / 2.0,
+            "headline_mid_quantum": (quantum_lo + quantum_hi) / 2.0,
+        }
+
+    if not per_profile:
+        return None
+
+    agg_classical = [min(v["classical_bits_range"][0] for v in per_profile.values()), max(v["classical_bits_range"][1] for v in per_profile.values())]
+    agg_quantum = [min(v["quantum_bits_range"][0] for v in per_profile.values()), max(v["quantum_bits_range"][1] for v in per_profile.values())]
+
+    headline_label = "aggressive" if "aggressive" in per_profile else next(iter(per_profile))
+    headline = per_profile[headline_label]
+
+    return {
+        "dimension": dim,
+        "n": n,
+        "k": k,
+        "alpha": alpha,
+        "attacks": attacks,
+        "profiles": per_profile,
+        "profile_constants": profile_constants,
+        "headline": {
+            "profile": headline_label,
+            "attack": headline["attack"],
+            "classical_bits": headline["headline_mid_classical"],
+            "quantum_bits": headline["headline_mid_quantum"],
+            "classical_bits_range": per_profile[headline_label]["classical_bits_range"],
+            "quantum_bits_range": per_profile[headline_label]["quantum_bits_range"],
+        },
+        "classical_bits_range": agg_classical,
+        "quantum_bits_range": agg_quantum,
+    }
+
+
+def _module_lwe_cost_summary(extras: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    try:
+        q = int(extras.get("q", 0) or 0)
+    except Exception:
+        q = 0
+    sigma = _module_lwe_sigma(extras)
+    if q <= 0 or sigma is None or sigma <= 0.0:
+        return None
+    alpha = _module_lwe_alpha(q, sigma)
+    if alpha is None or alpha <= 0.0:
+        return None
+    summary = _module_lwe_cost_profiles(alpha, extras)
+    if summary:
+        summary["sigma_e"] = sigma
+        summary["alpha"] = alpha
+        summary["q"] = q
+    return summary
 
 
 def _nist_floor_from_name(name: str) -> Optional[int]:
@@ -815,6 +1086,19 @@ def _estimate_kyber_from_name(name: str, opts: Optional[EstimatorOptions]) -> Se
     except Exception:
         pass
 
+    module_cost = None
+    cost_extras = {k: v for k, v in kyber_info.items() if v is not None}
+    if cost_extras:
+        module_cost = _module_lwe_cost_summary(cost_extras)
+    if module_cost:
+        base.classical_bits = float(module_cost["headline"]["classical_bits"])
+        base.quantum_bits = float(module_cost["headline"]["quantum_bits"])
+        base.extras.setdefault("mlkem", {})["module_lwe_cost"] = module_cost
+        base.notes = (
+            "ML-KEM module-LWE cost model: BKZ (primal/dual/hybrid) with Core-SVP constants. "
+            "Category floor retained in extras.category_floor."
+        )
+
     # Curated classical/quantum ranges for Kyber-512 based on public analyses
     curated: Dict[str, Any] = {}
     mech_lower = str(name).lower()
@@ -841,26 +1125,26 @@ def _estimate_kyber_from_name(name: str, opts: Optional[EstimatorOptions]) -> Se
             },
         }
 
-    # Merge into extras and refine notes to reflect enrichment
-    base.extras.update({
-        "mlkem": {
-            "kyber_params": kyber_info or None,
-            "curated_estimates": curated or None,
-        }
-    })
+    mlkem_block = dict(base.extras.get("mlkem", {}) or {})
+    if module_cost:
+        mlkem_block["module_lwe_cost"] = module_cost
+    mlkem_block["kyber_params"] = kyber_info or None
+    mlkem_block["curated_estimates"] = curated or None
+    base.extras["mlkem"] = mlkem_block
 
-    # Adjust notes only if advanced estimator did not populate a model
-    if "APS Lattice Estimator" not in base.notes:
-        if opts and opts.lattice_use_estimator and base.extras.get("estimator_model") == "unavailable (fallback to NIST floor)":
-            base.notes = (
-                "ML-KEM (Kyber): estimator unavailable; using NIST category floor. "
-                "Kyber-specific curated ranges attached in extras.mlkem.curated_estimates."
-            )
-        else:
-            base.notes = (
-                "ML-KEM (Kyber): NIST floor baseline; Kyber-specific curated ranges attached in extras. "
-                "Enable --sec-adv to use APS lattice estimator when available."
-            )
+    if not module_cost:
+        # Adjust notes only if advanced estimator did not populate a model
+        if "APS Lattice Estimator" not in base.notes:
+            if opts and opts.lattice_use_estimator and base.extras.get("estimator_model") == "unavailable (fallback to NIST floor)":
+                base.notes = (
+                    "ML-KEM (Kyber): estimator unavailable; using NIST category floor. "
+                    "Kyber-specific curated ranges attached in extras.mlkem.curated_estimates."
+                )
+            else:
+                base.notes = (
+                    "ML-KEM (Kyber): NIST floor baseline; Kyber-specific curated ranges attached in extras. "
+                    "Enable --sec-adv to use APS lattice estimator when available."
+                )
 
     return base
 
@@ -1006,16 +1290,30 @@ def _estimate_dilithium_from_name(name: str, opts: Optional[EstimatorOptions]) -
             k = int(ex.get("k", 0) or 0)
             l = int(ex.get("l", 0) or 0)
             q = int(ex.get("q", 8380417) or 8380417)
+            eta = ex.get("eta")
             dsa_info = {
                 "mechanism": ph.mechanism,
                 "n": n,
                 "k": k,
                 "l": l,
                 "q": q,
+                "eta": eta,
                 "rank": (n * k) if k else None,
             }
     except Exception:
         pass
+
+    module_cost = None
+    if dsa_info:
+        cost_extras = {k: v for k, v in dsa_info.items() if k in {"n", "k", "q", "eta", "eta1", "eta2", "sigma_e"} and v is not None}
+        module_cost = _module_lwe_cost_summary(cost_extras)
+        if module_cost:
+            base.classical_bits = float(module_cost["headline"]["classical_bits"])
+            base.quantum_bits = float(module_cost["headline"]["quantum_bits"])
+            base.notes = (
+                "ML-DSA module-LWE cost model: BKZ (primal/dual/hybrid) with Core-SVP constants. "
+                "Category floor retained in extras.category_floor."
+            )
 
     # Curated ranges per common sets, derived from public write-ups and spec notes
     mech_lower = str(name).lower()
@@ -1077,25 +1375,26 @@ def _estimate_dilithium_from_name(name: str, opts: Optional[EstimatorOptions]) -
             },
         }
 
-    base.extras.update({
-        "mldsa": {
-            "dilithium_params": dsa_info or None,
-            "curated_estimates": curated or None,
-            "core_svp_constants": {"classical": c_class, "quantum": c_quant},
-        }
-    })
+    mldsa_block = dict(base.extras.get("mldsa", {}) or {})
+    if module_cost:
+        mldsa_block["module_lwe_cost"] = module_cost
+    mldsa_block["dilithium_params"] = dsa_info or None
+    mldsa_block["curated_estimates"] = curated or None
+    mldsa_block["core_svp_constants"] = {"classical": c_class, "quantum": c_quant}
+    base.extras["mldsa"] = mldsa_block
 
-    # Note refinement depending on estimator availability
-    if "APS Lattice Estimator" not in base.notes:
-        if opts and opts.lattice_use_estimator and base.extras.get("estimator_model") == "unavailable (fallback to NIST floor)":
-            base.notes = (
-                "ML-DSA (Dilithium): estimator unavailable; using NIST category floor. "
-                "Dilithium-specific curated ranges attached in extras.mldsa.curated_estimates."
-            )
-        else:
-            base.notes = (
-                "ML-DSA (Dilithium): NIST floor baseline; Dilithium-specific curated ranges attached in extras. "
-                "Enable --sec-adv to use APS lattice estimator when available."
-            )
+    if not module_cost:
+        # Note refinement depending on estimator availability
+        if "APS Lattice Estimator" not in base.notes:
+            if opts and opts.lattice_use_estimator and base.extras.get("estimator_model") == "unavailable (fallback to NIST floor)":
+                base.notes = (
+                    "ML-DSA (Dilithium): estimator unavailable; using NIST category floor. "
+                    "Dilithium-specific curated ranges attached in extras.mldsa.curated_estimates."
+                )
+            else:
+                base.notes = (
+                    "ML-DSA (Dilithium): NIST floor baseline; Dilithium-specific curated ranges attached in extras. "
+                    "Enable --sec-adv to use APS lattice estimator when available."
+                )
 
     return base

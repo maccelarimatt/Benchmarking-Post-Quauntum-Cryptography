@@ -48,14 +48,14 @@ _add(["ML-KEM-1024", "Kyber1024"], family="ML-KEM", category_floor=256,
 # ML-DSA (Dilithium)
 # Provide typical module ranks (k, l) and modulus for reference; detailed parameters are scheme-specific.
 _add(["ML-DSA-44", "Dilithium2"], family="ML-DSA", category_floor=128,
-     notes="k=4, l=4; n=256; q=8380417",
-     extras={"k": 4, "l": 4, "n": 256, "q": 8380417})
+     notes="k=4, l=4; n=256; q=8380417; eta=2",
+     extras={"k": 4, "l": 4, "n": 256, "q": 8380417, "eta": 2})
 _add(["ML-DSA-65", "Dilithium3"], family="ML-DSA", category_floor=192,
-     notes="k=6, l=5; n=256; q=8380417",
-     extras={"k": 6, "l": 5, "n": 256, "q": 8380417})
+     notes="k=6, l=5; n=256; q=8380417; eta=4",
+     extras={"k": 6, "l": 5, "n": 256, "q": 8380417, "eta": 4})
 _add(["ML-DSA-87", "Dilithium5"], family="ML-DSA", category_floor=256,
-     notes="k=8, l=7; n=256; q=8380417",
-     extras={"k": 8, "l": 7, "n": 256, "q": 8380417})
+     notes="k=8, l=7; n=256; q=8380417; eta=2",
+     extras={"k": 8, "l": 7, "n": 256, "q": 8380417, "eta": 2})
 # Some liboqs builds expose ML-DSA-110; treat as Cat-5 floor for labeling
 _add(["ML-DSA-110"], family="ML-DSA", category_floor=256,
      notes="non-FIPS param; treated as Cat-5 floor for labeling")

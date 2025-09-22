@@ -871,15 +871,20 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
     # Estimates (curated or algorithm-specific)
     estimates: Dict[str, Any] = {}
     # Lattice curated
+    module_cost: Dict[str, Any] | None = None
     if algo == "kyber":
-        ce = (extras.get("mlkem", {}) or {}).get("curated_estimates")
+        mlkem = (extras.get("mlkem", {}) or {})
+        module_cost = mlkem.get("module_lwe_cost") if isinstance(mlkem, dict) else None
+        ce = mlkem.get("curated_estimates") if isinstance(mlkem, dict) else None
         if ce:
             estimates["curated"] = ce
     elif algo == "dilithium":
-        ce = (extras.get("mldsa", {}) or {}).get("curated_estimates")
+        mldsa = (extras.get("mldsa", {}) or {})
+        module_cost = mldsa.get("module_lwe_cost") if isinstance(mldsa, dict) else None
+        ce = mldsa.get("curated_estimates") if isinstance(mldsa, dict) else None
         if ce:
             estimates["curated"] = ce
-        consts = (extras.get("mldsa", {}) or {}).get("core_svp_constants")
+        consts = mldsa.get("core_svp_constants") if isinstance(mldsa, dict) else None
         if consts:
             out.setdefault("assumptions", {})["core_svp_constants"] = consts
     elif algo == "falcon":
@@ -917,6 +922,31 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
             estimates["curated"] = my.get("curated_estimates")
         if my.get("checks"):
             estimates["checks"] = my.get("checks")
+
+    if module_cost:
+        headline = module_cost.get("headline", {})
+        estimates["calculated"] = {
+            "profile": headline.get("profile"),
+            "attack": headline.get("attack"),
+            "classical_bits": headline.get("classical_bits"),
+            "quantum_bits": headline.get("quantum_bits"),
+            "classical_bits_range": headline.get("classical_bits_range"),
+            "quantum_bits_range": headline.get("quantum_bits_range"),
+        }
+        out.setdefault("assumptions", {})["module_lwe_model"] = {
+            "dimension": module_cost.get("dimension"),
+            "n": module_cost.get("n"),
+            "k": module_cost.get("k"),
+            "alpha": module_cost.get("alpha"),
+            "sigma_e": module_cost.get("sigma_e"),
+            "classical_bits_range": module_cost.get("classical_bits_range"),
+            "quantum_bits_range": module_cost.get("quantum_bits_range"),
+        }
+        profile_consts = module_cost.get("profile_constants")
+        if profile_consts:
+            out.setdefault("assumptions", {})["module_lwe_profile_constants"] = profile_consts
+        out.setdefault("details", {})["module_lwe_attacks"] = module_cost.get("attacks")
+        out.setdefault("details", {})["module_lwe_profiles"] = module_cost.get("profiles")
 
     # Lattice estimator details
     if "classical_sieve" in extras or "qram_assisted" in extras or "beta" in extras:
