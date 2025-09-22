@@ -188,6 +188,11 @@ input[type="checkbox"]:checked::after { opacity: 1; }
   </style>
   </head>
 <body>
+  <!-- Quick nav: Image Encrypt page button at top-right -->
+  <div style="position: fixed; top: 12px; right: 5vw; z-index: 1000; display:flex; gap:.5rem;">
+    <a class="btn" href="/image-encrypt">Image Encrypt</a>
+    <a class="btn" href="/image-sign">Image Sign</a>
+  </div>
   <div id="loading-overlay" class="loading-overlay" hidden>
     <div class="loading-card">
       <div id="loading-stage" class="loading-stage">Preparing…</div>

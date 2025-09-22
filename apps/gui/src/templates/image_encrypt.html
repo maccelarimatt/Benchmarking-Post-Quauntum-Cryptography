@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Image Encryption (PQC KEM → AES‑GCM)</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --island-bg: rgba(128, 128, 128, 0.9);
+      --island-radius: 1.5rem;
+      --island-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      --accent: #1fb6b8;
+      --text: #ffffff;
+    }
+    body {
+      margin: 0;
+      padding: 5vh 5vw;
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      background-image: url('/static/Images/background.gif');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items:center;
+    }
+    .island { background: var(--island-bg); border-radius: var(--island-radius); box-shadow: var(--island-shadow); backdrop-filter: blur(4px); padding: 1.25rem; }
+    .top-island { width:100%; max-width:1200px; display:flex; align-items:center; justify-content:space-between; margin-bottom: 2vh; }
+    .middle { width:100%; max-width:1200px; display:grid; grid-template-columns: 1fr; gap: 1.25rem; }
+    .card { background: rgba(0,0,0,.25); padding:1rem; border-radius:.9rem; }
+    .btn, a.btn, button { display:inline-block; padding:.6rem 1.2rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; text-decoration:none; cursor:pointer; box-shadow:0 4px 14px rgba(31,182,184,.25); }
+    .row { display:flex; gap:1rem; flex-wrap:wrap; align-items:center; }
+    label { display:block; margin-bottom:.35rem; font-size:.95rem; }
+    select, input[type="file"] { width:100%; max-width: 360px; padding:.55rem .7rem; border-radius:.6rem; border:1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.96); color:#111; }
+    .error { color:#ffdddd; background:#902; padding:.75rem 1rem; border-radius:.5rem; }
+    code { background: rgba(255,255,255,.2); padding:.1rem .35rem; border-radius:.3rem; }
+    .grid2 { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    img.prev { display:block; max-width:100%; height:auto; border-radius:.5rem; box-shadow: 0 6px 18px rgba(0,0,0,.25); background: rgba(0,0,0,.15); }
+  </style>
+</head>
+<body>
+
+  <div class="island top-island">
+    <div>
+      <div style="font-size:1.6rem; font-weight:800; line-height:1.1;">Image Encryption</div>
+      <div style="opacity:.9;">KEM key exchange → AES‑GCM symmetric encryption</div>
+    </div>
+    <div class="row">
+      <a href="/" class="btn">Back to Home</a>
+    </div>
+  </div>
+
+  <div class="middle">
+    <div class="island">
+      {% if error %}
+        <div class="error" style="margin-bottom:1rem;">{{ error }}</div>
+      {% endif %}
+      <form action="/image-encrypt/run" method="post" enctype="multipart/form-data" style="display:grid; grid-template-columns: repeat(12, 1fr); gap:.9rem; align-items:end;">
+        <div style="grid-column: span 4;">
+          <label for="algo">Algorithm (KEM)</label>
+          <select name="algo" id="algo" required>
+            <option value="" disabled selected>Select algorithm</option>
+            {% for name in kem_algos %}
+              <option value="{{name}}">{{ display_names.get(name, name) }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="grid-column: span 6;">
+          <label for="image">Image</label>
+          <input type="file" id="image" name="image" accept="image/*" required />
+        </div>
+        <div style="grid-column: span 2; text-align:right;">
+          <button type="submit" class="btn">Encrypt</button>
+        </div>
+      </form>
+    </div>
+
+    {% if result %}
+    <div class="grid2">
+      <div class="card">
+        <div style="font-weight:700;">1) Keygen</div>
+        <div>Algorithm: <code>{{ result.algo_label }}</code></div>
+        <div>Public key: <code>{{ result.pk_len }} bytes</code></div>
+        <div>Secret key: <code>{{ result.sk_len }} bytes</code></div>
+        <div style="opacity:.9; margin-top:.4rem;">pk (b64, truncated): <code>{{ result.inspect.pk_b64 }}</code></div>
+        <div style="opacity:.9;">sk (b64, truncated): <code>{{ result.inspect.sk_b64 }}</code></div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;">2) Encapsulate</div>
+        <div>Ciphertext: <code>{{ result.kem_ct_len }} bytes</code></div>
+        <div style="opacity:.9; margin-top:.4rem;">kem_ct (b64, truncated): <code>{{ result.inspect.kem_ct_b64 }}</code></div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;">3) Derive Symmetric Key</div>
+        <div>AES‑GCM 256‑bit key (SHA‑256 of shared secret)</div>
+        <div style="margin-top:.3rem;">key: <code>{{ result.aes_key_hex }}</code></div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;">4) Encrypt Image</div>
+        <div>Nonce: <code>{{ result.nonce_hex }}</code></div>
+        <div>Ciphertext: <code>{{ result.cipher_len }} bytes</code></div>
+        <div style="margin-top:.6rem;" class="row">
+          <a class="btn" href="/results/{{ result.downloads.cipher }}" download>Download Encrypted</a>
+          <a class="btn" href="/results/{{ result.downloads.kem_ct }}" download>Download KEM CT</a>
+          <a class="btn" href="/results/{{ result.downloads.nonce }}" download>Download Nonce</a>
+        </div>
+        <div style="margin-top:.6rem;">
+          <div style="font-weight:600; margin-bottom:.35rem;">Binary as Images (grayscale)</div>
+          <div class="grid2">
+            <div>
+              <div style="opacity:.9; margin-bottom:.3rem;">Encrypted data (BMP)</div>
+              <img class="prev" src="/results/{{ result.downloads.cipher_img }}" alt="cipher.bmp" />
+            </div>
+            <div>
+              <div style="opacity:.9; margin-bottom:.3rem;">KEM ciphertext (BMP)</div>
+              <img class="prev" src="/results/{{ result.downloads.kem_ct_img }}" alt="kem_ct.bmp" />
+            </div>
+            <div>
+              <div style="opacity:.9; margin-bottom:.3rem;">Nonce (BMP)</div>
+              <img class="prev" src="/results/{{ result.downloads.nonce_img }}" alt="nonce.bmp" />
+            </div>
+          </div>
+          <div class="row" style="margin-top:.6rem;">
+            <a class="btn" href="/results/{{ result.downloads.cipher_img }}" download>Download Cipher BMP</a>
+            <a class="btn" href="/results/{{ result.downloads.kem_ct_img }}" download>Download KEM CT BMP</a>
+            <a class="btn" href="/results/{{ result.downloads.nonce_img }}" download>Download Nonce BMP</a>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="grid-column: 1 / -1;">
+        <div style="font-weight:700;">5) Decapsulate + Decrypt</div>
+        <div>Status: {% if result.success %}<span style="color:#b3ffcc;">success</span>{% else %}<span style="color:#ffd1d1;">failed</span>{% endif %}</div>
+        {% if result.success %}
+        <div class="grid2" style="margin-top:.6rem;">
+          <div>
+            <div style="opacity:.9; margin-bottom:.4rem;">Original</div>
+            <img class="prev" src="{{ result.previews.original_data_url }}" alt="original" />
+          </div>
+          <div>
+            <div style="opacity:.9; margin-bottom:.4rem;">Decrypted</div>
+            <img class="prev" src="{{ result.previews.decrypted_data_url }}" alt="decrypted" />
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+</body>
+</html>

@@ -16,6 +16,11 @@ from jinja2 import TemplateNotFound
 from dataclasses import asdict
 import base64
 from typing import Dict, Any, Mapping
+import os
+import hashlib
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import struct
+import math
 import threading
 import time
 import uuid
@@ -1215,6 +1220,431 @@ def _heuristic_analysis(compare: dict) -> str:
     lines.append("- Note: Configure an LLM provider for richer interpretation.")
     return "\n".join(lines)
 
+
+# ---------------- Image encryption demo (KEM → AES-GCM) ----------------
+
+def _bytes_to_bmp(data: bytes, *, width: int | None = None) -> bytes:
+    """Encode arbitrary bytes into a 24-bit BMP (grayscale) without external deps.
+
+    - Each input byte becomes one pixel; value is replicated to R=G=B.
+    - Image width defaults to min(512, len(data)) to keep a reasonable aspect.
+    - Rows are padded to 4-byte boundaries per BMP spec.
+    """
+    n = len(data)
+    if n == 0:
+        # Minimal 1x1 black pixel BMP
+        data = b"\x00"
+        n = 1
+    if width is None:
+        width = min(512, max(1, n))
+    width = max(1, int(width))
+    height = int(math.ceil(n / float(width)))
+
+    # Row sizes
+    row_raw = width * 3  # 24bpp
+    row_padded = (row_raw + 3) & ~3
+    padding = row_padded - row_raw
+
+    # Build pixel buffer (bottom-up)
+    pixels = bytearray(row_padded * height)
+    idx = 0
+    for y in range(height):
+        row_index = height - 1 - y  # bottom-up
+        base = row_index * row_padded
+        # Fill row
+        for x in range(width):
+            if idx < n:
+                v = data[idx]
+                # BMP stores B,G,R
+                off = base + x * 3
+                pixels[off + 0] = v
+                pixels[off + 1] = v
+                pixels[off + 2] = v
+                idx += 1
+            else:
+                # remaining pixels default to black (zeros)
+                break
+        # padding bytes are already zero
+
+    img_size = len(pixels)
+
+    # File header (14 bytes) + DIB header BITMAPINFOHEADER (40 bytes)
+    bfType = b"BM"
+    bfOffBits = 14 + 40
+    bfSize = bfOffBits + img_size
+    bfReserved1 = 0
+    bfReserved2 = 0
+    file_header = struct.pack(
+        "<2sIHHI", bfType, bfSize, bfReserved1, bfReserved2, bfOffBits
+    )
+
+    biSize = 40
+    biWidth = width
+    biHeight = height
+    biPlanes = 1
+    biBitCount = 24
+    biCompression = 0
+    biSizeImage = img_size
+    biXPelsPerMeter = 2835
+    biYPelsPerMeter = 2835
+    biClrUsed = 0
+    biClrImportant = 0
+    dib_header = struct.pack(
+        "<IIIHHIIIIII",
+        biSize,
+        biWidth,
+        biHeight,
+        biPlanes,
+        biBitCount,
+        biCompression,
+        biSizeImage,
+        biXPelsPerMeter,
+        biYPelsPerMeter,
+        biClrUsed,
+        biClrImportant,
+    )
+
+    return file_header + dib_header + bytes(pixels)
+
+def _kem_algorithms() -> list[str]:
+    _ensure_adapters_loaded()
+    kinds = _algo_kinds()
+    algos = list(registry.list().keys())
+    return [n for n in algos if kinds.get(n) == "KEM"]
+
+
+@app.route("/image-encrypt", methods=["GET"])
+def image_encrypt_page():
+    try:
+        kem_algos = _kem_algorithms()
+    except Exception:
+        kem_algos = []
+    display_names = _display_names(kem_algos) if kem_algos else {}
+    return render_template(
+        "image_encrypt.html",
+        kem_algos=kem_algos,
+        display_names=display_names,
+        error=None,
+        result=None,
+    )
+
+
+@app.route("/image-encrypt/run", methods=["POST"])
+def image_encrypt_run():
+    _ensure_adapters_loaded()
+    kinds = _algo_kinds()
+    all_algos = list(registry.list().keys())
+    kem_algos = [n for n in all_algos if kinds.get(n) == "KEM"]
+    display_names = _display_names(kem_algos)
+
+    file = request.files.get("image")
+    algo_name = (request.form.get("algo") or "").strip()
+
+    if not algo_name or algo_name not in kem_algos:
+        return render_template(
+            "image_encrypt.html",
+            kem_algos=kem_algos,
+            display_names=display_names,
+            error="Please select a valid KEM algorithm.",
+            result=None,
+        )
+
+    if not file or not getattr(file, "filename", ""):
+        return render_template(
+            "image_encrypt.html",
+            kem_algos=kem_algos,
+            display_names=display_names,
+            error="Please choose an image file to encrypt.",
+            result=None,
+        )
+
+    try:
+        image_bytes = file.read()
+        if not image_bytes:
+            raise ValueError("Empty file")
+        # Optional safety: limit input size to ~25MB
+        if len(image_bytes) > 25 * 1024 * 1024:
+            raise ValueError("Image too large (limit ~25MB)")
+    except Exception as exc:
+        return render_template(
+            "image_encrypt.html",
+            kem_algos=kem_algos,
+            display_names=display_names,
+            error=f"Failed to read image: {exc}",
+            result=None,
+        )
+
+    # Perform KEM flow and symmetric encryption
+    try:
+        cls = registry.get(algo_name)
+        algo = cls()
+
+        # 1) KEM keygen
+        pk, sk = algo.keygen()
+
+        # 2) KEM encapsulate → shared secret
+        kem_ct, ss = algo.encapsulate(pk)
+
+        # 3) Derive 256-bit AES-GCM key from shared secret
+        aes_key = hashlib.sha256(ss).digest()
+        aesgcm = AESGCM(aes_key)
+
+        # 4) Symmetric encrypt the image bytes
+        nonce = os.urandom(12)  # GCM nonce
+        cipher_img = aesgcm.encrypt(nonce, image_bytes, None)
+
+        # 5) Decapsulate + decrypt for verification
+        ss_dec = algo.decapsulate(sk, kem_ct)
+        aes_key_dec = hashlib.sha256(ss_dec).digest()
+        ok = False
+        try:
+            img_dec = AESGCM(aes_key_dec).decrypt(nonce, cipher_img, None)
+            ok = (img_dec == image_bytes)
+        except Exception:
+            ok = False
+
+        # Persist artifacts under results/ for download
+        run_id = uuid.uuid4().hex
+        out_dir = _PROJECT_ROOT / "results" / "image_encrypt" / run_id
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        (out_dir / "cipher.bin").write_bytes(cipher_img)
+        (out_dir / "kem_ct.bin").write_bytes(kem_ct)
+        (out_dir / "nonce.bin").write_bytes(nonce)
+
+        # Also produce visualizations as BMP images (grayscale byte maps)
+        try:
+            cipher_bmp = _bytes_to_bmp(cipher_img)
+            kemct_bmp = _bytes_to_bmp(kem_ct)
+            # For very small nonce, use narrow width to keep a compact image
+            nonce_bmp = _bytes_to_bmp(nonce, width=min(64, max(1, len(nonce))))
+            (out_dir / "cipher.bmp").write_bytes(cipher_bmp)
+            (out_dir / "kem_ct.bmp").write_bytes(kemct_bmp)
+            (out_dir / "nonce.bmp").write_bytes(nonce_bmp)
+        except Exception:
+            pass
+
+        # Prepare template payload
+        import mimetypes, base64 as _b64
+        mime = file.mimetype or mimetypes.guess_type(file.filename or "")[0] or "application/octet-stream"
+        orig_b64 = _b64.b64encode(image_bytes).decode("ascii")
+        dec_b64 = _b64.b64encode(img_dec if ok else b"").decode("ascii") if ok else None
+
+        # For display, include truncated versions of big fields
+        def b64_trunc(b: bytes, limit: int = 88) -> str:
+            s = _b64.b64encode(b).decode("ascii")
+            return s if len(s) <= limit else (s[:limit] + "…")
+
+        result = {
+            "algo": algo_name,
+            "algo_label": display_names.get(algo_name, algo_name),
+            "pk_len": len(pk),
+            "sk_len": len(sk),
+            "kem_ct_len": len(kem_ct),
+            "cipher_len": len(cipher_img),
+            "nonce_hex": nonce.hex(),
+            "aes_key_hex": aes_key.hex(),
+            "success": ok,
+            "downloads": {
+                "cipher": f"image_encrypt/{run_id}/cipher.bin",
+                "kem_ct": f"image_encrypt/{run_id}/kem_ct.bin",
+                "nonce": f"image_encrypt/{run_id}/nonce.bin",
+                "cipher_img": f"image_encrypt/{run_id}/cipher.bmp",
+                "kem_ct_img": f"image_encrypt/{run_id}/kem_ct.bmp",
+                "nonce_img": f"image_encrypt/{run_id}/nonce.bmp",
+            },
+            "previews": {
+                "mime": mime,
+                "original_data_url": f"data:{mime};base64,{orig_b64}",
+                "decrypted_data_url": f"data:{mime};base64,{dec_b64}" if ok else None,
+            },
+            "inspect": {
+                "pk_b64": b64_trunc(pk),
+                "sk_b64": b64_trunc(sk),
+                "kem_ct_b64": b64_trunc(kem_ct),
+            },
+        }
+
+        return render_template(
+            "image_encrypt.html",
+            kem_algos=kem_algos,
+            display_names=display_names,
+            error=None,
+            result=result,
+        )
+    except Exception as exc:
+        log.exception("Image encryption failed")
+        return render_template(
+            "image_encrypt.html",
+            kem_algos=kem_algos,
+            display_names=display_names,
+            error=str(exc),
+            result=None,
+        )
+
+
+# ---------------- Image signing demo (SIG → Sign/Verify) ----------------
+
+def _sig_algorithms() -> list[str]:
+    _ensure_adapters_loaded()
+    kinds = _algo_kinds()
+    algos = list(registry.list().keys())
+    return [n for n in algos if kinds.get(n) == "SIG"]
+
+
+@app.route("/image-sign", methods=["GET"])
+def image_sign_page():
+    try:
+        sig_algos = _sig_algorithms()
+    except Exception:
+        sig_algos = []
+    display_names = _display_names(sig_algos) if sig_algos else {}
+    return render_template(
+        "image_sign.html",
+        sig_algos=sig_algos,
+        display_names=display_names,
+        error=None,
+        result=None,
+    )
+
+
+@app.route("/image-sign/run", methods=["POST"])
+def image_sign_run():
+    _ensure_adapters_loaded()
+    kinds = _algo_kinds()
+    all_algos = list(registry.list().keys())
+    sig_algos = [n for n in all_algos if kinds.get(n) == "SIG"]
+    display_names = _display_names(sig_algos)
+
+    file = request.files.get("image")
+    algo_name = (request.form.get("algo") or "").strip()
+
+    if not algo_name or algo_name not in sig_algos:
+        return render_template(
+            "image_sign.html",
+            sig_algos=sig_algos,
+            display_names=display_names,
+            error="Please select a valid signature algorithm.",
+            result=None,
+        )
+
+    if not file or not getattr(file, "filename", ""):
+        return render_template(
+            "image_sign.html",
+            sig_algos=sig_algos,
+            display_names=display_names,
+            error="Please choose an image file to sign.",
+            result=None,
+        )
+
+    try:
+        image_bytes = file.read()
+        if not image_bytes:
+            raise ValueError("Empty file")
+        if len(image_bytes) > 25 * 1024 * 1024:
+            raise ValueError("Image too large (limit ~25MB)")
+    except Exception as exc:
+        return render_template(
+            "image_sign.html",
+            sig_algos=sig_algos,
+            display_names=display_names,
+            error=f"Failed to read image: {exc}",
+            result=None,
+        )
+
+    try:
+        cls = registry.get(algo_name)
+        algo = cls()
+
+        # 1) Keygen
+        pk, sk = algo.keygen()
+
+        # 2) Sign image bytes
+        sig = algo.sign(sk, image_bytes)
+
+        # 3) Verify
+        ok = algo.verify(pk, image_bytes, sig)
+
+        # Persist artifacts
+        run_id = uuid.uuid4().hex
+        out_dir = _PROJECT_ROOT / "results" / "image_sign" / run_id
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        (out_dir / "signature.bin").write_bytes(sig)
+        (out_dir / "public_key.bin").write_bytes(pk)
+        # Optional: keep original for reference
+        # (out_dir / (Path(file.filename).name or "image.bin")).write_bytes(image_bytes)
+
+        # Visualizations
+        try:
+            sig_bmp = _bytes_to_bmp(sig)
+            pk_bmp = _bytes_to_bmp(pk)
+            (out_dir / "signature.bmp").write_bytes(sig_bmp)
+            (out_dir / "public_key.bmp").write_bytes(pk_bmp)
+        except Exception:
+            pass
+
+        # Simple envelope for distribution
+        import json as _json, base64 as _b64, mimetypes
+        mime = file.mimetype or mimetypes.guess_type(file.filename or "")[0] or "application/octet-stream"
+        envelope = {
+            "algo": algo_name,
+            "image_mime": mime,
+            "image_filename": getattr(file, "filename", None),
+            "signature_b64": _b64.b64encode(sig).decode("ascii"),
+            "public_key_b64": _b64.b64encode(pk).decode("ascii"),
+            "verify": bool(ok),
+        }
+        (out_dir / "signed.json").write_text(_json.dumps(envelope, indent=2))
+
+        # Prepare result payload
+        import base64 as _b64_2
+
+        def b64_trunc(b: bytes, limit: int = 88) -> str:
+            s = _b64_2.b64encode(b).decode("ascii")
+            return s if len(s) <= limit else (s[:limit] + "…")
+
+        orig_b64 = _b64_2.b64encode(image_bytes).decode("ascii")
+        result = {
+            "algo": algo_name,
+            "algo_label": display_names.get(algo_name, algo_name),
+            "pk_len": len(pk),
+            "sk_len": len(sk),
+            "sig_len": len(sig),
+            "success": bool(ok),
+            "downloads": {
+                "signature": f"image_sign/{run_id}/signature.bin",
+                "public_key": f"image_sign/{run_id}/public_key.bin",
+                "signature_img": f"image_sign/{run_id}/signature.bmp",
+                "public_key_img": f"image_sign/{run_id}/public_key.bmp",
+                "envelope": f"image_sign/{run_id}/signed.json",
+            },
+            "previews": {
+                "mime": mime,
+                "original_data_url": f"data:{mime};base64,{orig_b64}",
+            },
+            "inspect": {
+                "pk_b64": b64_trunc(pk),
+                "sig_b64": b64_trunc(sig),
+            },
+        }
+
+        return render_template(
+            "image_sign.html",
+            sig_algos=sig_algos,
+            display_names=display_names,
+            error=None,
+            result=result,
+        )
+    except Exception as exc:
+        log.exception("Image signing failed")
+        return render_template(
+            "image_sign.html",
+            sig_algos=sig_algos,
+            display_names=display_names,
+            error=str(exc),
+            result=None,
+        )
 
 if __name__ == "__main__":
     app.run(debug=True)
