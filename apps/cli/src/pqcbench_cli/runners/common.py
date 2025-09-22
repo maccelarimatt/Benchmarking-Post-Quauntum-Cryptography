@@ -888,12 +888,16 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         if consts:
             out.setdefault("assumptions", {})["core_svp_constants"] = consts
     elif algo == "falcon":
-        ce = (extras.get("falcon", {}) or {}).get("curated_estimates")
+        falcon_block = (extras.get("falcon", {}) or {})
+        ce = falcon_block.get("curated_estimates") if isinstance(falcon_block, dict) else None
         if ce:
             estimates["curated"] = ce
-        consts = (extras.get("falcon", {}) or {}).get("core_svp_constants")
+        consts = falcon_block.get("core_svp_constants") if isinstance(falcon_block, dict) else None
         if consts:
             out.setdefault("assumptions", {})["core_svp_constants"] = consts
+        bkz_model = falcon_block.get("bkz_model") if isinstance(falcon_block, dict) else None
+        if bkz_model:
+            out.setdefault("details", {})["falcon_bkz_model"] = bkz_model
     elif algo in ("sphincsplus", "sphincs+"):
         sx = extras.get("sphincs") or {}
         if sx.get("curated_estimates"):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, asdict
-from typing import Any, Dict, Optional, Iterable, Tuple
+from typing import Any, Dict, Optional, Iterable, Tuple, List
 import math
 
 """Lightweight, per-algorithm security estimators.
@@ -309,6 +309,94 @@ def _module_lwe_cost_summary(extras: Dict[str, Any]) -> Optional[Dict[str, Any]]
         summary["alpha"] = alpha
         summary["q"] = q
     return summary
+
+
+def _falcon_secret_sigma(n: int) -> float:
+    # Falcon secrets follow a discrete Gaussian with stddev ≈ 1.17 across parameter sets.
+    return 1.17
+
+
+def _falcon_bkz_curves(extras: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    try:
+        n = int(extras.get("n", 0) or 0)
+        q = int(extras.get("q", 0) or 0)
+    except Exception:
+        return None
+    if n <= 0 or q <= 0:
+        return None
+
+    dim = 2 * n
+    log_det = float(n) * math.log(float(q))
+    sigma = _falcon_secret_sigma(n)
+    base_target = sigma * math.sqrt(2.0 * n)
+    attacks: List[Dict[str, Any]] = []
+    core_consts = {"classical": 0.292, "quantum": 0.262}
+    ln2 = math.log(2.0)
+
+    calibration_refs = {
+        512: {"primal": 360, "dual": 400},
+        1024: {"primal": 520, "dual": 560},
+    }
+
+    def _margin_bits(beta: float, log_target: float) -> float:
+        ld = math.log(_bkz_root_hermite(beta))
+        log_len = (dim - 1) * ld + (log_det / dim)
+        return (log_target - log_len) / ln2
+
+    for attack_name, factor in (("primal", 1.0), ("dual", 1.25)):
+        target = base_target * factor
+        log_target = math.log(target)
+        beta_points: List[Dict[str, Any]] = []
+        beta_success = None
+        ref_beta = (calibration_refs.get(n) or {}).get(attack_name)
+        ref_margin = None
+        if ref_beta is not None:
+            ref_margin = _margin_bits(ref_beta, log_target)
+        max_beta = max(480, int((ref_beta or 0) + 40))
+        for beta in range(100, max_beta + 1, 20):
+            margin_bits = _margin_bits(beta, log_target)
+            calibrated_margin = margin_bits
+            if ref_margin is not None:
+                calibrated_margin -= ref_margin
+            success = calibrated_margin >= 0.0
+            if success and beta_success is None:
+                beta_success = beta
+            beta_points.append(
+                {
+                    "beta": beta,
+                    "classical_bits": core_consts["classical"] * beta,
+                    "quantum_bits": core_consts["quantum"] * beta,
+                    "success_margin_bits": margin_bits,
+                    "calibrated_margin_bits": calibrated_margin,
+                    "success": success,
+                }
+            )
+        attacks.append(
+            {
+                "attack": attack_name,
+                "target_norm": target,
+                "calibration_reference": {
+                    "beta": ref_beta,
+                    "raw_margin_bits": ref_margin,
+                }
+                if ref_beta is not None
+                else None,
+                "beta_success": beta_success,
+                "beta_curve": beta_points,
+            }
+        )
+
+    return {
+        "dimension": dim,
+        "q": q,
+        "sigma_secret": sigma,
+        "determinant_log": log_det,
+        "attacks": attacks,
+        "core_svp_constants": core_consts,
+        "notes": (
+            "Heuristic BKZ curve for Falcon NTRU lattice; success_margin_bits>0 implies predicted BKZ length below target short vector."
+        ),
+    }
 
 
 def _nist_floor_from_name(name: str) -> Optional[int]:
@@ -1189,6 +1277,11 @@ def _estimate_falcon_from_name(name: str, opts: Optional[EstimatorOptions]) -> S
     except Exception:
         pass
 
+    bkz_model = None
+    if falcon_info:
+        model_inputs = {k: v for k, v in falcon_info.items() if k in {"n", "q"} and v is not None}
+        bkz_model = _falcon_bkz_curves(model_inputs)
+
     # Curated estimates (document constants and ranges)
     mech_lower = str(name).lower()
     curated: Dict[str, Any] = {}
@@ -1232,6 +1325,7 @@ def _estimate_falcon_from_name(name: str, opts: Optional[EstimatorOptions]) -> S
             "params": falcon_info or None,
             "curated_estimates": curated or None,
             "core_svp_constants": {"classical": c_class, "quantum": c_quant},
+            "bkz_model": bkz_model,
         }
     })
 

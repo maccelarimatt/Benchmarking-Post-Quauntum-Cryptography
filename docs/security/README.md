@@ -123,7 +123,7 @@ Falcon signatures reduce to finding short vectors in q‑ary NTRU lattices (dime
 Falcon analyses follow core‑SVP. Choose a BKZ blocksize b and use sieve models to map to runtime exponents: classical ≈ 0.292·b; quantum ≈ 0.262·b (per Falcon docs). Using these, public reports place Falcon‑512 around 110–140 classical bits (often quoted ≈128) and Falcon‑1024 around 200–225 classical bits; quantum figures scale by 0.262/0.292.
 
 ### Implementation in pqcbench
-We report NIST category floors at top level and attach NTRU parameters (n,q) plus curated mid/range estimates to extras. If an APS estimator is available and `--sec-adv` is used, its outputs (β and bits) override floors. See `libs/core/src/pqcbench/security_estimator.py` (`_estimate_falcon_from_name`).
+We report NIST category floors at top level and attach NTRU parameters (n,q) plus curated mid/range estimates to extras. The Falcon path now also publishes a heuristic BKZ curve for primal and dual NTRU attacks: for β ∈ [100,≈560] we chart classical/quantum exponents (0.292·β / 0.262·β) alongside raw and calibrated success margins (log₂ gap between BKZ output length and the target short-vector norm, σ≈1.17·√(2n)). Calibration anchors the curve to published blocksize estimates (β≈360/400 for Falcon‑512, β≈520/560 for Falcon‑1024), so the calibrated margin crosses zero near those points. These curves surface under `extras.falcon.bkz_model` and in CLI exports to document the model gap until a full estimator is integrated. APS outputs, when available via `--sec-adv`, still override the floors. See `libs/core/src/pqcbench/security_estimator.py` (`_estimate_falcon_from_name`).
 
 ## HQC (code‑based KEM)
 

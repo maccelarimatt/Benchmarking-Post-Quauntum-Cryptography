@@ -13,6 +13,7 @@ from pqcbench_cli.runners.common import _standardize_security
 
 from pqcbench.security_estimator import (
     _estimate_dilithium_from_name,
+    _estimate_falcon_from_name,
     _estimate_kyber_from_name,
     EstimatorOptions,
 )
@@ -58,3 +59,32 @@ def test_standardize_security_includes_calculated_range():
     assert "module_lwe_profile_constants" in formatted.get("assumptions", {})
     assert formatted.get("details", {}).get("module_lwe_profiles")
     assert formatted.get("details", {}).get("module_lwe_attacks")
+
+
+def test_falcon_bkz_model_present():
+    metrics = _estimate_falcon_from_name("Falcon-512", EstimatorOptions())
+    falcon_extras = metrics.extras.get("falcon", {})
+    model = falcon_extras.get("bkz_model")
+    assert model, "expected bkz_model metadata"
+    attacks = model.get("attacks") or []
+    assert attacks and all(entry.get("beta_curve") for entry in attacks)
+    sample_curve = attacks[0]["beta_curve"][0]
+    assert "classical_bits" in sample_curve and "success_margin_bits" in sample_curve
+    assert "calibrated_margin_bits" in sample_curve
+    calib = attacks[0].get("calibration_reference")
+    if calib:
+        assert "beta" in calib
+
+
+def test_standardize_security_falcon_exposes_bkz_details():
+    metrics = _estimate_falcon_from_name("Falcon-512", EstimatorOptions())
+    sec_dict = asdict(metrics)
+    sec_dict["extras"] = metrics.extras
+    sec_dict["mechanism"] = "Falcon-512"
+    summary = SimpleNamespace(algo="falcon", kind="SIG", meta={"mechanism": "Falcon-512"})
+    formatted = _standardize_security(summary, sec_dict)
+    details = formatted.get("details", {})
+    model = details.get("falcon_bkz_model")
+    assert model
+    curve = model.get("attacks", [])[0]["beta_curve"][0]
+    assert "calibrated_margin_bits" in curve
