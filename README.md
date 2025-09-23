@@ -189,8 +189,8 @@ but `PQCBENCH_*` takes precedence when both are set.
 - Latency per operation: `mean_ms`, `median_ms`, `stddev_ms`, `range_ms`, `min_ms`, `max_ms`, and per-run `series`.
 - Sizes: `public_key_len`, `secret_key_len`, and `ciphertext_len`/`signature_len`.
 - Expansion ratios:
-  - KEMs: `ciphertext_expansion_ratio = ciphertext_len / shared_secret_len`.
-  - Signatures: `signature_expansion_ratio = signature_len / message_size`.
+  - KEMs: `ciphertext_expansion_ratio = ciphertext_len / shared_secret_len` (shared-secret bytes in the denominator).
+  - Signatures: `signature_expansion_ratio = signature_len / message_size` (original message bytes in the denominator).
   These are floats and may be null if inputs are unavailable.
 - Memory footprint: peak RSS delta per run (`mem_series_kb`) plus `mem_mean_kb`,
   `mem_median_kb`, `mem_stddev_kb`, `mem_range_kb`, `mem_min_kb`, `mem_max_kb`

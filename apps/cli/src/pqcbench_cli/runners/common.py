@@ -1983,6 +1983,27 @@ def run_sig(
         "run_mode": ("cold" if cold else "warm"),
         "backend": _backend,
     }
+    mechanism_name = str(meta.get("mechanism") or name or "").upper()
+    if mechanism_name.startswith("MAYO") and meta.get("secret_key_len") == 24:
+        meta.setdefault(
+            "secret_key_note",
+            "Secret key serialisation is a 24-byte seed expanded to the full private state by pqmayo/liboqs.",
+        )
+        meta.setdefault("secret_key_seed_bytes", meta["secret_key_len"])
+
+    hash_name = getattr(instance, "hash_algorithm_name", None)
+    if hash_name:
+        meta.setdefault("signature_hash", hash_name)
+    hash_digest_size = getattr(instance, "hash_digest_size", None)
+    if isinstance(hash_digest_size, int):
+        meta.setdefault("signature_hash_bytes", hash_digest_size)
+    salt_len = getattr(instance, "salt_length", None)
+    if isinstance(salt_len, int):
+        meta.setdefault("pss_salt_length", salt_len)
+    mgf_hash_name = getattr(instance, "mgf_hash_algorithm_name", None)
+    if mgf_hash_name:
+        meta.setdefault("pss_mgf_hash", mgf_hash_name)
+
     analysis = _sample_secret_key_analysis(name, cls, meta.get("mechanism"), "SIG")
     if analysis:
         meta["secret_key_analysis"] = analysis

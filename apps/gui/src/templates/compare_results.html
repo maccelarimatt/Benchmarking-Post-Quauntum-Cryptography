@@ -176,7 +176,7 @@
               <td class="kv-value kv-mono">{% if a.meta.shared_secret_len is not none %}{{ a.meta.shared_secret_len }} B{% else %}-{% endif %}</td>
             </tr>
             <tr>
-              <td class="kv-label">CT expansion ratio</td>
+              <td class="kv-label">CT expansion ratio (ct / shared secret)</td>
               <td class="kv-value">{% if a.meta.ciphertext_expansion_ratio is not none %}{{ '%.3f'|format(a.meta.ciphertext_expansion_ratio) }}{% else %}-{% endif %}</td>
             </tr>
             {% else %}
@@ -189,7 +189,7 @@
               <td class="kv-value kv-mono">{% if a.meta.message_size is not none %}{{ a.meta.message_size }} B{% else %}-{% endif %}</td>
             </tr>
             <tr>
-              <td class="kv-label">Sig expansion ratio</td>
+              <td class="kv-label">Sig expansion ratio (sig / message)</td>
               <td class="kv-value">{% if a.meta.signature_expansion_ratio is not none %}{{ '%.3f'|format(a.meta.signature_expansion_ratio) }}{% else %}-{% endif %}</td>
             </tr>
             {% endif %}

@@ -64,6 +64,13 @@ class RSAKEM:
 class RSASignature:
     """RSA-PSS signature adapter using cryptography (baseline)."""
     name = "rsa-pss"
+    hash_algorithm = hashes.SHA256
+    hash_algorithm_name = "sha256"
+    hash_digest_size = hashes.SHA256().digest_size
+    mgf_hash_algorithm = hashes.SHA256
+    mgf_hash_algorithm_name = "sha256"
+    salt_length = hash_digest_size  # Recommended salt length: match hash size
+
     def keygen(self) -> Tuple[bytes, bytes]:
         return _gen_rsa_keypair(2048)
 
@@ -71,9 +78,11 @@ class RSASignature:
         sk = _load_private_key(secret_key)
         return sk.sign(
             message,
-            padding.PSS(mgf=padding.MGF1(hashes.SHA256()),
-                        salt_length=padding.PSS.MAX_LENGTH),
-            hashes.SHA256(),
+            padding.PSS(
+                mgf=padding.MGF1(self.mgf_hash_algorithm()),
+                salt_length=self.salt_length,
+            ),
+            self.hash_algorithm(),
         )
 
     def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
@@ -82,9 +91,11 @@ class RSASignature:
             pk.verify(
                 signature,
                 message,
-                padding.PSS(mgf=padding.MGF1(hashes.SHA256()),
-                            salt_length=padding.PSS.MAX_LENGTH),
-                hashes.SHA256(),
+                padding.PSS(
+                    mgf=padding.MGF1(self.mgf_hash_algorithm()),
+                    salt_length=self.salt_length,
+                ),
+                self.hash_algorithm(),
             )
             return True
         except Exception:
