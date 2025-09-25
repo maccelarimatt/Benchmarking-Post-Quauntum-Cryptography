@@ -23,6 +23,11 @@ import time
 from dataclasses import dataclass, asdict
 from typing import Callable, Dict, Any, List, Tuple, Optional, Sequence
 from pqcbench import registry
+from pqcbench.runtime_scaling import (
+    RuntimeScalingResult,
+    apply_runtime_scaling,
+    load_device_profiles,
+)
 from functools import partial
 from pqcbench.key_analysis import (
     DEFAULT_PAIR_SAMPLE_LIMIT,
@@ -59,6 +64,8 @@ _ADAPTER_PATHS = {
     "pqcbench_liboqs": _PROJECT_ROOT / "libs" / "adapters" / "liboqs" / "src",
     "pqcbench_native": _PROJECT_ROOT / "libs" / "adapters" / "native" / "src",
 }
+
+_RUNTIME_DEVICE_PROFILES = load_device_profiles(os.environ.get("PQCBENCH_DEVICE_PROFILES"))
 
 _ENVIRONMENT_CACHE: Dict[str, Any] | None = None
 
@@ -299,6 +306,7 @@ class OpStats:
     mem_ci95_high_kb: float | None = None
     mem_range_kb: float | None = None
     mem_series_kb: List[float] | None = None
+    runtime_scaling: RuntimeScalingResult | None = None
 
 @dataclass
 class AlgoSummary:
@@ -1913,6 +1921,13 @@ def run_kem(
     env_meta = _collect_environment_meta()
     if env_meta:
         meta["environment"] = env_meta
+    cpu_model = env_meta.get("cpu_model") if isinstance(env_meta, dict) else None
+    apply_runtime_scaling(
+        ops,
+        algo=name,
+        cpu_model=cpu_model,
+        profiles=_RUNTIME_DEVICE_PROFILES,
+    )
     return AlgoSummary(algo=name, kind="KEM", ops=ops, meta=meta)
 
 
@@ -2010,6 +2025,13 @@ def run_sig(
     env_meta = _collect_environment_meta()
     if env_meta:
         meta["environment"] = env_meta
+    cpu_model = env_meta.get("cpu_model") if isinstance(env_meta, dict) else None
+    apply_runtime_scaling(
+        ops,
+        algo=name,
+        cpu_model=cpu_model,
+        profiles=_RUNTIME_DEVICE_PROFILES,
+    )
     return AlgoSummary(algo=name, kind="SIG", ops=ops, meta=meta)
 
 
