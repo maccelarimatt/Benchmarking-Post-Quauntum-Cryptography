@@ -15,7 +15,7 @@ Once the operation finishes, another RSS sample plus GC yields the delta; the re
 State Reset Between Trials
 
 _MP_CONTEXT = multiprocessing.get_context('spawn') forces a brand-new interpreter for every run (apps/cli/src/pqcbench_cli/runners/common.py:12).
-Stateless helpers such as _kem_keygen_once or _sig_sign_once prepare the operation inside the child (apps/cli/src/pqcbench_cli/runners/common.py:200–:235).
+Stateless helpers such as _kem_keygen_factory or _sig_sign_factory prepare the operation inside the child (apps/cli/src/pqcbench_cli/runners/common.py:680–:770).
 When the child exits, the OS reclaims its entire address space, so no caches or pools survive into the next measurement.
 Key Takeaways
 

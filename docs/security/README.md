@@ -7,6 +7,18 @@ This document summarizes the security models and estimators used by pqcbench. Th
 - Where quantum attacks fundamentally break the scheme (e.g., RSA), we report 0 bits for quantum security and include resource estimates to quantify feasibility.
 - Secret-key Hamming statistics accompany every benchmark (see [Secret-Key Hamming Analysis](#secret-key-hamming-analysis)) so obvious RNG or encoding regressions are surfaced alongside timing metrics.
 
+## Timing Methodology
+
+Benchmark timings isolate the cryptographic primitive under test (keygen, encapsulate, decapsulate, sign, verify) while holding everything else constant.
+
+- **Adapter setup outside the timer.** Adapters are instantiated and cached before timing begins. For factory-based stages we prepare fresh inputs (keys, messages, ciphertexts) inside the child process and only start the stopwatch when the zero-argument operation runs. Environment probing, mechanism selection, and data marshalling are therefore excluded.
+- **Process isolation for fairness.** By default (`cold` runs) every iteration executes in a new child process spawned via Python’s `multiprocessing` with the `spawn` context. This resets allocator state, RNG pools, and CPU caches so each run observes the same starting conditions. Passing `--no-cold` switches to a single long-lived process for users evaluating warm-cache behaviour.
+- **High-resolution timing + memory.** `_single_run_metrics` samples `perf_counter()` around the operation, collects peak unique-set size (USS) deltas at 1.5 ms cadence, and merges Python heap peaks from `tracemalloc`. Baselines are captured after factories finish so only allocations performed by the timed call contribute.
+- **Consistent statistics.** `measure`/`measure_factory` aggregate per-run series with mean, median, min/max, standard deviation, and a 95% confidence interval using the Student t approximation. Memory statistics mirror these summaries when sampling is available.
+- **Failure visibility.** Each worker returns status and optional traceback through a pipe; failures abort the run with a clear message rather than silently skewing aggregates.
+
+This architecture ensures that per-run variance stems from the primitive itself (and environmental noise such as OS scheduling), not from setup code that is irrelevant in deployed contexts.
+
 ## Secret-Key Hamming Analysis
 
 ### What it measures

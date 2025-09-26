@@ -68,6 +68,7 @@ _ADAPTER_PATHS = {
 _RUNTIME_DEVICE_PROFILES = load_device_profiles(os.environ.get("PQCBENCH_DEVICE_PROFILES"))
 
 _ENVIRONMENT_CACHE: Dict[str, Any] | None = None
+_ADAPTER_INSTANCE_CACHE: Dict[str, Any] = {}
 
 try:
     _CI_Z = statistics.NormalDist().inv_cdf(0.975)
@@ -236,6 +237,16 @@ def _collect_environment_meta() -> Dict[str, Any]:
             info["build_flags"] = build_flags
         _ENVIRONMENT_CACHE = info
     return copy.deepcopy(_ENVIRONMENT_CACHE)
+
+
+def _get_adapter_instance(name: str):
+    adapter = _ADAPTER_INSTANCE_CACHE.get(name)
+    if adapter is not None:
+        return adapter
+    cls = registry.get(name)
+    adapter = cls()
+    _ADAPTER_INSTANCE_CACHE[name] = adapter
+    return adapter
 
 
 def _compute_ci95(mean: float, samples: Sequence[float]) -> Tuple[float, float]:
@@ -692,88 +703,70 @@ def _single_run_metrics(fn: Callable[[], None]) -> Tuple[float, float | None]:
     return dt_ms, rss_peak_kb
 
 
-def _kem_keygen_once(name: str) -> None:
-    cls = registry.get(name)
-    cls().keygen()
+def _kem_keygen_factory(name: str) -> Callable[[], None]:
+    """Return an operation that runs keygen after adapter setup."""
+    adapter = _get_adapter_instance(name)
+
+    def _op() -> None:
+        adapter.keygen()
+
+    return _op
 
 
-def _kem_encapsulate_once(name: str) -> None:
-    cls = registry.get(name)
-    pk, _ = cls().keygen()
-    cls().encapsulate(pk)
+def _sig_keygen_factory(name: str) -> Callable[[], None]:
+    """Return an operation that runs signature keygen after adapter setup."""
+    adapter = _get_adapter_instance(name)
 
+    def _op() -> None:
+        adapter.keygen()
 
-def _kem_decapsulate_once(name: str) -> None:
-    cls = registry.get(name)
-    pk, sk = cls().keygen()
-    ct, _ = cls().encapsulate(pk)
-    cls().decapsulate(sk, ct)
-
-
-def _sig_keygen_once(name: str) -> None:
-    cls = registry.get(name)
-    cls().keygen()
-
-
-def _sig_sign_once(name: str, message_size: int) -> None:
-    cls = registry.get(name)
-    msg = b"x" * int(message_size)
-    _, sk = cls().keygen()
-    cls().sign(sk, msg)
-
-
-def _sig_verify_once(name: str, message_size: int) -> None:
-    cls = registry.get(name)
-    msg = b"x" * int(message_size)
-    pk, sk = cls().keygen()
-    sig = cls().sign(sk, msg)
-    cls().verify(pk, msg, sig)
+    return _op
 
 
 def _kem_encapsulate_factory(name: str) -> Callable[[], None]:
     """Prepare fresh key, return op that only runs encapsulate."""
-    cls = registry.get(name)
-    pk, _ = cls().keygen()
+    adapter = _get_adapter_instance(name)
+    pk, _ = adapter.keygen()
 
     def _op() -> None:
-        cls().encapsulate(pk)
+        adapter.encapsulate(pk)
 
     return _op
 
 
 def _kem_decapsulate_factory(name: str) -> Callable[[], None]:
     """Prepare fresh keys and ciphertext, return op that only runs decapsulate."""
-    cls = registry.get(name)
-    pk, sk = cls().keygen()
-    ct, _ = cls().encapsulate(pk)
+    adapter = _get_adapter_instance(name)
+    pk, sk = adapter.keygen()
+    ct, _ = adapter.encapsulate(pk)
 
     def _op() -> None:
-        cls().decapsulate(sk, ct)
+        adapter.decapsulate(sk, ct)
 
     return _op
 
 
 def _sig_sign_factory(name: str, message_size: int) -> Callable[[], None]:
     """Prepare fresh key and message, return op that only runs sign."""
-    cls = registry.get(name)
+    adapter = _get_adapter_instance(name)
     msg = b"x" * int(message_size)
-    _, sk = cls().keygen()
+    _, sk = adapter.keygen()
 
     def _op() -> None:
-        cls().sign(sk, msg)
+        adapter.sign(sk, msg)
 
     return _op
 
 
 def _sig_verify_factory(name: str, message_size: int) -> Callable[[], None]:
     """Prepare fresh keys/message/signature, return op that only runs verify."""
-    cls = registry.get(name)
+    adapter = _get_adapter_instance(name)
     msg = b"x" * int(message_size)
-    pk, sk = cls().keygen()
-    sig = cls().sign(sk, msg)
+    pk, sk = adapter.keygen()
+    sig = adapter.sign(sk, msg)
 
     def _op() -> None:
-        cls().verify(pk, msg, sig)
+        adapter.verify(pk, msg, sig)
 
     return _op
 
@@ -1776,13 +1769,13 @@ def _repo_root() -> pathlib.Path:
     return pathlib.Path.cwd()
 
 
-def _sample_secret_key_analysis(name: str, cls, mechanism: str | None, kind: str) -> Dict[str, Any] | None:
+def _sample_secret_key_analysis(name: str, adapter, mechanism: str | None, kind: str) -> Dict[str, Any] | None:
     """Collect lightweight Hamming-weight/distance stats across fresh keygens."""
     try:
         keys: List[bytes] = []
         for _ in range(DEFAULT_SECRET_KEY_SAMPLES):
             try:
-                _, sk = cls().keygen()
+                _, sk = adapter.keygen()
             except Exception:
                 continue
             if not isinstance(sk, (bytes, bytearray)):
@@ -1863,15 +1856,14 @@ def run_kem(
     Fresh keys are generated for each run of encapsulate/decapsulate to avoid
     reusing state and to keep comparisons fair.
     """
-    cls = registry.get(name)
     ops: Dict[str, OpStats] = {}
     def _p(stage: str):
         if progress is None:
             return None
         return lambda i, total: progress(stage, name, i, total)
 
-    ops["keygen"] = measure(
-        partial(_kem_keygen_once, name), runs, cold=cold, progress_cb=_p("keygen")
+    ops["keygen"] = measure_factory(
+        partial(_sig_keygen_factory, name), runs, cold=cold, progress_cb=_p("keygen")
     )
     # Ensure encapsulate/decapsulate timings exclude setup (keygen, prior steps)
     ops["encapsulate"] = measure_factory(
@@ -1880,8 +1872,9 @@ def run_kem(
     ops["decapsulate"] = measure_factory(
         partial(_kem_decapsulate_factory, name), runs, cold=cold, progress_cb=_p("decapsulate")
     )
-    instance = cls()
-    mod = getattr(cls, "__module__", "") or getattr(instance.__class__, "__module__", "")
+    adapter = _get_adapter_instance(name)
+    adapter_cls = adapter.__class__
+    mod = getattr(adapter_cls, "__module__", "") or getattr(adapter, "__module__", "")
     if "pqcbench_liboqs" in mod:
         _backend = "liboqs"
     elif "pqcbench_native" in mod:
@@ -1890,8 +1883,8 @@ def run_kem(
         _backend = "rsa"
     else:
         _backend = "unknown"
-    pk, sk = instance.keygen()
-    ct, ss = cls().encapsulate(pk)
+    pk, sk = adapter.keygen()
+    ct, ss = adapter.encapsulate(pk)
     _ct_len = len(ct) if isinstance(ct, (bytes, bytearray)) else None
     _ss_len = len(ss) if isinstance(ss, (bytes, bytearray)) else None
     _ct_expansion = None
@@ -1908,14 +1901,14 @@ def run_kem(
         "ciphertext_expansion_ratio": _ct_expansion,
         # Prefer common attributes for the concrete mechanism/version name,
         # and fall back to native adapters' `algorithm` attribute when present.
-        "mechanism": getattr(instance, "mech", None)
-        or getattr(instance, "alg", None)
-        or getattr(instance, "_mech", None)
-        or getattr(instance, "algorithm", None),
+        "mechanism": getattr(adapter, "mech", None)
+        or getattr(adapter, "alg", None)
+        or getattr(adapter, "_mech", None)
+        or getattr(adapter, "algorithm", None),
         "run_mode": ("cold" if cold else "warm"),
         "backend": _backend,
     }
-    analysis = _sample_secret_key_analysis(name, cls, meta.get("mechanism"), "KEM")
+    analysis = _sample_secret_key_analysis(name, adapter, meta.get("mechanism"), "KEM")
     if analysis:
         meta["secret_key_analysis"] = analysis
     env_meta = _collect_environment_meta()
@@ -1946,15 +1939,14 @@ def run_sig(
     - sign (with fresh keys per run)
     - verify (with fresh keys/signature per run)
     """
-    cls = registry.get(name)
     ops: Dict[str, OpStats] = {}
     def _p(stage: str):
         if progress is None:
             return None
         return lambda i, total: progress(stage, name, i, total)
 
-    ops["keygen"] = measure(
-        partial(_sig_keygen_once, name), runs, cold=cold, progress_cb=_p("keygen")
+    ops["keygen"] = measure_factory(
+        partial(_kem_keygen_factory, name), runs, cold=cold, progress_cb=_p("keygen")
     )
     # Ensure sign/verify timings exclude setup (keygen, sign)
     ops["sign"] = measure_factory(
@@ -1963,8 +1955,9 @@ def run_sig(
     ops["verify"] = measure_factory(
         partial(_sig_verify_factory, name, message_size), runs, cold=cold, progress_cb=_p("verify")
     )
-    instance = cls()
-    mod = getattr(cls, "__module__", "") or getattr(instance.__class__, "__module__", "")
+    adapter = _get_adapter_instance(name)
+    adapter_cls = adapter.__class__
+    mod = getattr(adapter_cls, "__module__", "") or getattr(adapter, "__module__", "")
     if "pqcbench_liboqs" in mod:
         _backend = "liboqs"
     elif "pqcbench_native" in mod:
@@ -1973,9 +1966,9 @@ def run_sig(
         _backend = "rsa"
     else:
         _backend = "unknown"
-    pk, sk = instance.keygen()
+    pk, sk = adapter.keygen()
     msg = b"x" * message_size
-    sig = instance.sign(sk, msg)
+    sig = adapter.sign(sk, msg)
     _sig_len = len(sig) if isinstance(sig, (bytes, bytearray)) else None
     _sig_expansion = None
     try:
@@ -1991,10 +1984,10 @@ def run_sig(
         "signature_expansion_ratio": _sig_expansion,
         # Prefer common attributes for the concrete mechanism/version name,
         # and fall back to native adapters' `algorithm` attribute when present.
-        "mechanism": getattr(instance, "mech", None)
-        or getattr(instance, "alg", None)
-        or getattr(instance, "_mech", None)
-        or getattr(instance, "algorithm", None),
+        "mechanism": getattr(adapter, "mech", None)
+        or getattr(adapter, "alg", None)
+        or getattr(adapter, "_mech", None)
+        or getattr(adapter, "algorithm", None),
         "run_mode": ("cold" if cold else "warm"),
         "backend": _backend,
     }
@@ -2006,20 +1999,20 @@ def run_sig(
         )
         meta.setdefault("secret_key_seed_bytes", meta["secret_key_len"])
 
-    hash_name = getattr(instance, "hash_algorithm_name", None)
+    hash_name = getattr(adapter, "hash_algorithm_name", None)
     if hash_name:
         meta.setdefault("signature_hash", hash_name)
-    hash_digest_size = getattr(instance, "hash_digest_size", None)
+    hash_digest_size = getattr(adapter, "hash_digest_size", None)
     if isinstance(hash_digest_size, int):
         meta.setdefault("signature_hash_bytes", hash_digest_size)
-    salt_len = getattr(instance, "salt_length", None)
+    salt_len = getattr(adapter, "salt_length", None)
     if isinstance(salt_len, int):
         meta.setdefault("pss_salt_length", salt_len)
-    mgf_hash_name = getattr(instance, "mgf_hash_algorithm_name", None)
+    mgf_hash_name = getattr(adapter, "mgf_hash_algorithm_name", None)
     if mgf_hash_name:
         meta.setdefault("pss_mgf_hash", mgf_hash_name)
 
-    analysis = _sample_secret_key_analysis(name, cls, meta.get("mechanism"), "SIG")
+    analysis = _sample_secret_key_analysis(name, adapter, meta.get("mechanism"), "SIG")
     if analysis:
         meta["secret_key_analysis"] = analysis
     env_meta = _collect_environment_meta()
@@ -2038,11 +2031,10 @@ def run_sig(
 def export_trace_kem(name: str, export_path: str | None) -> None:
     if not export_path:
         return
-    cls = registry.get(name)
-    algo = cls()
-    pk, sk = algo.keygen()
-    ct, ss = algo.encapsulate(pk)
-    ss_dec = algo.decapsulate(sk, ct)
+    adapter = _get_adapter_instance(name)
+    pk, sk = adapter.keygen()
+    ct, ss = adapter.encapsulate(pk)
+    ss_dec = adapter.decapsulate(sk, ct)
     trace = {
         "algo": name,
         "kind": "KEM",
@@ -2057,12 +2049,11 @@ def export_trace_kem(name: str, export_path: str | None) -> None:
 def export_trace_sig(name: str, message_size: int, export_path: str | None) -> None:
     if not export_path:
         return
-    cls = registry.get(name)
-    algo = cls()
-    pk, sk = algo.keygen()
+    adapter = _get_adapter_instance(name)
+    pk, sk = adapter.keygen()
     msg = b"x" * int(message_size)
-    sig = algo.sign(sk, msg)
-    ok = algo.verify(pk, msg, sig)
+    sig = adapter.sign(sk, msg)
+    ok = adapter.verify(pk, msg, sig)
     trace = {
         "algo": name,
         "kind": "SIG",
