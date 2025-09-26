@@ -88,6 +88,8 @@ from pqcbench.params import find as find_param_hint  # noqa: E402
 # Data classes
 # ---------------------------------------------------------------------------
 
+DEFAULT_ALGORITHM_EXCLUDE = {"xmssmt"}
+
 @dataclass
 class ProbeConfig:
     iterations: int = 800
@@ -96,6 +98,7 @@ class ProbeConfig:
     keep_artifacts: bool = False
     include_algorithms: Optional[List[str]] = None
     include_scenarios: Optional[List[str]] = None
+    exclude_algorithms: Optional[List[str]] = None
 
 
 @dataclass
@@ -629,8 +632,18 @@ def classify_algorithm(key: str, obj: Any) -> Optional[str]:
 def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
     discovered: List[AlgorithmDescriptor] = []
     available = registry.list()
+    include_set = set(config.include_algorithms or [])
+    explicit_include = bool(config.include_algorithms)
+    exclude_set = {key.lower() for key in (config.exclude_algorithms or [])}
     for key, candidate in sorted(available.items()):
-        if config.include_algorithms and key not in config.include_algorithms:
+        key_lower = key.lower()
+        if config.include_algorithms and key not in include_set:
+            continue
+        if key_lower in exclude_set:
+            print(f"[forensic_probe] Skipping {key}: excluded via CLI", file=sys.stderr)
+            continue
+        if key_lower in DEFAULT_ALGORITHM_EXCLUDE and not (explicit_include and key in include_set):
+            print(f"[forensic_probe] Skipping {key}: excluded by default (unstable)", file=sys.stderr)
             continue
         if inspect.isclass(candidate):
             factory: Callable[[], Any] = candidate
@@ -890,8 +903,17 @@ def estimate_mutual_information(reference: np.ndarray, variant: np.ndarray, bins
 
 
 def summarise_results(scenario_results: List[ScenarioResult], analysis_results: List[AnalysisResult], host_metadata: Dict[str, Any], config: ProbeConfig) -> Dict[str, Any]:
+    config_dict = dataclasses.asdict(config)
+    if config_dict.get("output_path") is not None:
+        config_dict["output_path"] = str(config_dict["output_path"])
+    if config_dict.get("include_algorithms") is not None:
+        config_dict["include_algorithms"] = list(config_dict["include_algorithms"])
+    if config_dict.get("include_scenarios") is not None:
+        config_dict["include_scenarios"] = list(config_dict["include_scenarios"])
+    if config_dict.get("exclude_algorithms") is not None:
+        config_dict["exclude_algorithms"] = list(config_dict["exclude_algorithms"])
     summary = {
-        "config": dataclasses.asdict(config),
+        "config": config_dict,
         "host": host_metadata,
         "scenarios": [],
         "analysis": [dataclasses.asdict(result) for result in analysis_results],
@@ -942,6 +964,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> ProbeConfig:
     parser.add_argument("--keep-artifacts", action="store_true", help="Retain temporary artifacts generated during scenarios")
     parser.add_argument("--alg", nargs="*", help="Limit to specific registry keys")
     parser.add_argument("--scenario", nargs="*", help="Limit to specific scenario names")
+    parser.add_argument("--exclude", nargs="*", help="Explicitly exclude registry keys")
     args = parser.parse_args(argv)
     return ProbeConfig(
         iterations=args.iterations,
@@ -950,6 +973,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> ProbeConfig:
         keep_artifacts=args.keep_artifacts,
         include_algorithms=args.alg,
         include_scenarios=args.scenario,
+        exclude_algorithms=args.exclude,
     )
 
 

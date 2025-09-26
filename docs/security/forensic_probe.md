@@ -87,6 +87,8 @@ Leakage flags are raised whenever either condition triggers.
   ```bash
   python tools/forensic_probe.py
   ```
+- The probe skips `xmssmt` by default because the adapter is currently unstable.
+  Explicitly target it with `--alg xmssmt` to override the safeguard.
 - Restricting work:
   ```bash
   # Only Kyber + Dilithium, keep raw artefacts for manual inspection
@@ -105,6 +107,7 @@ The CLI options:
 | `--seed` | Deterministic seed for helper randomness (messages, fault injection). |
 | `--alg` | Filter registry keys (e.g., `kyber`, `dilithium`). |
 | `--scenario` | Run a subset of scenarios by name. |
+| `--exclude` | Exclude specific registry keys (adds to the default skip list). |
 | `--keep-artifacts` | Leave per-scenario temp directories in place. |
 | `--output` | Custom output path (defaults to `results/forensic_probe_<epoch>.json`). |
 
