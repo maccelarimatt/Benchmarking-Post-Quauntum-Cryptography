@@ -17,6 +17,8 @@ pre-commit
 typer
 flask
 psutil
+numpy
+scipy
 # cryptography and liboqs (Python bindings) are optional; uncomment to force install
 cryptography
 # oqs

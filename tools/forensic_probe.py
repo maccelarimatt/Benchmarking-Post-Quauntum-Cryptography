@@ -1,0 +1,975 @@
+#!/usr/bin/env python3
+"""Forensic side-channel probe for PQCbench algorithms.
+
+This tool exercises registered KEM/Signature adapters under multiple
+scenarios, captures timing/memory/process metadata, and applies basic
+statistical tests to highlight potential secret-dependent leakage or
+forensic artefacts.
+
+Usage:
+    python tools/forensic_probe.py --help
+"""
+
+from __future__ import annotations
+
+import argparse
+import dataclasses
+import gc
+import hashlib
+import inspect
+import json
+import math
+import os
+try:  # pragma: no cover - platform-specific import
+    import resource
+except ImportError:  # pragma: no cover - Windows fallback
+    resource = None  # type: ignore
+import pathlib
+import platform
+import random
+import shutil
+import statistics
+import subprocess
+import sys
+import tempfile
+import time
+from collections import defaultdict
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+
+import psutil
+import tracemalloc
+
+try:
+    import numpy as np
+    from scipy import stats
+except ImportError as exc:  # pragma: no cover - dependency resolution
+    print("[forensic_probe] Missing numpy/scipy dependencies: {}".format(exc), file=sys.stderr)
+    print("Install requirements-dev.txt or pip install numpy scipy", file=sys.stderr)
+    raise
+
+
+# ---------------------------------------------------------------------------
+# Project bootstrap
+# ---------------------------------------------------------------------------
+
+PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+for rel in (
+    pathlib.Path("libs/core/src"),
+    pathlib.Path("libs/adapters/liboqs/src"),
+    pathlib.Path("libs/adapters/native/src"),
+    pathlib.Path("libs/adapters/rsa/src"),
+    pathlib.Path("apps/cli/src"),
+):
+    candidate = PROJECT_ROOT / rel
+    if candidate.exists():
+        candidate_str = str(candidate)
+        if candidate_str not in sys.path:
+            sys.path.append(candidate_str)
+
+
+# Import adapters to populate registry.
+for module_name in (
+    "pqcbench_liboqs",
+    "pqcbench_native",
+    "pqcbench_rsa",
+):
+    try:
+        __import__(module_name)
+    except ImportError:
+        pass
+
+from pqcbench import registry  # noqa: E402
+from pqcbench.params import find as find_param_hint  # noqa: E402
+
+
+# ---------------------------------------------------------------------------
+# Data classes
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ProbeConfig:
+    iterations: int = 800
+    seed: int = 991239
+    output_path: Optional[pathlib.Path] = None
+    keep_artifacts: bool = False
+    include_algorithms: Optional[List[str]] = None
+    include_scenarios: Optional[List[str]] = None
+
+
+@dataclass
+class AlgorithmDescriptor:
+    key: str
+    factory: Callable[[], Any]
+    kind: str
+    parameter_name: Optional[str]
+    param_hint: Optional[Any]
+
+
+@dataclass
+class Observation:
+    algorithm: str
+    algorithm_kind: str
+    parameter_name: Optional[str]
+    scenario: str
+    iteration: int
+    success: bool
+    wall_time_ns: int
+    cpu_time_ns: int
+    rss_before: int
+    rss_after: int
+    rss_peak: int
+    rss_delta: int
+    alloc_current: int
+    alloc_peak: int
+    alloc_before: int
+    alloc_peak_before: int
+    alloc_delta: int
+    alloc_peak_delta: int
+    gc_counts_before: Tuple[int, int, int]
+    gc_counts_after: Tuple[int, int, int]
+    payload: Dict[str, Any]
+    error: Optional[str] = None
+    notes: List[str] = field(default_factory=list)
+
+
+@dataclass
+class ScenarioDefinition:
+    name: str
+    description: str
+    group: Optional[str]
+    label: Optional[str]
+    builder: Callable[[AlgorithmDescriptor, random.Random], "ScenarioExecution"]
+
+
+@dataclass
+class ScenarioExecution:
+    prepare: Callable[[], None]
+    iterate: Callable[[int], Callable[[], Dict[str, Any]]]
+    finalize: Callable[[], Dict[str, Any]]
+
+
+@dataclass
+class ScenarioResult:
+    descriptor: AlgorithmDescriptor
+    definition: ScenarioDefinition
+    observations: List[Observation]
+    artifacts: Dict[str, Any]
+
+
+@dataclass
+class AnalysisResult:
+    algorithm: str
+    algorithm_kind: str
+    parameter_name: Optional[str]
+    scenario_name: str
+    metrics: Dict[str, Any]
+
+
+# ---------------------------------------------------------------------------
+# Helper utilities
+# ---------------------------------------------------------------------------
+
+
+def _read_git_commit(repo_path: pathlib.Path) -> Optional[str]:
+    head = repo_path / ".git" / "HEAD"
+    if not head.exists():
+        return None
+    try:
+        head_value = head.read_text(encoding="utf-8").strip()
+    except Exception:
+        return None
+    if head_value.startswith("ref:"):
+        ref = head_value.split(":", 1)[1].strip()
+        ref_path = repo_path / ".git" / ref
+        if ref_path.exists():
+            try:
+                return ref_path.read_text(encoding="utf-8").strip()
+            except Exception:
+                return None
+        return None
+    return head_value or None
+
+
+def collect_host_metadata() -> Dict[str, Any]:
+    process = psutil.Process()
+    cpu_freq = None
+    try:
+        freq = psutil.cpu_freq()
+        if freq:
+            cpu_freq = {"current": freq.current, "min": freq.min, "max": freq.max}
+    except Exception:
+        cpu_freq = None
+
+    vm = psutil.virtual_memory()
+    swap = psutil.swap_memory()
+
+    metadata = {
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "host": platform.node(),
+        "os": {
+            "system": platform.system(),
+            "release": platform.release(),
+            "version": platform.version(),
+            "machine": platform.machine(),
+            "python": sys.version,
+        },
+        "cpu": {
+            "model": platform.processor(),
+            "cores_logical": psutil.cpu_count(),
+            "cores_physical": psutil.cpu_count(logical=False),
+            "freq": cpu_freq,
+            "load_avg": os.getloadavg() if hasattr(os, "getloadavg") else None,
+        },
+        "memory": {
+            "total": vm.total,
+            "available": vm.available,
+            "swap_total": swap.total,
+        },
+        "process": {
+            "pid": process.pid,
+            "exe": process.exe(),
+            "cmdline": process.cmdline(),
+            "num_threads": process.num_threads(),
+        },
+        "git": {
+            "commit": _read_git_commit(PROJECT_ROOT),
+        },
+        "environment": {
+            key: os.environ.get(key)
+            for key in sorted(k for k in os.environ if k.startswith("PQCBENCH") or k.startswith("OQS") or k in {"OPENSSL_ia32cap", "PYTHONHASHSEED"})
+        },
+    }
+    return metadata
+
+
+def hash_bytes(data: bytes, label: str) -> Dict[str, Any]:
+    digest = hashlib.blake2b(data, digest_size=16).hexdigest()
+    return {f"{label}_length": len(data), f"{label}_sha3": hashlib.sha3_256(data).hexdigest(), f"{label}_blake2b": digest}
+
+
+def ensure_bytes_summary(name: str, value: Optional[bytes]) -> Dict[str, Any]:
+    if value is None:
+        return {f"{name}_present": False}
+    return {f"{name}_present": True, **hash_bytes(value, name)}
+
+
+# ---------------------------------------------------------------------------
+# Scenario builders
+# ---------------------------------------------------------------------------
+
+
+def build_kem_scenarios() -> List[ScenarioDefinition]:
+    scenarios: List[ScenarioDefinition] = []
+
+    def keygen_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
+        inst = descriptor.factory()
+
+        def prepare() -> None:
+            pass
+
+        def iterate(_: int) -> Callable[[], Dict[str, Any]]:
+            def run() -> Dict[str, Any]:
+                pk, sk = inst.keygen()
+                payload = {}
+                payload.update(hash_bytes(pk, "public_key"))
+                payload.update(hash_bytes(sk, "secret_key"))
+                return payload
+            return run
+
+        def finalize() -> Dict[str, Any]:
+            return {}
+
+        return ScenarioExecution(prepare=prepare, iterate=iterate, finalize=finalize)
+
+    def encapsulate_fixed_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
+        inst = descriptor.factory()
+        base_pk: Optional[bytes] = None
+        base_sk: Optional[bytes] = None
+
+        def prepare() -> None:
+            nonlocal base_pk, base_sk
+            base_pk, base_sk = inst.keygen()
+
+        def iterate(_: int) -> Callable[[], Dict[str, Any]]:
+            def run() -> Dict[str, Any]:
+                assert base_pk is not None
+                ct, ss = inst.encapsulate(base_pk)
+                payload: Dict[str, Any] = {}
+                payload.update(hash_bytes(ct, "ciphertext"))
+                payload.update(hash_bytes(ss, "shared_secret"))
+                return payload
+            return run
+
+        def finalize() -> Dict[str, Any]:
+            secret_summary = ensure_bytes_summary("base_secret_key", base_sk)
+            secret_summary.update(ensure_bytes_summary("base_public_key", base_pk))
+            return secret_summary
+
+        return ScenarioExecution(prepare=prepare, iterate=iterate, finalize=finalize)
+
+    def decapsulate_fixed_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
+        inst = descriptor.factory()
+        base_pk: Optional[bytes] = None
+        base_sk: Optional[bytes] = None
+
+        def prepare() -> None:
+            nonlocal base_pk, base_sk
+            base_pk, base_sk = inst.keygen()
+
+        def iterate(_: int) -> Callable[[], Dict[str, Any]]:
+            def run() -> Dict[str, Any]:
+                assert base_pk is not None and base_sk is not None
+                ct, ss = inst.encapsulate(base_pk)
+                recovered = inst.decapsulate(base_sk, ct)
+                payload: Dict[str, Any] = {}
+                payload.update(hash_bytes(ct, "ciphertext"))
+                payload.update(hash_bytes(ss, "shared_secret"))
+                payload.update(hash_bytes(recovered, "recovered_secret"))
+                payload["match_shared_secret"] = ss == recovered
+                return payload
+            return run
+
+        def finalize() -> Dict[str, Any]:
+            return ensure_bytes_summary("base_secret_key", base_sk)
+
+        return ScenarioExecution(prepare=prepare, iterate=iterate, finalize=finalize)
+
+    def decapsulate_variable_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
+        inst = descriptor.factory()
+
+        def prepare() -> None:
+            pass
+
+        def iterate(_: int) -> Callable[[], Dict[str, Any]]:
+            def run() -> Dict[str, Any]:
+                pk, sk = inst.keygen()
+                ct, ss = inst.encapsulate(pk)
+                recovered = inst.decapsulate(sk, ct)
+                payload: Dict[str, Any] = {}
+                payload.update(hash_bytes(ct, "ciphertext"))
+                payload.update(hash_bytes(ss, "shared_secret"))
+                payload.update(hash_bytes(recovered, "recovered_secret"))
+                payload["match_shared_secret"] = ss == recovered
+                payload.update(hash_bytes(pk, "public_key"))
+                payload.update(hash_bytes(sk, "secret_key"))
+                return payload
+            return run
+
+        def finalize() -> Dict[str, Any]:
+            return {}
+
+        return ScenarioExecution(prepare=prepare, iterate=iterate, finalize=finalize)
+
+    def decapsulate_fault_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
+        inst = descriptor.factory()
+        base_pk: Optional[bytes] = None
+        base_sk: Optional[bytes] = None
+
+        def prepare() -> None:
+            nonlocal base_pk, base_sk
+            base_pk, base_sk = inst.keygen()
+
+        def iterate(_: int) -> Callable[[], Dict[str, Any]]:
+            def run() -> Dict[str, Any]:
+                assert base_pk is not None and base_sk is not None
+                ct, _ = inst.encapsulate(base_pk)
+                corrupted = bytearray(ct)
+                if corrupted:
+                    index = rng.randrange(len(corrupted))
+                    corrupted[index] ^= 0xFF
+                try:
+                    recovered = inst.decapsulate(base_sk, bytes(corrupted))
+                    payload = hash_bytes(recovered, "recovered_secret")
+                    payload["fault_status"] = "success"
+                except Exception as exc:  # pragma: no cover - depends on backend behaviour
+                    payload = {"fault_status": "error", "fault_error": repr(exc)}
+                payload.update(hash_bytes(bytes(corrupted), "corrupted_ciphertext"))
+                return payload
+            return run
+
+        def finalize() -> Dict[str, Any]:
+            return ensure_bytes_summary("base_secret_key", base_sk)
+
+        return ScenarioExecution(prepare=prepare, iterate=iterate, finalize=finalize)
+
+    scenarios.extend([
+        ScenarioDefinition(
+            name="keygen",
+            description="Generate new key pairs",
+            group=None,
+            label=None,
+            builder=keygen_builder,
+        ),
+        ScenarioDefinition(
+            name="encapsulate_fixed_public",
+            description="Encapsulate to a fixed public key",
+            group=None,
+            label=None,
+            builder=encapsulate_fixed_builder,
+        ),
+        ScenarioDefinition(
+            name="decapsulate_fixed_secret",
+            description="Decapsulate ciphertexts with a fixed secret key",
+            group="kem_decapsulation",
+            label="fixed",
+            builder=decapsulate_fixed_builder,
+        ),
+        ScenarioDefinition(
+            name="decapsulate_variable_secret",
+            description="Decapsulate ciphertexts with freshly generated secrets",
+            group="kem_decapsulation",
+            label="variable",
+            builder=decapsulate_variable_builder,
+        ),
+        ScenarioDefinition(
+            name="decapsulate_fault",
+            description="Decapsulate intentionally corrupted ciphertexts",
+            group=None,
+            label=None,
+            builder=decapsulate_fault_builder,
+        ),
+    ])
+    return scenarios
+
+
+def build_signature_scenarios() -> List[ScenarioDefinition]:
+    scenarios: List[ScenarioDefinition] = []
+
+    def keygen_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
+        inst = descriptor.factory()
+
+        def prepare() -> None:
+            pass
+
+        def iterate(_: int) -> Callable[[], Dict[str, Any]]:
+            def run() -> Dict[str, Any]:
+                pk, sk = inst.keygen()
+                payload = {}
+                payload.update(hash_bytes(pk, "public_key"))
+                payload.update(hash_bytes(sk, "secret_key"))
+                return payload
+            return run
+
+        def finalize() -> Dict[str, Any]:
+            return {}
+
+        return ScenarioExecution(prepare=prepare, iterate=iterate, finalize=finalize)
+
+    def sign_fixed_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
+        inst = descriptor.factory()
+        fixed_pk: Optional[bytes] = None
+        fixed_sk: Optional[bytes] = None
+
+        def prepare() -> None:
+            nonlocal fixed_pk, fixed_sk
+            fixed_pk, fixed_sk = inst.keygen()
+
+        def iterate(iteration: int) -> Callable[[], Dict[str, Any]]:
+            message = (f"forensic-fixed-message-{iteration}").encode("utf-8")
+
+            def run() -> Dict[str, Any]:
+                assert fixed_sk is not None
+                signature = inst.sign(fixed_sk, message)
+                payload = hash_bytes(signature, "signature")
+                payload["message_length"] = len(message)
+                return payload
+            return run
+
+        def finalize() -> Dict[str, Any]:
+            return ensure_bytes_summary("fixed_secret_key", fixed_sk)
+
+        return ScenarioExecution(prepare=prepare, iterate=iterate, finalize=finalize)
+
+    def sign_variable_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
+        inst = descriptor.factory()
+
+        def prepare() -> None:
+            pass
+
+        def iterate(iteration: int) -> Callable[[], Dict[str, Any]]:
+            message = (f"forensic-variable-message-{iteration}").encode("utf-8")
+
+            def run() -> Dict[str, Any]:
+                pk, sk = inst.keygen()
+                signature = inst.sign(sk, message)
+                payload = hash_bytes(signature, "signature")
+                payload.update(hash_bytes(pk, "public_key"))
+                payload.update(hash_bytes(sk, "secret_key"))
+                payload["message_length"] = len(message)
+                return payload
+            return run
+
+        def finalize() -> Dict[str, Any]:
+            return {}
+
+        return ScenarioExecution(prepare=prepare, iterate=iterate, finalize=finalize)
+
+    def sign_fault_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
+        inst = descriptor.factory()
+        fixed_pk: Optional[bytes] = None
+        fixed_sk: Optional[bytes] = None
+
+        def prepare() -> None:
+            nonlocal fixed_pk, fixed_sk
+            fixed_pk, fixed_sk = inst.keygen()
+
+        def iterate(iteration: int) -> Callable[[], Dict[str, Any]]:
+            message = (f"forensic-fault-message-{iteration}").encode("utf-8")
+
+            def run() -> Dict[str, Any]:
+                assert fixed_sk is not None
+                tampered = bytearray(fixed_sk)
+                if tampered:
+                    idx = rng.randrange(len(tampered))
+                    tampered[idx] ^= 0xFF
+                try:
+                    signature = inst.sign(bytes(tampered), message)
+                    payload = hash_bytes(signature, "signature")
+                    payload["fault_status"] = "success"
+                except Exception as exc:  # pragma: no cover - backend dependent
+                    payload = {"fault_status": "error", "fault_error": repr(exc)}
+                payload["message_length"] = len(message)
+                return payload
+            return run
+
+        def finalize() -> Dict[str, Any]:
+            return ensure_bytes_summary("fixed_secret_key", fixed_sk)
+
+        return ScenarioExecution(prepare=prepare, iterate=iterate, finalize=finalize)
+
+    def verify_invalid_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
+        inst = descriptor.factory()
+        fixed_pk: Optional[bytes] = None
+        fixed_sk: Optional[bytes] = None
+
+        def prepare() -> None:
+            nonlocal fixed_pk, fixed_sk
+            fixed_pk, fixed_sk = inst.keygen()
+
+        def iterate(iteration: int) -> Callable[[], Dict[str, Any]]:
+            message = (f"forensic-verify-message-{iteration}").encode("utf-8")
+
+            def run() -> Dict[str, Any]:
+                assert fixed_pk is not None and fixed_sk is not None
+                signature = inst.sign(fixed_sk, message)
+                corrupted = bytearray(signature)
+                if corrupted:
+                    idx = rng.randrange(len(corrupted))
+                    corrupted[idx] ^= 0x01
+                is_valid = inst.verify(fixed_pk, message, bytes(corrupted))
+                return {
+                    "verification_result": bool(is_valid),
+                    "original_signature_digest": hashlib.sha3_256(signature).hexdigest(),
+                    "corrupted_signature_digest": hashlib.sha3_256(bytes(corrupted)).hexdigest(),
+                    "message_length": len(message),
+                }
+            return run
+
+        def finalize() -> Dict[str, Any]:
+            return ensure_bytes_summary("fixed_secret_key", fixed_sk)
+
+        return ScenarioExecution(prepare=prepare, iterate=iterate, finalize=finalize)
+
+    scenarios.extend([
+        ScenarioDefinition(
+            name="keygen",
+            description="Generate new signing key pairs",
+            group=None,
+            label=None,
+            builder=keygen_builder,
+        ),
+        ScenarioDefinition(
+            name="sign_fixed_secret",
+            description="Sign messages with a fixed secret key",
+            group="signature_sign",
+            label="fixed",
+            builder=sign_fixed_builder,
+        ),
+        ScenarioDefinition(
+            name="sign_variable_secret",
+            description="Sign messages with newly generated secret keys",
+            group="signature_sign",
+            label="variable",
+            builder=sign_variable_builder,
+        ),
+        ScenarioDefinition(
+            name="sign_fault",
+            description="Attempt signing with a fault-injected secret key",
+            group=None,
+            label=None,
+            builder=sign_fault_builder,
+        ),
+        ScenarioDefinition(
+            name="verify_invalid_signature",
+            description="Verify corrupted signatures to observe error handling",
+            group=None,
+            label=None,
+            builder=verify_invalid_builder,
+        ),
+    ])
+    return scenarios
+
+
+# ---------------------------------------------------------------------------
+# Core execution logic
+# ---------------------------------------------------------------------------
+
+
+def classify_algorithm(key: str, obj: Any) -> Optional[str]:
+    attrs = {"keygen": hasattr(obj, "keygen"), "encapsulate": hasattr(obj, "encapsulate"), "decapsulate": hasattr(obj, "decapsulate"), "sign": hasattr(obj, "sign"), "verify": hasattr(obj, "verify")}
+    if attrs["encapsulate"] and attrs["decapsulate"]:
+        return "kem"
+    if attrs["sign"] and attrs["verify"]:
+        return "signature"
+    return None
+
+
+def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
+    discovered: List[AlgorithmDescriptor] = []
+    available = registry.list()
+    for key, candidate in sorted(available.items()):
+        if config.include_algorithms and key not in config.include_algorithms:
+            continue
+        if inspect.isclass(candidate):
+            factory: Callable[[], Any] = candidate
+        elif callable(candidate):
+            factory = candidate
+        else:
+            factory = lambda candidate=candidate: candidate
+        try:
+            probe_obj = factory()
+        except Exception as exc:
+            print(f"[forensic_probe] Skipping {key}: instantiation failed ({exc!r})", file=sys.stderr)
+            continue
+        kind = classify_algorithm(key, probe_obj)
+        if kind is None:
+            continue
+        parameter_name = getattr(probe_obj, "alg", None)
+        param_hint = find_param_hint(parameter_name or key)
+        descriptor = AlgorithmDescriptor(
+            key=key,
+            factory=factory,
+            kind=kind,
+            parameter_name=parameter_name,
+            param_hint=param_hint,
+        )
+        discovered.append(descriptor)
+    return discovered
+
+
+def snapshot_directory(path: pathlib.Path) -> Dict[str, Dict[str, Any]]:
+    snapshot: Dict[str, Dict[str, Any]] = {}
+    if not path.exists():
+        return snapshot
+    for root, _, files in os.walk(path):
+        for file_name in files:
+            file_path = pathlib.Path(root) / file_name
+            try:
+                data = file_path.read_bytes()
+            except Exception:
+                continue
+            rel = file_path.relative_to(path).as_posix()
+            snapshot[rel] = {
+                "size": len(data),
+                "sha3_256": hashlib.sha3_256(data).hexdigest(),
+                "blake2b": hashlib.blake2b(data, digest_size=16).hexdigest(),
+            }
+    return snapshot
+
+
+def run_scenario(config: ProbeConfig, descriptor: AlgorithmDescriptor, definition: ScenarioDefinition, rng: random.Random) -> ScenarioResult:
+    temp_dir = pathlib.Path(tempfile.mkdtemp(prefix=f"forensic_{descriptor.key}_{definition.name}_", dir=None))
+    original_tempdir = tempfile.gettempdir()
+    os_environ_backup = {var: os.environ.get(var) for var in ("TMP", "TEMP", "TMPDIR")}
+    try:
+        os.environ["TMP"] = os.environ["TEMP"] = os.environ["TMPDIR"] = str(temp_dir)
+        tempfile.tempdir = str(temp_dir)
+        execution = definition.builder(descriptor, rng)
+        execution.prepare()
+        observations: List[Observation] = []
+        tracemalloc.start()
+        process = psutil.Process()
+        for iteration in range(config.iterations):
+            operation = execution.iterate(iteration)
+            gc_counts_before = gc.get_count()
+            rss_before = process.memory_info().rss
+            alloc_current_before, alloc_peak_before = tracemalloc.get_traced_memory()
+            start_wall = time.perf_counter_ns()
+            start_cpu = time.process_time_ns()
+            success = True
+            payload: Dict[str, Any]
+            error: Optional[str] = None
+            notes: List[str] = []
+            try:
+                payload = operation()
+            except Exception as exc:  # pragma: no cover - depends on backend
+                success = False
+                payload = {}
+                error = repr(exc)
+            end_wall = time.perf_counter_ns()
+            end_cpu = time.process_time_ns()
+            rss_after = process.memory_info().rss
+            if resource is not None:
+                try:
+                    rss_peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                except Exception:
+                    rss_peak = rss_after
+            else:
+                rss_peak = rss_after
+            alloc_current_after, alloc_peak_after = tracemalloc.get_traced_memory()
+            gc_counts_after = gc.get_count()
+            observation = Observation(
+                algorithm=descriptor.key,
+                algorithm_kind=descriptor.kind,
+                parameter_name=descriptor.parameter_name,
+                scenario=definition.name,
+                iteration=iteration,
+                success=success,
+                wall_time_ns=end_wall - start_wall,
+                cpu_time_ns=end_cpu - start_cpu,
+                rss_before=rss_before,
+                rss_after=rss_after,
+                rss_peak=rss_peak,
+                rss_delta=rss_after - rss_before,
+                alloc_current=alloc_current_after,
+                alloc_peak=alloc_peak_after,
+                alloc_before=alloc_current_before,
+                alloc_peak_before=alloc_peak_before,
+                alloc_delta=alloc_current_after - alloc_current_before,
+                alloc_peak_delta=alloc_peak_after - alloc_peak_before,
+                gc_counts_before=gc_counts_before,
+                gc_counts_after=gc_counts_after,
+                payload=payload,
+                error=error,
+                notes=notes,
+            )
+            observations.append(observation)
+        artifacts = {
+            "artifact_path": str(temp_dir),
+            "files": snapshot_directory(temp_dir),
+        }
+        execution_artifacts = execution.finalize()
+        if execution_artifacts:
+            artifacts["context"] = execution_artifacts
+    finally:
+        tempfile.tempdir = original_tempdir
+        for key, value in os_environ_backup.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+        tracemalloc.stop()
+        if not config.keep_artifacts:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+    return ScenarioResult(descriptor=descriptor, definition=definition, observations=observations, artifacts=artifacts)
+
+
+def collect_results(config: ProbeConfig, descriptors: List[AlgorithmDescriptor]) -> Tuple[List[ScenarioResult], Dict[str, Any]]:
+    host_metadata = collect_host_metadata()
+    rng = random.Random(config.seed)
+    scenario_results: List[ScenarioResult] = []
+    for descriptor in descriptors:
+        print(f"[forensic_probe] Running scenarios for {descriptor.key} ({descriptor.kind})")
+        scenarios = build_kem_scenarios() if descriptor.kind == "kem" else build_signature_scenarios()
+        for definition in scenarios:
+            if config.include_scenarios and definition.name not in config.include_scenarios:
+                continue
+            print(f"    -> Scenario {definition.name}: {definition.description}")
+            result = run_scenario(config, descriptor, definition, rng)
+            scenario_results.append(result)
+    return scenario_results, host_metadata
+
+
+# ---------------------------------------------------------------------------
+# Statistical analysis
+# ---------------------------------------------------------------------------
+
+PAIR_THRESHOLD_T = 4.5  # TVLA style threshold
+PAIR_THRESHOLD_MI = 0.02
+
+
+def analyse_pairs(results: List[ScenarioResult]) -> List[AnalysisResult]:
+    grouped: Dict[Tuple[str, str, str, str], Dict[str, List[Observation]]] = defaultdict(lambda: defaultdict(list))
+    for result in results:
+        descriptor = result.descriptor
+        definition = result.definition
+        if not definition.group or not definition.label:
+            continue
+        key = (descriptor.key, descriptor.kind, descriptor.parameter_name or descriptor.key, definition.group)
+        grouped[key][definition.label].extend(result.observations)
+
+    analysis_results: List[AnalysisResult] = []
+    for (alg_key, alg_kind, param_name, group), label_map in grouped.items():
+        labels = list(label_map)
+        if len(labels) < 2:
+            continue
+        reference = label_map[labels[0]]
+        for label, observations in label_map.items():
+            if label == labels[0]:
+                continue
+            metrics = compute_statistical_tests(reference, observations)
+            analysis_results.append(
+                AnalysisResult(
+                    algorithm=alg_key,
+                    algorithm_kind=alg_kind,
+                    parameter_name=param_name,
+                    scenario_name=f"{group}:{labels[0]} vs {label}",
+                    metrics=metrics,
+                )
+            )
+    return analysis_results
+
+
+def compute_statistical_tests(reference: List[Observation], variant: List[Observation]) -> Dict[str, Any]:
+    ref_times = np.array([obs.wall_time_ns for obs in reference], dtype=np.float64)
+    var_times = np.array([obs.wall_time_ns for obs in variant], dtype=np.float64)
+    ref_cpu = np.array([obs.cpu_time_ns for obs in reference], dtype=np.float64)
+    var_cpu = np.array([obs.cpu_time_ns for obs in variant], dtype=np.float64)
+    ref_rss = np.array([obs.rss_delta for obs in reference], dtype=np.float64)
+    var_rss = np.array([obs.rss_delta for obs in variant], dtype=np.float64)
+
+    t_time = stats.ttest_ind(ref_times, var_times, equal_var=False)
+    t_cpu = stats.ttest_ind(ref_cpu, var_cpu, equal_var=False)
+    t_rss = stats.ttest_ind(ref_rss, var_rss, equal_var=False)
+
+    mann_time = stats.mannwhitneyu(ref_times, var_times, alternative="two-sided")
+    mann_cpu = stats.mannwhitneyu(ref_cpu, var_cpu, alternative="two-sided")
+    mann_rss = stats.mannwhitneyu(ref_rss, var_rss, alternative="two-sided")
+
+    mi_time = estimate_mutual_information(ref_times, var_times)
+    mi_cpu = estimate_mutual_information(ref_cpu, var_cpu)
+    mi_rss = estimate_mutual_information(ref_rss, var_rss)
+
+    return {
+        "t_stat_time": float(t_time.statistic),
+        "t_pvalue_time": float(t_time.pvalue),
+        "t_stat_cpu": float(t_cpu.statistic),
+        "t_pvalue_cpu": float(t_cpu.pvalue),
+        "t_stat_rss": float(t_rss.statistic),
+        "t_pvalue_rss": float(t_rss.pvalue),
+        "mannu_time": float(mann_time.statistic),
+        "mannu_pvalue_time": float(mann_time.pvalue),
+        "mannu_cpu": float(mann_cpu.statistic),
+        "mannu_pvalue_cpu": float(mann_cpu.pvalue),
+        "mannu_rss": float(mann_rss.statistic),
+        "mannu_pvalue_rss": float(mann_rss.pvalue),
+        "mi_time": mi_time,
+        "mi_cpu": mi_cpu,
+        "mi_rss": mi_rss,
+        "time_leak_flag": abs(t_time.statistic) > PAIR_THRESHOLD_T or mi_time > PAIR_THRESHOLD_MI,
+        "cpu_leak_flag": abs(t_cpu.statistic) > PAIR_THRESHOLD_T or mi_cpu > PAIR_THRESHOLD_MI,
+        "rss_leak_flag": abs(t_rss.statistic) > PAIR_THRESHOLD_T or mi_rss > PAIR_THRESHOLD_MI,
+    }
+
+
+def estimate_mutual_information(reference: np.ndarray, variant: np.ndarray, bins: int = 30) -> float:
+    combined = np.concatenate([reference, variant])
+    labels = np.concatenate([np.zeros_like(reference), np.ones_like(variant)])
+    if combined.size == 0:
+        return 0.0
+    hist_bins = np.histogram_bin_edges(combined, bins=bins)
+    ref_hist, _ = np.histogram(reference, bins=hist_bins)
+    var_hist, _ = np.histogram(variant, bins=hist_bins)
+    joint = np.stack([ref_hist, var_hist], axis=0)
+    joint = joint + 1e-9
+    joint_prob = joint / joint.sum()
+    marginal_metric = joint_prob.sum(axis=0)
+    marginal_label = joint_prob.sum(axis=1)
+    entropy_metric = stats.entropy(marginal_metric)
+    entropy_label = stats.entropy(marginal_label)
+    joint_entropy = stats.entropy(joint_prob.flatten())
+    mi = entropy_metric + entropy_label - joint_entropy
+    return float(max(mi, 0.0))
+
+
+# ---------------------------------------------------------------------------
+# Reporting utilities
+# ---------------------------------------------------------------------------
+
+
+def summarise_results(scenario_results: List[ScenarioResult], analysis_results: List[AnalysisResult], host_metadata: Dict[str, Any], config: ProbeConfig) -> Dict[str, Any]:
+    summary = {
+        "config": dataclasses.asdict(config),
+        "host": host_metadata,
+        "scenarios": [],
+        "analysis": [dataclasses.asdict(result) for result in analysis_results],
+    }
+    for result in scenario_results:
+        scenario_entry = {
+            "algorithm": result.descriptor.key,
+            "algorithm_kind": result.descriptor.kind,
+            "parameter_name": result.descriptor.parameter_name,
+            "scenario": result.definition.name,
+            "description": result.definition.description,
+            "group": result.definition.group,
+            "label": result.definition.label,
+            "artifact": result.artifacts,
+            "observations": [dataclasses.asdict(obs) for obs in result.observations],
+        }
+        summary["scenarios"].append(scenario_entry)
+    return summary
+
+
+def emit_summary(summary: Dict[str, Any], analysis_results: List[AnalysisResult]) -> None:
+    print("\n=== Forensic Probe Summary ===")
+    for entry in analysis_results:
+        metrics = entry.metrics
+        flags = [name for name, flag in (("time", metrics.get("time_leak_flag")), ("cpu", metrics.get("cpu_leak_flag")), ("rss", metrics.get("rss_leak_flag"))) if flag]
+        flag_status = ", ".join(flags) if flags else "none"
+        print(
+            f"{entry.algorithm} [{entry.parameter_name or '-'}] {entry.scenario_name}: "
+            f"|t_time|={abs(metrics['t_stat_time']):.2f}, "
+            f"|t_cpu|={abs(metrics['t_stat_cpu']):.2f}, "
+            f"|t_rss|={abs(metrics['t_stat_rss']):.2f}, "
+            f"MI={metrics['mi_time']:.4f}/{metrics['mi_cpu']:.4f}/{metrics['mi_rss']:.4f} -> flags: {flag_status}"
+        )
+    if not analysis_results:
+        print("No paired scenarios available for statistical analysis.")
+
+
+# ---------------------------------------------------------------------------
+# CLI entrypoint
+# ---------------------------------------------------------------------------
+
+
+def parse_args(argv: Optional[Iterable[str]] = None) -> ProbeConfig:
+    parser = argparse.ArgumentParser(description="Forensic side-channel probe for registered PQC algorithms.")
+    parser.add_argument("--iterations", type=int, default=800, help="Iterations per scenario (default: 800)")
+    parser.add_argument("--seed", type=int, default=991239, help="Seed for deterministic helper randomness")
+    parser.add_argument("--output", type=pathlib.Path, help="Optional output JSON path")
+    parser.add_argument("--keep-artifacts", action="store_true", help="Retain temporary artifacts generated during scenarios")
+    parser.add_argument("--alg", nargs="*", help="Limit to specific registry keys")
+    parser.add_argument("--scenario", nargs="*", help="Limit to specific scenario names")
+    args = parser.parse_args(argv)
+    return ProbeConfig(
+        iterations=args.iterations,
+        seed=args.seed,
+        output_path=args.output,
+        keep_artifacts=args.keep_artifacts,
+        include_algorithms=args.alg,
+        include_scenarios=args.scenario,
+    )
+
+
+def main(argv: Optional[Iterable[str]] = None) -> int:
+    config = parse_args(argv)
+    descriptors = discover_algorithms(config)
+    if not descriptors:
+        print("[forensic_probe] No algorithms discovered. Ensure adapters are available.", file=sys.stderr)
+        return 1
+    scenario_results, host_metadata = collect_results(config, descriptors)
+    analysis_results = analyse_pairs(scenario_results)
+    summary = summarise_results(scenario_results, analysis_results, host_metadata, config)
+    emit_summary(summary, analysis_results)
+    output_path = config.output_path or (PROJECT_ROOT / "results" / f"forensic_probe_{int(time.time())}.json")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as fh:
+        json.dump(summary, fh, indent=2)
+    print(f"\n[forensic_probe] Written detailed results to {output_path}")
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())
