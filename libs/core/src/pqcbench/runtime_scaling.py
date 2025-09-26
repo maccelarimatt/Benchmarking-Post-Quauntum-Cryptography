@@ -83,6 +83,15 @@ _DEFAULT_DEVICE_PROFILES: Dict[str, DeviceProfile] = {
         aliases=("nrf52840", "nrf52840 mcu"),
         notes="Single-core CoreMark ≈212 at 64 MHz; SRAM memcpy ≈0.25 GB/s",
     ),
+    "amd_ryzen_7_5700x": DeviceProfile(
+    name="amd_ryzen_7_5700x",
+    compute_metric="geekbench6_single",
+    compute_score=1995.0,
+    bandwidth_metric="memcpy_gbps",
+    bandwidth_score=48.0,
+    aliases=("5700x", "ryzen 7 5700x", "amd ryzen 7 5700x"),
+    notes="Geekbench 6 single-core ≈1995; STREAM copy ≈48 GB/s (DDR4-3200)",
+    ),
     "macbookpro16_i9_9880h": DeviceProfile(
         name="macbookpro16_i9_9880h",
         compute_metric="geekbench6_single",
