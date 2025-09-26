@@ -258,6 +258,26 @@ def ensure_bytes_summary(name: str, value: Optional[bytes]) -> Dict[str, Any]:
     return {f"{name}_present": True, **hash_bytes(value, name)}
 
 
+def to_jsonable(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(key): to_jsonable(val) for key, val in value.items()}
+    if isinstance(value, list):
+        return [to_jsonable(item) for item in value]
+    if isinstance(value, tuple):
+        return [to_jsonable(item) for item in value]
+    if isinstance(value, set):
+        return [to_jsonable(item) for item in value]
+    if isinstance(value, pathlib.Path):
+        return str(value)
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if hasattr(value, "item") and isinstance(value, np.generic):  # numpy scalar
+        return value.item()
+    if isinstance(value, (np.bool_, np.integer, np.floating)):
+        return value.item()
+    return value
+
+
 # ---------------------------------------------------------------------------
 # Scenario builders
 # ---------------------------------------------------------------------------
@@ -990,7 +1010,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     output_path = config.output_path or (PROJECT_ROOT / "results" / f"forensic_probe_{int(time.time())}.json")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as fh:
-        json.dump(summary, fh, indent=2)
+        json.dump(to_jsonable(summary), fh, indent=2)
     print(f"\n[forensic_probe] Written detailed results to {output_path}")
     return 0
 
