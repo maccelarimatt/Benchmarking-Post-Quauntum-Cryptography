@@ -390,7 +390,14 @@
           <div style="font-size:1.1rem; font-weight:700; margin-bottom:.75rem;">Metadata</div>
           <table style="width:100%; border-collapse:collapse;">
             <tbody>
-              {% for k, v in result_json.meta.items() %}
+              {% set sec_display = result_json.meta.get('security_level_display') if result_json.meta else None %}
+              {% if sec_display %}
+              <tr style="border-bottom:1px dashed rgba(255,255,255,.15);">
+                <td style="padding:.35rem .2rem; opacity:.9;">Security level</td>
+                <td style="padding:.35rem .2rem; font-weight:600; text-align:right;">{{ sec_display }}</td>
+              </tr>
+              {% endif %}
+              {% for k, v in result_json.meta.items() if k not in ['security_level', 'security_level_display'] %}
               <tr style="border-bottom:1px dashed rgba(255,255,255,.15);">
                 <td style="padding:.35rem .2rem; opacity:.9;">{{ k.replace('_',' ') }}</td>
                 <td style="padding:.35rem .2rem; font-weight:600; text-align:right;">

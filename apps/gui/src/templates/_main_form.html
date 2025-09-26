@@ -57,6 +57,17 @@
           <option value="SIG" {% if compare_kind == 'SIG' %}selected{% endif %}>SIG</option>
         </select>
       </div>
+      <div class="field" style="grid-column: span 4;">
+        <label for="security_category">NIST security category</label>
+        {% set selected_level = selected_security_category|default(None) %}
+        <select id="security_category" name="security_category">
+          {% for value, label in security_category_choices %}
+            {% set is_selected = (selected_level is none and value == '') or (selected_level is not none and value and selected_level == value|int) %}
+            <option value="{{ value }}" {% if is_selected %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <div class="hint">Leave at default to use each adapter&rsquo;s preferred parameters.</div>
+      </div>
       {{ form.number_field('cmp_runs', 'runs', 'Runs', default_runs or 10, column='span 2') }}
       <div class="field" style="grid-column: span 6;" id="cmp_msg_field">
         <label for="cmp_msg_select">Message size (SIG)</label>

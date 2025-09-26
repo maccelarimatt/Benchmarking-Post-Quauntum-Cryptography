@@ -82,6 +82,10 @@
     <div>
       <div style="font-size:1.6rem; font-weight:700;">Compare Results – {{ compare.kind }}</div>
       <div style="opacity:.9;">Runs: {{ compare.runs }}{% if compare.kind=='SIG' %}, Message size: {{ compare.message_size }} B{% endif %} • Mode: {{ (compare.mode or 'cold')|capitalize }}</div>
+      {% if compare.security_category is not none %}
+        {% set cat_hint = {1:'≈ AES-128', 3:'≈ AES-192', 5:'≈ AES-256'} %}
+        <div style="opacity:.85; font-size:.95rem;">Requested NIST Category {{ compare.security_category }} {{ cat_hint.get(compare.security_category, '') }}</div>
+      {% endif %}
     </div>
     <div>
       <a href="/" class="btn">Back to setup</a>
@@ -146,6 +150,16 @@
                 {{ version }}
               </td>
             </tr>
+            {% set sec_meta = a.meta.get('security_level') if a.meta else None %}
+            {% set sec_display = a.meta.get('security_level_display') if a.meta else None %}
+            {% if sec_display or sec_meta %}
+            <tr>
+              <td class="kv-label">Security level</td>
+              <td class="kv-value">
+                {% if sec_display %}{{ sec_display }}{% else %}Category {{ sec_meta.applied_category or '-' }}{% endif %}
+              </td>
+            </tr>
+            {% endif %}
             <tr>
               <td class="kv-label">Backend</td>
               <td class="kv-value">{{ backend_hint }}</td>

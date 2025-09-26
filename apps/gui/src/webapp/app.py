@@ -6,16 +6,19 @@ Uses the same adapter registry as the CLI to ensure consistent behavior.
 Provides simple single-run traces and JSON summaries in the browser.
 """
 import sys
+import os
 import logging
 import importlib.util
 from types import ModuleType
 from pathlib import Path
 
+from contextlib import contextmanager
+
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, jsonify, Response
 from jinja2 import TemplateNotFound
 from dataclasses import asdict
 import base64
-from typing import Dict, Any, Mapping
+from typing import Dict, Any, Mapping, Optional
 import threading
 import time
 import uuid
@@ -49,6 +52,11 @@ if _WEBAPP_DIR_STR in sys.path:
 sys.path.insert(0, _WEBAPP_DIR_STR)
 
 from pqcbench import registry
+from pqcbench.security_levels import (
+    SECURITY_CATEGORIES,
+    SecurityOverride,
+    resolve_security_override,
+)
 
 # Reuse the CLI runner logic to keep one source of truth for measurements
 try:
@@ -281,6 +289,12 @@ QUANTUM_ARCH_CHOICES = [
     ("iontrap-2025", "Ion Trap 2025"),
 ]
 RSA_MODEL_CHOICES = ["ge2019", "ge2025", "fast2025"]
+SECURITY_CATEGORY_CHOICES = [
+    ("", "Adapter default"),
+    ("1", "Category 1 (≈ AES-128)"),
+    ("3", "Category 3 (≈ AES-192)"),
+    ("5", "Category 5 (≈ AES-256)"),
+]
 DEFAULT_SECURITY_FORM = {
     "sec_adv": False,
     "sec_rsa_phys": False,
@@ -346,6 +360,81 @@ def _parse_security_form(form: Mapping[str, object]) -> tuple[dict[str, Any], di
     return values, security_opts
 
 
+def _parse_security_category(form: Mapping[str, object]) -> Optional[int]:
+    raw = form.get("security_category")
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    try:
+        level = int(text)
+    except ValueError:
+        return None
+    if level not in SECURITY_CATEGORIES:
+        return None
+    return level
+
+
+@contextmanager
+def _security_override_scope(override: Optional[SecurityOverride]):
+    if override is None:
+        yield None
+        return
+    env_var = override.env_var
+    previous = os.environ.get(env_var)
+    os.environ[env_var] = str(override.value)
+    try:
+        yield override
+    finally:
+        if previous is None:
+            os.environ.pop(env_var, None)
+        else:
+            os.environ[env_var] = previous
+
+
+def _attach_security_meta(summary, requested_category: Optional[int], override: Optional[SecurityOverride]) -> None:
+    if requested_category is None:
+        return
+    meta = getattr(summary, "meta", None)
+    if not isinstance(meta, dict):
+        return
+    if override is None:
+        info = {
+            "requested_category": requested_category,
+            "applied_category": None,
+            "status": "unmapped",
+        }
+        meta["security_level"] = info
+        meta["security_level_display"] = (
+            f"Requested Category {requested_category}; using adapter default (no mapped parameter set)."
+        )
+        return
+    data: Dict[str, Any] = {
+        "requested_category": override.requested_category,
+        "applied_category": override.applied_category,
+        "override_value": override.value,
+        "env_var": override.env_var,
+        "matched": override.matched,
+    }
+    if override.note:
+        data["note"] = override.note
+    meta["security_level"] = data
+    display = f"Category {override.applied_category}"
+    if override.applied_category != override.requested_category:
+        display += f" (requested {override.requested_category})"
+    if isinstance(override.value, int):
+        display += f" — {int(override.value)}-bit"
+    elif override.value:
+        display += f" — {override.value}"
+    if override.note:
+        display += f". {override.note}"
+    meta["security_level_display"] = display
+    if summary.algo in ("rsa-oaep", "rsa-pss"):
+        if "rsa_bits" not in meta and isinstance(override.value, int):
+            meta["rsa_bits"] = int(override.value)
+        if not meta.get("mechanism") and isinstance(override.value, int):
+            meta["mechanism"] = f"RSA-{int(override.value)}"
 
 def _handle_run_submission(form: Mapping[str, Any]):
     _ensure_adapters_loaded()
@@ -362,6 +451,7 @@ def _handle_run_submission(form: Mapping[str, Any]):
     except Exception:
         message_size = 1024
     security_form, security_opts = _parse_security_form(form)
+    requested_category = _parse_security_category(form)
     export_path = (form.get("export_path", "") or "")
     do_export = str(form.get("do_export") or "").lower() in ("on", "true", "1", "yes")
     do_export_trace = str(form.get("do_export_trace") or "").lower() in ("on", "true", "1", "yes")
@@ -379,12 +469,16 @@ def _handle_run_submission(form: Mapping[str, Any]):
         kind = kinds.get(name) or ""
         raw_cold = form.get("cold")
         cold = str(raw_cold).lower() in ("on", "true", "1", "yes")
+        override = resolve_security_override(name, requested_category)
         if kind == "KEM":
-            summary = run_kem(name, runs, cold=cold)  # type: ignore[misc]
+            with _security_override_scope(override):
+                summary = run_kem(name, runs, cold=cold)  # type: ignore[misc]
         elif kind == "SIG":
-            summary = run_sig(name, runs, message_size, cold=cold)  # type: ignore[misc]
+            with _security_override_scope(override):
+                summary = run_sig(name, runs, message_size, cold=cold)  # type: ignore[misc]
         else:
             raise RuntimeError(f"Unknown or unsupported algorithm: {name}")
+        _attach_security_meta(summary, requested_category, override)
 
         validation = None
         if do_tests and run_acvp_validation is not None:
@@ -534,6 +628,8 @@ def _handle_run_submission(form: Mapping[str, Any]):
         security_profile_choices=SECURITY_PROFILE_CHOICES,
         quantum_arch_choices=QUANTUM_ARCH_CHOICES,
         rsa_model_choices=RSA_MODEL_CHOICES,
+        security_category_choices=SECURITY_CATEGORY_CHOICES,
+        selected_security_category=requested_category,
         selected_operation="single",
     )
 
@@ -555,6 +651,7 @@ def _handle_compare_submission(form: Mapping[str, Any]):
 
     # Security + tests options
     security_form, security_opts = _parse_security_form(form)
+    requested_category = _parse_security_category(form)
     do_tests = str(form.get("tests") or "").lower() in ("on", "true", "1", "yes")
 
     def _getlist(key: str) -> list[str]:
@@ -599,10 +696,14 @@ def _handle_compare_submission(form: Mapping[str, Any]):
     errors: Dict[str, str] = {}
     for algo_name in selected:
         try:
+            override = resolve_security_override(algo_name, requested_category)
             if kind == "KEM":
-                summary = run_kem(algo_name, runs, cold=cold)  # type: ignore[misc]
+                with _security_override_scope(override):
+                    summary = run_kem(algo_name, runs, cold=cold)  # type: ignore[misc]
             else:
-                summary = run_sig(algo_name, runs, message_size, cold=cold)  # type: ignore[misc]
+                with _security_override_scope(override):
+                    summary = run_sig(algo_name, runs, message_size, cold=cold)  # type: ignore[misc]
+            _attach_security_meta(summary, requested_category, override)
             # Export per-algorithm JSON + one-run trace for quick access on the compare page
             try:
                 json_path = f"results/{algo_name.replace('+','plus')}_{kind.lower()}_compare.json"
@@ -658,6 +759,7 @@ def _handle_compare_submission(form: Mapping[str, Any]):
         "message_size": message_size,
         "mode": ("cold" if cold else "warm"),
         "algos": algos_out,
+        "security_category": requested_category,
     }
     return render_template("compare_results.html", compare=compare, errors=errors)
 
@@ -684,6 +786,8 @@ def index():
         security_profile_choices=SECURITY_PROFILE_CHOICES,
         quantum_arch_choices=QUANTUM_ARCH_CHOICES,
         rsa_model_choices=RSA_MODEL_CHOICES,
+        security_category_choices=SECURITY_CATEGORY_CHOICES,
+        selected_security_category=None,
         selected_operation="single",
         selected_algo=None,
         last_export=None,
@@ -732,6 +836,7 @@ def execute_async():
                 message_size = 1024
             # Parse security + tests
             _security_form, security_opts = _parse_security_form(form)
+            requested_category = _parse_security_category(form)
             do_tests = str(form.get("tests") or "").lower() in ("on", "true", "1", "yes")
 
             def _getlist(key: str) -> list[str]:
@@ -802,10 +907,14 @@ def execute_async():
                     }.get(stage, stage.title())
                     _update_job(jid, stage=f"{label} — Trial {ii}/{runs}", detail=algo, percent=pct)
                 try:
+                    override = resolve_security_override(algo_name, requested_category)
                     if kind == "KEM":
-                        summary = run_kem(algo_name, runs, cold=cold, progress=_progress)  # type: ignore[misc]
+                        with _security_override_scope(override):
+                            summary = run_kem(algo_name, runs, cold=cold, progress=_progress)  # type: ignore[misc]
                     else:
-                        summary = run_sig(algo_name, runs, message_size, cold=cold, progress=_progress)  # type: ignore[misc]
+                        with _security_override_scope(override):
+                            summary = run_sig(algo_name, runs, message_size, cold=cold, progress=_progress)  # type: ignore[misc]
+                    _attach_security_meta(summary, requested_category, override)
                     # Optional ACVP validation
                     validation = None
                     if do_tests and run_acvp_validation is not None:
@@ -857,6 +966,7 @@ def execute_async():
                 "message_size": message_size,
                 "mode": ("cold" if cold else "warm"),
                 "algos": algos_out,
+                "security_category": requested_category,
             }
             with JobsLock:
                 job = Jobs.get(jid)
@@ -888,6 +998,7 @@ def execute_async():
             except Exception:
                 message_size = 1024
             security_form, security_opts = _parse_security_form(form)
+            requested_category = _parse_security_category(form)
             export_path = (form.get("export_path", "") or "")
             do_export = str(form.get("do_export") or "").lower() in ("on", "true", "1", "yes")
             do_export_trace = str(form.get("do_export_trace") or "").lower() in ("on", "true", "1", "yes")
@@ -926,12 +1037,16 @@ def execute_async():
             kind = kinds.get(name) or ""
             raw_cold = form.get("cold")
             cold = str(raw_cold).lower() in ("on", "true", "1", "yes")
+            override = resolve_security_override(name, requested_category)
             if kind == "KEM":
-                summary = run_kem(name, runs, cold=cold, progress=_progress)  # type: ignore[misc]
+                with _security_override_scope(override):
+                    summary = run_kem(name, runs, cold=cold, progress=_progress)  # type: ignore[misc]
             elif kind == "SIG":
-                summary = run_sig(name, runs, message_size, cold=cold, progress=_progress)  # type: ignore[misc]
+                with _security_override_scope(override):
+                    summary = run_sig(name, runs, message_size, cold=cold, progress=_progress)  # type: ignore[misc]
             else:
                 raise RuntimeError(f"Unknown or unsupported algorithm: {name}")
+            _attach_security_meta(summary, requested_category, override)
             validation = None
             if do_tests and run_acvp_validation is not None:
                 try:
@@ -1044,6 +1159,8 @@ def execute_async():
                 "security_profile_choices": SECURITY_PROFILE_CHOICES,
                 "quantum_arch_choices": QUANTUM_ARCH_CHOICES,
                 "rsa_model_choices": RSA_MODEL_CHOICES,
+                "security_category_choices": SECURITY_CATEGORY_CHOICES,
+                "selected_security_category": requested_category,
                 "selected_operation": "single",
             }
             with JobsLock:
@@ -1218,4 +1335,3 @@ def _heuristic_analysis(compare: dict) -> str:
 
 if __name__ == "__main__":
     app.run(debug=True)
-
