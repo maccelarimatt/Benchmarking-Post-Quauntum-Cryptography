@@ -99,6 +99,12 @@ Leakage flags are raised whenever either condition triggers.
   python tools/forensic_probe.py --iterations 10 --output results/forensic_quick.json
   ```
 
+After collecting data, distil TVLA-style findings into an executive summary:
+```bash
+python tools/forensic_report.py results/forensic_quick.json --format markdown --output results/forensic_summary.md
+```
+This highlights which algorithms/scenarios breached timing, CPU, or RSS thresholds and records the supporting statistics.
+
 The CLI options:
 
 | Option | Meaning |
@@ -159,9 +165,11 @@ Interpretation:
 1. **Confirm reproducibility.** Re-run with the same seed, observe stability.
 2. **Noise control.** Pin CPU cores (`taskset`/`cpuset`), disable Turbo Boost,
    close background tasks to reduce scheduling variance.
-3. **Inspect artefacts.** When `--keep-artifacts` is enabled, manually review
+3. **Summarise indicators.** Run `tools/forensic_report.py` on the JSON output to
+   rank algorithm/scenario combinations and record the supporting metrics.
+4. **Inspect artefacts.** When `--keep-artifacts` is enabled, manually review
    the captured temp directories for key remnants, crash dumps, or logs.
-4. **Deep-dive metrics.** Use the JSON output with notebooks to visualise
+5. **Deep-dive metrics.** Use the JSON output with notebooks to visualise
    histograms, QQ-plots, or run additional tests (e.g., clustering, KDE).
 
 ## Detailed findings template
