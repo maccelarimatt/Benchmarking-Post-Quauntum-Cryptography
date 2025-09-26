@@ -90,6 +90,13 @@ from pqcbench.params import find as find_param_hint  # noqa: E402
 
 DEFAULT_ALGORITHM_EXCLUDE = {"xmssmt"}
 
+TVLA_T_THRESHOLD = 4.5
+SIGNIFICANCE_ALPHA = 1e-3
+MI_ALPHA = 1e-3
+MI_PERMUTATIONS = 1000
+
+_PERM_RNG = np.random.default_rng(20240907)
+
 @dataclass
 class ProbeConfig:
     iterations: int = 800
@@ -332,7 +339,7 @@ def build_kem_scenarios() -> List[ScenarioDefinition]:
 
         return ScenarioExecution(prepare=prepare, iterate=iterate, finalize=finalize)
 
-    def decapsulate_fixed_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
+    def decapsulate_valid_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
         inst = descriptor.factory()
         base_pk: Optional[bytes] = None
         base_sk: Optional[bytes] = None
@@ -358,34 +365,7 @@ def build_kem_scenarios() -> List[ScenarioDefinition]:
             return ensure_bytes_summary("base_secret_key", base_sk)
 
         return ScenarioExecution(prepare=prepare, iterate=iterate, finalize=finalize)
-
-    def decapsulate_variable_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
-        inst = descriptor.factory()
-
-        def prepare() -> None:
-            pass
-
-        def iterate(_: int) -> Callable[[], Dict[str, Any]]:
-            def run() -> Dict[str, Any]:
-                pk, sk = inst.keygen()
-                ct, ss = inst.encapsulate(pk)
-                recovered = inst.decapsulate(sk, ct)
-                payload: Dict[str, Any] = {}
-                payload.update(hash_bytes(ct, "ciphertext"))
-                payload.update(hash_bytes(ss, "shared_secret"))
-                payload.update(hash_bytes(recovered, "recovered_secret"))
-                payload["match_shared_secret"] = ss == recovered
-                payload.update(hash_bytes(pk, "public_key"))
-                payload.update(hash_bytes(sk, "secret_key"))
-                return payload
-            return run
-
-        def finalize() -> Dict[str, Any]:
-            return {}
-
-        return ScenarioExecution(prepare=prepare, iterate=iterate, finalize=finalize)
-
-    def decapsulate_fault_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
+    def decapsulate_invalid_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
         inst = descriptor.factory()
         base_pk: Optional[bytes] = None
         base_sk: Optional[bytes] = None
@@ -433,25 +413,18 @@ def build_kem_scenarios() -> List[ScenarioDefinition]:
             builder=encapsulate_fixed_builder,
         ),
         ScenarioDefinition(
-            name="decapsulate_fixed_secret",
-            description="Decapsulate ciphertexts with a fixed secret key",
-            group="kem_decapsulation",
+            name="decapsulate_valid",
+            description="Decapsulate valid ciphertexts with a fixed secret key",
+            group="kem_tvla_decapsulation",
             label="fixed",
-            builder=decapsulate_fixed_builder,
+            builder=decapsulate_valid_builder,
         ),
         ScenarioDefinition(
-            name="decapsulate_variable_secret",
-            description="Decapsulate ciphertexts with freshly generated secrets",
-            group="kem_decapsulation",
-            label="variable",
-            builder=decapsulate_variable_builder,
-        ),
-        ScenarioDefinition(
-            name="decapsulate_fault",
-            description="Decapsulate intentionally corrupted ciphertexts",
-            group=None,
-            label=None,
-            builder=decapsulate_fault_builder,
+            name="decapsulate_invalid",
+            description="Decapsulate intentionally corrupted ciphertexts with a fixed secret key",
+            group="kem_tvla_decapsulation",
+            label="invalid",
+            builder=decapsulate_invalid_builder,
         ),
     ])
     return scenarios
@@ -484,19 +457,19 @@ def build_signature_scenarios() -> List[ScenarioDefinition]:
         inst = descriptor.factory()
         fixed_pk: Optional[bytes] = None
         fixed_sk: Optional[bytes] = None
+        fixed_message = b"forensic-fixed-message"
 
         def prepare() -> None:
             nonlocal fixed_pk, fixed_sk
             fixed_pk, fixed_sk = inst.keygen()
 
         def iterate(iteration: int) -> Callable[[], Dict[str, Any]]:
-            message = (f"forensic-fixed-message-{iteration}").encode("utf-8")
-
             def run() -> Dict[str, Any]:
                 assert fixed_sk is not None
-                signature = inst.sign(fixed_sk, message)
+                signature = inst.sign(fixed_sk, fixed_message)
                 payload = hash_bytes(signature, "signature")
-                payload["message_length"] = len(message)
+                payload["message_length"] = len(fixed_message)
+                payload["message_digest"] = hashlib.sha3_256(fixed_message).hexdigest()
                 return payload
             return run
 
@@ -505,27 +478,30 @@ def build_signature_scenarios() -> List[ScenarioDefinition]:
 
         return ScenarioExecution(prepare=prepare, iterate=iterate, finalize=finalize)
 
-    def sign_variable_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
+    def sign_random_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
         inst = descriptor.factory()
+        fixed_pk: Optional[bytes] = None
+        fixed_sk: Optional[bytes] = None
 
         def prepare() -> None:
-            pass
+            nonlocal fixed_pk, fixed_sk
+            fixed_pk, fixed_sk = inst.keygen()
 
-        def iterate(iteration: int) -> Callable[[], Dict[str, Any]]:
-            message = (f"forensic-variable-message-{iteration}").encode("utf-8")
+        def iterate(_: int) -> Callable[[], Dict[str, Any]]:
+            message_length = rng.randint(1, 256)
+            message = rng.randbytes(message_length)
 
             def run() -> Dict[str, Any]:
-                pk, sk = inst.keygen()
-                signature = inst.sign(sk, message)
+                assert fixed_sk is not None
+                signature = inst.sign(fixed_sk, message)
                 payload = hash_bytes(signature, "signature")
-                payload.update(hash_bytes(pk, "public_key"))
-                payload.update(hash_bytes(sk, "secret_key"))
                 payload["message_length"] = len(message)
+                payload["message_digest"] = hashlib.sha3_256(message).hexdigest()
                 return payload
             return run
 
         def finalize() -> Dict[str, Any]:
-            return {}
+            return ensure_bytes_summary("fixed_secret_key", fixed_sk)
 
         return ScenarioExecution(prepare=prepare, iterate=iterate, finalize=finalize)
 
@@ -604,18 +580,18 @@ def build_signature_scenarios() -> List[ScenarioDefinition]:
             builder=keygen_builder,
         ),
         ScenarioDefinition(
-            name="sign_fixed_secret",
-            description="Sign messages with a fixed secret key",
-            group="signature_sign",
+            name="sign_fixed_message",
+            description="Sign a fixed message with a fixed secret key",
+            group="signature_tvla_sign",
             label="fixed",
             builder=sign_fixed_builder,
         ),
         ScenarioDefinition(
-            name="sign_variable_secret",
-            description="Sign messages with newly generated secret keys",
-            group="signature_sign",
-            label="variable",
-            builder=sign_variable_builder,
+            name="sign_random_message",
+            description="Sign random messages with a fixed secret key",
+            group="signature_tvla_sign",
+            label="random",
+            builder=sign_random_builder,
         ),
         ScenarioDefinition(
             name="sign_fault",
@@ -819,10 +795,6 @@ def collect_results(config: ProbeConfig, descriptors: List[AlgorithmDescriptor])
 # Statistical analysis
 # ---------------------------------------------------------------------------
 
-PAIR_THRESHOLD_T = 4.5  # TVLA style threshold
-PAIR_THRESHOLD_MI = 0.02
-
-
 def analyse_pairs(results: List[ScenarioResult]) -> List[AnalysisResult]:
     grouped: Dict[Tuple[str, str, str, str], Dict[str, List[Observation]]] = defaultdict(lambda: defaultdict(list))
     for result in results:
@@ -871,11 +843,46 @@ def compute_statistical_tests(reference: List[Observation], variant: List[Observ
     mann_cpu = stats.mannwhitneyu(ref_cpu, var_cpu, alternative="two-sided")
     mann_rss = stats.mannwhitneyu(ref_rss, var_rss, alternative="two-sided")
 
-    mi_time = estimate_mutual_information(ref_times, var_times)
-    mi_cpu = estimate_mutual_information(ref_cpu, var_cpu)
-    mi_rss = estimate_mutual_information(ref_rss, var_rss)
+    ks_time = stats.ks_2samp(ref_times, var_times)
+    ks_cpu = stats.ks_2samp(ref_cpu, var_cpu)
+    ks_rss = stats.ks_2samp(ref_rss, var_rss)
 
-    return {
+    mi_time, mi_p_time = estimate_mutual_information_with_pvalue(ref_times, var_times)
+    mi_cpu, mi_p_cpu = estimate_mutual_information_with_pvalue(ref_cpu, var_cpu)
+    mi_rss, mi_p_rss = estimate_mutual_information_with_pvalue(ref_rss, var_rss)
+
+    time_flag, time_details = evaluate_metric(
+        "time",
+        t_stat=float(t_time.statistic),
+        t_p=float(t_time.pvalue),
+        mann_p=float(mann_time.pvalue),
+        ks_stat=float(ks_time.statistic),
+        ks_p=float(ks_time.pvalue),
+        mi=mi_time,
+        mi_p=mi_p_time,
+    )
+    cpu_flag, cpu_details = evaluate_metric(
+        "cpu",
+        t_stat=float(t_cpu.statistic),
+        t_p=float(t_cpu.pvalue),
+        mann_p=float(mann_cpu.pvalue),
+        ks_stat=float(ks_cpu.statistic),
+        ks_p=float(ks_cpu.pvalue),
+        mi=mi_cpu,
+        mi_p=mi_p_cpu,
+    )
+    rss_flag, rss_details = evaluate_metric(
+        "rss",
+        t_stat=float(t_rss.statistic),
+        t_p=float(t_rss.pvalue),
+        mann_p=float(mann_rss.pvalue),
+        ks_stat=float(ks_rss.statistic),
+        ks_p=float(ks_rss.pvalue),
+        mi=mi_rss,
+        mi_p=mi_p_rss,
+    )
+
+    metrics: Dict[str, Any] = {
         "t_stat_time": float(t_time.statistic),
         "t_pvalue_time": float(t_time.pvalue),
         "t_stat_cpu": float(t_cpu.statistic),
@@ -888,13 +895,26 @@ def compute_statistical_tests(reference: List[Observation], variant: List[Observ
         "mannu_pvalue_cpu": float(mann_cpu.pvalue),
         "mannu_rss": float(mann_rss.statistic),
         "mannu_pvalue_rss": float(mann_rss.pvalue),
+        "ks_stat_time": float(ks_time.statistic),
+        "ks_pvalue_time": float(ks_time.pvalue),
+        "ks_stat_cpu": float(ks_cpu.statistic),
+        "ks_pvalue_cpu": float(ks_cpu.pvalue),
+        "ks_stat_rss": float(ks_rss.statistic),
+        "ks_pvalue_rss": float(ks_rss.pvalue),
         "mi_time": mi_time,
+        "mi_pvalue_time": mi_p_time,
         "mi_cpu": mi_cpu,
+        "mi_pvalue_cpu": mi_p_cpu,
         "mi_rss": mi_rss,
-        "time_leak_flag": abs(t_time.statistic) > PAIR_THRESHOLD_T or mi_time > PAIR_THRESHOLD_MI,
-        "cpu_leak_flag": abs(t_cpu.statistic) > PAIR_THRESHOLD_T or mi_cpu > PAIR_THRESHOLD_MI,
-        "rss_leak_flag": abs(t_rss.statistic) > PAIR_THRESHOLD_T or mi_rss > PAIR_THRESHOLD_MI,
+        "mi_pvalue_rss": mi_p_rss,
     }
+    metrics.update(time_details)
+    metrics.update(cpu_details)
+    metrics.update(rss_details)
+    metrics["time_leak_flag"] = time_flag
+    metrics["cpu_leak_flag"] = cpu_flag
+    metrics["rss_leak_flag"] = rss_flag
+    return metrics
 
 
 def estimate_mutual_information(reference: np.ndarray, variant: np.ndarray, bins: int = 30) -> float:
@@ -915,6 +935,69 @@ def estimate_mutual_information(reference: np.ndarray, variant: np.ndarray, bins
     joint_entropy = stats.entropy(joint_prob.flatten())
     mi = entropy_metric + entropy_label - joint_entropy
     return float(max(mi, 0.0))
+
+
+def estimate_mutual_information_with_pvalue(
+    reference: np.ndarray,
+    variant: np.ndarray,
+    bins: int = 30,
+    permutations: int = MI_PERMUTATIONS,
+) -> Tuple[float, Optional[float]]:
+    base_mi = estimate_mutual_information(reference, variant, bins=bins)
+    if permutations <= 0:
+        return base_mi, None
+    combined = np.concatenate([reference, variant])
+    labels = np.concatenate([np.zeros_like(reference, dtype=np.int8), np.ones_like(variant, dtype=np.int8)])
+    greater_equal = 1
+    total = permutations + 1
+    for _ in range(permutations):
+        shuffled = _PERM_RNG.permutation(labels)
+        perm_ref = combined[shuffled == 0]
+        perm_var = combined[shuffled == 1]
+        perm_mi = estimate_mutual_information(perm_ref, perm_var, bins=bins)
+        if perm_mi >= base_mi:
+            greater_equal += 1
+    pvalue = greater_equal / total
+    return base_mi, pvalue
+
+
+def apply_holm_bonferroni(pvalues: List[float], alpha: float) -> List[bool]:
+    indexed = [(i, 1.0 if p is None else p) for i, p in enumerate(pvalues)]
+    indexed.sort(key=lambda item: item[1])
+    results = [False] * len(pvalues)
+    remaining = len(pvalues)
+    for rank, (idx, pval) in enumerate(indexed):
+        threshold = alpha / (remaining - rank)
+        if pval <= threshold:
+            results[idx] = True
+        else:
+            break
+    return results
+
+
+def evaluate_metric(
+    metric_label: str,
+    *,
+    t_stat: float,
+    t_p: float,
+    mann_p: float,
+    ks_stat: float,
+    ks_p: float,
+    mi: float,
+    mi_p: Optional[float],
+) -> Tuple[bool, Dict[str, Any]]:
+    pvalues = [t_p, mann_p, ks_p]
+    holm_hits = apply_holm_bonferroni(pvalues, SIGNIFICANCE_ALPHA)
+    holm_map = {"t": holm_hits[0], "mann": holm_hits[1], "ks": holm_hits[2]}
+    tvla_hit = abs(t_stat) >= TVLA_T_THRESHOLD and t_p <= SIGNIFICANCE_ALPHA
+    mi_hit = mi_p is not None and mi_p <= MI_ALPHA
+    flag = tvla_hit or any(holm_hits) or mi_hit
+    details = {
+        f"holm_hits_{metric_label}": holm_map,
+        f"tvla_hit_{metric_label}": tvla_hit,
+        f"mi_significant_{metric_label}": mi_hit,
+    }
+    return flag, details
 
 
 # ---------------------------------------------------------------------------

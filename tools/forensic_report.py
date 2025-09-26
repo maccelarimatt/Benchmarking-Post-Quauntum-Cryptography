@@ -30,6 +30,7 @@ class LeakIndicator:
     value: float
     pvalue: Optional[float]
     mutual_information: Optional[float]
+    mi_pvalue: Optional[float]
 
 
 @dataclass
@@ -76,10 +77,11 @@ def build_leak_report(data: Dict[str, Any]) -> List[AlgorithmSummary]:
             indicators.append(
                 LeakIndicator(
                     metric="time",
-                    description="Timing variance between fixed and variable classes exceeds TVLA threshold",
+                    description="Timing variance between leakage classes exceeds TVLA threshold",
                     value=abs(metrics.get("t_stat_time", 0.0)),
                     pvalue=metrics.get("t_pvalue_time"),
                     mutual_information=metrics.get("mi_time"),
+                    mi_pvalue=metrics.get("mi_pvalue_time"),
                 )
             )
         if metrics.get("cpu_leak_flag"):
@@ -90,16 +92,18 @@ def build_leak_report(data: Dict[str, Any]) -> List[AlgorithmSummary]:
                     value=abs(metrics.get("t_stat_cpu", 0.0)),
                     pvalue=metrics.get("t_pvalue_cpu"),
                     mutual_information=metrics.get("mi_cpu"),
+                    mi_pvalue=metrics.get("mi_pvalue_cpu"),
                 )
             )
         if metrics.get("rss_leak_flag"):
             indicators.append(
                 LeakIndicator(
                     metric="rss",
-                    description="Memory-resident footprint varies with secret classification",
+                    description="Memory-resident footprint varies with leakage classification",
                     value=abs(metrics.get("t_stat_rss", 0.0)),
                     pvalue=metrics.get("t_pvalue_rss"),
                     mutual_information=metrics.get("mi_rss"),
+                    mi_pvalue=metrics.get("mi_pvalue_rss"),
                 )
             )
 
@@ -140,6 +144,8 @@ def format_indicator(indicator: LeakIndicator) -> str:
         extras.append(f"p={indicator.pvalue:.2e}")
     if indicator.mutual_information is not None:
         extras.append(f"MI={indicator.mutual_information:.4f}")
+    if indicator.mi_pvalue is not None:
+        extras.append(f"MI-p={indicator.mi_pvalue:.2e}")
     if extras:
         base += " [" + ", ".join(extras) + "]"
     return base
@@ -193,6 +199,7 @@ def render_json(summaries: List[AlgorithmSummary]) -> str:
                                 "t_stat_abs": indicator.value,
                                 "pvalue": indicator.pvalue,
                                 "mutual_information": indicator.mutual_information,
+                                "mi_pvalue": indicator.mi_pvalue,
                             }
                             for indicator in scenario.indicators
                         ],

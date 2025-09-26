@@ -14,11 +14,12 @@ hundreds of samples per scenario and favour completeness over speed.
   complementary non-parametric checks. KyberSlash-style timing leaks (Dobraunig
   et al., 2023) and Dilithium timing artefacts illustrated that simple timing
   measurements still expose exploitable side channels.
-- **Forensic artefacts.** RAMBleed (Kwong et al., 2020) and cold-boot memory
-  forensics highlight that post-execution residues (keys in temp files, unique
-  error logs) are actionable in investigations. The probe snapshots dedicated
-  temp directories per scenario so secret-dependent file activity is observable
-  without persisting raw secrets.
+- **Forensic artefacts.** Cold-boot memory attacks (Halderman et al., 2008)
+  demonstrate that post-execution residues can survive power cycles, while
+  RAMBleed (Kwong et al., 2020) exemplifies active Rowhammer-style reads that
+  leak neighbouring keys. The probe snapshots dedicated temp directories per
+  scenario so secret-dependent file activity is observable without persisting
+  raw secrets.
 - **Academically grounded analysis.** Beyond Welch's *t*-test, the tool reports
   Mann–Whitney U statistics (for distribution-free confirmation) and mutual
   information estimates (Standaert et al., 2011) to flag non-linear
@@ -41,11 +42,13 @@ hundreds of samples per scenario and favour completeness over speed.
 The script enumerates algorithms via `pqcbench.registry` and instantiates a
 fresh adapter per scenario. Available scenarios differ by kind:
 
-- **KEMs**: `keygen`, `encapsulate_fixed_public`, `decapsulate_fixed_secret`
-  *(TVLA fixed class)*, `decapsulate_variable_secret` *(TVLA variable class)*,
-  `decapsulate_fault` *(corrupted ciphertexts to inspect error paths).* 
-- **Signatures**: `keygen`, `sign_fixed_secret` *(TVLA fixed class)*,
-  `sign_variable_secret` *(TVLA variable class)*, `sign_fault` *(tampered key)*,
+- **KEMs**: `keygen`, `encapsulate_fixed_public`, `decapsulate_valid`
+  *(TVLA fixed class: valid ciphertexts under a fixed secret key)*,
+  `decapsulate_invalid` *(TVLA toggle class: deliberately faulted ciphertexts
+  under the same secret key).* 
+- **Signatures**: `keygen`, `sign_fixed_message` *(TVLA fixed class: fixed
+  message under a fixed secret key)*, `sign_random_message` *(TVLA toggle class:
+  random messages under the same secret key)*, `sign_fault` *(tampered key)*,
   `verify_invalid_signature` *(error-handling traces).* 
 
 Each scenario runs in a private temp directory with environment overrides
@@ -53,17 +56,21 @@ Each scenario runs in a private temp directory with environment overrides
 
 ### Statistical analysis
 
-For every group with at least two labels (e.g., `kem_decapsulation: fixed` vs
-`variable`), the probe computes:
+For every group with at least two labels (e.g.,
+`kem_tvla_decapsulation: fixed` vs `invalid`), the probe computes:
 
-- Welch's *t*-statistic (timing, CPU, RSS delta). A |*t*| ≥ 4.5 mirrors the TVLA
-  "fail" threshold.
-- Mann–Whitney U statistic + *p*-value for the same metrics (robustness to
-  heavy-tail distributions).
-- Mutual information between the class label and each metric using histogram
-  discretisation (30 bins). Values ≥ 0.02 suggest measurable dependency.
+- Welch's *t*-statistic (timing, CPU, RSS delta). A |*t*| ≥ 4.5, combined with a
+  Holm–Bonferroni corrected *p* ≤ 10⁻³, mirrors the TVLA "fail" threshold.
+- Mann–Whitney U and Kolmogorov–Smirnov two-sample tests to capture
+  distribution shifts without normality assumptions (corrected with the same
+  Holm–Bonferroni policy).
+- Mutual information between class label and metric using a histogram estimator
+  plus a permutation-based *p*-value (default 1 000 shuffles, α = 10⁻³).
 
-Leakage flags are raised whenever either condition triggers.
+Leakage flags are raised when any of these corrected tests or the MI
+permutation test reports significance. Each scenario should be run with two
+independent sample sets (≥1 000 traces per class recommended in TVLA practice)
+to validate stability.
 
 ## Installation and prerequisites
 
@@ -131,7 +138,7 @@ Each `observation` entry stores metrics for a single iteration:
 ```json
 {
   "algorithm": "kyber",
-  "scenario": "decapsulate_fixed_secret",
+  "scenario": "decapsulate_valid",
   "iteration": 12,
   "wall_time_ns": 823456,
   "cpu_time_ns": 812345,
@@ -151,13 +158,13 @@ Each `observation` entry stores metrics for a single iteration:
 `emit_summary` prints one-line recaps per analysed pair. Example output:
 
 ```
-kyber [ML-KEM-768] kem_decapsulation:fixed vs variable: |t_time|=5.12, |t_cpu|=5.07, |t_rss|=0.44, MI=0.0314/0.0298/0.0001 -> flags: time, cpu
+kyber [ML-KEM-768] kem_tvla_decapsulation:fixed vs invalid: |t_time|=5.12, |t_cpu|=5.07, |t_rss|=0.44, MI=0.0314/0.0298/0.0001 -> flags: time, cpu
 ```
 
 Interpretation:
 
-- `|t_time|`/`|t_cpu|` over 4.5: statistically significant timing difference.
-- `MI` shows mutual information for (time/cpu/rss). Values above 0.02 are notable.
+- `|t_time|`/`|t_cpu|` over 4.5 with corrected *p* ≤ 10⁻³: statistically significant timing difference.
+- `MI` reports mutual information for (time/cpu/rss); the permutation *p*-value highlights whether dependence is statistically meaningful.
 - `flags` enumerate which metrics tripped thresholds.
 
 ### Recommended follow-up checklist
@@ -179,9 +186,9 @@ alongside the JSON output):
 
 ```
 Algorithm: ML-KEM-768
-Scenario pair: kem_decapsulation fixed vs variable
+Scenario pair: kem_tvla_decapsulation fixed vs invalid
 Iterations: 800
-Leakage indicators: |t|=5.12 (time), |t|=4.98 (cpu), MI_time=0.031
+Leakage indicators: |t|=5.12 (time, corrected p=7e-5), |t|=4.98 (cpu, corrected p=2e-4), MI_time=0.031 (perm p=6e-4)
 Suspected cause: Branch misprediction on decrypt failure path.
 Artefacts: No files written; stderr clean.
 Follow-up: collect traces with perf record; inspect decapsulation constant-time guard.
@@ -211,6 +218,9 @@ artefact snapshots.
   the adapter is reinstantiated per scenario. Treat results carefully.
 - **Forensic scope.** The tool snapshots temp directories only. If algorithms
   emit logs elsewhere, incorporate OS-level tracing (auditd, fsnotify) manually.
+- **Hardware counters.** Collecting events via `perf stat` or similar introduces
+  a local/co-resident attacker vantage; report those results separately from
+  remote timing observations.
 
 ## References
 
