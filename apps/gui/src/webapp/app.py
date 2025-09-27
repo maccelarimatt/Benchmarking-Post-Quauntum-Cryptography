@@ -1262,6 +1262,13 @@ def api_analysis():
     """
     data = request.get_json(silent=True) or {}
     compare = data.get("compare")
+    # Optional custom request from the viewer to steer the analysis
+    user_request = data.get("request") or data.get("prompt") or data.get("question")
+    if user_request is not None and not isinstance(user_request, str):
+        try:
+            user_request = str(user_request)
+        except Exception:
+            user_request = None
     if not isinstance(compare, dict):
         return jsonify({"ok": False, "error": "invalid or missing 'compare' payload"}), 400
     # If llm helper is missing, fall back to a heuristic summary so UI remains useful
@@ -1277,7 +1284,7 @@ def api_analysis():
             "error": "LLM module unavailable",
         })
     try:
-        result = llm.analyze_compare_results(compare)  # type: ignore[attr-defined]
+        result = llm.analyze_compare_results(compare, user_request=user_request)  # type: ignore[attr-defined]
         return jsonify(result)
     except Exception as exc:
         log.exception("LLM analysis failed; using heuristic fallback")

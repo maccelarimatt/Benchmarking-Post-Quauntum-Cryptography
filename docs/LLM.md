@@ -11,12 +11,13 @@ The LLM feature lives entirely in the GUI backend and can be enabled with enviro
 - Trigger
   - In the Compare view, after a successful run, the page auto-posts the condensed results to the backend endpoint `POST /api/analysis`.
   - Frontend code is in `apps/gui/src/templates/compare_results.html` (the “AI‑Assisted Analysis” panel).
+  - Rendering: LLM analysis output is rendered as Markdown and sanitized client‑side.
 - Backend path
   - Route: `apps/gui/src/webapp/app.py:/api/analysis`
-  - Calls `llm.analyze_compare_results(compare)` from `apps/gui/src/webapp/llm.py`.
+  - Calls `llm.analyze_compare_results(compare, user_request?)` from `apps/gui/src/webapp/llm.py`.
 - Summarization flow (`apps/gui/src/webapp/llm.py`)
   - `condense_compare(...)`: reduces the payload to the essentials to keep prompts compact and stable.
-  - `_build_user_prompt(...)`: renders a structured prompt describing algorithms, timings, memory, and sizes.
+  - `_build_user_prompt(summary, user_request?)`: renders a structured prompt describing algorithms, timings, memory, and sizes, and optionally includes a viewer‑provided request to steer analysis.
   - Provider call (based on env config):
     - OpenAI‑compatible: `_call_openai_compatible(...)`
     - Hugging Face Inference API: `_call_huggingface_inference(...)`
@@ -186,6 +187,24 @@ flask run
   - `LLM_MAX_TOKENS` and `LLM_TEMPERATURE` control response length and variability.
 - Disabling the feature
   - Set `LLM_PROVIDER=none` or unset provider/key envs; the panel will display a deterministic local analysis without any network calls.
+
+---
+
+## Custom Requests (User‑Driven Prompts)
+
+- In the Compare view’s “AI‑Assisted Analysis” panel, there’s now a “Custom request (optional)” text box.
+  - Enter anything you want the analysis to focus on (e.g., “Highlight verify latency outliers and memory spikes; recommend choices for microcontrollers”).
+  - Click “Generate Analysis” or “Regenerate” to run with your custom request.
+- API
+  - POST `/api/analysis` accepts an optional string field `request` (aliases: `prompt`, `question`).
+  - The backend passes this to `llm.analyze_compare_results(compare, user_request)` so the provider can tailor its response.
+- Fallback behavior
+  - When no provider is configured or a provider fails, the deterministic local heuristic summary is used and may ignore the custom request.
+  - The UI shows “(fallback)” next to the provider hint when this occurs.
+
+UI notes
+- The “Custom request” input is fixed‑size within the analysis card and cannot be resized.
+- The analysis block supports Markdown (lists, code, emphasis); unsafe HTML is sanitized in the browser.
 
 ---
 

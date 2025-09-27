@@ -83,8 +83,12 @@ SYSTEM_PROMPT = (
 )
 
 
-def _build_user_prompt(summary: Dict[str, Any]) -> str:
-    """Render a compact, structured prompt from the condensed summary."""
+def _build_user_prompt(summary: Dict[str, Any], user_request: Optional[str] = None) -> str:
+    """Render a compact, structured prompt from the condensed summary.
+
+    If ``user_request`` is provided, it is included to steer the analysis
+    toward the viewer's specific interests.
+    """
     lines: List[str] = []
     lines.append("Context: Post-quantum crypto benchmarking results.")
     lines.append(f"Kind: {summary.get('kind')}  • Runs: {summary.get('runs')}  • Mode: {summary.get('mode')}")
@@ -121,13 +125,24 @@ def _build_user_prompt(summary: Dict[str, Any]) -> str:
                 else f"  {op}: (insufficient stats)"
             )
     lines.append("")
-    lines.append("Task: In 6–9 concise bullets, explain:")
-    lines.append("- which algorithms are fastest per operation (and by how much, roughly)")
-    lines.append("- memory trade-offs and any large differences")
-    lines.append("- key/ciphertext/signature size implications")
-    lines.append("- suitability for constrained devices vs. throughput use")
-    lines.append("- note if high variance/outliers might affect reliability")
-    lines.append("Avoid security claims or recommendations beyond performance/footprint observations.")
+    if user_request and str(user_request).strip():
+        # Custom user steering
+        req = str(user_request).strip()
+        # Cap extremely long inputs to keep prompts manageable
+        if len(req) > 4000:
+            req = req[:4000] + "…"
+        lines.append("User request: " + req)
+        lines.append("Respond concisely and focus on the requested aspects.")
+        lines.append("Avoid security claims or recommendations beyond performance/footprint observations.")
+    else:
+        # Default guidance
+        lines.append("Task: In 6–9 concise bullets, explain:")
+        lines.append("- which algorithms are fastest per operation (and by how much, roughly)")
+        lines.append("- memory trade-offs and any large differences")
+        lines.append("- key/ciphertext/signature size implications")
+        lines.append("- suitability for constrained devices vs. throughput use")
+        lines.append("- note if high variance/outliers might affect reliability")
+        lines.append("Avoid security claims or recommendations beyond performance/footprint observations.")
     return "\n".join(lines)
 
 
@@ -384,14 +399,14 @@ def condense_compare(compare: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def analyze_compare_results(compare: Dict[str, Any]) -> Dict[str, Any]:
+def analyze_compare_results(compare: Dict[str, Any], user_request: Optional[str] = None) -> Dict[str, Any]:
     """Produce an analysis string for a compare payload using the configured LLM.
 
     Returns a dict: { ok, provider, model, analysis, error?, used_fallback? }
     """
     cfg = LLMConfig()
     condensed = condense_compare(compare)
-    prompt = _build_user_prompt(condensed)
+    prompt = _build_user_prompt(condensed, user_request=user_request)
 
     # Provider selection
     provider = (cfg.provider or "none").strip().lower()

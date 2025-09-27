@@ -45,7 +45,7 @@
 </style>
 <form method="POST" action="/execute" id="main-form">
   <input type="hidden" name="operation" value="compare" />
-  <div class="form-grid" style="max-width: 680px; margin: 0 auto;">
+  <div class="form-grid" style="max-width: 820px; margin: 0 auto;">
     
 
     <div id="compare-fields" style="display: contents;">
@@ -57,7 +57,7 @@
           <option value="SIG" {% if compare_kind == 'SIG' %}selected{% endif %}>SIG</option>
         </select>
       </div>
-      <div class="field" style="grid-column: span 4;">
+      <div class="field" style="grid-column: span 6;">
         <label for="security_category">NIST security category</label>
         {% set selected_level = selected_security_category|default(None) %}
         <select id="security_category" name="security_category">

@@ -835,7 +835,14 @@
           <span id="llm-provider-hint">Provider: auto (configurable)</span>
         </div>
       </div>
-      <div id="llm-analysis-output" style="background:rgba(0,0,0,.25); padding:1rem; border-radius:.5rem; min-height: 80px; white-space:pre-wrap; line-height:1.35;">
+      <div style="display:flex; gap:.6rem; align-items:flex-start; flex-wrap:wrap;">
+        <div style="flex:1 1 420px; min-width:260px;">
+          <label for="llm-user-request" style="display:block; font-weight:600; margin-bottom:.25rem;">Custom request (optional)</label>
+          <textarea id="llm-user-request" rows="2" placeholder="e.g., Focus on verify latency outliers and memory spikes; call out which algos fit microcontrollers vs. servers." style="width:100%; max-width:100%; resize:none; padding:.6rem .7rem; border-radius:.45rem; border:1px solid rgba(255,255,255,.2); background:rgba(0,0,0,.2); color:#fff; box-sizing:border-box;"></textarea>
+          <div class="kv-sub" style="margin-top:.25rem; opacity:.85;">Leave empty for a general summary.</div>
+        </div>
+      </div>
+      <div id="llm-analysis-output" style="background:rgba(0,0,0,.25); padding:1rem; border-radius:.5rem; min-height: 80px; line-height:1.35; margin-top:.5rem;">
         Click "Generate Analysis" to summarize these results.
       </div>
       <div style="display:flex; gap:.5rem; justify-content:flex-end; align-items:center;">
@@ -846,6 +853,10 @@
     </div>
   </div>
 
+  <!-- Markdown rendering libs (tiny, via CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+
   <script>
     (function(){
       const compareData = {{ compare|tojson }};
@@ -854,18 +865,19 @@
       const btnRe = document.getElementById('llm-regenerate');
       const err = document.getElementById('llm-analysis-error');
       const hint = document.getElementById('llm-provider-hint');
+      const reqEl = document.getElementById('llm-user-request');
 
       async function runAnalysis() {
         err.style.display = 'none';
         err.textContent = '';
         btn.disabled = true; btnRe.disabled = true;
-        const prev = out.textContent;
+        const prevHTML = out.innerHTML;
         out.textContent = 'Generating analysis...';
         try {
           const res = await fetch('/api/analysis', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ compare: compareData })
+            body: JSON.stringify({ compare: compareData, request: (reqEl && reqEl.value && reqEl.value.trim()) ? reqEl.value.trim() : undefined })
           });
           const data = await res.json();
           if (!data || data.ok === false) {
@@ -877,7 +889,17 @@
           if (hint) {
             hint.textContent = 'Provider: ' + provider + (model ? (' • ' + model) : '') + (usedFallback ? ' (fallback)' : '');
           }
-          out.textContent = (data.analysis || '').trim() || 'No analysis returned.';
+          const text = (data.analysis || '').trim();
+          if (text) {
+            try {
+              const html = (window.marked ? marked.parse(text) : text);
+              out.innerHTML = (window.DOMPurify ? DOMPurify.sanitize(html) : html);
+            } catch (e) {
+              out.textContent = text; // fallback to plain text
+            }
+          } else {
+            out.textContent = 'No analysis returned.';
+          }
           // Surface provider error inline if we fell back
           if (usedFallback && data.error) {
             err.style.display = 'block';
@@ -892,7 +914,7 @@
           }
           btnRe.style.display = 'inline-block';
         } catch (e) {
-          out.textContent = prev;
+          out.innerHTML = prevHTML;
           err.style.display = 'block';
           err.textContent = String(e);
         } finally {
@@ -923,14 +945,6 @@
             {% else %}
               <div style="opacity:.8;">No JSON export available.</div>
             {% endif %}
-            {% set inline_export = { 'algo': a.name, 'kind': compare.kind, 'ops': a.ops, 'meta': a.meta } %}
-            {% if a.meta and a.meta.validation %}
-              {% set _ = inline_export.update({'validation': a.meta.validation}) %}
-            {% endif %}
-            <details style="margin-top:.5rem;">
-              <summary style="cursor:pointer;">Inline JSON</summary>
-              <pre style="white-space:pre-wrap; word-break:break-word; background:rgba(0,0,0,0.3); padding:0.75rem; border-radius:0.5rem; max-height:40vh; overflow:auto; margin-top:.45rem;">{{ inline_export | tojson(indent=2) }}</pre>
-            </details>
           </div>
           {% endfor %}
         </div>

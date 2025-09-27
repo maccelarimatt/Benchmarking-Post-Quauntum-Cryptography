@@ -515,10 +515,7 @@
       </div>
       {% endif %}
 
-      <details style="margin-top:1rem;">
-        <summary style="cursor:pointer;">View raw JSON</summary>
-        <pre style="white-space:pre-wrap; word-break:break-word; background:rgba(0,0,0,0.3); padding:1rem; border-radius:0.5rem; max-height:45vh; overflow:auto; margin-top:.5rem;">{{ result_json | tojson(indent=2) }}</pre>
-      </details>
+      {# Inline JSON viewer removed; use export link above instead #}
 
       {% if trace_sections %}
       <details style="margin-top:1rem;">

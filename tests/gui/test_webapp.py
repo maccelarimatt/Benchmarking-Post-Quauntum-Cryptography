@@ -88,8 +88,7 @@ def test_run_kem_flow_includes_json_and_trace_sections(gui_test_env):
     expected_ct = base64.b64encode(b"ct" * 24).decode("ascii")
     expected_ss = base64.b64encode(b"ss" * 16).decode("ascii")
 
-    assert "View raw JSON" in body
-    assert '"algo": "kyber"' in body
+    assert "Open JSON summary export" in body
     assert "View raw data (one run)" in body
     assert "public_key" in body
     assert expected_pk in body
