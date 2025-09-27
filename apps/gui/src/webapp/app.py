@@ -1253,6 +1253,16 @@ def health():
     return {"status": "ok"}
 
 
+@app.route("/favicon.ico")
+def favicon_redirect():
+    # Serve SVG favicon for legacy /favicon.ico requests
+    try:
+        return redirect(url_for('static', filename='favicon.svg'))
+    except Exception:
+        # As a last resort, return 204 to avoid 404 spam in logs
+        return ("", 204)
+
+
 @app.route("/api/analysis", methods=["POST"])
 def api_analysis():
     """Analyze compare payload via modular LLM provider.
