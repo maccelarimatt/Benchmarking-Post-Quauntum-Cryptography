@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from typing import Any, Dict, List, Optional, Tuple
+import time
 
 try:
     import requests as _requests  # type: ignore
@@ -28,19 +29,46 @@ class LLMConfig:
 
     def __init__(self) -> None:
         # Providers: 'openai_compatible' | 'huggingface' | 'ollama' | 'none'
-        self.provider: str = _env("LLM_PROVIDER", "none")
-        self.model: str = _env("LLM_MODEL", "llama3.1:8b")
-        # For OpenAI-compatible servers (e.g., LM Studio, vLLM)
-        self.base_url: str = _env("LLM_BASE_URL", "http://localhost:1234/v1")
+        # Accept common synonyms (e.g., 'openai', 'openai-compatible', 'auto').
+        prov_raw = _env("LLM_PROVIDER", None) or _env("OPENAI_PROVIDER", None) or "none"
+        prov = (prov_raw or "none").strip().lower().replace("-", "_")
+        if prov in ("openai", "openai_compat", "openai_compatible", "openaicompatible"):
+            prov = "openai_compatible"
+        elif prov in ("hf", "hugging_face", "huggingface"):
+            prov = "huggingface"
+        elif prov in ("ollama",):
+            prov = "ollama"
+        elif prov in ("auto",):
+            # 'auto' will be resolved after env inspection below
+            pass
+        self.provider: str = prov
+        self.model: str = _env("LLM_MODEL", _env("OPENAI_MODEL", "llama3.1:8b"))
+        # For OpenAI-compatible servers (OpenAI, Groq, LM Studio, vLLM)
+        # Default to host root (without /v1). We'll add /v1/chat/completions if needed.
+        self.base_url: str = _env("LLM_BASE_URL", _env("OPENAI_BASE_URL", "http://localhost:1234"))
         # For HF Inference API
-        self.hf_model: str = _env("HF_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct")
-        self.api_key: Optional[str] = _env("LLM_API_KEY", None)
+        # Default to a widely-available, open-weight instruct model on HF.
+        # Change via HF_MODEL env var as needed.
+        self.hf_model: str = _env("HF_MODEL", "HuggingFaceH4/zephyr-7b-beta")
+        # OpenAI-compatible API keys (support common env names)
+        self.api_key: Optional[str] = _env("LLM_API_KEY", _env("OPENAI_API_KEY", None))
         self.hf_api_key: Optional[str] = _env("HF_API_KEY", _env("HUGGINGFACEHUB_API_TOKEN", None))
         # For Ollama local server
         self.ollama_url: str = _env("OLLAMA_HOST", _env("LLM_OLLAMA_URL", "http://localhost:11434"))
         # Generation settings
         self.max_tokens: int = int(_env("LLM_MAX_TOKENS", "600") or 600)
         self.temperature: float = float(_env("LLM_TEMPERATURE", "0.2") or 0.2)
+
+        # Resolve 'auto' provider if requested
+        if self.provider == "auto":
+            if self.hf_api_key:
+                self.provider = "huggingface"
+            elif self.api_key or self.base_url:
+                self.provider = "openai_compatible"
+            elif self.ollama_url:
+                self.provider = "ollama"
+            else:
+                self.provider = "none"
 
 
 # --- Prompt construction
@@ -105,10 +133,22 @@ def _build_user_prompt(summary: Dict[str, Any]) -> str:
 
 # --- Providers
 
+def _compose_openai_url(base_url: str) -> str:
+    b = (base_url or "").strip().rstrip("/")
+    # If caller provided the full path already, respect it
+    if b.endswith("/chat/completions"):
+        return b
+    # If base ends with /v1 or /openai/v1, append chat/completions
+    if b.endswith("/v1"):
+        return f"{b}/chat/completions"
+    # Common provider roots (e.g., https://api.groq.com/openai -> expect .../v1/chat/completions)
+    return f"{b}/v1/chat/completions"
+
+
 def _call_openai_compatible(cfg: LLMConfig, user_prompt: str) -> Tuple[str, Dict[str, Any]]:
     if _requests is None:
         raise RuntimeError("python-requests is not installed; run 'pip install requests'")
-    url = f"{cfg.base_url.rstrip('/')}/v1/chat/completions"
+    url = _compose_openai_url(cfg.base_url)
     headers = {"Content-Type": "application/json"}
     if cfg.api_key:
         headers["Authorization"] = f"Bearer {cfg.api_key}"
@@ -142,7 +182,7 @@ def _call_huggingface_inference(cfg: LLMConfig, user_prompt: str) -> Tuple[str, 
         raise RuntimeError("python-requests is not installed; run 'pip install requests'")
     if not cfg.hf_api_key:
         raise RuntimeError("HF_API_KEY not set")
-    url = f"https://api-inference.huggingface.co/models/{cfg.hf_model}"
+    url = f"https://api-inference.huggingface.co/models/{cfg.hf_model}?wait_for_model=true"
     headers = {"Authorization": f"Bearer {cfg.hf_api_key}", "Content-Type": "application/json"}
     payload = {
         "inputs": f"{SYSTEM_PROMPT}\n\n{user_prompt}",
@@ -152,19 +192,68 @@ def _call_huggingface_inference(cfg: LLMConfig, user_prompt: str) -> Tuple[str, 
             "return_full_text": False,
         },
     }
-    r = _requests.post(url, headers=headers, data=json.dumps(payload), timeout=60)
-    r.raise_for_status()
-    data = r.json()
-    # HF Inference can return different shapes. Try common ones.
-    text = ""
-    if isinstance(data, list) and data and isinstance(data[0], dict):
-        text = data[0].get("generated_text") or data[0].get("generated_texts") or ""
-    if not text and isinstance(data, dict):
-        # Some endpoints return {'generated_text': '...'}
-        text = data.get("generated_text") or ""
-    if not text:
-        text = json.dumps(data)
-    return text, {"endpoint": url}
+
+    # Retry for transient statuses (503 model loading, 429 rate limit)
+    attempts = 6
+    backoff = 2.0
+    last_err: Optional[str] = None
+    for i in range(attempts):
+        try:
+            r = _requests.post(url, headers=headers, data=json.dumps(payload), timeout=120)
+        except Exception as e:
+            last_err = str(e)
+            if i == attempts - 1:
+                raise
+            time.sleep(min(5.0 + i, 15.0))
+            continue
+
+        if r.status_code == 503:
+            # Model loading; respect estimated_time if present
+            try:
+                j = r.json()
+            except Exception:
+                j = {}
+            wait = float(j.get("estimated_time", 5.0)) if isinstance(j, dict) else 5.0
+            time.sleep(max(2.0, min(wait + 0.5, 20.0)))
+            continue
+
+        if r.status_code == 429:
+            # Rate limited
+            time.sleep(min(backoff * (i + 1), 20.0))
+            continue
+
+        if r.status_code == 404:
+            raise RuntimeError(
+                f"Model not available on HF Inference API (404): {cfg.hf_model}. "
+                "Pick a serverless-enabled model (e.g., google/flan-t5-large, google/flan-t5-base, bigscience/bloomz-560m) "
+                "or use an OpenAI-compatible endpoint."
+            )
+
+        if r.status_code in (401, 403):
+            raise RuntimeError("Hugging Face auth failed (401/403). Check HF_API_KEY and model access/terms.")
+
+        # Other errors -> raise now
+        r.raise_for_status()
+
+        data = r.json()
+        # HF Inference can return different shapes. Try common ones.
+        text = ""
+        if isinstance(data, list) and data and isinstance(data[0], dict):
+            # Text-generation returns a list of objects
+            text = (
+                data[0].get("generated_text")
+                or data[0].get("generated_texts")
+                or data[0].get("summary_text")
+                or ""
+            )
+        if not text and isinstance(data, dict):
+            text = data.get("generated_text") or data.get("summary_text") or ""
+        if not text:
+            # Last resort: surface raw payload for debugging
+            text = json.dumps(data)
+        return text, {"endpoint": url}
+
+    raise RuntimeError(f"HF inference failed after retries: {last_err or 'unknown error'}")
 
 
 # Ollama local server provider
@@ -345,8 +434,18 @@ def analyze_compare_results(compare: Dict[str, Any]) -> Dict[str, Any]:
                 "used_fallback": True,
             }
     except Exception as exc:
-        # Error while calling provider: fallback to heuristic, include error
+        # Error while calling provider: fallback to heuristic, include error and endpoint
         text = _heuristic_summary(condensed)
+        endpoint = None
+        try:
+            if provider == "openai_compatible":
+                endpoint = f"{cfg.base_url.rstrip('/')}/v1/chat/completions"
+            elif provider == "huggingface":
+                endpoint = f"https://api-inference.huggingface.co/models/{cfg.hf_model}?wait_for_model=true"
+            elif provider == "ollama":
+                endpoint = f"{cfg.ollama_url.rstrip('/')}/api/chat"
+        except Exception:
+            endpoint = None
         return {
             "ok": True,
             "provider": provider,
@@ -356,4 +455,5 @@ def analyze_compare_results(compare: Dict[str, Any]) -> Dict[str, Any]:
             "analysis": text.strip(),
             "used_fallback": True,
             "error": str(exc),
+            "meta": ({"endpoint": endpoint} if endpoint else {}),
         }

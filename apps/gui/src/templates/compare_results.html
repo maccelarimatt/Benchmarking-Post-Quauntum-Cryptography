@@ -878,6 +878,18 @@
             hint.textContent = 'Provider: ' + provider + (model ? (' • ' + model) : '') + (usedFallback ? ' (fallback)' : '');
           }
           out.textContent = (data.analysis || '').trim() || 'No analysis returned.';
+          // Surface provider error inline if we fell back
+          if (usedFallback && data.error) {
+            err.style.display = 'block';
+            let msg = 'Provider error: ' + String(data.error);
+            if (data.meta && data.meta.endpoint) {
+              msg += ' • endpoint: ' + String(data.meta.endpoint);
+            }
+            err.textContent = msg;
+          } else {
+            err.style.display = 'none';
+            err.textContent = '';
+          }
           btnRe.style.display = 'inline-block';
         } catch (e) {
           out.textContent = prev;
