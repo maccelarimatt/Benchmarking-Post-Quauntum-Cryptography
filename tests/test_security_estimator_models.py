@@ -143,10 +143,12 @@ def test_rsa_shor_profiles_present():
     metrics = _estimate_rsa_from_meta("SIG", {"signature_len": 256}, EstimatorOptions())
     profiles = metrics.extras.get("shor_profiles")
     assert profiles
-    moduli = profiles.get("moduli", [])
-    bits_list = [entry.get("modulus_bits") for entry in moduli]
-    assert set([2048, 3072, 4096]).issubset(set(bits_list))
+    moduli = profiles.get("scenarios", [])
+    bits_list = [int(entry.get("modulus_bits")) for entry in moduli]
+    assert {2048, 3072, 4096}.issubset(set(bits_list))
     first_entry = moduli[0]
     scenarios = first_entry.get("scenarios")
-    assert scenarios and {s.get("label") for s in scenarios} == {"optimistic", "median", "conservative"}
+    labels = {s.get("label") for s in scenarios}
+    assert labels == {"ge-baseline", "optimistic", "conservative"}
     assert "phys_qubits_total" in scenarios[0]
+    assert first_entry.get("logical", {}).get("model") == "ge2019"

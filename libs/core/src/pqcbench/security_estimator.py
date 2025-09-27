@@ -40,6 +40,70 @@ class EstimatorOptions:
     target_total_fail_prob: float = 1e-2  # acceptable total failure probability for the run
 
 
+@dataclass(frozen=True)
+class ShorModelSpec:
+    name: str
+    qubit_linear: float
+    qubit_log_coeff: float
+    toffoli_cubic: float
+    toffoli_cubic_log: float
+    depth_quadratic: float
+    depth_quadratic_log: float
+    notes: str
+
+
+@dataclass(frozen=True)
+class FactorySpec:
+    name: str
+    logical_qubits: float
+    cycles_per_batch_per_distance: float
+    outputs_per_batch: float
+    alpha: float = 2.5
+    description: str = ""
+
+
+SHOR_MODEL_LIBRARY: Dict[str, ShorModelSpec] = {
+    "ge2019": ShorModelSpec(
+        name="ge2019",
+        qubit_linear=3.0,
+        qubit_log_coeff=0.002,
+        toffoli_cubic=0.3,
+        toffoli_cubic_log=0.0005,
+        depth_quadratic=500.0,
+        depth_quadratic_log=1.0,
+        notes=(
+            "Gidney–Ekerå 2019 factoring cost model: Q = 3n + 0.002 n log2 n, "
+            "Toffoli = (0.3 + 0.0005 log2 n) n^3, depth = (500 + log2 n) n^2"
+        ),
+    ),
+}
+
+
+FACTORY_LIBRARY: Dict[str, FactorySpec] = {
+    "litinski-116-to-12": FactorySpec(
+        name="litinski-116-to-12",
+        logical_qubits=6000.0,
+        cycles_per_batch_per_distance=5.0,
+        outputs_per_batch=12.0,
+        alpha=2.5,
+        description=(
+            "Two-stage |T⟩ distillation pipeline inspired by Litinski 2019; "
+            "outputs 12 high-fidelity magic states after ~5·d code cycles per factory."
+        ),
+    ),
+    "factory-lite-15-to-1": FactorySpec(
+        name="factory-lite-15-to-1",
+        logical_qubits=1500.0,
+        cycles_per_batch_per_distance=10.0,
+        outputs_per_batch=1.0,
+        alpha=2.3,
+        description=(
+            "Single-level 15-to-1 T distillation factory; slower throughput but smaller footprint."
+        ),
+    ),
+}
+
+
 def _bkz_root_hermite(beta: float) -> float:
     """Return the root-Hermite factor δ0 associated with blocksize β."""
     if beta <= 2.0:
@@ -425,49 +489,187 @@ def _apply_quantum_arch_presets(opts: EstimatorOptions | None) -> EstimatorOptio
     return opts
 
 
-def _shor_logical_resources(
-    n_bits: int,
-    qubit_coeff: float,
-    toffoli_coeff: float,
-    depth_coeff: float,
-    t_per_toffoli: float,
-) -> Dict[str, float]:
-    Q = qubit_coeff * n_bits
-    toffoli = toffoli_coeff * (n_bits ** 3)
-    depth = depth_coeff * (n_bits ** 2) * max(1.0, math.log2(max(2, n_bits)))
-    t_count = toffoli * t_per_toffoli
+def _get_shor_model(name: Optional[str]) -> ShorModelSpec:
+    if not name:
+        return SHOR_MODEL_LIBRARY["ge2019"]
+    key = name.lower()
+    return SHOR_MODEL_LIBRARY.get(key, SHOR_MODEL_LIBRARY["ge2019"])
+
+
+def _shor_logical_resources(n_bits: int, model_name: Optional[str]) -> Dict[str, float]:
+    spec = _get_shor_model(model_name)
+    n = float(n_bits)
+    log2n = math.log2(max(2.0, n))
+    logical_qubits = spec.qubit_linear * n + spec.qubit_log_coeff * n * log2n
+    toffoli = (spec.toffoli_cubic + spec.toffoli_cubic_log * log2n) * (n ** 3)
+    depth = (spec.depth_quadratic + spec.depth_quadratic_log * log2n) * (n ** 2)
     return {
-        "modulus_bits": n_bits,
-        "logical_qubits": Q,
+        "model": spec.name,
+        "modulus_bits": float(n_bits),
+        "logical_qubits": logical_qubits,
         "toffoli": toffoli,
         "meas_depth": depth,
-        "t_count": t_count,
+        "log2_n": log2n,
+        "formulas": {
+            "logical_qubits": "3n + 0.002 n log2 n" if spec.name == "ge2019" else "model-specific",
+            "toffoli": "(0.3 + 0.0005 log2 n) n^3" if spec.name == "ge2019" else "model-specific",
+            "meas_depth": "(500 + log2 n) n^2" if spec.name == "ge2019" else "model-specific",
+        },
+        "notes": spec.notes,
     }
 
 
-def _shor_surface_overhead(
-    logical: Dict[str, float],
-    p_phys: float,
-    cycle_time_ns: float,
-    target_fail: float,
-    kq: float = 2.0,
-) -> Dict[str, float | int]:
-    p_th = 1e-2
-    cycles = max(logical["toffoli"], logical["meas_depth"])
-    target = max(1e-18, target_fail / 10.0 / max(1.0, cycles))
+def _get_factory_spec(name: Optional[str]) -> FactorySpec:
+    if not name:
+        return FACTORY_LIBRARY["litinski-116-to-12"]
+    key = name.lower()
+    return FACTORY_LIBRARY.get(key, FACTORY_LIBRARY["litinski-116-to-12"])
+
+
+def _surface_logical_error(p_phys: float, d: int, p_th: float = 1e-2) -> float:
     base = max(1e-12, p_phys / p_th)
     if base >= 1.0:
-        d = 100
-    else:
-        exp = math.log(target / 0.1, base)
-        d = max(3, int(2 * exp - 1))
-    phys_qubits = int(kq * (d ** 2) * logical["logical_qubits"])
-    runtime_s = logical["meas_depth"] * d * (cycle_time_ns * 1e-9)
-    return {
-        "code_distance": d,
-        "phys_qubits_total": phys_qubits,
-        "runtime_seconds": runtime_s,
+        return 1.0
+    exponent = (d + 1.0) / 2.0
+    return 0.1 * (base ** exponent)
+
+
+def _solve_surface_distance(
+    *,
+    p_phys: float,
+    target_fail: float,
+    logical_cycles: float,
+    magic_states: float,
+    p_th: float = 1e-2,
+    max_distance: int = 121,
+) -> Tuple[int, float]:
+    target = max(1e-18, target_fail)
+    total_ops = max(1.0, logical_cycles + magic_states)
+    for d in range(3, max_distance + 1, 2):
+        p_l = _surface_logical_error(p_phys, d, p_th)
+        if p_l * total_ops <= target:
+            return d, p_l
+    return max_distance, _surface_logical_error(p_phys, max_distance, p_th)
+
+
+def _factory_rate_per_cycle(spec: FactorySpec, d: int) -> float:
+    cycles = spec.cycles_per_batch_per_distance * max(1.0, float(d))
+    if cycles <= 0:
+        return 0.0
+    return spec.outputs_per_batch / cycles
+
+
+def _shor_surface_profile(
+    logical: Dict[str, float],
+    *,
+    scenario: Dict[str, Any],
+) -> Dict[str, Any]:
+    p_phys = float(scenario["phys_error_rate"])
+    cycle_time_ns = float(scenario["cycle_time_ns"])
+    target_fail = float(scenario["target_total_fail_prob"])
+    p_th = float(scenario.get("p_thresh", 1e-2))
+    factory_spec = _get_factory_spec(scenario.get("factory_spec"))
+    factory_overbuild = max(0.01, float(scenario.get("factory_overbuild", 1.0)))
+    alpha_data = float(scenario.get("alpha_data", 2.5))
+    alpha_factory = float(scenario.get("alpha_factory", factory_spec.alpha))
+
+    d, p_l = _solve_surface_distance(
+        p_phys=p_phys,
+        target_fail=target_fail,
+        logical_cycles=float(logical["meas_depth"]),
+        magic_states=float(logical["toffoli"]),
+        p_th=p_th,
+    )
+
+    factory_rate_single = _factory_rate_per_cycle(factory_spec, d)
+    required_rate = 0.0
+    if logical["meas_depth"] > 0:
+        required_rate = float(logical["toffoli"]) / float(logical["meas_depth"])
+    target_rate = required_rate * factory_overbuild
+    factory_count = 0
+    if target_rate > 0 and factory_rate_single > 0:
+        factory_count = max(1, int(math.ceil(target_rate / factory_rate_single)))
+    elif factory_rate_single > 0 and required_rate > 0:
+        factory_count = 1
+
+    total_factory_rate = factory_rate_single * max(1, factory_count)
+    factory_cycles = float("inf")
+    if total_factory_rate > 0:
+        factory_cycles = float(logical["toffoli"]) / total_factory_rate
+
+    depth_cycles = float(logical["meas_depth"])
+    runtime_cycles = max(depth_cycles, factory_cycles)
+
+    cycle_time_s = cycle_time_ns * 1e-9
+    runtime_seconds_depth = depth_cycles * cycle_time_s
+    runtime_seconds_factory = factory_cycles * cycle_time_s
+    runtime_seconds = runtime_cycles * cycle_time_s
+
+    data_phys = alpha_data * float(logical["logical_qubits"]) * (d ** 2)
+    factory_phys = alpha_factory * factory_spec.logical_qubits * (d ** 2) * max(0, factory_count)
+    total_phys = data_phys + factory_phys
+
+    failure_est = {
+        "p_logical": p_l,
+        "ops_bound": float(logical["meas_depth"]) + float(logical["toffoli"]),
+        "budget": target_fail,
+        "expected_failures": p_l * (float(logical["meas_depth"]) + float(logical["toffoli"])),
     }
+
+    return {
+        "label": scenario.get("label", "scenario"),
+        "phys_error_rate": p_phys,
+        "cycle_time_ns": cycle_time_ns,
+        "target_total_fail_prob": target_fail,
+        "p_thresh": p_th,
+        "code_distance": d,
+        "factory_spec": factory_spec.name,
+        "factory_description": factory_spec.description,
+        "factory_count": max(0, factory_count),
+        "factory_rate_per_cycle": total_factory_rate,
+        "factory_rate_needed": required_rate,
+        "factory_cycles": factory_cycles,
+        "runtime_seconds_depth": runtime_seconds_depth,
+        "runtime_seconds_factory": runtime_seconds_factory,
+        "runtime_seconds": runtime_seconds,
+        "phys_qubits_total": total_phys,
+        "phys_qubits_data": data_phys,
+        "phys_qubits_factories": factory_phys,
+        "failure_estimate": failure_est,
+        "notes": scenario.get("notes", ""),
+    }
+
+
+def _default_shor_scenarios() -> List[Dict[str, Any]]:
+    return [
+        {
+            "label": "ge-baseline",
+            "phys_error_rate": 1e-3,
+            "cycle_time_ns": 1000.0,
+            "target_total_fail_prob": 1e-2,
+            "factory_spec": "litinski-116-to-12",
+            "factory_overbuild": 0.05,
+            "notes": "Matches Gidney–Ekerå (2019) headline assumptions (1 µs cycle, p=1e-3).",
+        },
+        {
+            "label": "optimistic",
+            "phys_error_rate": 5e-4,
+            "cycle_time_ns": 200.0,
+            "target_total_fail_prob": 1e-3,
+            "factory_spec": "litinski-116-to-12",
+            "factory_overbuild": 1.0,
+            "notes": "Improved error rates / faster cycles with proportional factory build-out.",
+        },
+        {
+            "label": "conservative",
+            "phys_error_rate": 2e-3,
+            "cycle_time_ns": 5000.0,
+            "target_total_fail_prob": 1e-1,
+            "factory_spec": "factory-lite-15-to-1",
+            "factory_overbuild": 1.5,
+            "notes": "Slower ion-trap-style cadence with additional factories to compensate throughput.",
+        },
+    ]
 
 
 def _estimate_rsa_from_meta(kind: str, meta: Dict[str, Any], opts: Optional[EstimatorOptions]) -> SecMetrics:
@@ -507,60 +709,12 @@ def _estimate_rsa_from_meta(kind: str, meta: Dict[str, Any], opts: Optional[Esti
             return 192
         return 256
 
-    # Very coarse logical resource model (abstract-level) for Shor factoring.
-    # We expose closed-form scalings to make assumptions explicit and tunable:
-    # - logical_qubits Q ≈ c_q · n (register + ancillas), default c_q≈3
-    # - Toffoli count ≈ c_T · n^3, default c_T≈0.3 (per GE2019-style constants)
-    # - depth ≈ c_D · n^2 · log2 n (measurement/round depth model), c_D tuned
-    # These are for communication/comparison, not prescriptive hardware budgets.
-    toffoli_coeff = 0.3
-    qubit_coeff = 3.0
-    depth_coeff = 45.0  # calibrated so depth(~n^2 log2 n) is in a plausible range near n=2048
-    depth_form = "n^2 log2 n"
-
-    # Optionally switch resource constants by model (placeholders unless noted)
-    if opts and opts.rsa_model:
-        model = opts.rsa_model.lower()
-        if model == "ge2019":
-            toffoli_coeff, qubit_coeff, depth_coeff = 0.3, 3.0, 45.0
-        elif model in ("ge2025", "fast2025"):
-            # Heuristic 2025-style improvements knob: modest constant reductions
-            toffoli_coeff, qubit_coeff, depth_coeff = 0.25, 2.5, 30.0
-        # Additional models can be added here
-
-    Q = qubit_coeff * n_bits  # logical qubits ~ c_q * n
-    toffoli = toffoli_coeff * (n_bits ** 3)
-    # measured depth ~ c_d * n^2 * log2 n
-    D = depth_coeff * (n_bits ** 2) * max(1.0, math.log2(max(2, n_bits)))
-    # Provide a rough T-count via Toffoli decomposition (typical ≈7 T per Toffoli)
-    t_per_toffoli = 7.0
-    t_count = toffoli * t_per_toffoli
-
-    scenarios = [
-        {
-            "label": "optimistic",
-            "phys_error_rate": 5e-4,
-            "cycle_time_ns": 200.0,
-            "target_total_fail_prob": 1e-3,
-        },
-        {
-            "label": "median",
-            "phys_error_rate": 1e-3,
-            "cycle_time_ns": 1000.0,
-            "target_total_fail_prob": 1e-2,
-        },
-        {
-            "label": "conservative",
-            "phys_error_rate": 2e-3,
-            "cycle_time_ns": 5000.0,
-            "target_total_fail_prob": 1e-1,
-        },
-    ]
-
-    modulus_set = sorted({2048, 3072, 4096, n_bits})
-    logical_entries = {
-        bits: _shor_logical_resources(bits, qubit_coeff, toffoli_coeff, depth_coeff, t_per_toffoli)
-        for bits in modulus_set
+    model_name = opts.rsa_model if opts and opts.rsa_model else "ge2019"
+    logical_main = _shor_logical_resources(n_bits, model_name)
+    toffoli = float(logical_main["toffoli"])
+    t_counts = {
+        "catalyzed": toffoli * 4.0,
+        "textbook": toffoli * 7.0,
     }
 
     metrics = SecMetrics(
@@ -568,103 +722,66 @@ def _estimate_rsa_from_meta(kind: str, meta: Dict[str, Any], opts: Optional[Esti
         quantum_bits=0.0,  # Shor polynomial-time break → effectively 0-bit quantum security
         shor_breakable=True,
         notes=(
-            "RSA classical: NIST SP 800-57 strength mapping; quantum: Shor breaks (0 bits). "
-            "Reporting logical resource estimates (Q, Toffoli/T, depth)."
+            "RSA classical: NIST SP 800-57 strength mapping; quantum: Shor polynomial-time factoring. "
+            "Logical costs follow Gidney–Ekerå (2019); Toffoli counts are primary with T-count ranges."
         ),
         extras={
-            "modulus_bits": n_bits,
-            "logical_qubits": Q,
+            "modulus_bits": float(n_bits),
+            "logical": logical_main,
+            "logical_qubits": float(logical_main["logical_qubits"]),
             "toffoli": toffoli,
-            "t_count": t_count,
-            "meas_depth": D,
-            "depth_form": depth_form,
-            "t_per_toffoli": t_per_toffoli,
-            "rsa_model": (opts.rsa_model if opts and opts.rsa_model else "ge2019"),
+            "t_counts": t_counts,
+            "t_count": t_counts["textbook"],  # backwards-compatible key
+            "t_count_textbook": t_counts["textbook"],
+            "t_count_catalyzed": t_counts["catalyzed"],
+            "meas_depth": float(logical_main["meas_depth"]),
+            "rsa_model": logical_main["model"],
+            "log2_modulus_bits": float(logical_main["log2_n"]),
+            "classical_strength_source": "NIST SP 800-57 Part 1 Rev.5",
+            "shor_model_notes": logical_main.get("notes"),
         },
     )
 
-    scenario_entries = []
+    scenarios = _default_shor_scenarios()
+    modulus_set = sorted({2048, 3072, 4096, n_bits})
+    logical_entries = {bits: _shor_logical_resources(bits, model_name) for bits in modulus_set}
+
+    scenario_entries: List[Dict[str, Any]] = []
     for bits in modulus_set:
         logical = logical_entries[bits]
         profiles = []
         for scenario in scenarios:
-            overhead = _shor_surface_overhead(
-                logical,
-                p_phys=scenario["phys_error_rate"],
-                cycle_time_ns=scenario["cycle_time_ns"],
-                target_fail=scenario["target_total_fail_prob"],
-            )
-            profile = {
-                "label": scenario["label"],
-                "phys_error_rate": scenario["phys_error_rate"],
-                "cycle_time_ns": scenario["cycle_time_ns"],
-                "target_total_fail_prob": scenario["target_total_fail_prob"],
-                **overhead,
-            }
+            profile = _shor_surface_profile(logical, scenario=scenario)
             profiles.append(profile)
         scenario_entries.append({
-            "modulus_bits": bits,
+            "modulus_bits": float(bits),
             "logical": logical,
             "scenarios": profiles,
         })
 
     metrics.extras["shor_profiles"] = {
-        "coefficients": {
-            "qubit_coeff": qubit_coeff,
-            "toffoli_coeff": toffoli_coeff,
-            "depth_coeff": depth_coeff,
-            "t_per_toffoli": t_per_toffoli,
-            "depth_form": depth_form,
+        "model": logical_main["model"],
+        "scenarios": scenario_entries,
+        "t_count_assumptions": {
+            "primary_unit": "Toffoli",
+            "t_mappings": {"catalyzed": 4.0, "textbook": 7.0},
         },
-        "moduli": scenario_entries,
     }
+    metrics.extras["t_count_assumptions"] = metrics.extras["shor_profiles"]["t_count_assumptions"]
 
-    # Optional: convert to surface-code physical qubits and runtime.
-    # Assumptions (communicated in the output):
-    #  - Surface code threshold p_th ≈ 1e-2
-    #  - Logical error per operation p_L ≈ 0.1 * (p_phys/p_th)^((d+1)/2)
-    #  - Choose code distance d so that p_L * max(toffoli, depth) <= target budget / 10
     opts = _apply_quantum_arch_presets(opts)
     if opts and opts.rsa_surface:
-        # Very coarse model. Assumptions (documented in output):
-        # - Surface code threshold p_th ≈ 1e-2
-        # - Logical error per operation p_L ≈ 0.1 * (p_phys/p_th)^((d+1)/2)
-        # - Choose code distance d so that p_L * max(T, D) <= target_total_fail_prob / 10 (margin)
-        p_th = 1e-2
-        p_phys = float(opts.phys_error_rate)
-        cycles = max(toffoli, D)  # rough proxy for number of opportunities for logical failure
-        target = max(1e-18, float(opts.target_total_fail_prob) / 10.0 / max(1.0, cycles))
-
-        # Solve for smallest integer d such that 0.1*(p_phys/p_th)^((d+1)/2) <= target
-        base = max(1e-12, p_phys / p_th)
-        if base >= 1.0:
-            d = 100  # absurdly large; indicates p_phys above threshold
-        else:
-            exp = math.log(target / 0.1, base)
-            d = max(3, int(2 * exp - 1))
-
-        # Physical qubits per logical qubit ~ k * d^2; pick k≈2 as a crude constant
-        kq = 2.0
-        phys_qubits = int(kq * (d ** 2) * Q)
-
-        # Runtime: measurement depth inflated by ~O(d) surface cycles
-        cycle_time_s = float(opts.cycle_time_s)
-        runtime_s = float(D) * float(d) * cycle_time_s
-
-        metrics.extras.update({
-            "surface": {
-                "code_distance": d,
-                "phys_qubits_total": phys_qubits,
-                "runtime_seconds": runtime_s,
-                "assumptions": {
-                    "p_phys": p_phys,
-                    "p_thresh": p_th,
-                    "cycle_time_s": cycle_time_s,
-                    "target_total_fail_prob": float(opts.target_total_fail_prob),
-                },
-            }
-        })
-        metrics.notes += " With surface-code overhead (very rough)."
+        scenario = {
+            "label": opts.quantum_arch or "custom",
+            "phys_error_rate": float(opts.phys_error_rate),
+            "cycle_time_ns": float(opts.cycle_time_s) * 1e9,
+            "target_total_fail_prob": float(opts.target_total_fail_prob),
+            "factory_spec": "litinski-116-to-12",
+            "factory_overbuild": 1.0,
+            "alpha_data": 2.5,
+            "notes": "User-specified surface-code override",
+        }
+        metrics.extras["surface"] = _shor_surface_profile(logical_main, scenario=scenario)
 
     return metrics
 

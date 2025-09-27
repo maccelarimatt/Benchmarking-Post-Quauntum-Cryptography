@@ -227,32 +227,32 @@ Examples (all flags enabled)
 ```bash
 # KEMs
 run-kyber        --tests --runs 2 --export results/kyber_sec.json \
-  --sec-adv --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+  --sec-adv
 
 run-hqc          --tests --runs 2 --export results/hqc_sec.json \
-  --sec-adv --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+  --sec-adv 
 
 run-rsa-oaep     --tests --runs 2 --export results/rsa_oaep_sec.json \
   --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 
 # Signatures
 run-dilithium    --tests --runs 2 --message-size 4096 --export results/dilithium_sec.json \
-  --sec-adv --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+  --sec-adv 
 
 run-falcon      --tests  --runs 2 --message-size 4096 --export results/falcon_sec.json \
-  --sec-adv --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+  --sec-adv 
 
 run-sphincsplus  --tests --runs 2 --message-size 4096 --export results/sphincsplus_sec.json \
-  --sec-adv --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+  --sec-adv 
 
 run-rsa-pss      --tests --runs 2 --message-size 2048 --export results/rsa_pss_sec.json \
   --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
 
 run-mayo         --tests --runs 2 --message-size 4096 --export results/mayo_sec.json \
-  --sec-adv --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+  --sec-adv 
 
 run-xmssmt       --tests --runs 2 --message-size 2048 --export results/xmssmt_sec.json \
-  --sec-adv --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
+  --sec-adv
 ```
 
 Notes:
