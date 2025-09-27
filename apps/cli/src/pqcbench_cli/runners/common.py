@@ -1090,29 +1090,32 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
             pass
 
     if module_cost:
-        headline = module_cost.get("headline", {})
+        headline = module_cost.get("headline") or {}
         estimates["calculated"] = {
-            "profile": headline.get("profile"),
+            "profile": "core-svp",
             "attack": headline.get("attack"),
             "classical_bits": headline.get("classical_bits"),
             "quantum_bits": headline.get("quantum_bits"),
-            "classical_bits_range": headline.get("classical_bits_range"),
-            "quantum_bits_range": headline.get("quantum_bits_range"),
+            "classical_bits_range": None,
+            "quantum_bits_range": None,
         }
-        out.setdefault("assumptions", {})["module_lwe_model"] = {
-            "dimension": module_cost.get("dimension"),
-            "n": module_cost.get("n"),
-            "k": module_cost.get("k"),
-            "alpha": module_cost.get("alpha"),
-            "sigma_e": module_cost.get("sigma_e"),
-            "classical_bits_range": module_cost.get("classical_bits_range"),
-            "quantum_bits_range": module_cost.get("quantum_bits_range"),
+        model_block = {
+            "model": module_cost.get("model"),
+            "source": module_cost.get("source"),
+            "params": module_cost.get("params"),
+            "sigma_error": module_cost.get("sigma_error"),
+            "sigma_secret": module_cost.get("sigma_secret"),
         }
-        profile_consts = module_cost.get("profile_constants")
-        if profile_consts:
-            out.setdefault("assumptions", {})["module_lwe_profile_constants"] = profile_consts
-        out.setdefault("details", {})["module_lwe_attacks"] = module_cost.get("attacks")
-        out.setdefault("details", {})["module_lwe_profiles"] = module_cost.get("profiles")
+        out.setdefault("assumptions", {})["module_lwe_model"] = model_block
+        core_details = {}
+        if module_cost.get("primal"):
+            core_details["primal"] = module_cost["primal"]
+        if module_cost.get("dual"):
+            core_details["dual"] = module_cost["dual"]
+        if core_details:
+            out.setdefault("details", {})["module_lwe_core_svp"] = core_details
+        if module_cost.get("reference"):
+            out.setdefault("assumptions", {})["module_lwe_reference"] = module_cost["reference"]
 
     # Lattice estimator details
     if "classical_sieve" in extras or "qram_assisted" in extras or "beta" in extras:

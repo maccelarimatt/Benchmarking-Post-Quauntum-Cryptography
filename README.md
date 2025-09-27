@@ -119,6 +119,16 @@ Notes:
 
 Replace `@studentA` / `@studentB` in `CODEOWNERS` with your GitHub handles.
 
+## Security estimator snapshot
+- **ML‑KEM (Kyber):** solves the Kyber spec’s core‑SVP inequalities (Eq. (6)/(7)) to recover primal uSVP and dual distinguisher costs. Headlines use `classical = 0.292·β`, `quantum = 0.265·β`, and CLI exports expose the raw tuples (labelled `source = core-svp-analytic`) under `module_lwe_core_svp`.
+- **ML‑DSA (Dilithium):** uses the Round 3 specification’s refined MLWE hardness table (β, n, log₂ cost) as a core-SVP lookup (`source = core-svp-spec-table`) for calculated headlines, with curated ranges/NIST floors preserved for context.
+- **Falcon:** provides an NTRU BKZ curve (β sweep with success margins) and curated ranges; floors remain the default until an external estimator (`--sec-adv`) is available.
+- **HQC:** reports dual ISD heuristics (Stern entropy vs BJMM) including classical/quantum/memory exponents and weight sensitivity.
+- **Hash-based (SPHINCS+/XMSSMT):** maps hash lengths to preimage/collision exponents and adds Grover/BHT reductions for quantum contexts.
+- **RSA:** maps modulus sizes via SP 800‑57 and publishes Shor resource budgets (logical qubits, Toffoli/T counts, surface-code overlays).
+
+Use `pqcbench security <algo>` to inspect the structured outputs; extended discussion lives in `docs/security/`.
+
 
 ## One-command runners (installed via editable install)
 After `pip install -r requirements-dev.txt`, the following commands are available:

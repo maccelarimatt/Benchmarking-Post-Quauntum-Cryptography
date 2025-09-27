@@ -100,13 +100,18 @@ These resource estimates are illustrative, not prescriptive. Actual implementati
 Kyber is a module‑LWE KEM. Security rests on the hardness of LWE over module lattices: given A·s + e = b with small error e, recover s. Parameters (ring dimension n=256, module rank k, modulus q=3329, error distribution with η1/η2) determine difficulty.
 
 ### Estimation approach
-Lattice security is commonly estimated with the Albrecht–Player–Scott (APS) Lattice Estimator, which evaluates primal/dual/decoding attacks coupled with BKZ reduction and reports the minimal log2 work factor. For Kyber‑512 (k=2 → n_LWE = 512, q=3329, η≈3), public analyses cluster around 2^150–2^160 classical operations with ≈10–15% quantum improvements from Core‑SVP constants (0.292 → 0.26x). We treat the NIST category (Cat‑1 = 128) as a conservative floor but also compute headline estimates from an internal module‑LWE→LWE reduction: convert (n,k,q,η) into an LWE instance, scan BKZ block sizes for primal/dual/hybrid guessing attacks, and translate β with Core‑SVP constants. The result is exposed as a “calculated” classical/quantum range alongside the category floor.
+We implement the core-SVP methodology described in the Kyber specification (Eq. (6) and (7) of §5.1). For each parameter set we map module-LWE to an LWE instance with dimension `kn`, search the admissible sample window `m ∈ [n,(k+1)n]`, and solve the BKZ success inequalities directly:
+
+- **Primal uSVP:** find the smallest block size β such that `sqrt(σ² · β) ≤ δ(β)^{2β-d-1} · q^{m/d}` with `d = m + kn + 1`. This yields the classical and quantum exponents via the core-SVP constants (0.292 and 0.265).
+- **Dual distinguisher:** evaluate `ℓ = δ(β)^{d-1} · q^{kn/d}`, compute the statistical advantage `ε = 4·exp(-2π²(ℓσ/q)²)`, and account for repetitions when `ε < 1/2` using the conservative `2^{0.2075β}` sieving bound.
+
+The minimal-cost attack (usually the primal uSVP) is promoted as the headline estimate; the alternate attack and raw parameters are attached for inspection.
 
 ### Quantum considerations
-There is no Shor‑style break for LWE. Quantum speedups mostly affect sieving constants (Core‑SVP exponent ~0.292 → Q‑Core‑SVP ~0.265), shaving ≈10–15% from the exponent. We report both classical and “QRAM‑assisted” numbers when the estimator is available; otherwise we include a curated quantum range as context.
+There is no Shor‑style break for LWE. Quantum speedups mostly affect sieving constants (Core‑SVP exponent ~0.292 → Q‑Core‑SVP ~0.265), shaving ≈10–15% from the exponent. pqcbench reports both classical and quantum exponents derived from these constants; the CLI also records the dual advantage and repetition cost so readers can judge the assumptions.
 
 ### Implementation in pqcbench
-`_estimate_kyber_from_name` now performs a module‑LWE→LWE mapping, runs a lightweight BKZ/β cost model (primal, dual, hybrid guessing), and reports the best classical/quantum ranges derived from Core‑SVP constants (0.285–0.300 classical, 0.250–0.270 quantum). The midpoint of the aggressive profile becomes the headline `classical_bits`/`quantum_bits`; the NIST category floor remains available in `extras.category_floor`. Curated literature ranges are still attached for context, and APS outputs continue to override when explicitly requested with `--sec-adv`.
+`_estimate_kyber_from_name` evaluates the core-SVP inequalities described above, records the optimal primal/dual tuples (`β`, lattice dimension, sample count, exponent, and δ), and exposes the winning attack as `extras.mlkem.module_lwe_cost.headline`. CLI exports echo this structure under `estimates.calculated` and `details.module_lwe_core_svp`, and mark the provenance as `source = "core-svp-analytic"`. The NIST category floor remains available in `extras.category_floor`, and a literature-based curated range (Table 4 of the Kyber spec) is still attached for context. If the external APS estimator is available (`--sec-adv`), its numbers override the core-SVP model.
 
 ## ML‑DSA (Dilithium)
 
@@ -114,7 +119,7 @@ There is no Shor‑style break for LWE. Quantum speedups mostly affect sieving c
 Dilithium signatures rely on problems in module lattices (Module‑LWE/LWR and Module‑SIS). Forgery reduces to finding short vectors (SIS) or solving an LWE‑type instance. Parameters (n=256, ranks k,l, modulus q=8380417, noise bounds) are chosen so the underlying problems meet target security.
 
 ### Estimation approach
-Dilithium’s security analysis also relies on core‑SVP. Choose a BKZ blocksize β so an SVP oracle hits the target norm, then convert β into a runtime exponent. Widely used constants: classical ≈0.292·β, quantum ≈0.262·β, with small variations depending on memory/circuit assumptions. pqcbench mirrors this by mapping the module parameters (n,k,q,η) into an LWE instance, scanning primal/dual/hybrid attack families with tuned exponent factors, and returning the best classical/quantum ranges over plausible Core‑SVP constants.
+Dilithium’s proofs appeal to Module-SIS/Module-LWE reductions and the same core-SVP heuristics, but a faithful concrete model requires handling rejection sampling and structured secrets. pqcbench therefore consumes the refined MLWE hardness numbers published in the Round 3 specification (Table 4: n, β, sieving dimension, log₂ cost) and surfaces them as a core-SVP table lookup. These values (e.g., β=638 → 216.7 classical bits for ML‑DSA‑65) act as the calculated headline while we continue work on an explicit Module-SIS core-SVP model. Category floors remain the authoritative conservative values in automated reports.
 
 ### Public estimates (context)
 For common sets, public reports suggest (ballpark):
@@ -124,7 +129,7 @@ For common sets, public reports suggest (ballpark):
 NIST assigns categories to provide conservative floors. pqcbench reports category floors by default and attaches curated ranges for context.
 
 ### Implementation in pqcbench
-`_estimate_dilithium_from_name` shares the Kyber cost infrastructure: a module‑LWE→LWE reduction with BKZ blocksize search across primal/dual/hybrid guesses. The aggressive profile midpoint becomes the headline `classical_bits`/`quantum_bits`; category floors and curated literature ranges remain in extras for comparison. APS outputs, when available via `--sec-adv`, still override these calculations. See `libs/core/src/pqcbench/security_estimator.py` for details.
+`_estimate_dilithium_from_name` first attempts the same module-LWE core-SVP solver used for Kyber; when parameters fall outside that heuristic range it falls back to the specification’s Table 4 entry, recording β, lattice dimension, sieving dimension, and log₂ cost inside `extras.mldsa.module_lwe_cost` with the provenance flag `source = "core-svp-spec-table"` and `reference =` the Round 3 document. The table-driven headline is promoted to the CLI exports while curated ranges remain available for context. The estimator code is structured so a future Module-SIS/LWE solver can replace the lookup transparently.
 
 ## Falcon (FN‑DSA; NTRU lattice)
 

@@ -28,23 +28,24 @@ def test_module_lwe_cost_headline_kyber():
     cost = metrics.extras.get("mlkem", {}).get("module_lwe_cost")
     assert cost, "expected module_lwe_cost in extras"
     headline = cost["headline"]
-    assert 134.0 <= headline["classical_bits"] <= 140.0
+    assert 115.0 <= headline["classical_bits"] <= 122.0
     assert metrics.classical_bits == headline["classical_bits"]
     assert metrics.quantum_bits == headline["quantum_bits"]
-    assert cost["classical_bits_range"][0] < cost["classical_bits_range"][1]
     assert metrics.extras.get("category_floor") == 128
+    assert abs(cost["primal"]["beta"] - 405.0) < 1.0
+    assert cost["source"] == "core-svp-analytic"
 
 
 def test_module_lwe_cost_headline_dilithium():
     metrics = _estimate_dilithium_from_name("ML-DSA-65", EstimatorOptions())
     cost = metrics.extras.get("mldsa", {}).get("module_lwe_cost")
-    assert cost, "expected module_lwe_cost in extras"
+    assert cost, "expected module_lwe_cost for Dilithium"
     headline = cost["headline"]
-    assert 165.0 <= headline["classical_bits"] <= 175.0
+    assert 210.0 <= headline["classical_bits"] <= 225.0
     assert metrics.classical_bits == headline["classical_bits"]
     assert metrics.quantum_bits == headline["quantum_bits"]
-    lo, hi = cost["classical_bits_range"]
-    assert lo <= headline["classical_bits"] <= hi
+    assert abs(cost["primal"]["beta"] - 638.0) < 1.0
+    assert cost["source"] == "core-svp-spec-table"
 
 
 def test_standardize_security_includes_calculated_range():
@@ -58,11 +59,10 @@ def test_standardize_security_includes_calculated_range():
     calc = formatted["estimates"]["calculated"]
     assert calc["classical_bits"] == metrics.classical_bits
     ml_model = formatted.get("assumptions", {}).get("module_lwe_model")
-    assert ml_model
-    assert ml_model["dimension"] == metrics.extras["mlkem"]["module_lwe_cost"]["dimension"]
-    assert "module_lwe_profile_constants" in formatted.get("assumptions", {})
-    assert formatted.get("details", {}).get("module_lwe_profiles")
-    assert formatted.get("details", {}).get("module_lwe_attacks")
+    assert ml_model and isinstance(ml_model.get("params"), dict)
+    core_details = formatted.get("details", {}).get("module_lwe_core_svp")
+    assert core_details and core_details.get("primal")
+    assert formatted.get("assumptions", {}).get("module_lwe_model", {}).get("source")
 
 
 def test_falcon_bkz_model_present():
