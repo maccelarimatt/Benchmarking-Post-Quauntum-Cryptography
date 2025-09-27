@@ -864,15 +864,16 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
 
     # Resources (RSA-specific)
     if algo in ("rsa-oaep", "rsa-pss"):
+        logical = extras.get("logical") or {}
         res = {
-            "logical": extras.get("logical"),
-            "logical_qubits": extras.get("logical_qubits"),
-            "toffoli": extras.get("toffoli"),
+            "logical": logical,
+            "logical_qubits": logical.get("logical_qubits"),
+            "toffoli": logical.get("toffoli"),
+            "meas_depth": logical.get("meas_depth"),
             "t_counts": extras.get("t_counts"),
-            "meas_depth": extras.get("meas_depth"),
             "rsa_model": extras.get("rsa_model"),
             "shor_model_notes": extras.get("shor_model_notes"),
-            "log2_modulus_bits": extras.get("log2_modulus_bits"),
+            "log2_n_bits": extras.get("log2_n_bits"),
         }
         if extras.get("t_count_assumptions"):
             res["t_count_assumptions"] = extras.get("t_count_assumptions")

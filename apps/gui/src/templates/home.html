@@ -170,6 +170,21 @@ input[type="checkbox"]:checked::after { opacity: 1; }
     .progress-bar > .fill { height: 100%; width: 0%; background: linear-gradient(90deg, #1fb6b8, #4fd1d9); transition: width .18s ease; }
     .loading-stage { font-size: 1.05rem; letter-spacing: 0.02em; }
     .loading-detail { opacity: .9; font-size: .95rem; }
+    .loading-spinner { display: flex; gap: 0.35rem; }
+    .loading-spinner .dot {
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #4fd1d9, #1fb6b8);
+      opacity: 0.4;
+      animation: spinner-bounce 0.9s infinite ease-in-out;
+    }
+    .loading-spinner .dot:nth-child(2) { animation-delay: 0.12s; }
+    .loading-spinner .dot:nth-child(3) { animation-delay: 0.24s; }
+    @keyframes spinner-bounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.35; }
+      40% { transform: scale(1); opacity: 1; }
+    }
 
     /* Header strip */
     .header-strip {
@@ -190,6 +205,11 @@ input[type="checkbox"]:checked::after { opacity: 1; }
 <body>
   <div id="loading-overlay" class="loading-overlay" hidden>
     <div class="loading-card">
+      <div class="loading-spinner" aria-hidden="true">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
       <div id="loading-stage" class="loading-stage">Preparing…</div>
       <div class="progress-wrap">
         <div class="progress-bar"><div id="loading-progress" class="fill" style="width:0%"></div></div>
@@ -263,4 +283,3 @@ input[type="checkbox"]:checked::after { opacity: 1; }
     })();
   </script>
 </body>
-

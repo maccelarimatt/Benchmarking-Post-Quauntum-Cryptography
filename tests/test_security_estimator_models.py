@@ -152,3 +152,5 @@ def test_rsa_shor_profiles_present():
     assert labels == {"ge-baseline", "optimistic", "conservative"}
     assert "phys_qubits_total" in scenarios[0]
     assert first_entry.get("logical", {}).get("model") == "ge2019"
+    rd = scenarios[0].get("rate_details")
+    assert rd and rd.get("rate_unit")

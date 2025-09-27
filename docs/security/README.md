@@ -5,7 +5,7 @@ This document summarizes the security models and estimators used by pqcbench. Th
 ## Notes
 - Unless a stronger model is available, we report conservative floors based on NIST security categories (128/192/256) or standard mappings. When advanced estimators are unavailable in your environment, results clearly indicate floor usage.
 - Where quantum attacks fundamentally break the scheme (e.g., RSA), we report 0 bits for quantum security and include resource estimates to quantify feasibility.
-- Detailed Shor factoring documentation (logical model, surface-code assumptions, GNFS baseline) lives in [Shor Estimator Playbook](SHOR.md).
+- Detailed Shor factoring documentation (logical model, surface-code assumptions, GNFS baseline, GE calibration) lives in [Shor Estimator Playbook](SHOR.md).
 - Secret-key Hamming statistics accompany every benchmark (see [Secret-Key Hamming Analysis](#secret-key-hamming-analysis)) so obvious RNG or encoding regressions are surfaced alongside timing metrics.
 
 ## Timing Methodology

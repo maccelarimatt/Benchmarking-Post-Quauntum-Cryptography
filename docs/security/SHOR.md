@@ -18,8 +18,8 @@ implementation in reports or replicate individual numbers.
 * **Models.** Logical resources use the verbatim Gidney–Ekerå 2019 formulas.
   Magic-state costing keeps Toffoli counts as the primary unit and reports a
   band for T counts (catalyzed vs textbook). Surface-code overhead includes
-  both data tiles and magic-state factories. The classical baseline implements a
-  record-calibrated general number field sieve (GNFS) model.
+  both data tiles and magic-state factories with a utilization-aware integer
+  search. The classical baseline implements a record-calibrated GNFS model.
 
 ## 2. Logical Resource Model (GE 2019)
 
@@ -80,20 +80,43 @@ All scenarios share the following ingredients.
    limits and the max of the two.
 
 4. **Failure accounting.** The profile records `expected_failures`, exposing how
-   close the chosen parameters sit to the target budget.
+   close the chosen parameters sit to the target budget. The logical work factor
+   uses weights (`logical_op_weight_depth`, `logical_op_weight_tof`) so that
+   Toffoli layers can be treated as slightly more error-prone than a single
+   Clifford depth slot.
 
 ### Default Scenarios
 
 | Label         | `p_phys` | Cycle time | Factory spec              | Overbuild | Notes |
 |---------------|---------:|-----------:|---------------------------|----------:|-------|
-| `ge-baseline` | 1e‑3     | 1 µs       | Litinski 116→12           | 0.05      | Reproduces the Gidney–Ekerå 8 h / ≈20 M qubit point.
+| `ge-baseline` | 1e‑3     | 1 µs       | Litinski 116→12           | 0.05      | Calibrated to the Gidney–Ekerå 8 h / 20 M qubit point.
 | `optimistic`  | 5e‑4     | 200 ns     | Litinski 116→12           | 1.0       | Faster cadence with throughput-matched factories.
 | `conservative`| 2e‑3     | 5 µs       | Lightweight 15→1 pipeline | 1.5       | Slow ion-trap style; factories dominate budget.
 
 Custom scenarios can be injected by calling `_shor_surface_profile` directly or
 by enabling `EstimatorOptions.rsa_surface` in CLI/exports.
 
-## 5. Classical Baseline (GNFS)
+## 5. Calibration and Stabilisation
+
+The module auto-calibrates a set of global multipliers once at import. For the
+GE baseline (`n=2048`, `p_phys=10⁻³`, `cycle=1 µs`) it solves for:
+
+* `factory_rate_multiplier` – demand-side inflation ensuring the integer
+  factory search starts near the GE throughput; currently the optimum is 1.0.
+* `factory_supply_scale` – scales per-factory throughput so that the selected
+  integer factory count delivers an 8 hour runtime.
+* `data_alpha_scale`, `factory_alpha_scale` – shared multipliers on the data and
+  factory tile footprints so the total physical qubits match 20 M.
+
+These parameters are published under `extras.calibration` and every calibrated
+scenario advertises `calibrated_against="GE-2019-2048"`.
+
+The factory chooser evaluates a small window of integer counts, favouring
+solutions that (a) satisfy the throughput requirement, (b) minimise
+`max(depth_cycles, factory_cycles)`, and (c) keep utilisation near the target
+band (default 70–90%).
+
+## 6. Classical Baseline (GNFS)
 
 The brute-force helper now models the general number field sieve rather than
 trial division. For modulus size `n` bits (≈\(N = 2^n\)), the work factor is
@@ -109,20 +132,27 @@ result in core-years and provides the time-to-solution for three illustrative
 core budgets (1, 10³, 10⁶). This makes classical vs quantum trade-offs directly
 comparable on plots.
 
-## 6. JSON Field Guide
+## 7. JSON Field Guide
 
-* `resources.logical` — evaluated GE formulas and the associated prose.
+* `resources.logical` — evaluated GE formulas and the associated prose (single
+  source of truth for logical qubits, Toffoli count, depth, and log₂ n bits).
 * `resources.shor_profiles` — per-modulus logical entries plus per-scenario
-  surface-code overhead, including factory counts, runtime decomposition, and
-  failure estimates.
+  surface-code overhead, including factory counts, runtime decomposition,
+  utilisation metrics, and failure estimates.
 * `resources.t_counts` — Toffoli/T band (primary + comparative).
+* `resources.calibration` — global scaling factors chosen to match the GE
+  baseline point.
 * `bruteforce` — GNFS baseline with record-calibrated scaling.
+* `rate_details` (per scenario) — `factory_rate_peak` (concurrent demand),
+  `factory_rate_target` (after overbuild and multipliers), `factory_rate_available`,
+  utilisation/backlog ratios, and the supply/multiplier factors that produced the
+  chosen integer factory count.
 
 A typical `rsa-oaep` export now includes the GE baseline showing ≈6.8 M data
 qubits + ≈6.6 M factory qubits (one Litinski pipeline) and an 8-hour
 factory-limited runtime, matching Table II of [2].
 
-## 7. Extending or Auditing the Model
+## 8. Extending or Auditing the Model
 
 * **Alternate logical models.** Add new entries to `SHOR_MODEL_LIBRARY` with
   the desired closed forms and select them via `EstimatorOptions.rsa_model`.
@@ -136,7 +166,7 @@ factory-limited runtime, matching Table II of [2].
   selected constants and allow spot-checking against the GE public scripts for a
   handful of moduli.
 
-## 8. References
+## 9. References
 
 1. NIST, *Recommendation for Key Management: Part 1 – General*, SP 800‑57 Rev.5 [1].
 2. Gidney & Ekerå, *How to factor 2048 bit RSA integers in 8 hours using 20 million noisy qubits*, Quantum 5, 433 (2019) [2][4].
