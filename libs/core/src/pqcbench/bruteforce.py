@@ -32,6 +32,34 @@ DEFAULT_TRIES_PER_SEC: Tuple[float, ...] = (
 
 SECONDS_PER_YEAR: float = 31_536_000.0
 
+GNFS_CONSTANT: float = (64.0 / 9.0) ** (1.0 / 3.0)
+GNFS_RSA250_BITS: float = 829.0  # RSA-250 has 829 bits
+GNFS_RSA250_CORE_YEARS: float = 2700.0  # published record (core-years)
+GNFS_DEFAULT_CORES: Tuple[float, ...] = (
+    1.0,
+    1_000.0,
+    1_000_000.0,
+)
+
+
+def _gnfs_work_factor(bits: float) -> float:
+    if bits <= 0:
+        return 0.0
+    lnN = bits * math.log(2.0)
+    lnlnN = math.log(max(2.0, lnN))
+    return math.exp(GNFS_CONSTANT * (lnN ** (1.0 / 3.0)) * (lnlnN ** (2.0 / 3.0)))
+
+
+GNFS_SCALE: float = (
+    GNFS_RSA250_CORE_YEARS / max(1e-18, _gnfs_work_factor(GNFS_RSA250_BITS))
+)
+
+
+def gnfs_core_years(bits: float) -> float:
+    if bits <= 0:
+        return 0.0
+    return GNFS_SCALE * _gnfs_work_factor(bits)
+
 
 def _safe_pow2(bits: float) -> float:
     """Return 2**bits as float if representable; otherwise return math.inf.
@@ -105,7 +133,7 @@ def _model_and_space_bits(
 
     # RSA: derive modulus bits from extras or mechanism/meta when available.
     if algo_l in ("rsa-oaep", "rsa-pss"):
-        model = "trial_division_factorization"
+        model = "gnfs_factorization"
         n_bits = None
         # security_estimator stores modulus_bits under extras for RSA
         if isinstance(extras.get("modulus_bits"), (int, float)):
@@ -122,7 +150,7 @@ def _model_and_space_bits(
         # Last resort: assume 2048
         if n_bits is None or n_bits <= 0:
             n_bits = 2048.0
-        return model, float(n_bits) / 2.0, "sqrt(n) trial division"
+        return model, float(n_bits), "GNFS L_N[1/3] work factor"
 
     # KEMs: enumerate candidate shared secrets (toy baseline), use security floor
     if kind.upper() == "KEM" or algo_l in ("kyber", "hqc"):
@@ -160,6 +188,36 @@ def bruteforce_summary(
         algo=algo, kind=kind, mechanism=mechanism, classical_bits=classical_bits, extras=extras
     )
 
+    if model == "gnfs_factorization":
+        core_years = gnfs_core_years(b)
+        rates = list(GNFS_DEFAULT_CORES)
+        times: Dict[str, Dict[str, float | str]] = {}
+        for cores in rates:
+            yrs = math.inf
+            if cores > 0:
+                yrs = core_years / float(cores)
+            times[str(int(cores))] = _pretty_years(yrs)
+
+        return {
+            "model": model,
+            "space_bits": b,
+            "rates": rates,
+            "rate_unit": "cores",
+            "core_years": core_years,
+            "time_years": times,
+            "assumptions": {
+                "rationale": rationale,
+                "notes": (
+                    "General Number Field Sieve (L_N[1/3]) with constant calibrated to the RSA-250 "
+                    "factorization record (~2700 core-years)."
+                ),
+            },
+            "guidance": {
+                "reference": "https://en.wikipedia.org/wiki/RSA_numbers",
+                "comment": "Scale core counts to explore wall-clock trade-offs.",
+            },
+        }
+
     times: Dict[str, Dict[str, float | str]] = {}
     for r in tries_per_sec:
         y = expected_years_to_bruteforce(b, float(r))
@@ -169,6 +227,7 @@ def bruteforce_summary(
         "model": model,
         "space_bits": b,
         "rates": list(tries_per_sec),
+        "rate_unit": "tries_per_second",
         "time_years": times,
         "assumptions": {
             "rationale": rationale,
@@ -182,4 +241,3 @@ def bruteforce_summary(
             "warning": "Refuse or simulate >32-bit spaces when running any brute loop.",
         },
     }
-

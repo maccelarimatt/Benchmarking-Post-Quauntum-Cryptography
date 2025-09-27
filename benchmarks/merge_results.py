@@ -75,9 +75,14 @@ def collect_rows():
         }
         # Attach RSA resources and surface if present
         extras = sec.get("extras", {}) if isinstance(sec.get("extras"), dict) else {}
-        for key in ("logical_qubits", "toffoli", "meas_depth", "rsa_model"):
-            if key in extras:
-                row[f"security.{key}"] = extras[key]
+        logical = extras.get("logical", {}) if isinstance(extras.get("logical"), dict) else {}
+        for key in ("logical_qubits", "toffoli", "meas_depth"):
+            if key in logical:
+                row[f"security.{key}"] = logical[key]
+        if "rsa_model" in extras:
+            row["security.rsa_model"] = extras["rsa_model"]
+        if "log2_n_bits" in extras:
+            row["security.log2_n_bits"] = extras["log2_n_bits"]
         surface = extras.get("surface", {}) if isinstance(extras.get("surface"), dict) else {}
         for key in ("code_distance", "phys_qubits_total", "runtime_seconds"):
             if key in surface:
@@ -109,4 +114,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

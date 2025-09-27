@@ -115,6 +115,14 @@ def prepare_keys_for_analysis(
             n_bytes = (modulus.bit_length() + 7) // 8
             parsed_keys.append(priv_exp.to_bytes(n_bytes, "big"))
         if parsed_keys:
+            if len(parsed_keys) > 1:
+                lengths = {len(k) for k in parsed_keys}
+                if len(lengths) > 1:
+                    max_len = max(lengths)
+                    parsed_keys = [bytes(k).rjust(max_len, b"\0") for k in parsed_keys]
+                    bundle.warnings.append(
+                        "RSA secrets padded to uniform length for analysis"
+                    )
             bundle.keys = parsed_keys
             bundle.context.setdefault("parser", "rsa_private_exponent_v1")
             bundle.context.setdefault("parsed_components", "private_exponent")
