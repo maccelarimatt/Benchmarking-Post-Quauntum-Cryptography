@@ -134,6 +134,40 @@ def _detect_cpu_model() -> str | None:
                     if line.lower().startswith("model name"):
                         return line.split(":", 1)[1].strip()
         elif system == "Windows":
+            # Prefer a descriptive name (e.g., "Intel(R) Core(TM) i9-12900K @ 3.20GHz")
+            # 1) Try PowerShell CIM (modern Windows)
+            try:
+                out = subprocess.check_output(
+                    [
+                        "powershell",
+                        "-NoProfile",
+                        "-Command",
+                        "(Get-CimInstance Win32_Processor | Select-Object -First 1 -ExpandProperty Name)"
+                    ],
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                ).strip()
+                if out:
+                    return out
+            except Exception:
+                pass
+            # 2) Fallback to WMIC (deprecated but often available)
+            try:
+                out = subprocess.check_output(
+                    ["wmic", "cpu", "get", "Name"],
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                )
+                # Output typically includes a header line 'Name' and one or more name lines
+                lines = [ln.strip() for ln in out.splitlines() if ln.strip()]
+                if len(lines) >= 2:
+                    # Join multiple CPU entries if present
+                    name = "; ".join(lines[1:])
+                    if name:
+                        return name
+            except Exception:
+                pass
+            # 3) Environment fallback (less descriptive)
             val = os.environ.get("PROCESSOR_IDENTIFIER")
             if val:
                 return val

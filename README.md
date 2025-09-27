@@ -205,6 +205,9 @@ but `PQCBENCH_*` takes precedence when both are set.
 - Model: `T_target = T_measured × [ α×(Compute_b/Compute_t) + (1−α)×(BW_b/BW_t) ]`, automatically falling back to compute-only when bandwidth proxies are missing.
 - Built-in profiles cover `intel_i9_14900k` (Geekbench 6 single-core ~3289), `amd_ryzen_9_7950x` (~2974), `macbookpro16_i9_9880h` (Geekbench 6 single-core ~1329), `esp32_s3` (CoreMark ~665 for one core @240 MHz), and `nrf52840` (CoreMark ~212 @64 MHz).
 - Baseline detection prefers the current host’s `environment.cpu_model`; override with `PQCBENCH_BASELINE_PROFILE`, or inject a raw score via `PQCBENCH_BASELINE_COMPUTE_SCORE` (+ optional `PQCBENCH_BASELINE_COMPUTE_METRIC`).
+  - Matching a teammate’s baseline exactly: set `PQCBENCH_BASELINE_PROFILE` before launching either the CLI or GUI so both produce identical `runtime_scaling.baseline_device` and predictions regardless of OS.
+    - PowerShell (Windows): `setx PQCBENCH_BASELINE_PROFILE macbookpro16_i9_9880h` then restart your shell/app.
+    - bash/zsh (macOS/Linux): `export PQCBENCH_BASELINE_PROFILE=macbookpro16_i9_9880h` before running.
 - Configure targets with `PQCBENCH_RUNTIME_TARGETS=profile_a,profile_b`, or point `PQCBENCH_DEVICE_PROFILES` at a JSON file shaped like the example in `libs/core/src/pqcbench/runtime_scaling.py` to register custom devices (include `compute_proxy` and optional `bandwidth_proxy`).
 - Alpha defaults follow algorithm families (Kyber/Dilithium/Falcon ~0.85, SPHINCS+ ~0.75, HQC ~0.65, Mayo ~0.7, otherwise 0.8); override globally with `PQCBENCH_RUNTIME_ALPHA`, or per-stage (e.g., `PQCBENCH_RUNTIME_ALPHA_KEYGEN`, `PQCBENCH_RUNTIME_ALPHA_SIGN`).
 - Host runs automatically measure a memcpy bandwidth proxy (median GB/s across a handful of 32 MB copies) so the two-term model can kick in; override or pre-fill with `PQCBENCH_BASELINE_BANDWIDTH_SCORE` if you already have STREAM/AIDA data.
