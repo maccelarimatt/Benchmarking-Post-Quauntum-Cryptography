@@ -31,7 +31,7 @@ class SecMetrics:
 class EstimatorOptions:
     lattice_use_estimator: bool = False
     lattice_model: str | None = None  # e.g., "core-svp", "q-core-svp" (informational)
-    lattice_profile: str | None = None  # e.g., "floor", "classical", "quantum"
+    lattice_profile: str | None = None  # e.g., "floor", "classical", "quantum" (None=auto)
     rsa_surface: bool = False
     rsa_model: str | None = None  # e.g., "ge2019"
     quantum_arch: str | None = None  # e.g., "superconducting-2025", "iontrap-2025"
@@ -708,7 +708,13 @@ def _estimate_lattice_like_from_name(name: str, opts: Optional[EstimatorOptions]
         notes=(
             "Lattice-based: floor from NIST category; enable --sec-adv for APS estimator."
         ),
-        extras={"category_floor": floor, "nist_category": nist_category, **base_extras},
+        extras={
+            "category_floor": floor,
+            "nist_category": nist_category,
+            # Always surface the selected profile (or None) for UI transparency
+            "lattice_profile": (opts.lattice_profile if opts and opts.lattice_profile else None),
+            **base_extras,
+        },
     )
     # Feature-flagged attempt to use external lattice estimator (if available and parameters known)
     if opts and opts.lattice_use_estimator:
@@ -1209,18 +1215,34 @@ def _try_lattice_estimator_with_params(mechanism: str, family: Optional[str]) ->
     insufficient. Uses coarse parameter hints from pqcbench.params when possible.
     """
     try:
-        import importlib
+        import importlib, math as _math
         from pqcbench.params import find as find_params  # type: ignore
+
         ph = find_params(mechanism)
         if not ph:
             return None
         extras = ph.extras or {}
-        # Only attempt for supported lattice families
-        fam = family or ph.family
-        if fam not in ("ML-KEM", "ML-DSA", "Falcon"):
+        fam = (family or ph.family)
+        if fam not in ("ML-KEM", "ML-DSA"):
+            # External LWE estimator integration is only attempted for LWE-like families
             return None
 
-        # Try to import an estimator module — many require Sage; keep this optional.
+        # Compute module-LWE → LWE mapping
+        n = int(extras.get("n", 0) or 0)
+        k = int(extras.get("k", 0) or 0)
+        q = int(extras.get("q", 0) or 0)
+        if n <= 0 or k <= 0 or q <= 0:
+            return None
+        n_lwe = n * k
+        # Noise
+        sigma = _module_lwe_sigma(extras)
+        if sigma is None or sigma <= 0.0:
+            return None
+        alpha = _module_lwe_alpha(q, sigma)
+        if alpha is None or alpha <= 0.0:
+            return None
+
+        # Try to import an estimator module — many require Sage; optional.
         mod = None
         for name in ("lwe_estimator", "lattice_estimator"):
             try:
@@ -1231,14 +1253,85 @@ def _try_lattice_estimator_with_params(mechanism: str, family: Optional[str]) ->
         if mod is None:
             return None
 
-        # Without reliable API across installs, we cannot construct calls here.
-        # Return a structured placeholder signalling that an estimator was found but
-        # parameter integration is not wired in this environment.
+        # Heuristics for secret distribution label
+        secret_dist = "ternary" if (extras.get("eta1") or extras.get("eta")) else "binary"
+
+        # Attempt common API: estimate_lwe(n, alpha, q, secret_distribution=..., m=None)
+        result = None
+        beta_est = None
+        bits_classical = None
+        try:
+            if hasattr(mod, "estimate_lwe") and callable(getattr(mod, "estimate_lwe")):
+                result = mod.estimate_lwe(n=n_lwe, alpha=alpha, q=q, secret_distribution=secret_dist, m=None)  # type: ignore[attr-defined]
+        except Exception:
+            result = None
+
+        # Fallback: try a generic 'estimate' symbol
+        if result is None:
+            try:
+                if hasattr(mod, "estimate") and callable(getattr(mod, "estimate")):
+                    result = mod.estimate(n=n_lwe, alpha=alpha, q=q)  # type: ignore[attr-defined]
+            except Exception:
+                result = None
+
+        # Interpret results from known patterns
+        def _extract_bits_beta(obj: object) -> tuple[Optional[float], Optional[float]]:
+            # Returns (bits_classical, beta)
+            try:
+                if obj is None:
+                    return None, None
+                # Direct float → bits
+                if isinstance(obj, (int, float)):
+                    return float(obj), None
+                # Dict with per-attack entries containing 'rop' and optional 'beta'
+                if isinstance(obj, dict):
+                    best_bits = None
+                    best_beta = None
+                    # Flat dict
+                    if "rop" in obj or "beta" in obj:
+                        rop = obj.get("rop")
+                        b = obj.get("beta")
+                        if isinstance(rop, (int, float)):
+                            best_bits = _math.log2(float(rop))
+                        if isinstance(b, (int, float)):
+                            best_beta = float(b)
+                    # Nested per-attack
+                    for key, val in obj.items():
+                        if not isinstance(val, dict):
+                            continue
+                        rop = val.get("rop")
+                        b = val.get("beta")
+                        bits = None
+                        if isinstance(rop, (int, float)):
+                            bits = _math.log2(float(rop))
+                        if bits is not None:
+                            if best_bits is None or bits < best_bits:
+                                best_bits = bits
+                                best_beta = float(b) if isinstance(b, (int, float)) else best_beta
+                    return best_bits, best_beta
+            except Exception:
+                return None, None
+            return None, None
+
+        bits_classical, beta_est = _extract_bits_beta(result)
+        if bits_classical is None:
+            return {
+                "model": f"{mod.__name__} (detected; no parsable result)",
+                "beta": beta_est,
+                "bits_classical": None,
+                "bits_qram": None,
+            }
+
+        # Quantum exponent via Q-Core-SVP ratio
+        q_ratio = 0.265 / 0.292
+        bits_qram = bits_classical * q_ratio
+
         return {
-            "model": f"{mod.__name__} (detected; parameters not wired)",
-            "beta": None,
-            "bits_classical": None,
-            "bits_qram": None,
+            "model": f"{mod.__name__}",
+            "beta": beta_est,
+            "bits_classical": bits_classical,
+            "bits_qram": bits_qram,
+            "params": {"n": n_lwe, "q": q, "alpha": alpha, "secret": secret_dist},
         }
     except Exception:
         return None
@@ -1434,9 +1527,25 @@ def _estimate_kyber_from_name(name: str, opts: Optional[EstimatorOptions]) -> Se
     if cost_extras:
         module_cost = _module_lwe_cost_summary(cost_extras)
     if module_cost:
-        base.classical_bits = float(module_cost["headline"]["classical_bits"])
-        base.quantum_bits = float(module_cost["headline"]["quantum_bits"])
+        # Always attach the model details
         base.extras.setdefault("mlkem", {})["module_lwe_cost"] = module_cost
+        # If an external estimator was used successfully, keep its headline bits
+        using_external = bool(
+            opts and opts.lattice_use_estimator and isinstance(base.extras.get("estimator_model"), str)
+            and not str(base.extras.get("estimator_model")).startswith("unavailable")
+        )
+        if not using_external:
+            # Respect lattice_profile when deciding headline numbers
+            profile = (opts.lattice_profile.lower() if (opts and opts.lattice_profile) else None)
+            if profile == "floor":
+                # Keep category floors as the headline numbers
+                pass
+            elif profile == "classical":
+                base.classical_bits = float(module_cost["headline"]["classical_bits"])
+            else:
+                # Auto/quantum: override both classical and quantum with model headline
+                base.classical_bits = float(module_cost["headline"]["classical_bits"])
+                base.quantum_bits = float(module_cost["headline"]["quantum_bits"])
         base.notes = (
             "ML-KEM module-LWE cost model: BKZ (primal/dual/hybrid) with Core-SVP constants. "
             "Category floor retained in extras.category_floor."
@@ -1657,8 +1766,21 @@ def _estimate_dilithium_from_name(name: str, opts: Optional[EstimatorOptions]) -
         cost_extras = {k: v for k, v in dsa_info.items() if k in {"n", "k", "q", "eta", "eta1", "eta2", "sigma_e"} and v is not None}
         module_cost = _module_lwe_cost_summary(cost_extras)
         if module_cost:
-            base.classical_bits = float(module_cost["headline"]["classical_bits"])
-            base.quantum_bits = float(module_cost["headline"]["quantum_bits"])
+            # If an external estimator was used successfully, keep its headline bits
+            using_external = bool(
+                opts and opts.lattice_use_estimator and isinstance(base.extras.get("estimator_model"), str)
+                and not str(base.extras.get("estimator_model")).startswith("unavailable")
+            )
+            if not using_external:
+                # Respect lattice_profile for headline numbers
+                profile = (opts.lattice_profile.lower() if (opts and opts.lattice_profile) else None)
+                if profile == "floor":
+                    pass
+                elif profile == "classical":
+                    base.classical_bits = float(module_cost["headline"]["classical_bits"])
+                else:
+                    base.classical_bits = float(module_cost["headline"]["classical_bits"])
+                    base.quantum_bits = float(module_cost["headline"]["quantum_bits"])
             base.notes = (
                 "ML-DSA module-LWE cost model: BKZ (primal/dual/hybrid) with Core-SVP constants. "
                 "Category floor retained in extras.category_floor."

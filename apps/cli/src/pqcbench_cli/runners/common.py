@@ -935,6 +935,31 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         bkz_model = falcon_block.get("bkz_model") if isinstance(falcon_block, dict) else None
         if bkz_model:
             out.setdefault("details", {})["falcon_bkz_model"] = bkz_model
+            # Promote a simple headline from BKZ model so the GUI table can show it
+            try:
+                attacks = bkz_model.get("attacks") or []
+                c_const = (bkz_model.get("core_svp_constants") or {}).get("classical", 0.292)
+                q_const = (bkz_model.get("core_svp_constants") or {}).get("quantum", 0.262)
+                best = None
+                for a_entry in attacks:
+                    bsucc = a_entry.get("beta_success")
+                    if isinstance(bsucc, (int, float)):
+                        c_bits = c_const * float(bsucc)
+                        q_bits = q_const * float(bsucc)
+                        tup = (c_bits, a_entry.get("attack"), float(bsucc), q_bits)
+                        if best is None or c_bits < best[0]:
+                            best = tup
+                if best is not None:
+                    estimates["calculated"] = {
+                        "profile": "bkz-core-svp",
+                        "attack": best[1],
+                        "classical_bits": best[0],
+                        "quantum_bits": best[3],
+                        "classical_bits_range": None,
+                        "quantum_bits_range": None,
+                    }
+            except Exception:
+                pass
     elif algo in ("sphincsplus", "sphincs+"):
         sx = extras.get("sphincs") or {}
         if sx.get("curated_estimates"):
@@ -977,6 +1002,92 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
             estimates["curated"] = my.get("curated_estimates")
         if my.get("checks"):
             estimates["checks"] = my.get("checks")
+
+    # Ensure a standardized "calculated" block for all PQCs so GUI tables can render rows consistently
+    if "calculated" not in estimates:
+        try:
+            if algo == "hqc":
+                isd = extras.get("isd") or {}
+                stern = (isd.get("stern_entropy") or {})
+                bjmm = (isd.get("bjmm") or {})
+                c_candidates = []
+                q_candidates = []
+                if isinstance(stern.get("time_bits_classical"), (int, float)):
+                    c_candidates.append((float(stern["time_bits_classical"]), "stern"))
+                if isinstance(bjmm.get("time_bits_classical"), (int, float)):
+                    c_candidates.append((float(bjmm["time_bits_classical"]), "bjmm"))
+                if isinstance(stern.get("time_bits_quantum_grover"), (int, float)):
+                    q_candidates.append((float(stern["time_bits_quantum_grover"]), "stern"))
+                if isinstance(bjmm.get("time_bits_quantum_grover"), (int, float)):
+                    q_candidates.append((float(bjmm["time_bits_quantum_grover"]), "bjmm"))
+                if c_candidates:
+                    c_best = min(c_candidates, key=lambda t: t[0])
+                    # Pair quantum with the same attack if available; else take min
+                    q_for_best = None
+                    for v, name in q_candidates:
+                        if name == c_best[1]:
+                            q_for_best = v
+                            break
+                    if q_for_best is None and q_candidates:
+                        q_for_best = min(q_candidates, key=lambda t: t[0])[0]
+                    c_vals = [v for v, _ in c_candidates]
+                    q_vals = [v for v, _ in q_candidates] if q_candidates else None
+                    estimates["calculated"] = {
+                        "profile": "isd",
+                        "attack": c_best[1],
+                        "classical_bits": c_best[0],
+                        "quantum_bits": q_for_best,
+                        "classical_bits_range": [min(c_vals), max(c_vals)] if len(c_vals) >= 2 else None,
+                        "quantum_bits_range": ([min(q_vals), max(q_vals)] if (q_vals and len(q_vals) >= 2) else None),
+                    }
+            elif algo in ("sphincsplus", "sphincs+"):
+                sx = extras.get("sphincs") or {}
+                ce = sx.get("curated_estimates") or {}
+                if ce:
+                    estimates["calculated"] = {
+                        "profile": "hash",
+                        "attack": "collision/preimage",
+                        "classical_bits": ce.get("classical_bits_mid"),
+                        "quantum_bits": ce.get("quantum_bits_mid"),
+                        "classical_bits_range": ce.get("classical_bits_range"),
+                        "quantum_bits_range": ce.get("quantum_bits_range"),
+                    }
+            elif algo == "xmssmt":
+                xx = extras.get("xmss") or {}
+                hc = xx.get("hash_costs") or {}
+                cb = hc.get("collision_bits")
+                qb = hc.get("quantum_collision_bits")
+                if isinstance(cb, (int, float)):
+                    estimates["calculated"] = {
+                        "profile": "hash",
+                        "attack": "collision",
+                        "classical_bits": float(cb),
+                        "quantum_bits": float(qb) if isinstance(qb, (int, float)) else None,
+                        "classical_bits_range": None,
+                        "quantum_bits_range": None,
+                    }
+            elif algo == "mayo":
+                my = extras.get("mayo") or {}
+                checks = my.get("checks") or {}
+                rank_bits = (checks.get("rank_attack") or {}).get("bits")
+                minrank_bits = (checks.get("minrank") or {}).get("bits")
+                candidates = []
+                if isinstance(rank_bits, (int, float)):
+                    candidates.append((float(rank_bits), "rank"))
+                if isinstance(minrank_bits, (int, float)):
+                    candidates.append((float(minrank_bits), "minrank"))
+                if candidates:
+                    best = min(candidates, key=lambda t: t[0])
+                    estimates["calculated"] = {
+                        "profile": "mq",
+                        "attack": best[1],
+                        "classical_bits": best[0],
+                        "quantum_bits": best[0],  # no standard quantum speedup model applied here
+                        "classical_bits_range": [min(v for v, _ in candidates), max(v for v, _ in candidates)] if len(candidates) >= 2 else None,
+                        "quantum_bits_range": None,
+                    }
+        except Exception:
+            pass
 
     if module_cost:
         headline = module_cost.get("headline", {})
