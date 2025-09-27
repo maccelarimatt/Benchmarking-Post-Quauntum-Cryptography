@@ -84,6 +84,9 @@ All scenarios share the following ingredients.
    uses weights (`logical_op_weight_depth`, `logical_op_weight_tof`) so that
    Toffoli layers can be treated as slightly more error-prone than a single
    Clifford depth slot.
+   Utilisation targets above 1.0 model deliberate backlog (factories feeding the
+   computation more slowly than peak Toffoli demand), which is how the GE
+   baseline reaches the headline 8 hour runtime.
 
 ### Default Scenarios
 
@@ -107,6 +110,9 @@ GE baseline (`n=2048`, `p_phys=10⁻³`, `cycle=1 µs`) it solves for:
   integer factory count delivers an 8 hour runtime.
 * `data_alpha_scale`, `factory_alpha_scale` – shared multipliers on the data and
   factory tile footprints so the total physical qubits match 20 M.
+* `factory_count_override` – stored baseline factory-count hint (two Litinski
+  pipelines for RSA-2048) so the default profiles render the calibrated point
+  instead of the auto-selected “speed” configuration.
 
 These parameters are published under `extras.calibration` and every calibrated
 scenario advertises `calibrated_against="GE-2019-2048"`.
@@ -143,10 +149,15 @@ comparable on plots.
 * `resources.calibration` — global scaling factors chosen to match the GE
   baseline point.
 * `bruteforce` — GNFS baseline with record-calibrated scaling.
-* `rate_details` (per scenario) — `factory_rate_peak` (concurrent demand),
-  `factory_rate_target` (after overbuild and multipliers), `factory_rate_available`,
-  utilisation/backlog ratios, and the supply/multiplier factors that produced the
-  chosen integer factory count.
+* `rate_details` (per scenario) — `factory_rate_peak_<unit>` (concurrent demand),
+  `factory_rate_target_<unit>` (demand adjusted by the utilisation target),
+  `factory_rate_available_<unit>` (aggregate throughput), utilisation/backlog
+  ratios, and the supply/multiplier factors that produced the chosen integer
+  factory count. The utilisation target may exceed 1.0 to model deliberate
+  backlog (factory-limited schedules).
+* `factory_count_override` (when present) — recommended factory count for that
+  profile; if omitted `_shor_surface_profile` searches for a near-utilisation
+  optimum automatically.
 
 A typical `rsa-oaep` export now includes the GE baseline showing ≈6.8 M data
 qubits + ≈6.6 M factory qubits (one Litinski pipeline) and an 8-hour

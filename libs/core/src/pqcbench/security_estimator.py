@@ -107,6 +107,7 @@ FACTORY_LIBRARY: Dict[str, FactorySpec] = {
 SHOR_DATA_ALPHA_SCALE: float = 1.0
 SHOR_FACTORY_ALPHA_SCALE: float = 1.0
 SHOR_FACTORY_RATE_MULTIPLIER: float = 1.0
+SHOR_FACTORY_COUNT_BASELINE: Optional[int] = None
 _GE_CALIBRATION_DONE: bool = False
 
 
@@ -117,6 +118,7 @@ def _ge_baseline_target() -> Dict[str, float]:
 def _ensure_ge_calibrated() -> None:
     global _GE_CALIBRATION_DONE, SHOR_FACTORY_RATE_MULTIPLIER
     global SHOR_DATA_ALPHA_SCALE, SHOR_FACTORY_ALPHA_SCALE, SHOR_FACTORY_SUPPLY_SCALE
+    global SHOR_FACTORY_COUNT_BASELINE
     if _GE_CALIBRATION_DONE:
         return
 
@@ -130,42 +132,52 @@ def _ensure_ge_calibrated() -> None:
         "cycle_time_ns": 1000.0,
         "target_total_fail_prob": 1e-2,
         "factory_spec": "litinski-116-to-12",
-        "factory_overbuild": 0.05,
+        "factory_utilization_target": 1.3,
         "factory_rate_unit": "T",
         "t_per_toffoli": 4.0,
         "logical_op_weight_tof": 1.5,
         "logical_op_weight_depth": 1.0,
-        "target_factory_utilization": 0.85,
+        "target_factory_utilization": 1.3,
     }
     targets = _ge_baseline_target()
     cycle_time_s = base_scenario["cycle_time_ns"] * 1e-9
     target_cycles = targets["runtime_seconds"] / cycle_time_s
     t_per_tof = base_scenario["t_per_toffoli"]
-    total_t = float(logical["toffoli"]) * t_per_tof
-    desired_total_rate = total_t / target_cycles
+    total_magic = float(logical["toffoli"]) * t_per_tof
+    desired_total_rate = total_magic / target_cycles
+    factory_spec = _get_factory_spec(base_scenario["factory_spec"])
 
-    candidate_scales = [x / 20.0 for x in range(20, 61)]  # 1.0 .. 3.0 step 0.05
+    candidate_rates = [0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2]
+    candidate_counts = range(2, 65)
     best = None
-    for rate_scale in candidate_scales:
-        scenario = dict(base_scenario)
-        scenario["rate_multiplier"] = rate_scale
-        profile = _shor_surface_profile(logical, scenario=scenario)
-        count = profile.get("factory_count", 0)
-        if count <= 0:
-            continue
-        factory_rate_single = profile["rate_details"].get("factory_rate_single", 0.0)
-        if factory_rate_single <= 0.0:
-            continue
-        supply_scale = desired_total_rate / (factory_rate_single * count)
-        if supply_scale <= 0.1 or supply_scale > 5.0:
-            continue
-        scenario["factory_supply_scale"] = supply_scale
-        profile_adj = _shor_surface_profile(logical, scenario=scenario)
-        runtime_diff = abs(profile_adj["runtime_seconds"] - targets["runtime_seconds"]) / targets["runtime_seconds"]
-        phys_diff = abs(profile_adj["phys_qubits_total"] - targets["phys_qubits_total"]) / targets["phys_qubits_total"]
-        score = runtime_diff + 0.25 * phys_diff
-        if best is None or score < best[0]:
-            best = (score, rate_scale, supply_scale, profile_adj)
+
+    for rate_scale in candidate_rates:
+        scenario_probe = dict(base_scenario)
+        scenario_probe["rate_multiplier"] = rate_scale
+        profile_probe = _shor_surface_profile(logical, scenario=scenario_probe)
+        d = int(profile_probe.get("code_distance", 21))
+        base_single = _factory_rate_per_cycle(factory_spec, d, 1.0)
+
+        for count in candidate_counts:
+            supply_scale = desired_total_rate / (base_single * count)
+            if supply_scale <= 0.05 or supply_scale > 10.0:
+                continue
+            scenario_eval = dict(base_scenario)
+            scenario_eval.update(
+                {
+                    "rate_multiplier": rate_scale,
+                    "factory_supply_scale": supply_scale,
+                    "factory_count_override": count,
+                }
+            )
+            profile_eval = _shor_surface_profile(logical, scenario=scenario_eval)
+            runtime = profile_eval["runtime_seconds"]
+            qubits = profile_eval["phys_qubits_total"]
+            runtime_diff = abs(runtime - targets["runtime_seconds"]) / targets["runtime_seconds"]
+            qubit_diff = abs(qubits - targets["phys_qubits_total"]) / targets["phys_qubits_total"]
+            score = runtime_diff + 0.25 * qubit_diff
+            if best is None or score < best[0]:
+                best = (score, rate_scale, supply_scale, profile_eval)
 
     if best is None:
         _GE_CALIBRATION_DONE = True
@@ -174,6 +186,7 @@ def _ensure_ge_calibrated() -> None:
     _, best_rate, best_supply, best_profile = best
     SHOR_FACTORY_RATE_MULTIPLIER = best_rate
     SHOR_FACTORY_SUPPLY_SCALE = best_supply
+    SHOR_FACTORY_COUNT_BASELINE = int(best_profile.get("factory_count", 0)) or None
 
     phys_scale = targets["phys_qubits_total"] / max(1e-9, best_profile["phys_qubits_total"])
     SHOR_DATA_ALPHA_SCALE = phys_scale
@@ -650,16 +663,18 @@ def _shor_surface_profile(
     target_fail = float(scenario["target_total_fail_prob"])
     p_th = float(scenario.get("p_thresh", 1e-2))
     factory_spec = _get_factory_spec(scenario.get("factory_spec"))
-    factory_overbuild = max(0.01, float(scenario.get("factory_overbuild", 1.0)))
     alpha_data = float(scenario.get("alpha_data", 2.5)) * SHOR_DATA_ALPHA_SCALE
     alpha_factory = float(scenario.get("alpha_factory", factory_spec.alpha)) * SHOR_FACTORY_ALPHA_SCALE
     tof_weight = float(scenario.get("logical_op_weight_tof", 1.0))
     depth_weight = float(scenario.get("logical_op_weight_depth", 1.0))
     rate_unit = scenario.get("factory_rate_unit", "T")
-    t_per_tof = float(scenario.get("t_per_toffoli", 4.0)) if rate_unit.lower() == "t" else 1.0
+    rate_unit_norm = rate_unit.lower()
+    t_per_tof = float(scenario.get("t_per_toffoli", 4.0)) if rate_unit_norm == "t" else 1.0
     rate_multiplier = float(scenario.get("rate_multiplier", SHOR_FACTORY_RATE_MULTIPLIER))
     supply_scale = float(scenario.get("factory_supply_scale", 1.0)) * SHOR_FACTORY_SUPPLY_SCALE
-    target_util = float(scenario.get("target_factory_utilization", 0.85))
+    util_target = float(scenario.get("factory_utilization_target", 0.85))
+    util_target = min(max(util_target, 0.05), 10.0)
+    legacy_overbuild = float(scenario.get("factory_overbuild", 0.0))
 
     d, p_l = _solve_surface_distance(
         p_phys=p_phys,
@@ -670,77 +685,69 @@ def _shor_surface_profile(
     )
 
     factory_rate_single = _factory_rate_per_cycle(factory_spec, d, supply_scale)
-    toffoli_per_cycle = 0.0
     toffoli_total = float(logical["toffoli"])
     depth_cycles = float(logical["meas_depth"])
-    toffoli_per_cycle = 0.0
-    if depth_cycles > 0:
-        toffoli_per_cycle = toffoli_total / depth_cycles
-    if rate_unit.lower() == "t":
-        required_rate = toffoli_per_cycle * t_per_tof
+    toffoli_per_cycle = toffoli_total / depth_cycles if depth_cycles > 0 else 0.0
+
+    if rate_unit_norm == "t":
+        peak_rate = toffoli_per_cycle * t_per_tof
         total_magic = toffoli_total * t_per_tof
     else:
-        required_rate = toffoli_per_cycle
+        peak_rate = toffoli_per_cycle
         total_magic = toffoli_total
-    target_rate = required_rate * rate_multiplier * factory_overbuild
 
-    base_count = 0
-    if target_rate > 0 and factory_rate_single > 0:
-        base_count = max(1, int(math.ceil(target_rate / factory_rate_single)))
-    elif factory_rate_single > 0 and required_rate > 0:
-        base_count = 1
+    scaled_peak = peak_rate * rate_multiplier
+    overbuild_factor = 1.0 + max(0.0, legacy_overbuild)
+    target_rate = (scaled_peak * overbuild_factor) / max(util_target, 1e-6)
 
-    candidate_counts = {max(1, base_count)}
-    if base_count > 1:
-        candidate_counts.add(base_count - 1)
-    candidate_counts.add(base_count + 1)
-    candidate_counts.add(max(1, base_count + 2))
-
-    chosen = None
-    for count in sorted(candidate_counts):
-        if scenario.get("factory_count_override") is not None and count != max(
-            0, int(scenario.get("factory_count_override", 0))
-        ):
-            continue
-        available = factory_rate_single * count
-        if available <= 0:
-            continue
-        utilization = required_rate / available if available > 0 else float("inf")
-        if utilization > 1.05:
-            continue
-        if rate_unit.lower() == "t":
-            candidate_cycles = total_magic / available
-        else:
-            candidate_cycles = toffoli_total / available
-        runtime_cycles_candidate = max(depth_cycles, candidate_cycles)
-        util_penalty = abs(utilization - target_util)
-        score = runtime_cycles_candidate * (1.0 + 0.15 * util_penalty)
-        if chosen is None or score < chosen[0]:
-            chosen = (score, count, available, candidate_cycles, utilization)
-
-    if chosen is None:
-        count = max(1, base_count)
-        available = factory_rate_single * count
-        if rate_unit.lower() == "t":
-            candidate_cycles = total_magic / available if available > 0 else float("inf")
-        else:
-            candidate_cycles = toffoli_total / available if available > 0 else float("inf")
-        utilization = required_rate / available if available > 0 else float("inf")
+    if factory_rate_single <= 0:
+        factory_count = 0
+        total_factory_rate = 0.0
+        factory_cycles = float("inf")
+        utilization_actual = float("inf")
     else:
-        _, count, available, candidate_cycles, utilization = chosen
+        base_count = max(1, int(math.ceil(target_rate / factory_rate_single))) if target_rate > 0 else 1
+        candidate_counts = {max(1, base_count)}
+        if base_count > 1:
+            candidate_counts.add(base_count - 1)
+        candidate_counts.add(base_count + 1)
+        candidate_counts.add(max(1, base_count + 2))
 
-    if scenario.get("factory_count_override") is not None:
-        count = max(0, int(scenario.get("factory_count_override", 0)))
-        available = factory_rate_single * max(1, count)
-        if rate_unit.lower() == "t":
+        chosen = None
+        for count in sorted(candidate_counts):
+            if scenario.get("factory_count_override") is not None and count != max(
+                0, int(scenario.get("factory_count_override", 0))
+            ):
+                continue
+            available = factory_rate_single * count
+            if available <= 0:
+                continue
             candidate_cycles = total_magic / available if available > 0 else float("inf")
-        else:
-            candidate_cycles = toffoli_total / available if available > 0 else float("inf")
-        utilization = required_rate / available if available > 0 else float("inf")
+            runtime_cycles_candidate = max(depth_cycles, candidate_cycles)
+            util_actual = scaled_peak / available if available > 0 else float("inf")
+            util_penalty = abs(util_actual - util_target)
+            score = runtime_cycles_candidate * (1.0 + 0.15 * util_penalty)
+            if chosen is None or score < chosen[0]:
+                chosen = (score, count, available, candidate_cycles, util_actual)
 
-    factory_count = max(0, count)
-    total_factory_rate = factory_rate_single * max(1, factory_count)
-    factory_cycles = candidate_cycles
+        if chosen is None:
+            count = max(1, base_count)
+            available = factory_rate_single * count
+            candidate_cycles = total_magic / available if available > 0 else float("inf")
+            util_actual = scaled_peak / available if available > 0 else float("inf")
+        else:
+            _, count, available, candidate_cycles, util_actual = chosen
+
+        if scenario.get("factory_count_override") is not None:
+            count = max(0, int(scenario.get("factory_count_override", 0)))
+            available = factory_rate_single * max(1, count)
+            candidate_cycles = total_magic / available if available > 0 else float("inf")
+            util_actual = scaled_peak / available if available > 0 else float("inf")
+
+        factory_count = max(0, count)
+        total_factory_rate = factory_rate_single * max(1, factory_count)
+        factory_cycles = candidate_cycles
+        utilization_actual = util_actual
 
     runtime_cycles = max(depth_cycles, factory_cycles)
     limiting = "depth" if depth_cycles >= factory_cycles else "factory"
@@ -755,6 +762,8 @@ def _shor_surface_profile(
     data_phys = alpha_data * float(logical["logical_qubits"]) * (d ** 2)
     factory_phys = alpha_factory * factory_spec.logical_qubits * (d ** 2) * max(0, factory_count)
     total_phys = data_phys + factory_phys
+    backlog_ratio = scaled_peak / max(total_factory_rate, 1e-12) if total_factory_rate > 0 else float("inf")
+    util_clip = min(1.0, backlog_ratio) if math.isfinite(backlog_ratio) else float("inf")
 
     logical_ops = depth_weight * float(logical["meas_depth"]) + tof_weight * float(logical["toffoli"])
     failure_est = {
@@ -762,21 +771,27 @@ def _shor_surface_profile(
         "ops_bound": logical_ops,
         "budget": target_fail,
         "expected_failures": p_l * logical_ops,
+        "weights": {
+            "depth_weight": depth_weight,
+            "toffoli_weight": tof_weight,
+        },
+        "formula": "depth_weight*meas_depth + toffoli_weight*toffoli",
     }
 
+    unit_suffix = "T_per_cycle" if rate_unit_norm == "t" else "toffoli_per_cycle"
     rate_fields = {
         "rate_unit": rate_unit,
         "toffoli_per_cycle": toffoli_per_cycle,
-        "factory_rate_peak": required_rate,
-        "factory_rate_target": target_rate,
-        "factory_rate_single": factory_rate_single,
-        "factory_rate_available": total_factory_rate,
-        "t_per_toffoli_assumed": t_per_tof if rate_unit.lower() == "t" else None,
-        "factory_overbuild": factory_overbuild,
+        f"factory_rate_peak_{unit_suffix}": scaled_peak,
+        f"factory_rate_target_{unit_suffix}": target_rate,
+        f"factory_rate_available_{unit_suffix}": total_factory_rate,
+        f"factory_rate_single_{unit_suffix}": factory_rate_single,
+        "t_per_toffoli_assumed": t_per_tof if rate_unit_norm == "t" else None,
         "rate_multiplier": rate_multiplier,
         "factory_supply_scale": supply_scale,
-        "factory_utilization": min(1.0, target_rate / max(total_factory_rate, 1e-12)),
-        "factory_backlog_ratio": target_rate / max(total_factory_rate, 1e-12),
+        "factory_utilization_target": util_target,
+        "factory_utilization_actual": util_clip,
+        "factory_backlog_ratio": backlog_ratio,
     }
 
     return {
@@ -789,8 +804,6 @@ def _shor_surface_profile(
         "factory_spec": factory_spec.name,
         "factory_description": factory_spec.description,
         "factory_count": max(0, factory_count),
-        "factory_rate_per_cycle": total_factory_rate,
-        "factory_rate_needed": required_rate,
         "factory_cycles": factory_cycles,
         "runtime_seconds_depth": runtime_seconds_depth,
         "runtime_seconds_factory": runtime_seconds_factory,
@@ -798,6 +811,8 @@ def _shor_surface_profile(
         "phys_qubits_total": total_phys,
         "phys_qubits_data": data_phys,
         "phys_qubits_factories": factory_phys,
+        "factory_utilization_target": util_target,
+        "factory_utilization_actual": util_clip,
         "limit": limiting,
         "failure_estimate": failure_est,
         "rate_details": rate_fields,
@@ -817,12 +832,13 @@ def _default_shor_scenarios() -> List[Dict[str, Any]]:
             "cycle_time_ns": 1000.0,
             "target_total_fail_prob": 1e-2,
             "factory_spec": "litinski-116-to-12",
-            "factory_overbuild": 0.05,
             "factory_rate_unit": "T",
             "t_per_toffoli": 4.0,
             "logical_op_weight_tof": 1.5,
             "logical_op_weight_depth": 1.0,
-            "target_factory_utilization": 0.85,
+            "factory_utilization_target": 1.3,
+            "target_factory_utilization": 1.3,
+            "factory_count_override": SHOR_FACTORY_COUNT_BASELINE,
             "calibrated_against": "GE-2019-2048",
             "notes": "Matches Gidney–Ekerå (2019) headline assumptions (1 µs cycle, p=1e-3).",
         },
@@ -832,7 +848,6 @@ def _default_shor_scenarios() -> List[Dict[str, Any]]:
             "cycle_time_ns": 200.0,
             "target_total_fail_prob": 1e-3,
             "factory_spec": "litinski-116-to-12",
-            "factory_overbuild": 1.0,
             "factory_rate_unit": "T",
             "t_per_toffoli": 4.0,
             "target_factory_utilization": 0.8,
@@ -844,7 +859,6 @@ def _default_shor_scenarios() -> List[Dict[str, Any]]:
             "cycle_time_ns": 5000.0,
             "target_total_fail_prob": 1e-1,
             "factory_spec": "factory-lite-15-to-1",
-            "factory_overbuild": 1.5,
             "factory_rate_unit": "T",
             "t_per_toffoli": 7.0,
             "logical_op_weight_tof": 1.5,
@@ -935,6 +949,31 @@ def _estimate_rsa_from_meta(kind: str, meta: Dict[str, Any], opts: Optional[Esti
             "scenarios": profiles,
         })
 
+    baseline_delta = None
+    targets = _ge_baseline_target()
+    baseline_entry = next(
+        (entry for entry in scenario_entries if int(entry.get("modulus_bits", 0)) == 2048),
+        None,
+    )
+    if baseline_entry:
+        ge_profile = next(
+            (sc for sc in baseline_entry.get("scenarios", []) if sc.get("label") == "ge-baseline"),
+            None,
+        )
+        if ge_profile:
+            runtime_target = targets["runtime_seconds"]
+            qubits_target = targets["phys_qubits_total"]
+            runtime_delta = (
+                (ge_profile.get("runtime_seconds", runtime_target) - runtime_target) / runtime_target
+            ) * 100.0
+            qubit_delta = (
+                (ge_profile.get("phys_qubits_total", qubits_target) - qubits_target) / qubits_target
+            ) * 100.0
+            baseline_delta = {
+                "delta_runtime_pct": runtime_delta,
+                "delta_phys_qubits_pct": qubit_delta,
+            }
+
     metrics.extras["shor_profiles"] = {
         "model": logical_main["model"],
         "scenarios": scenario_entries,
@@ -945,27 +984,30 @@ def _estimate_rsa_from_meta(kind: str, meta: Dict[str, Any], opts: Optional[Esti
     }
     metrics.extras["t_count_assumptions"] = metrics.extras["shor_profiles"]["t_count_assumptions"]
     metrics.extras["calibration"] = {
-        "ge_reference": _ge_baseline_target(),
+        "ge_reference": targets,
         "factory_rate_multiplier": SHOR_FACTORY_RATE_MULTIPLIER,
         "factory_supply_scale": SHOR_FACTORY_SUPPLY_SCALE,
         "data_alpha_scale": SHOR_DATA_ALPHA_SCALE,
         "factory_alpha_scale": SHOR_FACTORY_ALPHA_SCALE,
         "note": "Parameters scaled to reproduce GE-2019 RSA-2048 headline (≈8h, 20M qubits).",
     }
+    if baseline_delta is not None:
+        metrics.extras["calibration"]["baseline_delta_pct"] = baseline_delta
 
     opts = _apply_quantum_arch_presets(opts)
     if opts and opts.rsa_surface:
         scenario = {
-            "label": opts.quantum_arch or "custom",
+            "label": opts.quantum_arch or "custom-speed",
             "phys_error_rate": float(opts.phys_error_rate),
             "cycle_time_ns": float(opts.cycle_time_s) * 1e9,
             "target_total_fail_prob": float(opts.target_total_fail_prob),
             "factory_spec": "litinski-116-to-12",
-            "factory_overbuild": 1.0,
+            "factory_utilization_target": 0.8,
             "alpha_data": 2.5,
             "factory_rate_unit": "T",
             "t_per_toffoli": 4.0,
-            "notes": "User-specified surface-code override",
+            "notes": "User-specified surface-code override (speed-optimised profile)",
+            "profile_kind": "custom",
         }
         metrics.extras["surface"] = _shor_surface_profile(logical_main, scenario=scenario)
 

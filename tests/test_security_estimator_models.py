@@ -154,3 +154,7 @@ def test_rsa_shor_profiles_present():
     assert first_entry.get("logical", {}).get("model") == "ge2019"
     rd = scenarios[0].get("rate_details")
     assert rd and rd.get("rate_unit")
+    assert any(key.startswith("factory_rate_peak_") for key in rd)
+    assert "factory_utilization_target" in rd
+    calib = metrics.extras.get("calibration", {})
+    assert calib.get("baseline_delta_pct") is not None

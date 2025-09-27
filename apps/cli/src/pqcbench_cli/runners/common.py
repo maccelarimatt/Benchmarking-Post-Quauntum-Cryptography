@@ -867,9 +867,6 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         logical = extras.get("logical") or {}
         res = {
             "logical": logical,
-            "logical_qubits": logical.get("logical_qubits"),
-            "toffoli": logical.get("toffoli"),
-            "meas_depth": logical.get("meas_depth"),
             "t_counts": extras.get("t_counts"),
             "rsa_model": extras.get("rsa_model"),
             "shor_model_notes": extras.get("shor_model_notes"),
