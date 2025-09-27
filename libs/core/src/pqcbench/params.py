@@ -69,6 +69,14 @@ _add(["Falcon-1024"], family="Falcon", category_floor=256,
      notes="n=1024; q=12289; NTRU lattice",
      extras={"n": 1024, "q": 12289})
 
+# RSA (classical baseline)
+_add(["rsa-oaep"], family="RSA", category_floor=112,
+     notes="RSA-2048 OAEP baseline; assesses Shor breakability in quantum models",
+     extras={"modulus_bits": 2048, "public_exponent": 65537})
+_add(["rsa-pss"], family="RSA", category_floor=112,
+     notes="RSA-2048 PSS signature baseline; salt length matches hash size",
+     extras={"modulus_bits": 2048, "public_exponent": 65537})
+
 # HQC (code-based) — include structural parameters from PQClean
 _add(["HQC-128"], family="HQC", category_floor=128,
      notes="n=17669; RS n1=46,k=16,delta=15; RM n2=384; omega=66; omega_e=75; omega_r=75",
