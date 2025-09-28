@@ -836,6 +836,15 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         fam = fam_map.get(algo)
 
     # Common header
+    if not mechanism:
+        mod_bits = extras.get("modulus_bits")
+        if algo == "rsa-oaep":
+            bits = int(mod_bits or 2048)
+            mechanism = f"RSA-{bits}-OAEP"
+        elif algo == "rsa-pss":
+            bits = int(mod_bits or 2048)
+            mechanism = f"RSA-{bits}-PSS"
+
     out: Dict[str, Any] = {
         "mechanism": mechanism,
         "family": fam,
@@ -850,12 +859,17 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
     # Estimator info (if applicable)
     est_name = extras.get("estimator_model")
     est_profile = extras.get("lattice_profile")
-    if est_name or est_profile:
+    est_available = extras.get("estimator_available")
+    if est_available is None:
+        est_available = bool(est_name) and not str(est_name).startswith("unavailable")
+    if est_name or est_profile or extras.get("estimator_reference"):
         out["estimator"] = {
             "name": est_name,
             "profile": est_profile,
-            "available": bool(est_name) and not str(est_name).startswith("unavailable"),
+            "available": bool(est_available),
         }
+        if extras.get("estimator_reference"):
+            out["estimator"]["reference"] = extras.get("estimator_reference")
 
     # Parameters per family (best-effort)
     params: Dict[str, Any] | None = None
@@ -923,12 +937,19 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         module_cost = mlkem.get("module_lwe_cost") if isinstance(mlkem, dict) else None
         ce = mlkem.get("curated_estimates") if isinstance(mlkem, dict) else None
         if ce:
+            if isinstance(ce, dict):
+                ce.setdefault("source", "core-svp-spec-table")
             estimates["curated"] = ce
+        consts = mlkem.get("core_svp_constants") if isinstance(mlkem, dict) else None
+        if consts:
+            out.setdefault("assumptions", {})["core_svp_constants"] = consts
     elif algo == "dilithium":
         mldsa = (extras.get("mldsa", {}) or {})
         module_cost = mldsa.get("module_lwe_cost") if isinstance(mldsa, dict) else None
         ce = mldsa.get("curated_estimates") if isinstance(mldsa, dict) else None
         if ce:
+            if isinstance(ce, dict):
+                ce.setdefault("source", "literature-range")
             estimates["curated"] = ce
         consts = mldsa.get("core_svp_constants") if isinstance(mldsa, dict) else None
         if consts:
@@ -937,6 +958,8 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         falcon_block = (extras.get("falcon", {}) or {})
         ce = falcon_block.get("curated_estimates") if isinstance(falcon_block, dict) else None
         if ce:
+            if isinstance(ce, dict):
+                ce.setdefault("source", "curated-range")
             estimates["curated"] = ce
         consts = falcon_block.get("core_svp_constants") if isinstance(falcon_block, dict) else None
         if consts:
@@ -944,10 +967,39 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         bkz_model = falcon_block.get("bkz_model") if isinstance(falcon_block, dict) else None
         if bkz_model:
             out.setdefault("details", {})["falcon_bkz_model"] = bkz_model
+            # Promote a simple headline from BKZ model so the GUI table can show it
+            try:
+                attacks = bkz_model.get("attacks") or []
+                c_const = (bkz_model.get("core_svp_constants") or {}).get("classical", 0.292)
+                q_const = (bkz_model.get("core_svp_constants") or {}).get("quantum", 0.262)
+                best = None
+                for a_entry in attacks:
+                    bsucc = a_entry.get("beta_success")
+                    if isinstance(bsucc, (int, float)):
+                        c_bits = c_const * float(bsucc)
+                        q_bits = q_const * float(bsucc)
+                        tup = (c_bits, a_entry.get("attack"), float(bsucc), q_bits)
+                        if best is None or c_bits < best[0]:
+                            best = tup
+                if best is not None:
+                    estimates["calculated"] = {
+                        "profile": "bkz-core-svp",
+                        "attack": best[1],
+                        "classical_bits": best[0],
+                        "quantum_bits": best[3],
+                        "classical_bits_range": None,
+                        "quantum_bits_range": None,
+                        "source": "falcon-bkz-curve",
+                    }
+            except Exception:
+                pass
     elif algo in ("sphincsplus", "sphincs+"):
         sx = extras.get("sphincs") or {}
         if sx.get("curated_estimates"):
-            estimates["curated"] = sx.get("curated_estimates")
+            ce = sx.get("curated_estimates")
+            if isinstance(ce, dict):
+                ce.setdefault("source", "curated-range")
+            estimates["curated"] = ce
         if sx.get("hash_costs"):
             estimates["hash_costs"] = sx.get("hash_costs")
         sanity = sx.get("sanity")
@@ -983,34 +1035,129 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
     elif algo == "mayo":
         my = extras.get("mayo") or {}
         if my.get("curated_estimates"):
-            estimates["curated"] = my.get("curated_estimates")
+            ce = my.get("curated_estimates")
+            if isinstance(ce, dict):
+                ce.setdefault("source", "curated-range")
+            estimates["curated"] = ce
         if my.get("checks"):
             estimates["checks"] = my.get("checks")
 
+    # Ensure a standardized "calculated" block for all PQCs so GUI tables can render rows consistently
+    if "calculated" not in estimates:
+        try:
+            if algo == "hqc":
+                isd = extras.get("isd") or {}
+                stern = (isd.get("stern_entropy") or {})
+                bjmm = (isd.get("bjmm") or {})
+                c_candidates = []
+                q_candidates = []
+                if isinstance(stern.get("time_bits_classical"), (int, float)):
+                    c_candidates.append((float(stern["time_bits_classical"]), "stern"))
+                if isinstance(bjmm.get("time_bits_classical"), (int, float)):
+                    c_candidates.append((float(bjmm["time_bits_classical"]), "bjmm"))
+                if isinstance(stern.get("time_bits_quantum_grover"), (int, float)):
+                    q_candidates.append((float(stern["time_bits_quantum_grover"]), "stern"))
+                if isinstance(bjmm.get("time_bits_quantum_grover"), (int, float)):
+                    q_candidates.append((float(bjmm["time_bits_quantum_grover"]), "bjmm"))
+                if c_candidates:
+                    c_best = min(c_candidates, key=lambda t: t[0])
+                    # Pair quantum with the same attack if available; else take min
+                    q_for_best = None
+                    for v, name in q_candidates:
+                        if name == c_best[1]:
+                            q_for_best = v
+                            break
+                    if q_for_best is None and q_candidates:
+                        q_for_best = min(q_candidates, key=lambda t: t[0])[0]
+                    c_vals = [v for v, _ in c_candidates]
+                    q_vals = [v for v, _ in q_candidates] if q_candidates else None
+                    estimates["calculated"] = {
+                        "profile": "isd",
+                        "attack": c_best[1],
+                        "classical_bits": c_best[0],
+                        "quantum_bits": q_for_best,
+                        "classical_bits_range": [min(c_vals), max(c_vals)] if len(c_vals) >= 2 else None,
+                        "quantum_bits_range": ([min(q_vals), max(q_vals)] if (q_vals and len(q_vals) >= 2) else None),
+                        "source": "isd-heuristic",
+                    }
+            elif algo in ("sphincsplus", "sphincs+"):
+                sx = extras.get("sphincs") or {}
+                ce = sx.get("curated_estimates") or {}
+                if ce:
+                    estimates["calculated"] = {
+                        "profile": "hash",
+                        "attack": "collision/preimage",
+                        "classical_bits": ce.get("classical_bits_mid"),
+                        "quantum_bits": ce.get("quantum_bits_mid"),
+                        "classical_bits_range": ce.get("classical_bits_range"),
+                        "quantum_bits_range": ce.get("quantum_bits_range"),
+                        "source": "curated-range",
+                    }
+            elif algo == "xmssmt":
+                xx = extras.get("xmss") or {}
+                hc = xx.get("hash_costs") or {}
+                cb = hc.get("collision_bits")
+                qb = hc.get("quantum_collision_bits")
+                if isinstance(cb, (int, float)):
+                    estimates["calculated"] = {
+                        "profile": "hash",
+                        "attack": "collision",
+                        "classical_bits": float(cb),
+                        "quantum_bits": float(qb) if isinstance(qb, (int, float)) else None,
+                        "classical_bits_range": None,
+                        "quantum_bits_range": None,
+                        "source": "hash-model",
+                    }
+            elif algo == "mayo":
+                my = extras.get("mayo") or {}
+                checks = my.get("checks") or {}
+                rank_bits = (checks.get("rank_attack") or {}).get("bits")
+                minrank_bits = (checks.get("minrank") or {}).get("bits")
+                candidates = []
+                if isinstance(rank_bits, (int, float)):
+                    candidates.append((float(rank_bits), "rank"))
+                if isinstance(minrank_bits, (int, float)):
+                    candidates.append((float(minrank_bits), "minrank"))
+                if candidates:
+                    best = min(candidates, key=lambda t: t[0])
+                    estimates["calculated"] = {
+                        "profile": "mq",
+                        "attack": best[1],
+                        "classical_bits": best[0],
+                        "quantum_bits": best[0],  # no standard quantum speedup model applied here
+                        "classical_bits_range": [min(v for v, _ in candidates), max(v for v, _ in candidates)] if len(candidates) >= 2 else None,
+                        "quantum_bits_range": None,
+                    }
+        except Exception:
+            pass
+
     if module_cost:
-        headline = module_cost.get("headline", {})
+        headline = module_cost.get("headline") or {}
         estimates["calculated"] = {
-            "profile": headline.get("profile"),
+            "profile": "core-svp",
             "attack": headline.get("attack"),
             "classical_bits": headline.get("classical_bits"),
             "quantum_bits": headline.get("quantum_bits"),
-            "classical_bits_range": headline.get("classical_bits_range"),
-            "quantum_bits_range": headline.get("quantum_bits_range"),
+            "classical_bits_range": None,
+            "quantum_bits_range": None,
         }
-        out.setdefault("assumptions", {})["module_lwe_model"] = {
-            "dimension": module_cost.get("dimension"),
-            "n": module_cost.get("n"),
-            "k": module_cost.get("k"),
-            "alpha": module_cost.get("alpha"),
-            "sigma_e": module_cost.get("sigma_e"),
-            "classical_bits_range": module_cost.get("classical_bits_range"),
-            "quantum_bits_range": module_cost.get("quantum_bits_range"),
+        model_block = {
+            "model": module_cost.get("model"),
+            "source": module_cost.get("source"),
+            "params": module_cost.get("params"),
+            "sigma_error": module_cost.get("sigma_error"),
+            "sigma_secret": module_cost.get("sigma_secret"),
         }
-        profile_consts = module_cost.get("profile_constants")
-        if profile_consts:
-            out.setdefault("assumptions", {})["module_lwe_profile_constants"] = profile_consts
-        out.setdefault("details", {})["module_lwe_attacks"] = module_cost.get("attacks")
-        out.setdefault("details", {})["module_lwe_profiles"] = module_cost.get("profiles")
+        out.setdefault("assumptions", {})["module_lwe_model"] = model_block
+        core_details = {}
+        if module_cost.get("primal"):
+            core_details["primal"] = module_cost["primal"]
+        if module_cost.get("dual"):
+            core_details["dual"] = module_cost["dual"]
+        if core_details:
+            out.setdefault("details", {})["module_lwe_core_svp"] = core_details
+        if module_cost.get("reference"):
+            out.setdefault("assumptions", {})["module_lwe_reference"] = module_cost["reference"]
 
     # Lattice estimator details
     if "classical_sieve" in extras or "qram_assisted" in extras or "beta" in extras:

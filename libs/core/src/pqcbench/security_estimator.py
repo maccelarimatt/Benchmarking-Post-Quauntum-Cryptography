@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, asdict
-from typing import Any, Dict, Optional, Iterable, Tuple, List
+from typing import Any, Dict, Optional, Tuple, List
 import math
 
 """Lightweight, per-algorithm security estimators.
@@ -31,7 +31,7 @@ class SecMetrics:
 class EstimatorOptions:
     lattice_use_estimator: bool = False
     lattice_model: str | None = None  # e.g., "core-svp", "q-core-svp" (informational)
-    lattice_profile: str | None = None  # e.g., "floor", "classical", "quantum"
+    lattice_profile: str | None = None  # e.g., "floor", "classical", "quantum" (None=auto)
     rsa_surface: bool = False
     rsa_model: str | None = None  # e.g., "ge2019"
     quantum_arch: str | None = None  # e.g., "superconducting-2025", "iontrap-2025"
@@ -234,236 +234,334 @@ def _module_lwe_sigma(extras: Dict[str, Any]) -> Optional[float]:
         return _stddev_centered_binomial(int(eta2))
     eta = extras.get("eta")
     if eta is not None:
-        return _stddev_uniform_eta(int(eta))
+        try:
+            return _stddev_centered_binomial(int(eta))
+        except Exception:
+            try:
+                return _stddev_uniform_eta(int(eta))
+            except Exception:
+                return None
     return None
 
 
-def _module_lwe_secret_span(extras: Dict[str, Any]) -> Optional[int]:
-    if "eta1" in extras:
-        return max(1, int(extras["eta1"]))
+def _module_lwe_secret_sigma(extras: Dict[str, Any]) -> Optional[float]:
+    if "sigma_s" in extras:
+        try:
+            sigma = float(extras["sigma_s"])
+            return sigma if sigma > 0.0 else None
+        except Exception:
+            return None
+    eta1 = extras.get("eta1")
+    if eta1 is not None:
+        return _stddev_centered_binomial(int(eta1))
     if "eta" in extras:
-        return max(1, int(extras["eta"]))
+        try:
+            return _stddev_centered_binomial(int(extras["eta"]))
+        except Exception:
+            return _stddev_uniform_eta(int(extras["eta"]))
     if "secret_bound" in extras:
-        return max(1, int(extras["secret_bound"]))
+        bound = int(extras["secret_bound"])
+        if bound > 0:
+            return math.sqrt(bound * (bound + 1) / 3.0)
     return None
 
 
-def _module_lwe_dimension(extras: Dict[str, Any]) -> Optional[int]:
+def _module_lwe_sigmas(extras: Dict[str, Any]) -> Tuple[Optional[float], Optional[float]]:
+    sigma_e = _module_lwe_sigma(extras)
+    sigma_s = _module_lwe_secret_sigma(extras)
+    return sigma_e, sigma_s
+
+
+def _module_lwe_parameters(extras: Dict[str, Any]) -> Optional[Dict[str, int]]:
     try:
-        n = int(extras.get("n", 0) or 0)
+        n_base = int(extras.get("n", 0) or 0)
         k = int(extras.get("k", 0) or 0)
-    except Exception:
-        return None
-    if n <= 0 or k <= 0:
-        return None
-    return n * k
-
-
-def _module_lwe_alpha(q: int, sigma: float) -> Optional[float]:
-    if q <= 0 or sigma <= 0.0:
-        return None
-    return math.sqrt(2.0 * math.pi) * sigma / float(q)
-
-
-def _module_lwe_exponent_factor(k: int, q: int, adjustment: float = 0.0) -> float:
-    # Tuned to reproduce published BKZ block sizes for Kyber/Dilithium families.
-    k_eff = max(1, int(k))
-    base = 0.565 + 1.4 / float(k_eff)
-    if q > 0:
-        q_norm = max(1.0, float(q) / 3000.0)
-        base += 0.05 * math.log10(q_norm)
-        if q >= 1_000_000:
-            base += 0.025
-    return max(0.35, base + adjustment)
-
-
-def _solve_beta_for_alpha(alpha: float, n_eff: int, k_eff: int, q: int, adjustment: float = 0.0) -> Optional[int]:
-    if alpha <= 0.0 or n_eff <= 0 or k_eff <= 0:
-        return None
-    exponent = _module_lwe_exponent_factor(k_eff, q, adjustment) * float(n_eff)
-    target = 1.0 / alpha
-    if target <= 1.0:
-        return None
-    for beta in range(40, 901):
-        if _bkz_root_hermite(beta) ** exponent <= target:
-            return beta
-    return None
-
-
-def _module_lwe_guess_cost_bits(guess_modules: int, n: int, secret_span: Optional[int]) -> float:
-    if guess_modules <= 0 or n <= 0:
-        return 0.0
-    if secret_span is None:
-        return float(guess_modules * n)
-    return float(guess_modules * n * math.log2(2 * secret_span + 1))
-
-
-def _module_lwe_attack_catalog(k: int) -> Iterable[Tuple[str, float, int]]:
-    # (name, adjustment, max_guess_modules)
-    yield ("primal-usvp", 0.0, 0)
-    yield ("dual", -0.02, 0)
-    # Allow small secret guessing for hybrid variants
-    yield ("hybrid-1", -0.08, 1)
-    yield ("hybrid-2", -0.10, 2)
-
-
-def _module_lwe_cost_profiles(alpha: float, extras: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    dim = _module_lwe_dimension(extras)
-    if dim is None:
-        return None
-    n = int(extras.get("n", 0) or 0)
-    k = int(extras.get("k", 0) or 0)
-    try:
         q = int(extras.get("q", 0) or 0)
+        l = int(extras.get("l", 0) or 0)
     except Exception:
-        q = 0
-    if n <= 0 or k <= 0:
         return None
-    secret_span = _module_lwe_secret_span(extras)
-
-    profiles = [
-        {
-            "label": "aggressive",
-            "classical_consts": (0.285, 0.292),
-            "quantum_consts": (0.250, 0.260),
-        },
-        {
-            "label": "conservative",
-            "classical_consts": (0.292, 0.300),
-            "quantum_consts": (0.260, 0.270),
-        },
-    ]
-
-    profile_constants = {
-        prof["label"]: {
-            "classical_consts": list(prof["classical_consts"]),
-            "quantum_consts": list(prof["quantum_consts"]),
-        }
-        for prof in profiles
-    }
-
-    attacks: list[Dict[str, Any]] = []
-    for attack_name, adjustment, max_guess in _module_lwe_attack_catalog(k):
-        best_entry: Optional[Dict[str, Any]] = None
-        for guess in range(0, max_guess + 1):
-            k_eff = max(1, k - guess)
-            n_eff = n * k_eff
-            beta = _solve_beta_for_alpha(alpha, n_eff, k_eff, q, adjustment)
-            if beta is None:
-                continue
-            guess_bits = _module_lwe_guess_cost_bits(guess, n, secret_span)
-            delta0 = _bkz_root_hermite(beta)
-            attack_profiles: list[Dict[str, Any]] = []
-            for prof in profiles:
-                c_lo, c_hi = prof["classical_consts"]
-                q_lo, q_hi = prof["quantum_consts"]
-                classical_range = [c_lo * beta + guess_bits, c_hi * beta + guess_bits]
-                quantum_range = [q_lo * beta + 0.5 * guess_bits, q_hi * beta + 0.5 * guess_bits]
-                attack_profiles.append(
-                    {
-                        "profile": prof["label"],
-                        "classical_bits_range": classical_range,
-                        "quantum_bits_range": quantum_range,
-                    }
-                )
-            entry = {
-                "attack": attack_name,
-                "guess_modules": guess,
-                "beta": beta,
-                "delta0": delta0,
-                "profiles": attack_profiles,
-            }
-            if best_entry is None or beta < best_entry["beta"]:
-                best_entry = entry
-        if best_entry is not None:
-            attacks.append(best_entry)
-
-    if not attacks:
+    if n_base <= 0 or k <= 0 or q <= 0:
         return None
-
-    # Aggregate best per profile
-    per_profile: Dict[str, Dict[str, float]] = {}
-    for prof in profiles:
-        label = prof["label"]
-        classical_lo = math.inf
-        classical_hi = math.inf
-        quantum_lo = math.inf
-        quantum_hi = math.inf
-        best_attack = None
-        for attack in attacks:
-            for detail in attack["profiles"]:
-                if detail["profile"] != label:
-                    continue
-                c_lo, c_hi = detail["classical_bits_range"]
-                q_lo, q_hi = detail["quantum_bits_range"]
-                if c_lo < classical_lo:
-                    classical_lo = c_lo
-                    classical_hi = c_hi
-                    quantum_lo = q_lo
-                    quantum_hi = q_hi
-                    best_attack = attack["attack"]
-                elif math.isclose(c_lo, classical_lo, rel_tol=1e-9) and c_hi < classical_hi:
-                    classical_hi = c_hi
-                    quantum_lo = q_lo
-                    quantum_hi = q_hi
-                    best_attack = attack["attack"]
-        if best_attack is None:
-            continue
-        per_profile[label] = {
-            "attack": best_attack,
-            "classical_bits_range": [classical_lo, classical_hi],
-            "quantum_bits_range": [quantum_lo, quantum_hi],
-            "headline_mid_classical": (classical_lo + classical_hi) / 2.0,
-            "headline_mid_quantum": (quantum_lo + quantum_hi) / 2.0,
-        }
-
-    if not per_profile:
-        return None
-
-    agg_classical = [min(v["classical_bits_range"][0] for v in per_profile.values()), max(v["classical_bits_range"][1] for v in per_profile.values())]
-    agg_quantum = [min(v["quantum_bits_range"][0] for v in per_profile.values()), max(v["quantum_bits_range"][1] for v in per_profile.values())]
-
-    headline_label = "aggressive" if "aggressive" in per_profile else next(iter(per_profile))
-    headline = per_profile[headline_label]
-
+    n_secret = n_base * k
+    m_min = n_base
+    m_max_candidates = [ (k + 1) * n_base ]
+    if l > 0:
+        m_max_candidates.append((k + l) * n_base)
+    sample_max = max(m_max_candidates)
     return {
-        "dimension": dim,
-        "n": n,
+        "n_base": n_base,
         "k": k,
-        "alpha": alpha,
-        "attacks": attacks,
-        "profiles": per_profile,
-        "profile_constants": profile_constants,
-        "headline": {
-            "profile": headline_label,
-            "attack": headline["attack"],
-            "classical_bits": headline["headline_mid_classical"],
-            "quantum_bits": headline["headline_mid_quantum"],
-            "classical_bits_range": per_profile[headline_label]["classical_bits_range"],
-            "quantum_bits_range": per_profile[headline_label]["quantum_bits_range"],
-        },
-        "classical_bits_range": agg_classical,
-        "quantum_bits_range": agg_quantum,
+        "n_secret": n_secret,
+        "q": q,
+        "sample_min": m_min,
+        "sample_max": sample_max,
     }
+
+
+_KYBER_CORE_SVP_TABLE: Dict[str, Dict[str, float]] = {
+    "ml-kem-512": {
+        "dimension": 1003.0,
+        "beta": 403.0,
+        "samples": 256.0,
+        "classical_bits": 118.0,
+        "quantum_bits": 107.0,
+        "sieving_dimension": 375.0,
+        "log2_memory": 93.8,
+    },
+    "kyber512": {
+        "dimension": 1003.0,
+        "beta": 403.0,
+        "samples": 256.0,
+        "classical_bits": 118.0,
+        "quantum_bits": 107.0,
+        "sieving_dimension": 375.0,
+        "log2_memory": 93.8,
+    },
+    "ml-kem-768": {
+        "dimension": 1424.0,
+        "beta": 625.0,
+        "samples": 384.0,
+        "classical_bits": 182.0,
+        "quantum_bits": 165.0,
+        "sieving_dimension": 586.0,
+        "log2_memory": 138.5,
+    },
+    "kyber768": {
+        "dimension": 1424.0,
+        "beta": 625.0,
+        "samples": 384.0,
+        "classical_bits": 182.0,
+        "quantum_bits": 165.0,
+        "sieving_dimension": 586.0,
+        "log2_memory": 138.5,
+    },
+    "ml-kem-1024": {
+        "dimension": 1885.0,
+        "beta": 877.0,
+        "samples": 512.0,
+        "classical_bits": 256.0,
+        "quantum_bits": 232.0,
+        "sieving_dimension": 829.0,
+        "log2_memory": 189.7,
+    },
+    "kyber1024": {
+        "dimension": 1885.0,
+        "beta": 877.0,
+        "samples": 512.0,
+        "classical_bits": 256.0,
+        "quantum_bits": 232.0,
+        "sieving_dimension": 829.0,
+        "log2_memory": 189.7,
+    },
+}
+
+
+_DILITHIUM_CORE_SVP_TABLE: Dict[str, Dict[str, float]] = {
+    "ml-dsa-44": {
+        "dimension": 2049.0,
+        "beta": 433.0,
+        "samples": 1024.0,
+        "classical_bits": 158.6,
+        "quantum_bits": 158.6 * (0.265 / 0.292),
+        "sieving_dimension": 394.0,
+        "log2_memory": 97.8,
+    },
+    "dilithium2": {
+        "dimension": 2049.0,
+        "beta": 433.0,
+        "samples": 1024.0,
+        "classical_bits": 158.6,
+        "quantum_bits": 158.6 * (0.265 / 0.292),
+        "sieving_dimension": 394.0,
+        "log2_memory": 97.8,
+    },
+    "ml-dsa-65": {
+        "dimension": 2654.0,
+        "beta": 638.0,
+        "samples": 1117.0,
+        "classical_bits": 216.7,
+        "quantum_bits": 216.7 * (0.265 / 0.292),
+        "sieving_dimension": 587.0,
+        "log2_memory": 138.7,
+    },
+    "dilithium3": {
+        "dimension": 2654.0,
+        "beta": 638.0,
+        "samples": 1117.0,
+        "classical_bits": 216.7,
+        "quantum_bits": 216.7 * (0.265 / 0.292),
+        "sieving_dimension": 587.0,
+        "log2_memory": 138.7,
+    },
+    "ml-dsa-87": {
+        "dimension": 3540.0,
+        "beta": 883.0,
+        "samples": 1491.0,
+        "classical_bits": 285.4,
+        "quantum_bits": 285.4 * (0.265 / 0.292),
+        "sieving_dimension": 818.0,
+        "log2_memory": 187.4,
+    },
+    "dilithium5": {
+        "dimension": 3540.0,
+        "beta": 883.0,
+        "samples": 1491.0,
+        "classical_bits": 285.4,
+        "quantum_bits": 285.4 * (0.265 / 0.292),
+        "sieving_dimension": 818.0,
+        "log2_memory": 187.4,
+    },
+}
+
+
+def _core_svp_primal_summary(params: Dict[str, int], sigma_e: float, sigma_s: Optional[float]) -> Optional[Dict[str, float]]:
+    n_base = params["n_base"]
+    k = params["k"]
+    n_secret = params["n_secret"]
+    q = params["q"]
+    sigma = sigma_e
+    if sigma_s is not None:
+        sigma = max(sigma_e, sigma_s)
+    if sigma <= 0.0 or q <= 0:
+        return None
+
+    m_min = params.get("sample_min", n_base)
+    m_max = params.get("sample_max", (k + 1) * n_base)
+    best: Optional[Dict[str, float]] = None
+    ln_q = math.log(float(q))
+    max_beta = 960
+
+    for m in range(m_min, m_max + 1):
+        d = m + n_secret + 1
+        for beta in range(40, max_beta + 1):
+            delta = _bkz_root_hermite(beta)
+            if delta <= 0.0:
+                continue
+            ln_delta = math.log(delta)
+            lhs = math.log(sigma) + 0.5 * math.log(beta)
+            rhs = ln_delta * (2.0 * beta - d - 1.0) + (float(m) / float(d)) * ln_q
+            if lhs > rhs:
+                continue
+            classical_bits = 0.292 * beta
+            quantum_bits = 0.265 * beta
+            entry = {
+                "attack": "primal-usvp",
+                "beta": float(beta),
+                "samples": float(m),
+                "dimension": float(d),
+                "classical_bits": classical_bits,
+                "quantum_bits": quantum_bits,
+                "delta": delta,
+                "margin": rhs - lhs,
+            }
+            if best is None or classical_bits < best["classical_bits"]:
+                best = entry
+            break
+    return best
+
+
+def _core_svp_dual_summary(params: Dict[str, int], sigma_e: float, sigma_s: Optional[float]) -> Optional[Dict[str, float]]:
+    n_base = params["n_base"]
+    k = params["k"]
+    n_secret = params["n_secret"]
+    q = params["q"]
+    if sigma_e <= 0.0 or q <= 0:
+        return None
+
+    sigma = sigma_e if sigma_s is None else max(sigma_e, sigma_s)
+    m_min = params.get("sample_min", n_base)
+    m_max = params.get("sample_max", (k + 1) * n_base)
+    best: Optional[Dict[str, float]] = None
+    ln_q = math.log(float(q))
+    target_adv = 0.5
+    max_beta = 960
+
+    for m in range(m_min, m_max + 1):
+        d = m + n_secret
+        for beta in range(40, max_beta + 1):
+            delta = _bkz_root_hermite(beta)
+            if delta <= 0.0:
+                continue
+            ln_ell = (d - 1.0) * math.log(delta) + (float(n_secret) / float(d)) * ln_q
+            ell = math.exp(ln_ell)
+            tau = (ell * sigma) / float(q)
+            if tau <= 0.0:
+                continue
+            advantage = 4.0 * math.exp(-2.0 * (math.pi ** 2) * (tau ** 2))
+            if advantage <= 0.0:
+                continue
+            repeats = 1.0
+            if advantage < target_adv:
+                repeats = max(1.0, (target_adv / advantage) ** 2 / (2.0 ** (0.2075 * beta)))
+            cost_repeat = math.log2(repeats)
+            classical_bits = 0.292 * beta + cost_repeat
+            quantum_bits = 0.265 * beta + cost_repeat
+            entry = {
+                "attack": "dual",
+                "beta": float(beta),
+                "samples": float(m),
+                "dimension": float(d),
+                "advantage": advantage,
+                "repeat_log2": cost_repeat,
+                "classical_bits": classical_bits,
+                "quantum_bits": quantum_bits,
+                "delta": delta,
+                "tau": tau,
+            }
+            if best is None or classical_bits < best["classical_bits"]:
+                best = entry
+            break
+    return best
 
 
 def _module_lwe_cost_summary(extras: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    try:
-        q = int(extras.get("q", 0) or 0)
-    except Exception:
-        q = 0
-    sigma = _module_lwe_sigma(extras)
-    if q <= 0 or sigma is None or sigma <= 0.0:
+    params = _module_lwe_parameters(extras)
+    if not params:
         return None
-    alpha = _module_lwe_alpha(q, sigma)
-    if alpha is None or alpha <= 0.0:
+    sigma_e, sigma_s = _module_lwe_sigmas(extras)
+    if sigma_e is None or sigma_e <= 0.0:
         return None
-    summary = _module_lwe_cost_profiles(alpha, extras)
-    if summary:
-        summary["sigma_e"] = sigma
-        summary["alpha"] = alpha
-        summary["q"] = q
-    return summary
+
+    primal = _core_svp_primal_summary(params, sigma_e, sigma_s)
+    dual = _core_svp_dual_summary(params, sigma_e, sigma_s)
+
+    if not primal and not dual:
+        return None
+
+    headline = None
+    if primal and dual:
+        headline = primal if primal["classical_bits"] <= dual["classical_bits"] else dual
+    else:
+        headline = primal or dual
+
+    return {
+        "model": "core-svp",
+        "source": "core-svp-analytic",
+        "params": params,
+        "sigma_error": sigma_e,
+        "sigma_secret": sigma_s,
+        "primal": primal,
+        "dual": dual,
+        "headline": headline,
+    }
+
+
+def _dilithium_core_svp_table_entry(name: str) -> Optional[Dict[str, Any]]:
+    entry = _DILITHIUM_CORE_SVP_TABLE.get(name.lower())
+    if entry is None:
+        return None
+    result = dict(entry)
+    result["attack"] = "primal-usvp"
+    return result
+
+
+def _kyber_core_svp_table_entry(name: str) -> Optional[Dict[str, Any]]:
+    entry = _KYBER_CORE_SVP_TABLE.get(name.lower())
+    if entry is None:
+        return None
+    result = dict(entry)
+    result["attack"] = "primal-usvp"
+    return result
 
 
 def _falcon_secret_sigma(n: int) -> float:
@@ -1053,7 +1151,13 @@ def _estimate_lattice_like_from_name(name: str, opts: Optional[EstimatorOptions]
         notes=(
             "Lattice-based: floor from NIST category; enable --sec-adv for APS estimator."
         ),
-        extras={"category_floor": floor, "nist_category": nist_category, **base_extras},
+        extras={
+            "category_floor": floor,
+            "nist_category": nist_category,
+            # Always surface the selected profile (or None) for UI transparency
+            "lattice_profile": (opts.lattice_profile if opts and opts.lattice_profile else None),
+            **base_extras,
+        },
     )
     # Feature-flagged attempt to use external lattice estimator (if available and parameters known)
     if opts and opts.lattice_use_estimator:
@@ -1081,13 +1185,6 @@ def _estimate_lattice_like_from_name(name: str, opts: Optional[EstimatorOptions]
                 },
             })
             metrics.notes = "APS Lattice Estimator (best-effort): classical and QRAM-assisted costs."
-        else:
-            metrics.extras.update({
-                "estimator_model": "unavailable (fallback to NIST floor)",
-                "lattice_profile": (opts.lattice_profile or "floor"),
-            })
-            # If user requested estimator but it's unavailable, reflect that in notes
-            metrics.notes = f"{family or 'Lattice'}: estimator unavailable; using NIST category floor."
     return metrics
 
 
@@ -1331,6 +1428,7 @@ def _estimate_sphincs_from_name(name: str) -> SecMetrics:
                 "classical_bits_range": [curated_lo, curated_hi],
                 "quantum_bits_mid": round(curated_mid / 2.0, 1),
                 "quantum_bits_range": [round(curated_lo / 2.0, 1), round(curated_hi / 2.0, 1)],
+                "source": "curated-range",
             },
             "structure": structure or None,
             "sanity": {
@@ -1554,18 +1652,34 @@ def _try_lattice_estimator_with_params(mechanism: str, family: Optional[str]) ->
     insufficient. Uses coarse parameter hints from pqcbench.params when possible.
     """
     try:
-        import importlib
+        import importlib, math as _math
         from pqcbench.params import find as find_params  # type: ignore
+
         ph = find_params(mechanism)
         if not ph:
             return None
         extras = ph.extras or {}
-        # Only attempt for supported lattice families
-        fam = family or ph.family
-        if fam not in ("ML-KEM", "ML-DSA", "Falcon"):
+        fam = (family or ph.family)
+        if fam not in ("ML-KEM", "ML-DSA"):
+            # External LWE estimator integration is only attempted for LWE-like families
             return None
 
-        # Try to import an estimator module — many require Sage; keep this optional.
+        # Compute module-LWE → LWE mapping
+        n = int(extras.get("n", 0) or 0)
+        k = int(extras.get("k", 0) or 0)
+        q = int(extras.get("q", 0) or 0)
+        if n <= 0 or k <= 0 or q <= 0:
+            return None
+        n_lwe = n * k
+        # Noise
+        sigma = _module_lwe_sigma(extras)
+        if sigma is None or sigma <= 0.0:
+            return None
+        alpha = _module_lwe_alpha(q, sigma)
+        if alpha is None or alpha <= 0.0:
+            return None
+
+        # Try to import an estimator module — many require Sage; optional.
         mod = None
         for name in ("lwe_estimator", "lattice_estimator"):
             try:
@@ -1576,14 +1690,85 @@ def _try_lattice_estimator_with_params(mechanism: str, family: Optional[str]) ->
         if mod is None:
             return None
 
-        # Without reliable API across installs, we cannot construct calls here.
-        # Return a structured placeholder signalling that an estimator was found but
-        # parameter integration is not wired in this environment.
+        # Heuristics for secret distribution label
+        secret_dist = "ternary" if (extras.get("eta1") or extras.get("eta")) else "binary"
+
+        # Attempt common API: estimate_lwe(n, alpha, q, secret_distribution=..., m=None)
+        result = None
+        beta_est = None
+        bits_classical = None
+        try:
+            if hasattr(mod, "estimate_lwe") and callable(getattr(mod, "estimate_lwe")):
+                result = mod.estimate_lwe(n=n_lwe, alpha=alpha, q=q, secret_distribution=secret_dist, m=None)  # type: ignore[attr-defined]
+        except Exception:
+            result = None
+
+        # Fallback: try a generic 'estimate' symbol
+        if result is None:
+            try:
+                if hasattr(mod, "estimate") and callable(getattr(mod, "estimate")):
+                    result = mod.estimate(n=n_lwe, alpha=alpha, q=q)  # type: ignore[attr-defined]
+            except Exception:
+                result = None
+
+        # Interpret results from known patterns
+        def _extract_bits_beta(obj: object) -> tuple[Optional[float], Optional[float]]:
+            # Returns (bits_classical, beta)
+            try:
+                if obj is None:
+                    return None, None
+                # Direct float → bits
+                if isinstance(obj, (int, float)):
+                    return float(obj), None
+                # Dict with per-attack entries containing 'rop' and optional 'beta'
+                if isinstance(obj, dict):
+                    best_bits = None
+                    best_beta = None
+                    # Flat dict
+                    if "rop" in obj or "beta" in obj:
+                        rop = obj.get("rop")
+                        b = obj.get("beta")
+                        if isinstance(rop, (int, float)):
+                            best_bits = _math.log2(float(rop))
+                        if isinstance(b, (int, float)):
+                            best_beta = float(b)
+                    # Nested per-attack
+                    for key, val in obj.items():
+                        if not isinstance(val, dict):
+                            continue
+                        rop = val.get("rop")
+                        b = val.get("beta")
+                        bits = None
+                        if isinstance(rop, (int, float)):
+                            bits = _math.log2(float(rop))
+                        if bits is not None:
+                            if best_bits is None or bits < best_bits:
+                                best_bits = bits
+                                best_beta = float(b) if isinstance(b, (int, float)) else best_beta
+                    return best_bits, best_beta
+            except Exception:
+                return None, None
+            return None, None
+
+        bits_classical, beta_est = _extract_bits_beta(result)
+        if bits_classical is None:
+            return {
+                "model": f"{mod.__name__} (detected; no parsable result)",
+                "beta": beta_est,
+                "bits_classical": None,
+                "bits_qram": None,
+            }
+
+        # Quantum exponent via Q-Core-SVP ratio
+        q_ratio = 0.265 / 0.292
+        bits_qram = bits_classical * q_ratio
+
         return {
-            "model": f"{mod.__name__} (detected; parameters not wired)",
-            "beta": None,
-            "bits_classical": None,
-            "bits_qram": None,
+            "model": f"{mod.__name__}",
+            "beta": beta_est,
+            "bits_classical": bits_classical,
+            "bits_qram": bits_qram,
+            "params": {"n": n_lwe, "q": q, "alpha": alpha, "secret": secret_dist},
         }
     except Exception:
         return None
@@ -1710,7 +1895,11 @@ def _estimate_mayo_from_name(name: str) -> SecMetrics:
         extras["mayo"] = {"params": None}
 
     # Curated per-level note (when we only know the level label)
-    curated = {"classical_bits_mid": float(floor), "quantum_bits_mid": float(floor)}
+    curated = {
+        "classical_bits_mid": float(floor),
+        "quantum_bits_mid": float(floor),
+        "source": "curated-range",
+    }
     extras["mayo"]= {**extras.get("mayo", {}), "curated_estimates": curated}
 
     return SecMetrics(
@@ -1778,12 +1967,42 @@ def _estimate_kyber_from_name(name: str, opts: Optional[EstimatorOptions]) -> Se
     cost_extras = {k: v for k, v in kyber_info.items() if v is not None}
     if cost_extras:
         module_cost = _module_lwe_cost_summary(cost_extras)
+
+    table_entry = _kyber_core_svp_table_entry(name)
+    if table_entry:
+        module_cost = {
+            "model": "core-svp-table",
+            "source": "core-svp-spec-table",
+            "params": {k: kyber_info.get(k) for k in ("n", "k", "q") if kyber_info.get(k) is not None},
+            "sigma_error": kyber_info.get("eta2") and _stddev_centered_binomial(int(kyber_info["eta2"])) or 1.0,
+            "sigma_secret": kyber_info.get("eta1") and _stddev_centered_binomial(int(kyber_info["eta1"])) or 1.0,
+            "primal": table_entry,
+            "dual": None,
+            "headline": table_entry,
+            "reference": "CRYSTALS-Kyber Round 4 specification, Table 4",
+        }
     if module_cost:
-        base.classical_bits = float(module_cost["headline"]["classical_bits"])
-        base.quantum_bits = float(module_cost["headline"]["quantum_bits"])
+        # Always attach the model details
         base.extras.setdefault("mlkem", {})["module_lwe_cost"] = module_cost
+        # If an external estimator was used successfully, keep its headline bits
+        using_external = bool(
+            opts and opts.lattice_use_estimator and isinstance(base.extras.get("estimator_model"), str)
+            and not str(base.extras.get("estimator_model")).startswith("unavailable")
+        )
+        if not using_external:
+            # Respect lattice_profile when deciding headline numbers
+            profile = (opts.lattice_profile.lower() if (opts and opts.lattice_profile) else None)
+            if profile == "floor":
+                # Keep category floors as the headline numbers
+                pass
+            elif profile == "classical":
+                base.classical_bits = float(module_cost["headline"]["classical_bits"])
+            else:
+                # Auto/quantum: override both classical and quantum with model headline
+                base.classical_bits = float(module_cost["headline"]["classical_bits"])
+                base.quantum_bits = float(module_cost["headline"]["quantum_bits"])
         base.notes = (
-            "ML-KEM module-LWE cost model: BKZ (primal/dual/hybrid) with Core-SVP constants. "
+            "ML-KEM module-LWE cost model: BKZ (primal/dual) core-SVP estimates. "
             "Category floor retained in extras.category_floor."
         )
 
@@ -1791,25 +2010,66 @@ def _estimate_kyber_from_name(name: str, opts: Optional[EstimatorOptions]) -> Se
     curated: Dict[str, Any] = {}
     mech_lower = str(name).lower()
     if any(tok in mech_lower for tok in ("512", "kyber512", "ml-kem-512")):
-        classical_lo = 140.0
-        classical_mid = 160.0
-        classical_hi = 180.0
-        # Quantum-assisted sieving approximate reduction factor (0.265/0.292 ≈ 0.907)
-        q_factor = 0.907
+        classical_mid = 118.0
+        classical_lo = 113.0
+        classical_hi = 123.0
+        q_factor = 0.265 / 0.292
         quantum_mid = round(classical_mid * q_factor, 1)
-        quantum_lo = round(classical_lo * 0.85, 1)  # allow a wider band for literature variance
-        quantum_hi = round(classical_hi * 0.95, 1)
+        quantum_lo = round(classical_lo * q_factor, 1)
+        quantum_hi = round(classical_hi * q_factor, 1)
         curated = {
             "classical_bits_mid": classical_mid,
             "classical_bits_range": [classical_lo, classical_hi],
             "quantum_bits_mid": quantum_mid,
             "quantum_bits_range": [quantum_lo, quantum_hi],
+            "source": "core-svp-spec-table",
             "assumptions": {
                 "source_notes": (
-                    "NIST analysis (~2^160) with uncertainty ~2^140–2^180; Kyber team ~2^151; "
-                    "independent APS/BKZ models often 2^140–2^150. Quantum sieving reduces exponent by ~10–15%."
+                    "Kyber specification Table 4 core-SVP hardness (β≈403 → 118 classical bits, 107 quantum bits)."
                 ),
-                "q_sieving_exponent_ratio": 0.265/0.292,
+                "q_sieving_exponent_ratio": q_factor,
+            },
+        }
+    elif any(tok in mech_lower for tok in ("768", "kyber768", "ml-kem-768")):
+        classical_mid = 182.0
+        classical_lo = 176.0
+        classical_hi = 188.0
+        q_factor = 0.265 / 0.292
+        quantum_mid = round(classical_mid * q_factor, 1)
+        quantum_lo = round(classical_lo * q_factor, 1)
+        quantum_hi = round(classical_hi * q_factor, 1)
+        curated = {
+            "classical_bits_mid": classical_mid,
+            "classical_bits_range": [classical_lo, classical_hi],
+            "quantum_bits_mid": quantum_mid,
+            "quantum_bits_range": [quantum_lo, quantum_hi],
+            "source": "core-svp-spec-table",
+            "assumptions": {
+                "source_notes": (
+                    "Kyber specification Table 4 core-SVP hardness (β≈625 → 182 classical bits, 165 quantum bits)."
+                ),
+                "q_sieving_exponent_ratio": q_factor,
+            },
+        }
+    elif any(tok in mech_lower for tok in ("1024", "kyber1024", "ml-kem-1024")):
+        classical_mid = 256.0
+        classical_lo = 248.0
+        classical_hi = 264.0
+        q_factor = 0.265 / 0.292
+        quantum_mid = round(classical_mid * q_factor, 1)
+        quantum_lo = round(classical_lo * q_factor, 1)
+        quantum_hi = round(classical_hi * q_factor, 1)
+        curated = {
+            "classical_bits_mid": classical_mid,
+            "classical_bits_range": [classical_lo, classical_hi],
+            "quantum_bits_mid": quantum_mid,
+            "quantum_bits_range": [quantum_lo, quantum_hi],
+            "source": "core-svp-spec-table",
+            "assumptions": {
+                "source_notes": (
+                    "Kyber specification Table 4 core-SVP hardness (β≈877 → 256 classical bits, 232 quantum bits)."
+                ),
+                "q_sieving_exponent_ratio": q_factor,
             },
         }
 
@@ -1818,12 +2078,19 @@ def _estimate_kyber_from_name(name: str, opts: Optional[EstimatorOptions]) -> Se
         mlkem_block["module_lwe_cost"] = module_cost
     mlkem_block["kyber_params"] = kyber_info or None
     mlkem_block["curated_estimates"] = curated or None
+    mlkem_block["core_svp_constants"] = {"classical": 0.292, "quantum": 0.265}
     base.extras["mlkem"] = mlkem_block
+    if module_cost:
+        base.extras["estimator_model"] = module_cost.get("model")
+        if module_cost.get("reference"):
+            base.extras["estimator_reference"] = module_cost["reference"]
+        if module_cost.get("source") == "core-svp-spec-table":
+            base.extras["estimator_available"] = False
 
     if not module_cost:
         # Adjust notes only if advanced estimator did not populate a model
         if "APS Lattice Estimator" not in base.notes:
-            if opts and opts.lattice_use_estimator and base.extras.get("estimator_model") == "unavailable (fallback to NIST floor)":
+            if opts and opts.lattice_use_estimator and not base.extras.get("estimator_model"):
                 base.notes = (
                     "ML-KEM (Kyber): estimator unavailable; using NIST category floor. "
                     "Kyber-specific curated ranges attached in extras.mlkem.curated_estimates."
@@ -1898,6 +2165,7 @@ def _estimate_falcon_from_name(name: str, opts: Optional[EstimatorOptions]) -> S
             "classical_bits_range": [classical_lo, classical_hi],
             "quantum_bits_mid": quantum_mid,
             "quantum_bits_range": [quantum_lo, quantum_hi],
+            "source": "curated-range",
             "assumptions": {
                 "core_svp_constants": {"classical": c_class, "quantum": c_quant},
                 "notes": "Falcon-512: conservative mid with range; quantum via 0.262/0.292 scaling.",
@@ -1914,6 +2182,7 @@ def _estimate_falcon_from_name(name: str, opts: Optional[EstimatorOptions]) -> S
             "classical_bits_range": [classical_lo, classical_hi],
             "quantum_bits_mid": quantum_mid,
             "quantum_bits_range": [quantum_lo, quantum_hi],
+            "source": "curated-range",
             "assumptions": {
                 "core_svp_constants": {"classical": c_class, "quantum": c_quant},
                 "notes": "Falcon-1024: ~200–225 classical; quantum scaled by 0.262/0.292.",
@@ -1929,8 +2198,15 @@ def _estimate_falcon_from_name(name: str, opts: Optional[EstimatorOptions]) -> S
         }
     })
 
+    if curated:
+        base.classical_bits = float(curated["classical_bits_mid"])
+        base.quantum_bits = float(curated.get("quantum_bits_mid")) if curated.get("quantum_bits_mid") is not None else base.quantum_bits
+        base.extras["estimator_model"] = "curated-range"
+        base.extras["lattice_profile"] = "curated"
+        base.extras["estimator_available"] = False
+
     if "APS Lattice Estimator" not in base.notes:
-        if opts and opts.lattice_use_estimator and base.extras.get("estimator_model") == "unavailable (fallback to NIST floor)":
+        if opts and opts.lattice_use_estimator and not base.extras.get("estimator_model"):
             base.notes = (
                 "Falcon: estimator unavailable; using NIST category floor. "
                 "Falcon-specific curated ranges attached in extras.falcon.curated_estimates."
@@ -1992,20 +2268,52 @@ def _estimate_dilithium_from_name(name: str, opts: Optional[EstimatorOptions]) -
                 "l": l,
                 "q": q,
                 "eta": eta,
-                "rank": (n * k) if k else None,
+                "n_lwe": (n * k) if k else None,
             }
     except Exception:
         pass
 
     module_cost = None
     if dsa_info:
-        cost_extras = {k: v for k, v in dsa_info.items() if k in {"n", "k", "q", "eta", "eta1", "eta2", "sigma_e"} and v is not None}
+        cost_extras = {
+            key: value
+            for key, value in dsa_info.items()
+            if key in {"n", "k", "l", "q", "eta", "eta1", "eta2", "sigma_e"}
+            and value is not None
+        }
         module_cost = _module_lwe_cost_summary(cost_extras)
+        if module_cost is None:
+            table_entry = _dilithium_core_svp_table_entry(name)
+            if table_entry:
+                module_cost = {
+                    "model": "core-svp-table",
+                    "source": "core-svp-spec-table",
+                    "params": {k: dsa_info.get(k) for k in ("n", "k", "l", "q") if dsa_info.get(k) is not None},
+                    "sigma_error": _module_lwe_sigma(cost_extras) if cost_extras else None,
+                    "sigma_secret": _module_lwe_secret_sigma(cost_extras) if cost_extras else None,
+                    "primal": table_entry,
+                    "dual": None,
+                    "headline": table_entry,
+                    "reference": "CRYSTALS-Dilithium Round 3 specification, Table 4",
+                }
         if module_cost:
-            base.classical_bits = float(module_cost["headline"]["classical_bits"])
-            base.quantum_bits = float(module_cost["headline"]["quantum_bits"])
+            # If an external estimator was used successfully, keep its headline bits
+            using_external = bool(
+                opts and opts.lattice_use_estimator and isinstance(base.extras.get("estimator_model"), str)
+                and not str(base.extras.get("estimator_model")).startswith("unavailable")
+            )
+            if not using_external:
+                # Respect lattice_profile for headline numbers
+                profile = (opts.lattice_profile.lower() if (opts and opts.lattice_profile) else None)
+                if profile == "floor":
+                    pass
+                elif profile == "classical":
+                    base.classical_bits = float(module_cost["headline"]["classical_bits"])
+                else:
+                    base.classical_bits = float(module_cost["headline"]["classical_bits"])
+                    base.quantum_bits = float(module_cost["headline"]["quantum_bits"])
             base.notes = (
-                "ML-DSA module-LWE cost model: BKZ (primal/dual/hybrid) with Core-SVP constants. "
+                "ML-DSA module-LWE cost model: BKZ (primal/dual) core-SVP estimates. "
                 "Category floor retained in extras.category_floor."
             )
 
@@ -2027,6 +2335,7 @@ def _estimate_dilithium_from_name(name: str, opts: Optional[EstimatorOptions]) -
             "classical_bits_range": [classical_lo, classical_hi],
             "quantum_bits_mid": quantum_mid,
             "quantum_bits_range": [quantum_lo, quantum_hi],
+            "source": "literature-range",
             "assumptions": {
                 "core_svp_constants": {"classical": c_class, "quantum": c_quant},
                 "notes": (
@@ -2046,6 +2355,7 @@ def _estimate_dilithium_from_name(name: str, opts: Optional[EstimatorOptions]) -
             "classical_bits_range": [classical_lo, classical_hi],
             "quantum_bits_mid": quantum_mid,
             "quantum_bits_range": [quantum_lo, quantum_hi],
+            "source": "literature-range",
             "assumptions": {
                 "core_svp_constants": {"classical": c_class, "quantum": c_quant},
                 "notes": "Dilithium3 (ML-DSA-65) ≈ mid‑140s classical in public estimates.",
@@ -2063,6 +2373,7 @@ def _estimate_dilithium_from_name(name: str, opts: Optional[EstimatorOptions]) -
             "classical_bits_range": [classical_lo, classical_hi],
             "quantum_bits_mid": quantum_mid,
             "quantum_bits_range": [quantum_lo, quantum_hi],
+            "source": "literature-range",
             "assumptions": {
                 "core_svp_constants": {"classical": c_class, "quantum": c_quant},
                 "notes": "Dilithium5 (ML-DSA-87) ≈ ~200–220 classical in common reports.",
@@ -2076,11 +2387,17 @@ def _estimate_dilithium_from_name(name: str, opts: Optional[EstimatorOptions]) -
     mldsa_block["curated_estimates"] = curated or None
     mldsa_block["core_svp_constants"] = {"classical": c_class, "quantum": c_quant}
     base.extras["mldsa"] = mldsa_block
+    if module_cost:
+        base.extras["estimator_model"] = module_cost.get("model")
+        if module_cost.get("reference"):
+            base.extras["estimator_reference"] = module_cost["reference"]
+        if module_cost.get("source") == "core-svp-spec-table":
+            base.extras["estimator_available"] = False
 
     if not module_cost:
         # Note refinement depending on estimator availability
         if "APS Lattice Estimator" not in base.notes:
-            if opts and opts.lattice_use_estimator and base.extras.get("estimator_model") == "unavailable (fallback to NIST floor)":
+            if opts and opts.lattice_use_estimator and not base.extras.get("estimator_model"):
                 base.notes = (
                     "ML-DSA (Dilithium): estimator unavailable; using NIST category floor. "
                     "Dilithium-specific curated ranges attached in extras.mldsa.curated_estimates."

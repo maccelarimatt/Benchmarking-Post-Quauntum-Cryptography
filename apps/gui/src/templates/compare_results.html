@@ -592,6 +592,12 @@
     </div>
     <div class="card" style="margin-top:1.25rem;">
       <div style="font-weight:700; margin-bottom:.5rem;">Security Summary</div>
+      <div style="display:flex; align-items:center; gap:.75rem; margin:.35rem 0 .75rem 0;">
+        <label style="display:flex; align-items:center; gap:.35rem; cursor:pointer;">
+          <input type="checkbox" id="toggle-lattice-cols" />
+          <span style="font-size:.92rem; opacity:.9;">Show modeled bits alongside headline</span>
+        </label>
+      </div>
       <table class="vlines">
         <thead>
           <tr>
@@ -602,12 +608,15 @@
             <th>Quantum bits</th>
             <th>Shor breakable</th>
             <th>Estimator</th>
+            <th class="col-modeled" style="display:none;">Classical (modeled)</th>
+            <th class="col-modeled" style="display:none;">Quantum (modeled)</th>
           </tr>
         </thead>
         <tbody>
           {% for a in compare.algos %}
           {% set s = a.security if a.security else {} %}
           {% set est = s.estimator if s and s.estimator else {} %}
+          {% set calc = (s.estimates and s.estimates.calculated) if s and s.estimates else None %}
           <tr>
             <td>{{ a.label }}</td>
             <td>{% if s.nist_category is not none %}{{ s.nist_category }}{% else %}-{% endif %}</td>
@@ -620,12 +629,59 @@
               {% else %}-{% endif %}
             </td>
             <td>{% if est.name %}{{ est.name }}{% else %}-{% endif %}{% if est.profile %} <span class="kv-sub">({{ est.profile }})</span>{% endif %}</td>
+            <td class="col-modeled" style="display:none;">{% if calc and calc.classical_bits is number %}{{ '%.2f'|format(calc.classical_bits) }}{% else %}-{% endif %}</td>
+            <td class="col-modeled" style="display:none;">{% if calc and calc.quantum_bits is number %}{{ '%.2f'|format(calc.quantum_bits) }}{% else %}-{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
       <div style="margin-top:.6rem; font-size:.95rem; line-height:1.4;">
         <strong>How to read this:</strong> “Bits” are estimated work factors: higher is better (harder to break). Classical bits approximate cost under classical attacks; quantum bits under realistic quantum models. “Shor breakable” highlights schemes vulnerable to Shor’s algorithm (e.g., RSA, ECC). Values depend on estimator settings (profile, physical error rates, etc.).
+      </div>
+    </div>
+    <!-- Security Model Details (Lattice/ISD/Hash/MQ) -->
+    <div class="card" style="margin-top:1.25rem;">
+      <div style="font-weight:700; margin-bottom:.5rem;">Security Model Details (calculated)</div>
+      <table class="vlines">
+        <thead>
+          <tr>
+            <th>Algorithm</th>
+            <th>Model</th>
+            <th>Best attack</th>
+            <th>Classical (calc)</th>
+            <th>Quantum (calc)</th>
+            <th>Classical range</th>
+            <th>Quantum range</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in compare.algos %}
+          {% set s = a.security if a.security else {} %}
+          {% set calc = (s.estimates and s.estimates.calculated) if s and s.estimates else None %}
+          <tr>
+            <td>{{ a.label }}</td>
+            <td>{% if calc and calc.profile %}{{ calc.profile }}{% else %}-{% endif %}</td>
+            <td>{% if calc and calc.attack %}{{ calc.attack }}{% else %}-{% endif %}</td>
+            <td>{% if calc and calc.classical_bits is number %}{{ '%.2f'|format(calc.classical_bits) }}{% else %}-{% endif %}</td>
+            <td>{% if calc and calc.quantum_bits is number %}{{ '%.2f'|format(calc.quantum_bits) }}{% else %}-{% endif %}</td>
+            <td>
+              {% if calc and calc.classical_bits_range %}
+                {{ '%.2f'|format(calc.classical_bits_range[0]) }} – {{ '%.2f'|format(calc.classical_bits_range[1]) }}
+              {% else %}-{% endif %}
+            </td>
+            <td>
+              {% if calc and calc.quantum_bits_range %}
+                {{ '%.2f'|format(calc.quantum_bits_range[0]) }} – {{ '%.2f'|format(calc.quantum_bits_range[1]) }}
+              {% else %}-{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="kv-sub" style="margin-top:.4rem;">
+        Models: Kyber/Dilithium → Module‑LWE BKZ (primal/dual/hybrid); Falcon → NTRU BKZ; HQC → ISD (Stern/BJMM);
+        SPHINCS+/XMSS → hash bounds; MAYO → MQ checks (rank/minrank). Detailed curves and constants appear in raw JSON
+        under "details.*" blocks (e.g., details.module_lwe_*, details.falcon_bkz_model).
       </div>
     </div>
   </div>
@@ -680,6 +736,19 @@
       }
       buildBar('sec-classical', classical, '#4d9dff', 'Classical bits');
       buildBar('sec-quantum', quantum, '#c792ea', 'Quantum bits');
+    })();
+  </script>
+  <script>
+    // Toggle modeled columns in Security Summary
+    (function(){
+      const cb = document.getElementById('toggle-lattice-cols');
+      if (!cb) return;
+      function update(){
+        const show = !!cb.checked;
+        document.querySelectorAll('.col-modeled').forEach(el => { el.style.display = show ? '' : 'none'; });
+      }
+      cb.addEventListener('change', update);
+      update();
     })();
   </script>
 

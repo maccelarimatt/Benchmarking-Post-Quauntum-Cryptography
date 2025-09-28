@@ -105,7 +105,7 @@ def _pretty_years(y: float) -> Dict[str, float | str]:
     if y <= 0:
         return {"value": 0.0, "sci": "0", "log10": -math.inf}
     if math.isinf(y):
-        return {"value": math.inf, "sci": "inf", "log10": math.inf}
+        return {"value": None, "sci": "inf", "log10": None}
     log10y = math.log10(y)
     return {"value": y, "sci": f"{y:.3e}", "log10": log10y}
 
