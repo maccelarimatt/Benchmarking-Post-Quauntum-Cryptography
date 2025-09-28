@@ -59,11 +59,15 @@ For every group with at least two labels (e.g.,
 
 - Welch's *t*-statistic (timing, CPU, RSS delta). A |*t*| ≥ 4.5, combined with a
   Holm–Bonferroni corrected *p* ≤ 10⁻³, mirrors the TVLA "fail" threshold.
+- Second-order TVLA (Welch’s *t* on centred-square samples) to surface masked
+  or variance-based leakage.
 - Mann–Whitney U and Kolmogorov–Smirnov two-sample tests to capture
   distribution shifts without normality assumptions (corrected with the same
   Holm–Bonferroni policy).
 - Mutual information between class label and metric using a histogram estimator
-  plus a permutation-based *p*-value (default 1 000 shuffles, α = 10⁻³).
+  plus a permutation-based *p*-value (default 10 000 shuffles, α = 10⁻³).
+- Cliff's delta accompanies each metric as an effect-size indicator so practical
+  impact is visible alongside p-values.
 - Automatic sanity checks run after each pair: label-shuffle (expect pass) and
   fixed-vs-fixed split (expect pass). Failures here indicate excessive noise or
   insufficient sampling.
@@ -185,6 +189,8 @@ Interpretation:
    the captured temp directories for key remnants, crash dumps, or logs.
 5. **Deep-dive metrics.** Use the JSON output with notebooks to visualise
    histograms, QQ-plots, or run additional tests (e.g., clustering, KDE).
+6. **Per-algorithm follow-up.** See `results/forensic_followup.md` for current
+   notes and next-step checklists derived from the latest run.
 
 ## Detailed findings template
 

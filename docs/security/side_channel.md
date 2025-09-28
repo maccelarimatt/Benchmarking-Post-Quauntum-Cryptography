@@ -89,7 +89,7 @@ For every TVLA pair (e.g., `kem_tvla_decapsulation: fixed vs invalid`), we compu
 2. **Non-parametric tests**: Mann–Whitney U and Kolmogorov–Smirnov, corrected
    via Holm–Bonferroni, detect distribution shifts beyond mean differences.
 3. **Mutual information + permutation test**: MI is estimated via histograms and
-   assigned a permutation p-value (default 1 000 shuffles, α = 10⁻³).
+   assigned a permutation p-value (default 10 000 shuffles, α = 10⁻³).
 4. **Effect sizes**: Cliff’s delta accompanies each metric so practical impact is
    clear alongside p-values.
 5. **Sanity checks**: the script automatically runs label-shuffle (randomised

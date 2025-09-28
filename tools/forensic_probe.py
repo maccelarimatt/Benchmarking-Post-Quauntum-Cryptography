@@ -93,7 +93,7 @@ DEFAULT_ALGORITHM_EXCLUDE = {"xmssmt"}
 TVLA_T_THRESHOLD = 4.5
 SIGNIFICANCE_ALPHA = 1e-3
 MI_ALPHA = 1e-3
-MI_PERMUTATIONS = 1000
+MI_PERMUTATIONS = 10000
 
 _PERM_RNG = np.random.default_rng(20240907)
 
@@ -291,7 +291,7 @@ def to_jsonable(value: Any) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def build_kem_scenarios() -> List[ScenarioDefinition]:
+def build_kem_scenarios(config: ProbeConfig) -> List[ScenarioDefinition]:
     scenarios: List[ScenarioDefinition] = []
 
     def keygen_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
@@ -318,18 +318,30 @@ def build_kem_scenarios() -> List[ScenarioDefinition]:
         inst = descriptor.factory()
         base_pk: Optional[bytes] = None
         base_sk: Optional[bytes] = None
+        ciphertexts: List[bytes] = []
+        secrets: List[bytes] = []
+        ciphertext_meta: List[Dict[str, Any]] = []
+        secret_meta: List[Dict[str, Any]] = []
 
         def prepare() -> None:
             nonlocal base_pk, base_sk
             base_pk, base_sk = inst.keygen()
-
-        def iterate(_: int) -> Callable[[], Dict[str, Any]]:
-            def run() -> Dict[str, Any]:
-                assert base_pk is not None
+            ciphertexts.clear()
+            secrets.clear()
+            ciphertext_meta.clear()
+            secret_meta.clear()
+            for _ in range(config.iterations):
                 ct, ss = inst.encapsulate(base_pk)
+                ciphertexts.append(ct)
+                secrets.append(ss)
+                ciphertext_meta.append(hash_bytes(ct, "ciphertext"))
+                secret_meta.append(hash_bytes(ss, "shared_secret"))
+
+        def iterate(index: int) -> Callable[[], Dict[str, Any]]:
+            def run() -> Dict[str, Any]:
                 payload: Dict[str, Any] = {}
-                payload.update(hash_bytes(ct, "ciphertext"))
-                payload.update(hash_bytes(ss, "shared_secret"))
+                payload.update(ciphertext_meta[index])
+                payload.update(secret_meta[index])
                 return payload
             return run
 
@@ -344,21 +356,36 @@ def build_kem_scenarios() -> List[ScenarioDefinition]:
         inst = descriptor.factory()
         base_pk: Optional[bytes] = None
         base_sk: Optional[bytes] = None
+        ciphertexts: List[bytes] = []
+        secrets: List[bytes] = []
+        ciphertext_meta: List[Dict[str, Any]] = []
+        secret_meta: List[Dict[str, Any]] = []
 
         def prepare() -> None:
             nonlocal base_pk, base_sk
             base_pk, base_sk = inst.keygen()
-
-        def iterate(_: int) -> Callable[[], Dict[str, Any]]:
-            def run() -> Dict[str, Any]:
-                assert base_pk is not None and base_sk is not None
+            ciphertexts.clear()
+            secrets.clear()
+            ciphertext_meta.clear()
+            secret_meta.clear()
+            for _ in range(config.iterations):
                 ct, ss = inst.encapsulate(base_pk)
+                ciphertexts.append(ct)
+                secrets.append(ss)
+                ciphertext_meta.append(hash_bytes(ct, "ciphertext"))
+                secret_meta.append(hash_bytes(ss, "shared_secret"))
+
+        def iterate(index: int) -> Callable[[], Dict[str, Any]]:
+            def run() -> Dict[str, Any]:
+                assert base_sk is not None
+                ct = ciphertexts[index]
+                expected_ss = secrets[index]
                 recovered = inst.decapsulate(base_sk, ct)
                 payload: Dict[str, Any] = {}
-                payload.update(hash_bytes(ct, "ciphertext"))
-                payload.update(hash_bytes(ss, "shared_secret"))
+                payload.update(ciphertext_meta[index])
+                payload.update(secret_meta[index])
                 payload.update(hash_bytes(recovered, "recovered_secret"))
-                payload["match_shared_secret"] = ss == recovered
+                payload["match_shared_secret"] = recovered == expected_ss
                 return payload
             return run
 
@@ -366,30 +393,41 @@ def build_kem_scenarios() -> List[ScenarioDefinition]:
             return ensure_bytes_summary("base_secret_key", base_sk)
 
         return ScenarioExecution(prepare=prepare, iterate=iterate, finalize=finalize)
+
     def decapsulate_invalid_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
         inst = descriptor.factory()
         base_pk: Optional[bytes] = None
         base_sk: Optional[bytes] = None
+        corrupted_ciphertexts: List[bytes] = []
+        ciphertext_meta: List[Dict[str, Any]] = []
 
         def prepare() -> None:
             nonlocal base_pk, base_sk
             base_pk, base_sk = inst.keygen()
-
-        def iterate(_: int) -> Callable[[], Dict[str, Any]]:
-            def run() -> Dict[str, Any]:
-                assert base_pk is not None and base_sk is not None
+            corrupted_ciphertexts.clear()
+            ciphertext_meta.clear()
+            for _ in range(config.iterations):
                 ct, _ = inst.encapsulate(base_pk)
                 corrupted = bytearray(ct)
                 if corrupted:
-                    index = rng.randrange(len(corrupted))
-                    corrupted[index] ^= 0xFF
+                    idx = rng.randrange(len(corrupted))
+                    corrupted[idx] ^= 0xFF
+                corrupted_bytes = bytes(corrupted)
+                corrupted_ciphertexts.append(corrupted_bytes)
+                ciphertext_meta.append(hash_bytes(corrupted_bytes, "corrupted_ciphertext"))
+
+        def iterate(index: int) -> Callable[[], Dict[str, Any]]:
+            def run() -> Dict[str, Any]:
+                assert base_sk is not None
+                corrupted = corrupted_ciphertexts[index]
                 try:
-                    recovered = inst.decapsulate(base_sk, bytes(corrupted))
+                    recovered = inst.decapsulate(base_sk, corrupted)
                     payload = hash_bytes(recovered, "recovered_secret")
                     payload["fault_status"] = "success"
-                except Exception as exc:  # pragma: no cover - depends on backend behaviour
-                    payload = {"fault_status": "error", "fault_error": repr(exc)}
-                payload.update(hash_bytes(bytes(corrupted), "corrupted_ciphertext"))
+                except Exception:
+                    payload = hash_bytes(b"", "recovered_secret")
+                    payload["fault_status"] = "exception"
+                payload.update(ciphertext_meta[index])
                 return payload
             return run
 
@@ -431,7 +469,7 @@ def build_kem_scenarios() -> List[ScenarioDefinition]:
     return scenarios
 
 
-def build_signature_scenarios() -> List[ScenarioDefinition]:
+def build_signature_scenarios(config: ProbeConfig) -> List[ScenarioDefinition]:
     scenarios: List[ScenarioDefinition] = []
 
     def keygen_builder(descriptor: AlgorithmDescriptor, rng: random.Random) -> ScenarioExecution:
@@ -483,21 +521,29 @@ def build_signature_scenarios() -> List[ScenarioDefinition]:
         inst = descriptor.factory()
         fixed_pk: Optional[bytes] = None
         fixed_sk: Optional[bytes] = None
+        messages: List[bytes] = []
+        message_meta: List[Tuple[int, str]] = []
 
         def prepare() -> None:
             nonlocal fixed_pk, fixed_sk
             fixed_pk, fixed_sk = inst.keygen()
+            messages.clear()
+            message_meta.clear()
+            for _ in range(config.iterations):
+                message_length = rng.randint(1, 256)
+                msg = rng.randbytes(message_length)
+                messages.append(msg)
+                message_meta.append((message_length, hashlib.sha3_256(msg).hexdigest()))
 
-        def iterate(_: int) -> Callable[[], Dict[str, Any]]:
-            message_length = rng.randint(1, 256)
-            message = rng.randbytes(message_length)
-
+        def iterate(index: int) -> Callable[[], Dict[str, Any]]:
             def run() -> Dict[str, Any]:
                 assert fixed_sk is not None
-                signature = inst.sign(fixed_sk, message)
+                msg = messages[index]
+                length, digest = message_meta[index]
+                signature = inst.sign(fixed_sk, msg)
                 payload = hash_bytes(signature, "signature")
-                payload["message_length"] = len(message)
-                payload["message_digest"] = hashlib.sha3_256(message).hexdigest()
+                payload["message_length"] = length
+                payload["message_digest"] = digest
                 return payload
             return run
 
@@ -782,7 +828,7 @@ def collect_results(config: ProbeConfig, descriptors: List[AlgorithmDescriptor])
     scenario_results: List[ScenarioResult] = []
     for descriptor in descriptors:
         print(f"[forensic_probe] Running scenarios for {descriptor.key} ({descriptor.kind})")
-        scenarios = build_kem_scenarios() if descriptor.kind == "kem" else build_signature_scenarios()
+        scenarios = build_kem_scenarios(config) if descriptor.kind == "kem" else build_signature_scenarios(config)
         for definition in scenarios:
             if config.include_scenarios and definition.name not in config.include_scenarios:
                 continue
@@ -872,6 +918,18 @@ def generate_sanity_results(
                 algorithm_kind=alg_kind,
                 parameter_name=param_name,
                 scenario_name=f"{group}:sanity_fixed_split",
+                metrics=metrics,
+            )
+        )
+    variant_split = generate_split_control(variant, rng)
+    if variant_split is not None:
+        metrics = compute_statistical_tests(variant_split[0], variant_split[1])
+        outputs.append(
+            AnalysisResult(
+                algorithm=alg_key,
+                algorithm_kind=alg_kind,
+                parameter_name=param_name,
+                scenario_name=f"{group}:sanity_toggle_split",
                 metrics=metrics,
             )
         )
@@ -1160,10 +1218,15 @@ def summarise_results(scenario_results: List[ScenarioResult], analysis_results: 
 
 def emit_summary(summary: Dict[str, Any], analysis_results: List[AnalysisResult]) -> None:
     print("\n=== Forensic Probe Summary ===")
+    vantage_labels = {
+        "time": "remote",
+        "cpu": "co-resident",
+        "rss": "co-resident",
+    }
     for entry in analysis_results:
         metrics = entry.metrics
         flags = [name for name, flag in (("time", metrics.get("time_leak_flag")), ("cpu", metrics.get("cpu_leak_flag")), ("rss", metrics.get("rss_leak_flag"))) if flag]
-        flag_status = ", ".join(flags) if flags else "none"
+        flag_status = ", ".join(f"{f}({vantage_labels.get(f, '?')})" for f in flags) if flags else "none"
         cliffs_time = metrics.get("cliffs_delta_time") or 0.0
         cliffs_cpu = metrics.get("cliffs_delta_cpu") or 0.0
         cliffs_rss = metrics.get("cliffs_delta_rss") or 0.0
