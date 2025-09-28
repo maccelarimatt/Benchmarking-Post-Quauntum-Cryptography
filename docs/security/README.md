@@ -3,7 +3,7 @@
 This document summarizes the security models and estimators used by pqcbench. The goal is transparent, practical measurements aligned with standards and state‑of‑the‑art cryptanalysis. Outputs are expressed as “bits of security” (log2 of the best‑known attack cost), plus algorithm‑specific resource notes where appropriate.
 
 ## Forensic side-channel study
-- Use the standalone probe described in `docs/security/forensic_probe.md` to collect timing/memory traces, artefact hashes, and TVLA-style leakage indicators for every registered algorithm.
+- Use the standalone probe described in `docs/security/forensic_probe.md` to collect timing/memory traces, artefact hashes, and TVLA-style leakage indicators for every registered algorithm. A full methodology write-up is available in `docs/security/side_channel.md`.
 
 ## Notes
 - Unless a stronger model is available, we report conservative floors based on NIST security categories (128/192/256) or standard mappings. When advanced estimators are unavailable in your environment, results clearly indicate floor usage.

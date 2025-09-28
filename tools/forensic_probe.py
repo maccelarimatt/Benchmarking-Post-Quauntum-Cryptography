@@ -106,6 +106,7 @@ class ProbeConfig:
     include_algorithms: Optional[List[str]] = None
     include_scenarios: Optional[List[str]] = None
     exclude_algorithms: Optional[List[str]] = None
+    enable_sanity_checks: bool = True
 
 
 @dataclass
@@ -795,7 +796,7 @@ def collect_results(config: ProbeConfig, descriptors: List[AlgorithmDescriptor])
 # Statistical analysis
 # ---------------------------------------------------------------------------
 
-def analyse_pairs(results: List[ScenarioResult]) -> List[AnalysisResult]:
+def analyse_pairs(results: List[ScenarioResult], config: ProbeConfig) -> List[AnalysisResult]:
     grouped: Dict[Tuple[str, str, str, str], Dict[str, List[Observation]]] = defaultdict(lambda: defaultdict(list))
     for result in results:
         descriptor = result.descriptor
@@ -806,6 +807,7 @@ def analyse_pairs(results: List[ScenarioResult]) -> List[AnalysisResult]:
         grouped[key][definition.label].extend(result.observations)
 
     analysis_results: List[AnalysisResult] = []
+    sanity_rng = random.Random(config.seed ^ 0xDADBEEF)
     for (alg_key, alg_kind, param_name, group), label_map in grouped.items():
         labels = list(label_map)
         if len(labels) < 2:
@@ -824,7 +826,85 @@ def analyse_pairs(results: List[ScenarioResult]) -> List[AnalysisResult]:
                     metrics=metrics,
                 )
             )
+            if config.enable_sanity_checks:
+                sanity_results = generate_sanity_results(
+                    alg_key=alg_key,
+                    alg_kind=alg_kind,
+                    param_name=param_name,
+                    group=group,
+                    reference=reference,
+                    variant=observations,
+                    rng=sanity_rng,
+                )
+                analysis_results.extend(sanity_results)
     return analysis_results
+
+
+def generate_sanity_results(
+    *,
+    alg_key: str,
+    alg_kind: str,
+    param_name: Optional[str],
+    group: str,
+    reference: List[Observation],
+    variant: List[Observation],
+    rng: random.Random,
+) -> List[AnalysisResult]:
+    outputs: List[AnalysisResult] = []
+    shuffle_pair = generate_shuffle_control(reference, variant, rng)
+    if shuffle_pair is not None:
+        metrics = compute_statistical_tests(shuffle_pair[0], shuffle_pair[1])
+        outputs.append(
+            AnalysisResult(
+                algorithm=alg_key,
+                algorithm_kind=alg_kind,
+                parameter_name=param_name,
+                scenario_name=f"{group}:sanity_shuffle",
+                metrics=metrics,
+            )
+        )
+    split_pair = generate_split_control(reference, rng)
+    if split_pair is not None:
+        metrics = compute_statistical_tests(split_pair[0], split_pair[1])
+        outputs.append(
+            AnalysisResult(
+                algorithm=alg_key,
+                algorithm_kind=alg_kind,
+                parameter_name=param_name,
+                scenario_name=f"{group}:sanity_fixed_split",
+                metrics=metrics,
+            )
+        )
+    return outputs
+
+
+def generate_shuffle_control(
+    reference: List[Observation],
+    variant: List[Observation],
+    rng: random.Random,
+) -> Optional[Tuple[List[Observation], List[Observation]]]:
+    combined = list(reference) + list(variant)
+    if not combined:
+        return None
+    rng.shuffle(combined)
+    split = len(reference)
+    if split == 0 or split >= len(combined):
+        return None
+    return combined[:split], combined[split:]
+
+
+def generate_split_control(
+    samples: List[Observation],
+    rng: random.Random,
+) -> Optional[Tuple[List[Observation], List[Observation]]]:
+    if len(samples) < 4:
+        return None
+    shuffled = list(samples)
+    rng.shuffle(shuffled)
+    mid = len(shuffled) // 2
+    if mid == 0 or mid == len(shuffled):
+        return None
+    return shuffled[:mid], shuffled[mid:]
 
 
 def compute_statistical_tests(reference: List[Observation], variant: List[Observation]) -> Dict[str, Any]:
@@ -842,19 +922,39 @@ def compute_statistical_tests(reference: List[Observation], variant: List[Observ
     mann_time = stats.mannwhitneyu(ref_times, var_times, alternative="two-sided")
     mann_cpu = stats.mannwhitneyu(ref_cpu, var_cpu, alternative="two-sided")
     mann_rss = stats.mannwhitneyu(ref_rss, var_rss, alternative="two-sided")
+    mann_time_greater = stats.mannwhitneyu(ref_times, var_times, alternative="greater")
+    mann_cpu_greater = stats.mannwhitneyu(ref_cpu, var_cpu, alternative="greater")
+    mann_rss_greater = stats.mannwhitneyu(ref_rss, var_rss, alternative="greater")
 
     ks_time = stats.ks_2samp(ref_times, var_times)
     ks_cpu = stats.ks_2samp(ref_cpu, var_cpu)
     ks_rss = stats.ks_2samp(ref_rss, var_rss)
 
+    ref_times_centered = ref_times - np.mean(ref_times)
+    var_times_centered = var_times - np.mean(var_times)
+    ref_cpu_centered = ref_cpu - np.mean(ref_cpu)
+    var_cpu_centered = var_cpu - np.mean(var_cpu)
+    ref_rss_centered = ref_rss - np.mean(ref_rss)
+    var_rss_centered = var_rss - np.mean(var_rss)
+
+    t2_time = stats.ttest_ind(ref_times_centered ** 2, var_times_centered ** 2, equal_var=False)
+    t2_cpu = stats.ttest_ind(ref_cpu_centered ** 2, var_cpu_centered ** 2, equal_var=False)
+    t2_rss = stats.ttest_ind(ref_rss_centered ** 2, var_rss_centered ** 2, equal_var=False)
+
     mi_time, mi_p_time = estimate_mutual_information_with_pvalue(ref_times, var_times)
     mi_cpu, mi_p_cpu = estimate_mutual_information_with_pvalue(ref_cpu, var_cpu)
     mi_rss, mi_p_rss = estimate_mutual_information_with_pvalue(ref_rss, var_rss)
+
+    cliff_time = cliffs_delta_from_u(mann_time_greater.statistic, len(ref_times), len(var_times))
+    cliff_cpu = cliffs_delta_from_u(mann_cpu_greater.statistic, len(ref_cpu), len(var_cpu))
+    cliff_rss = cliffs_delta_from_u(mann_rss_greater.statistic, len(ref_rss), len(var_rss))
 
     time_flag, time_details = evaluate_metric(
         "time",
         t_stat=float(t_time.statistic),
         t_p=float(t_time.pvalue),
+        t2_stat=float(t2_time.statistic),
+        t2_p=float(t2_time.pvalue),
         mann_p=float(mann_time.pvalue),
         ks_stat=float(ks_time.statistic),
         ks_p=float(ks_time.pvalue),
@@ -865,6 +965,8 @@ def compute_statistical_tests(reference: List[Observation], variant: List[Observ
         "cpu",
         t_stat=float(t_cpu.statistic),
         t_p=float(t_cpu.pvalue),
+        t2_stat=float(t2_cpu.statistic),
+        t2_p=float(t2_cpu.pvalue),
         mann_p=float(mann_cpu.pvalue),
         ks_stat=float(ks_cpu.statistic),
         ks_p=float(ks_cpu.pvalue),
@@ -875,6 +977,8 @@ def compute_statistical_tests(reference: List[Observation], variant: List[Observ
         "rss",
         t_stat=float(t_rss.statistic),
         t_p=float(t_rss.pvalue),
+        t2_stat=float(t2_rss.statistic),
+        t2_p=float(t2_rss.pvalue),
         mann_p=float(mann_rss.pvalue),
         ks_stat=float(ks_rss.statistic),
         ks_p=float(ks_rss.pvalue),
@@ -885,10 +989,16 @@ def compute_statistical_tests(reference: List[Observation], variant: List[Observ
     metrics: Dict[str, Any] = {
         "t_stat_time": float(t_time.statistic),
         "t_pvalue_time": float(t_time.pvalue),
+        "t2_stat_time": float(t2_time.statistic),
+        "t2_pvalue_time": float(t2_time.pvalue),
         "t_stat_cpu": float(t_cpu.statistic),
         "t_pvalue_cpu": float(t_cpu.pvalue),
+        "t2_stat_cpu": float(t2_cpu.statistic),
+        "t2_pvalue_cpu": float(t2_cpu.pvalue),
         "t_stat_rss": float(t_rss.statistic),
         "t_pvalue_rss": float(t_rss.pvalue),
+        "t2_stat_rss": float(t2_rss.statistic),
+        "t2_pvalue_rss": float(t2_rss.pvalue),
         "mannu_time": float(mann_time.statistic),
         "mannu_pvalue_time": float(mann_time.pvalue),
         "mannu_cpu": float(mann_cpu.statistic),
@@ -907,6 +1017,9 @@ def compute_statistical_tests(reference: List[Observation], variant: List[Observ
         "mi_pvalue_cpu": mi_p_cpu,
         "mi_rss": mi_rss,
         "mi_pvalue_rss": mi_p_rss,
+        "cliffs_delta_time": cliff_time,
+        "cliffs_delta_cpu": cliff_cpu,
+        "cliffs_delta_rss": cliff_rss,
     }
     metrics.update(time_details)
     metrics.update(cpu_details)
@@ -961,6 +1074,12 @@ def estimate_mutual_information_with_pvalue(
     return base_mi, pvalue
 
 
+def cliffs_delta_from_u(u_value: float, m: int, n: int) -> float:
+    if m == 0 or n == 0:
+        return 0.0
+    return float((2.0 * (u_value / (m * n))) - 1.0)
+
+
 def apply_holm_bonferroni(pvalues: List[float], alpha: float) -> List[bool]:
     indexed = [(i, 1.0 if p is None else p) for i, p in enumerate(pvalues)]
     indexed.sort(key=lambda item: item[1])
@@ -980,15 +1099,17 @@ def evaluate_metric(
     *,
     t_stat: float,
     t_p: float,
+    t2_stat: float,
+    t2_p: float,
     mann_p: float,
     ks_stat: float,
     ks_p: float,
     mi: float,
     mi_p: Optional[float],
 ) -> Tuple[bool, Dict[str, Any]]:
-    pvalues = [t_p, mann_p, ks_p]
+    pvalues = [t_p, t2_p, mann_p, ks_p]
     holm_hits = apply_holm_bonferroni(pvalues, SIGNIFICANCE_ALPHA)
-    holm_map = {"t": holm_hits[0], "mann": holm_hits[1], "ks": holm_hits[2]}
+    holm_map = {"t": holm_hits[0], "t2": holm_hits[1], "mann": holm_hits[2], "ks": holm_hits[3]}
     tvla_hit = abs(t_stat) >= TVLA_T_THRESHOLD and t_p <= SIGNIFICANCE_ALPHA
     mi_hit = mi_p is not None and mi_p <= MI_ALPHA
     flag = tvla_hit or any(holm_hits) or mi_hit
@@ -1043,12 +1164,22 @@ def emit_summary(summary: Dict[str, Any], analysis_results: List[AnalysisResult]
         metrics = entry.metrics
         flags = [name for name, flag in (("time", metrics.get("time_leak_flag")), ("cpu", metrics.get("cpu_leak_flag")), ("rss", metrics.get("rss_leak_flag"))) if flag]
         flag_status = ", ".join(flags) if flags else "none"
+        cliffs_time = metrics.get("cliffs_delta_time") or 0.0
+        cliffs_cpu = metrics.get("cliffs_delta_cpu") or 0.0
+        cliffs_rss = metrics.get("cliffs_delta_rss") or 0.0
+        mi_vals = (
+            metrics.get("mi_time", 0.0),
+            metrics.get("mi_cpu", 0.0),
+            metrics.get("mi_rss", 0.0),
+        )
         print(
             f"{entry.algorithm} [{entry.parameter_name or '-'}] {entry.scenario_name}: "
             f"|t_time|={abs(metrics['t_stat_time']):.2f}, "
             f"|t_cpu|={abs(metrics['t_stat_cpu']):.2f}, "
             f"|t_rss|={abs(metrics['t_stat_rss']):.2f}, "
-            f"MI={metrics['mi_time']:.4f}/{metrics['mi_cpu']:.4f}/{metrics['mi_rss']:.4f} -> flags: {flag_status}"
+            f"t2_time={abs(metrics['t2_stat_time']):.2f}, "
+            f"MI={mi_vals[0]:.4f}/{mi_vals[1]:.4f}/{mi_vals[2]:.4f}, "
+            f"Δ={cliffs_time:.3f}/{cliffs_cpu:.3f}/{cliffs_rss:.3f} -> flags: {flag_status}"
         )
     if not analysis_results:
         print("No paired scenarios available for statistical analysis.")
@@ -1068,6 +1199,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> ProbeConfig:
     parser.add_argument("--alg", nargs="*", help="Limit to specific registry keys")
     parser.add_argument("--scenario", nargs="*", help="Limit to specific scenario names")
     parser.add_argument("--exclude", nargs="*", help="Explicitly exclude registry keys")
+    parser.add_argument("--no-sanity-checks", action="store_true", help="Disable shuffle/split sanity controls")
     args = parser.parse_args(argv)
     return ProbeConfig(
         iterations=args.iterations,
@@ -1077,6 +1209,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> ProbeConfig:
         include_algorithms=args.alg,
         include_scenarios=args.scenario,
         exclude_algorithms=args.exclude,
+        enable_sanity_checks=not args.no_sanity_checks,
     )
 
 
@@ -1087,7 +1220,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
         print("[forensic_probe] No algorithms discovered. Ensure adapters are available.", file=sys.stderr)
         return 1
     scenario_results, host_metadata = collect_results(config, descriptors)
-    analysis_results = analyse_pairs(scenario_results)
+    analysis_results = analyse_pairs(scenario_results, config)
     summary = summarise_results(scenario_results, analysis_results, host_metadata, config)
     emit_summary(summary, analysis_results)
     output_path = config.output_path or (PROJECT_ROOT / "results" / f"forensic_probe_{int(time.time())}.json")

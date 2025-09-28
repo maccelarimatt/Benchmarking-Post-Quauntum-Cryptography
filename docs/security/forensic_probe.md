@@ -1,10 +1,8 @@
-# Forensic Side-Channel Probe
+# Forensic Probe Quick Reference
 
-This guide documents the standalone forensic probe (`tools/forensic_probe.py`) that
-exercises each registered pqcbench algorithm under side-channel relevant
-scenarios, captures rich telemetry, and runs statistical leakage checks. It is
-meant for offline investigations rather than CI; default workloads collect
-hundreds of samples per scenario and favour completeness over speed.
+For a narrative, reader-friendly explainer of the side-channel methodology,
+see `docs/security/side_channel.md`. This document serves as a concise quick
+reference for the probe’s usage.
 
 ## Motivation and research baseline
 
@@ -66,6 +64,9 @@ For every group with at least two labels (e.g.,
   Holm–Bonferroni policy).
 - Mutual information between class label and metric using a histogram estimator
   plus a permutation-based *p*-value (default 1 000 shuffles, α = 10⁻³).
+- Automatic sanity checks run after each pair: label-shuffle (expect pass) and
+  fixed-vs-fixed split (expect pass). Failures here indicate excessive noise or
+  insufficient sampling.
 
 Leakage flags are raised when any of these corrected tests or the MI
 permutation test reports significance. Each scenario should be run with two
@@ -112,6 +113,9 @@ python tools/forensic_report.py results/forensic_quick.json --format markdown --
 ```
 This highlights which algorithms/scenarios breached timing, CPU, or RSS thresholds and records the supporting statistics.
 
+Supply `--baseline other_run.json` to compare a new dataset against an older
+collection and inspect deltas in |t| and MI across machines or sessions.
+
 The CLI options:
 
 | Option | Meaning |
@@ -121,6 +125,7 @@ The CLI options:
 | `--alg` | Filter registry keys (e.g., `kyber`, `dilithium`). |
 | `--scenario` | Run a subset of scenarios by name. |
 | `--exclude` | Exclude specific registry keys (adds to the default skip list). |
+| `--no-sanity-checks` | Skip shuffle/split controls (not recommended except for debugging). |
 | `--keep-artifacts` | Leave per-scenario temp directories in place. |
 | `--output` | Custom output path (defaults to `results/forensic_probe_<epoch>.json`). |
 
@@ -158,13 +163,15 @@ Each `observation` entry stores metrics for a single iteration:
 `emit_summary` prints one-line recaps per analysed pair. Example output:
 
 ```
-kyber [ML-KEM-768] kem_tvla_decapsulation:fixed vs invalid: |t_time|=5.12, |t_cpu|=5.07, |t_rss|=0.44, MI=0.0314/0.0298/0.0001 -> flags: time, cpu
+kyber [ML-KEM-768] kem_tvla_decapsulation:fixed vs invalid: |t_time|=5.12, |t_cpu|=5.07, |t_rss|=0.44, t2_time=4.63, MI=0.0314/0.0298/0.0001, Δ=0.42/0.38/0.05 -> flags: time, cpu
 ```
 
 Interpretation:
 
 - `|t_time|`/`|t_cpu|` over 4.5 with corrected *p* ≤ 10⁻³: statistically significant timing difference.
+- `t2_time` > 4.5 indicates second-order leakage (useful for masked code).
 - `MI` reports mutual information for (time/cpu/rss); the permutation *p*-value highlights whether dependence is statistically meaningful.
+- `Δ` lists Cliff's delta effect sizes (time/cpu/rss).
 - `flags` enumerate which metrics tripped thresholds.
 
 ### Recommended follow-up checklist
@@ -187,8 +194,9 @@ alongside the JSON output):
 ```
 Algorithm: ML-KEM-768
 Scenario pair: kem_tvla_decapsulation fixed vs invalid
-Iterations: 800
-Leakage indicators: |t|=5.12 (time, corrected p=7e-5), |t|=4.98 (cpu, corrected p=2e-4), MI_time=0.031 (perm p=6e-4)
+Iterations: 1 000 per class × 2 independent sessions
+Leakage indicators: |t|=5.12 (time, corrected p=7e-5), |t|=4.98 (cpu, corrected p=2e-4),
+                    t2_time=4.63 (p=1e-3), MI_time=0.031 (perm p=6e-4), Δ_time=0.42
 Suspected cause: Branch misprediction on decrypt failure path.
 Artefacts: No files written; stderr clean.
 Follow-up: collect traces with perf record; inspect decapsulation constant-time guard.
