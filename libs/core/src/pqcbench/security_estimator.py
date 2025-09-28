@@ -143,6 +143,64 @@ def _module_lwe_parameters(extras: Dict[str, Any]) -> Optional[Dict[str, int]]:
     }
 
 
+_KYBER_CORE_SVP_TABLE: Dict[str, Dict[str, float]] = {
+    "ml-kem-512": {
+        "dimension": 1003.0,
+        "beta": 403.0,
+        "samples": 256.0,
+        "classical_bits": 118.0,
+        "quantum_bits": 107.0,
+        "sieving_dimension": 375.0,
+        "log2_memory": 93.8,
+    },
+    "kyber512": {
+        "dimension": 1003.0,
+        "beta": 403.0,
+        "samples": 256.0,
+        "classical_bits": 118.0,
+        "quantum_bits": 107.0,
+        "sieving_dimension": 375.0,
+        "log2_memory": 93.8,
+    },
+    "ml-kem-768": {
+        "dimension": 1424.0,
+        "beta": 625.0,
+        "samples": 384.0,
+        "classical_bits": 182.0,
+        "quantum_bits": 165.0,
+        "sieving_dimension": 586.0,
+        "log2_memory": 138.5,
+    },
+    "kyber768": {
+        "dimension": 1424.0,
+        "beta": 625.0,
+        "samples": 384.0,
+        "classical_bits": 182.0,
+        "quantum_bits": 165.0,
+        "sieving_dimension": 586.0,
+        "log2_memory": 138.5,
+    },
+    "ml-kem-1024": {
+        "dimension": 1885.0,
+        "beta": 877.0,
+        "samples": 512.0,
+        "classical_bits": 256.0,
+        "quantum_bits": 232.0,
+        "sieving_dimension": 829.0,
+        "log2_memory": 189.7,
+    },
+    "kyber1024": {
+        "dimension": 1885.0,
+        "beta": 877.0,
+        "samples": 512.0,
+        "classical_bits": 256.0,
+        "quantum_bits": 232.0,
+        "sieving_dimension": 829.0,
+        "log2_memory": 189.7,
+    },
+}
+
+
 _DILITHIUM_CORE_SVP_TABLE: Dict[str, Dict[str, float]] = {
     "ml-dsa-44": {
         "dimension": 2049.0,
@@ -335,6 +393,15 @@ def _module_lwe_cost_summary(extras: Dict[str, Any]) -> Optional[Dict[str, Any]]
 
 def _dilithium_core_svp_table_entry(name: str) -> Optional[Dict[str, Any]]:
     entry = _DILITHIUM_CORE_SVP_TABLE.get(name.lower())
+    if entry is None:
+        return None
+    result = dict(entry)
+    result["attack"] = "primal-usvp"
+    return result
+
+
+def _kyber_core_svp_table_entry(name: str) -> Optional[Dict[str, Any]]:
+    entry = _KYBER_CORE_SVP_TABLE.get(name.lower())
     if entry is None:
         return None
     result = dict(entry)
@@ -773,13 +840,6 @@ def _estimate_lattice_like_from_name(name: str, opts: Optional[EstimatorOptions]
                 },
             })
             metrics.notes = "APS Lattice Estimator (best-effort): classical and QRAM-assisted costs."
-        else:
-            metrics.extras.update({
-                "estimator_model": "unavailable (fallback to NIST floor)",
-                "lattice_profile": (opts.lattice_profile or "floor"),
-            })
-            # If user requested estimator but it's unavailable, reflect that in notes
-            metrics.notes = f"{family or 'Lattice'}: estimator unavailable; using NIST category floor."
     return metrics
 
 
@@ -1557,6 +1617,20 @@ def _estimate_kyber_from_name(name: str, opts: Optional[EstimatorOptions]) -> Se
     cost_extras = {k: v for k, v in kyber_info.items() if v is not None}
     if cost_extras:
         module_cost = _module_lwe_cost_summary(cost_extras)
+
+    table_entry = _kyber_core_svp_table_entry(name)
+    if table_entry:
+        module_cost = {
+            "model": "core-svp-table",
+            "source": "core-svp-spec-table",
+            "params": {k: kyber_info.get(k) for k in ("n", "k", "q") if kyber_info.get(k) is not None},
+            "sigma_error": kyber_info.get("eta2") and _stddev_centered_binomial(int(kyber_info["eta2"])) or 1.0,
+            "sigma_secret": kyber_info.get("eta1") and _stddev_centered_binomial(int(kyber_info["eta1"])) or 1.0,
+            "primal": table_entry,
+            "dual": None,
+            "headline": table_entry,
+            "reference": "CRYSTALS-Kyber Round 4 specification, Table 4",
+        }
     if module_cost:
         # Always attach the model details
         base.extras.setdefault("mlkem", {})["module_lwe_cost"] = module_cost
@@ -1605,6 +1679,46 @@ def _estimate_kyber_from_name(name: str, opts: Optional[EstimatorOptions]) -> Se
                 "q_sieving_exponent_ratio": q_factor,
             },
         }
+    elif any(tok in mech_lower for tok in ("768", "kyber768", "ml-kem-768")):
+        classical_mid = 182.0
+        classical_lo = 176.0
+        classical_hi = 188.0
+        q_factor = 0.265 / 0.292
+        quantum_mid = round(classical_mid * q_factor, 1)
+        quantum_lo = round(classical_lo * q_factor, 1)
+        quantum_hi = round(classical_hi * q_factor, 1)
+        curated = {
+            "classical_bits_mid": classical_mid,
+            "classical_bits_range": [classical_lo, classical_hi],
+            "quantum_bits_mid": quantum_mid,
+            "quantum_bits_range": [quantum_lo, quantum_hi],
+            "assumptions": {
+                "source_notes": (
+                    "Kyber specification Table 4 core-SVP hardness (β≈625 → 182 classical bits, 165 quantum bits)."
+                ),
+                "q_sieving_exponent_ratio": q_factor,
+            },
+        }
+    elif any(tok in mech_lower for tok in ("1024", "kyber1024", "ml-kem-1024")):
+        classical_mid = 256.0
+        classical_lo = 248.0
+        classical_hi = 264.0
+        q_factor = 0.265 / 0.292
+        quantum_mid = round(classical_mid * q_factor, 1)
+        quantum_lo = round(classical_lo * q_factor, 1)
+        quantum_hi = round(classical_hi * q_factor, 1)
+        curated = {
+            "classical_bits_mid": classical_mid,
+            "classical_bits_range": [classical_lo, classical_hi],
+            "quantum_bits_mid": quantum_mid,
+            "quantum_bits_range": [quantum_lo, quantum_hi],
+            "assumptions": {
+                "source_notes": (
+                    "Kyber specification Table 4 core-SVP hardness (β≈877 → 256 classical bits, 232 quantum bits)."
+                ),
+                "q_sieving_exponent_ratio": q_factor,
+            },
+        }
 
     mlkem_block = dict(base.extras.get("mlkem", {}) or {})
     if module_cost:
@@ -1612,11 +1726,15 @@ def _estimate_kyber_from_name(name: str, opts: Optional[EstimatorOptions]) -> Se
     mlkem_block["kyber_params"] = kyber_info or None
     mlkem_block["curated_estimates"] = curated or None
     base.extras["mlkem"] = mlkem_block
+    if module_cost:
+        base.extras["estimator_model"] = module_cost.get("model")
+        if module_cost.get("reference"):
+            base.extras["estimator_reference"] = module_cost["reference"]
 
     if not module_cost:
         # Adjust notes only if advanced estimator did not populate a model
         if "APS Lattice Estimator" not in base.notes:
-            if opts and opts.lattice_use_estimator and base.extras.get("estimator_model") == "unavailable (fallback to NIST floor)":
+            if opts and opts.lattice_use_estimator and not base.extras.get("estimator_model"):
                 base.notes = (
                     "ML-KEM (Kyber): estimator unavailable; using NIST category floor. "
                     "Kyber-specific curated ranges attached in extras.mlkem.curated_estimates."
@@ -1901,11 +2019,15 @@ def _estimate_dilithium_from_name(name: str, opts: Optional[EstimatorOptions]) -
     mldsa_block["curated_estimates"] = curated or None
     mldsa_block["core_svp_constants"] = {"classical": c_class, "quantum": c_quant}
     base.extras["mldsa"] = mldsa_block
+    if module_cost:
+        base.extras["estimator_model"] = module_cost.get("model")
+        if module_cost.get("reference"):
+            base.extras["estimator_reference"] = module_cost["reference"]
 
     if not module_cost:
         # Note refinement depending on estimator availability
         if "APS Lattice Estimator" not in base.notes:
-            if opts and opts.lattice_use_estimator and base.extras.get("estimator_model") == "unavailable (fallback to NIST floor)":
+            if opts and opts.lattice_use_estimator and not base.extras.get("estimator_model"):
                 base.notes = (
                     "ML-DSA (Dilithium): estimator unavailable; using NIST category floor. "
                     "Dilithium-specific curated ranges attached in extras.mldsa.curated_estimates."

@@ -32,8 +32,16 @@ def test_module_lwe_cost_headline_kyber():
     assert metrics.classical_bits == headline["classical_bits"]
     assert metrics.quantum_bits == headline["quantum_bits"]
     assert metrics.extras.get("category_floor") == 128
-    assert abs(cost["primal"]["beta"] - 405.0) < 1.0
-    assert cost["source"] == "core-svp-analytic"
+    assert abs(cost["primal"]["beta"] - 403.0) < 1.0
+    assert cost["source"] == "core-svp-spec-table"
+
+
+def test_module_lwe_cost_headline_kyber_768():
+    metrics = _estimate_kyber_from_name("ML-KEM-768", EstimatorOptions())
+    assert metrics.classical_bits == 182.0
+    cost = metrics.extras.get("mlkem", {}).get("module_lwe_cost")
+    assert cost["source"] == "core-svp-spec-table"
+    assert abs(cost["primal"]["beta"] - 625.0) < 1.0
 
 
 def test_module_lwe_cost_headline_dilithium():

@@ -87,6 +87,8 @@ else:
 
         def sign(self, secret_key: bytes, message: bytes) -> bytes:
             with _oqs.Signature(self.alg, secret_key=secret_key) as s:
+                if hasattr(s, "sign_deterministic"):
+                    return s.sign_deterministic(message)
                 return s.sign(message)
 
         def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
@@ -114,6 +116,8 @@ else:
 
         def sign(self, secret_key: bytes, message: bytes) -> bytes:
             with _oqs.Signature(self.alg, secret_key=secret_key) as s:
+                if hasattr(s, "sign_deterministic"):
+                    return s.sign_deterministic(message)
                 return s.sign(message)
 
         def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
@@ -147,6 +151,8 @@ else:
 
         def sign(self, secret_key: bytes, message: bytes) -> bytes:
             with _oqs.Signature(self.alg, secret_key=secret_key) as s:
+                if hasattr(s, "sign_deterministic"):
+                    return s.sign_deterministic(message)
                 return s.sign(message)
 
         def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
