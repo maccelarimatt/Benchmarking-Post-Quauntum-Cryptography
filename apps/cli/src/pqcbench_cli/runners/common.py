@@ -836,6 +836,15 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         fam = fam_map.get(algo)
 
     # Common header
+    if not mechanism:
+        mod_bits = extras.get("modulus_bits")
+        if algo == "rsa-oaep":
+            bits = int(mod_bits or 2048)
+            mechanism = f"RSA-{bits}-OAEP"
+        elif algo == "rsa-pss":
+            bits = int(mod_bits or 2048)
+            mechanism = f"RSA-{bits}-PSS"
+
     out: Dict[str, Any] = {
         "mechanism": mechanism,
         "family": fam,
@@ -850,12 +859,17 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
     # Estimator info (if applicable)
     est_name = extras.get("estimator_model")
     est_profile = extras.get("lattice_profile")
-    if est_name or est_profile:
+    est_available = extras.get("estimator_available")
+    if est_available is None:
+        est_available = bool(est_name) and not str(est_name).startswith("unavailable")
+    if est_name or est_profile or extras.get("estimator_reference"):
         out["estimator"] = {
             "name": est_name,
             "profile": est_profile,
-            "available": bool(est_name) and not str(est_name).startswith("unavailable"),
+            "available": bool(est_available),
         }
+        if extras.get("estimator_reference"):
+            out["estimator"]["reference"] = extras.get("estimator_reference")
 
     # Parameters per family (best-effort)
     params: Dict[str, Any] | None = None
@@ -914,12 +928,19 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         module_cost = mlkem.get("module_lwe_cost") if isinstance(mlkem, dict) else None
         ce = mlkem.get("curated_estimates") if isinstance(mlkem, dict) else None
         if ce:
+            if isinstance(ce, dict):
+                ce.setdefault("source", "core-svp-spec-table")
             estimates["curated"] = ce
+        consts = mlkem.get("core_svp_constants") if isinstance(mlkem, dict) else None
+        if consts:
+            out.setdefault("assumptions", {})["core_svp_constants"] = consts
     elif algo == "dilithium":
         mldsa = (extras.get("mldsa", {}) or {})
         module_cost = mldsa.get("module_lwe_cost") if isinstance(mldsa, dict) else None
         ce = mldsa.get("curated_estimates") if isinstance(mldsa, dict) else None
         if ce:
+            if isinstance(ce, dict):
+                ce.setdefault("source", "literature-range")
             estimates["curated"] = ce
         consts = mldsa.get("core_svp_constants") if isinstance(mldsa, dict) else None
         if consts:
@@ -928,6 +949,8 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         falcon_block = (extras.get("falcon", {}) or {})
         ce = falcon_block.get("curated_estimates") if isinstance(falcon_block, dict) else None
         if ce:
+            if isinstance(ce, dict):
+                ce.setdefault("source", "curated-range")
             estimates["curated"] = ce
         consts = falcon_block.get("core_svp_constants") if isinstance(falcon_block, dict) else None
         if consts:
@@ -957,13 +980,17 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
                         "quantum_bits": best[3],
                         "classical_bits_range": None,
                         "quantum_bits_range": None,
+                        "source": "falcon-bkz-curve",
                     }
             except Exception:
                 pass
     elif algo in ("sphincsplus", "sphincs+"):
         sx = extras.get("sphincs") or {}
         if sx.get("curated_estimates"):
-            estimates["curated"] = sx.get("curated_estimates")
+            ce = sx.get("curated_estimates")
+            if isinstance(ce, dict):
+                ce.setdefault("source", "curated-range")
+            estimates["curated"] = ce
         if sx.get("hash_costs"):
             estimates["hash_costs"] = sx.get("hash_costs")
         sanity = sx.get("sanity")
@@ -999,7 +1026,10 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
     elif algo == "mayo":
         my = extras.get("mayo") or {}
         if my.get("curated_estimates"):
-            estimates["curated"] = my.get("curated_estimates")
+            ce = my.get("curated_estimates")
+            if isinstance(ce, dict):
+                ce.setdefault("source", "curated-range")
+            estimates["curated"] = ce
         if my.get("checks"):
             estimates["checks"] = my.get("checks")
 
@@ -1039,6 +1069,7 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
                         "quantum_bits": q_for_best,
                         "classical_bits_range": [min(c_vals), max(c_vals)] if len(c_vals) >= 2 else None,
                         "quantum_bits_range": ([min(q_vals), max(q_vals)] if (q_vals and len(q_vals) >= 2) else None),
+                        "source": "isd-heuristic",
                     }
             elif algo in ("sphincsplus", "sphincs+"):
                 sx = extras.get("sphincs") or {}
@@ -1051,6 +1082,7 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
                         "quantum_bits": ce.get("quantum_bits_mid"),
                         "classical_bits_range": ce.get("classical_bits_range"),
                         "quantum_bits_range": ce.get("quantum_bits_range"),
+                        "source": "curated-range",
                     }
             elif algo == "xmssmt":
                 xx = extras.get("xmss") or {}
@@ -1065,6 +1097,7 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
                         "quantum_bits": float(qb) if isinstance(qb, (int, float)) else None,
                         "classical_bits_range": None,
                         "quantum_bits_range": None,
+                        "source": "hash-model",
                     }
             elif algo == "mayo":
                 my = extras.get("mayo") or {}

@@ -1083,6 +1083,7 @@ def _estimate_sphincs_from_name(name: str) -> SecMetrics:
                 "classical_bits_range": [curated_lo, curated_hi],
                 "quantum_bits_mid": round(curated_mid / 2.0, 1),
                 "quantum_bits_range": [round(curated_lo / 2.0, 1), round(curated_hi / 2.0, 1)],
+                "source": "curated-range",
             },
             "structure": structure or None,
             "sanity": {
@@ -1549,7 +1550,11 @@ def _estimate_mayo_from_name(name: str) -> SecMetrics:
         extras["mayo"] = {"params": None}
 
     # Curated per-level note (when we only know the level label)
-    curated = {"classical_bits_mid": float(floor), "quantum_bits_mid": float(floor)}
+    curated = {
+        "classical_bits_mid": float(floor),
+        "quantum_bits_mid": float(floor),
+        "source": "curated-range",
+    }
     extras["mayo"]= {**extras.get("mayo", {}), "curated_estimates": curated}
 
     return SecMetrics(
@@ -1672,6 +1677,7 @@ def _estimate_kyber_from_name(name: str, opts: Optional[EstimatorOptions]) -> Se
             "classical_bits_range": [classical_lo, classical_hi],
             "quantum_bits_mid": quantum_mid,
             "quantum_bits_range": [quantum_lo, quantum_hi],
+            "source": "core-svp-spec-table",
             "assumptions": {
                 "source_notes": (
                     "Kyber specification Table 4 core-SVP hardness (β≈403 → 118 classical bits, 107 quantum bits)."
@@ -1692,6 +1698,7 @@ def _estimate_kyber_from_name(name: str, opts: Optional[EstimatorOptions]) -> Se
             "classical_bits_range": [classical_lo, classical_hi],
             "quantum_bits_mid": quantum_mid,
             "quantum_bits_range": [quantum_lo, quantum_hi],
+            "source": "core-svp-spec-table",
             "assumptions": {
                 "source_notes": (
                     "Kyber specification Table 4 core-SVP hardness (β≈625 → 182 classical bits, 165 quantum bits)."
@@ -1712,6 +1719,7 @@ def _estimate_kyber_from_name(name: str, opts: Optional[EstimatorOptions]) -> Se
             "classical_bits_range": [classical_lo, classical_hi],
             "quantum_bits_mid": quantum_mid,
             "quantum_bits_range": [quantum_lo, quantum_hi],
+            "source": "core-svp-spec-table",
             "assumptions": {
                 "source_notes": (
                     "Kyber specification Table 4 core-SVP hardness (β≈877 → 256 classical bits, 232 quantum bits)."
@@ -1725,11 +1733,14 @@ def _estimate_kyber_from_name(name: str, opts: Optional[EstimatorOptions]) -> Se
         mlkem_block["module_lwe_cost"] = module_cost
     mlkem_block["kyber_params"] = kyber_info or None
     mlkem_block["curated_estimates"] = curated or None
+    mlkem_block["core_svp_constants"] = {"classical": 0.292, "quantum": 0.265}
     base.extras["mlkem"] = mlkem_block
     if module_cost:
         base.extras["estimator_model"] = module_cost.get("model")
         if module_cost.get("reference"):
             base.extras["estimator_reference"] = module_cost["reference"]
+        if module_cost.get("source") == "core-svp-spec-table":
+            base.extras["estimator_available"] = False
 
     if not module_cost:
         # Adjust notes only if advanced estimator did not populate a model
@@ -1809,6 +1820,7 @@ def _estimate_falcon_from_name(name: str, opts: Optional[EstimatorOptions]) -> S
             "classical_bits_range": [classical_lo, classical_hi],
             "quantum_bits_mid": quantum_mid,
             "quantum_bits_range": [quantum_lo, quantum_hi],
+            "source": "curated-range",
             "assumptions": {
                 "core_svp_constants": {"classical": c_class, "quantum": c_quant},
                 "notes": "Falcon-512: conservative mid with range; quantum via 0.262/0.292 scaling.",
@@ -1825,6 +1837,7 @@ def _estimate_falcon_from_name(name: str, opts: Optional[EstimatorOptions]) -> S
             "classical_bits_range": [classical_lo, classical_hi],
             "quantum_bits_mid": quantum_mid,
             "quantum_bits_range": [quantum_lo, quantum_hi],
+            "source": "curated-range",
             "assumptions": {
                 "core_svp_constants": {"classical": c_class, "quantum": c_quant},
                 "notes": "Falcon-1024: ~200–225 classical; quantum scaled by 0.262/0.292.",
@@ -1840,8 +1853,15 @@ def _estimate_falcon_from_name(name: str, opts: Optional[EstimatorOptions]) -> S
         }
     })
 
+    if curated:
+        base.classical_bits = float(curated["classical_bits_mid"])
+        base.quantum_bits = float(curated.get("quantum_bits_mid")) if curated.get("quantum_bits_mid") is not None else base.quantum_bits
+        base.extras["estimator_model"] = "curated-range"
+        base.extras["lattice_profile"] = "curated"
+        base.extras["estimator_available"] = False
+
     if "APS Lattice Estimator" not in base.notes:
-        if opts and opts.lattice_use_estimator and base.extras.get("estimator_model") == "unavailable (fallback to NIST floor)":
+        if opts and opts.lattice_use_estimator and not base.extras.get("estimator_model"):
             base.notes = (
                 "Falcon: estimator unavailable; using NIST category floor. "
                 "Falcon-specific curated ranges attached in extras.falcon.curated_estimates."
@@ -1903,7 +1923,7 @@ def _estimate_dilithium_from_name(name: str, opts: Optional[EstimatorOptions]) -
                 "l": l,
                 "q": q,
                 "eta": eta,
-                "rank": (n * k) if k else None,
+                "n_lwe": (n * k) if k else None,
             }
     except Exception:
         pass
@@ -1970,6 +1990,7 @@ def _estimate_dilithium_from_name(name: str, opts: Optional[EstimatorOptions]) -
             "classical_bits_range": [classical_lo, classical_hi],
             "quantum_bits_mid": quantum_mid,
             "quantum_bits_range": [quantum_lo, quantum_hi],
+            "source": "literature-range",
             "assumptions": {
                 "core_svp_constants": {"classical": c_class, "quantum": c_quant},
                 "notes": (
@@ -1989,6 +2010,7 @@ def _estimate_dilithium_from_name(name: str, opts: Optional[EstimatorOptions]) -
             "classical_bits_range": [classical_lo, classical_hi],
             "quantum_bits_mid": quantum_mid,
             "quantum_bits_range": [quantum_lo, quantum_hi],
+            "source": "literature-range",
             "assumptions": {
                 "core_svp_constants": {"classical": c_class, "quantum": c_quant},
                 "notes": "Dilithium3 (ML-DSA-65) ≈ mid‑140s classical in public estimates.",
@@ -2006,6 +2028,7 @@ def _estimate_dilithium_from_name(name: str, opts: Optional[EstimatorOptions]) -
             "classical_bits_range": [classical_lo, classical_hi],
             "quantum_bits_mid": quantum_mid,
             "quantum_bits_range": [quantum_lo, quantum_hi],
+            "source": "literature-range",
             "assumptions": {
                 "core_svp_constants": {"classical": c_class, "quantum": c_quant},
                 "notes": "Dilithium5 (ML-DSA-87) ≈ ~200–220 classical in common reports.",
@@ -2023,6 +2046,8 @@ def _estimate_dilithium_from_name(name: str, opts: Optional[EstimatorOptions]) -
         base.extras["estimator_model"] = module_cost.get("model")
         if module_cost.get("reference"):
             base.extras["estimator_reference"] = module_cost["reference"]
+        if module_cost.get("source") == "core-svp-spec-table":
+            base.extras["estimator_available"] = False
 
     if not module_cost:
         # Note refinement depending on estimator availability
