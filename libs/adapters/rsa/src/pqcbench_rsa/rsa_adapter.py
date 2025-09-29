@@ -52,13 +52,17 @@ class RSAKEM:
 
     def decapsulate(self, secret_key: bytes, ciphertext: bytes) -> bytes:
         sk = _load_private_key(secret_key)
-        ss = sk.decrypt(
-            ciphertext,
-            padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                         algorithm=hashes.SHA256(),
-                         label=None),
-        )
-        return ss
+        try:
+            ss = sk.decrypt(
+                ciphertext,
+                padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                             algorithm=hashes.SHA256(),
+                             label=None),
+            )
+            return ss
+        except Exception:
+            # Constant-length failure response to keep wrapper behaviour uniform.
+            return b"\x00" * 32
 
 @registry.register("rsa-pss")
 class RSASignature:

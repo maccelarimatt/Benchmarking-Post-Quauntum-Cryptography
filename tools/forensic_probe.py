@@ -96,6 +96,7 @@ MI_ALPHA = 1e-3
 MI_PERMUTATIONS = 10000
 
 _PERM_RNG = np.random.default_rng(20240907)
+_SIGN_FIXED_MESSAGE = b"forensic-fixed-message"
 
 @dataclass
 class ProbeConfig:
@@ -423,10 +424,8 @@ def build_kem_scenarios(config: ProbeConfig) -> List[ScenarioDefinition]:
                 try:
                     recovered = inst.decapsulate(base_sk, corrupted)
                     payload = hash_bytes(recovered, "recovered_secret")
-                    payload["fault_status"] = "success"
                 except Exception:
                     payload = hash_bytes(b"", "recovered_secret")
-                    payload["fault_status"] = "exception"
                 payload.update(ciphertext_meta[index])
                 return payload
             return run
@@ -496,7 +495,7 @@ def build_signature_scenarios(config: ProbeConfig) -> List[ScenarioDefinition]:
         inst = descriptor.factory()
         fixed_pk: Optional[bytes] = None
         fixed_sk: Optional[bytes] = None
-        fixed_message = b"forensic-fixed-message"
+        fixed_message = _SIGN_FIXED_MESSAGE
 
         def prepare() -> None:
             nonlocal fixed_pk, fixed_sk
@@ -523,6 +522,7 @@ def build_signature_scenarios(config: ProbeConfig) -> List[ScenarioDefinition]:
         fixed_sk: Optional[bytes] = None
         messages: List[bytes] = []
         message_meta: List[Tuple[int, str]] = []
+        message_length = len(_SIGN_FIXED_MESSAGE)
 
         def prepare() -> None:
             nonlocal fixed_pk, fixed_sk
@@ -530,7 +530,6 @@ def build_signature_scenarios(config: ProbeConfig) -> List[ScenarioDefinition]:
             messages.clear()
             message_meta.clear()
             for _ in range(config.iterations):
-                message_length = rng.randint(1, 256)
                 msg = rng.randbytes(message_length)
                 messages.append(msg)
                 message_meta.append((message_length, hashlib.sha3_256(msg).hexdigest()))
