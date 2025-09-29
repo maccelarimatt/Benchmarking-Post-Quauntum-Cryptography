@@ -119,13 +119,13 @@ messages, metadata logging). Remaining validation steps require manual runs:
    constant-time upstream releases (e.g., Kyber/HQC with division fixes, Falcon
    constant-time sampler) and re-run the probe. Compare against previous runs via
    `tools/forensic_report.py --baseline old.json`.
-2. **Collect hardware counters.** For local/co-resident attackers, wrap the probe
-   with `perf` (Linux) or equivalent:
-   ```bash
-   perf stat -x, -e cycles,instructions,branch-misses,cache-misses \
-     python tools/forensic_probe.py --alg kyber --iterations 500 --output results/kyber_perf.json
-   ```
-   Merge counter outputs with the JSON results during analysis.
+2. **Collect hardware counters.** For local/co-resident attackers, gather PMU
+   metrics using the platform’s tooling:
+   - **Linux:** `perf stat -x, -e cycles,instructions,branch-misses,cache-misses \
+       python tools/forensic_probe.py --alg kyber --iterations 500 --output results/kyber_perf.json`
+   - **macOS:** `xctrace record --template 'Time Profiler' --time-limit 60 --target python -- python tools/forensic_probe.py …`; alternative CLI utilities include `sample`, `spindump`, or `powermetrics`.
+   - **Windows:** capture with Windows Performance Recorder/Analyzer (`wpr -start CPU` …), Visual Studio Performance Profiler, or ETW-based tools (`xperf`).
+   Merge the resulting counter data into your analysis alongside the JSON output.
 3. **Replicate on independent hosts/sessions.** Run with different `--seed`
    values and on a second machine. Use the baseline comparison mode to ensure
    flagged leaks persist across runs.
