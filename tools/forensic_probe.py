@@ -26,6 +26,7 @@ except ImportError:  # pragma: no cover - Windows fallback
     resource = None  # type: ignore
 import pathlib
 import platform
+import importlib
 import random
 import shutil
 import statistics
@@ -253,6 +254,27 @@ def collect_host_metadata() -> Dict[str, Any]:
             for key in sorted(k for k in os.environ if k.startswith("PQCBENCH") or k.startswith("OQS") or k in {"OPENSSL_ia32cap", "PYTHONHASHSEED"})
         },
     }
+    try:
+        metadata["git"]["liboqs_commit"] = _read_git_commit(PROJECT_ROOT / "liboqs")
+    except Exception:
+        metadata["git"].setdefault("liboqs_commit", None)
+    try:
+        metadata["git"]["liboqs_python_commit"] = _read_git_commit(PROJECT_ROOT / "liboqs-python")
+    except Exception:
+        metadata["git"].setdefault("liboqs_python_commit", None)
+
+    package_versions: Dict[str, str] = {}
+    for package_name in ("numpy", "scipy", "psutil", "cryptography", "oqs"):
+        try:
+            module = importlib.import_module(package_name)
+        except ImportError:
+            continue
+        version = getattr(module, "__version__", None) or getattr(module, "VERSION", None)
+        if version is None and hasattr(module, "__about__"):
+            version = getattr(module.__about__, "__version__", None)
+        if version is not None:
+            package_versions[package_name] = str(version)
+    metadata["libraries"] = package_versions
     return metadata
 
 

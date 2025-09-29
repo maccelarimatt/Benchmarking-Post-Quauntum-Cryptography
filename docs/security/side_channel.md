@@ -110,6 +110,32 @@ secondary tests.
   both to fail before declaring leakage. Record all `host` metadata (CPU, kernel,
   governor, git commit).
 
+## Manual follow-up workflow
+
+Automated harness tweaks close the obvious gaps (uniform error paths, fixed-length
+messages, metadata logging). Remaining validation steps require manual runs:
+
+1. **Test patched or alternate implementations.** Rebuild the adapters against
+   constant-time upstream releases (e.g., Kyber/HQC with division fixes, Falcon
+   constant-time sampler) and re-run the probe. Compare against previous runs via
+   `tools/forensic_report.py --baseline old.json`.
+2. **Collect hardware counters.** For local/co-resident attackers, wrap the probe
+   with `perf` (Linux) or equivalent:
+   ```bash
+   perf stat -x, -e cycles,instructions,branch-misses,cache-misses \
+     python tools/forensic_probe.py --alg kyber --iterations 500 --output results/kyber_perf.json
+   ```
+   Merge counter outputs with the JSON results during analysis.
+3. **Replicate on independent hosts/sessions.** Run with different `--seed`
+   values and on a second machine. Use the baseline comparison mode to ensure
+   flagged leaks persist across runs.
+4. **Probe constant-time signer alternatives.** Swap in implementations that
+   advertise constant-time behaviour (e.g., pre-hashed RSA-PSS, constant-time
+   Falcon sampler) and re-run to observe effect-size changes.
+5. **Document environment versions.** The probe logs Python package versions and
+   git commits; include these when reporting results so reviewers can correlate
+   findings with specific backend revisions.
+
 ## Sanity tests supported
 
 - **Label shuffle**: recomputes statistics after randomising class labels;
