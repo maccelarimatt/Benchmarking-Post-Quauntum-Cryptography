@@ -233,6 +233,19 @@
               </td>
             </tr>
             {% endif %}
+            {% set val = a.meta.validation if a.meta and a.meta.validation else None %}
+            {% if val %}
+            <tr>
+              <td class="kv-label">Validation</td>
+              <td class="kv-value">
+                {% set status = val.status or '-' %}
+                {% set cases = val.cases if val.cases is not none else '-' %}
+                {% set passes = val.passes if val.passes is not none else '-' %}
+                {% set fails = val.fails if val.fails is not none else '-' %}
+                <span class="kv-sub">{{ status }}</span> — cases: {{ cases }}, passes: {{ passes }}, fails: {{ fails }}
+              </td>
+            </tr>
+            {% endif %}
           </tbody>
         </table>
       </div>
@@ -417,6 +430,222 @@
       </div>
     </div>
   </div>
+
+  <!-- Confidence Intervals and Min/Max tables -->
+  <div class="island">
+    <div class="stats-grid">
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:.5rem;">Timing 95% CI (ms)</div>
+        <table class="vlines">
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              {% set ops = ['keygen','encapsulate','decapsulate'] if compare.kind=='KEM' else ['keygen','sign','verify'] %}
+              {% for op in ops %}
+                <th>{{ op|capitalize }} CI95 (ms)</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in compare.algos %}
+            <tr>
+              <td>{{ a.label }}</td>
+              {% for op in ops %}
+                {% set s = a.ops.get(op) %}
+                <td>
+                  {% if s and s.ci95_low_ms is not none and s.ci95_high_ms is not none %}
+                    {{ '%.3f'|format(s.ci95_low_ms) }} – {{ '%.3f'|format(s.ci95_high_ms) }}
+                  {% else %}-{% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:.5rem;">Memory 95% CI (KB)</div>
+        <table class="vlines">
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              {% set ops = ['keygen','encapsulate','decapsulate'] if compare.kind=='KEM' else ['keygen','sign','verify'] %}
+              {% for op in ops %}
+                <th>{{ op|capitalize }} CI95 (KB)</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in compare.algos %}
+            <tr>
+              <td>{{ a.label }}</td>
+              {% for op in ops %}
+                {% set s = a.ops.get(op) %}
+                <td>
+                  {% if s and s.mem_ci95_low_kb is not none and s.mem_ci95_high_kb is not none %}
+                    {{ '%.2f'|format(s.mem_ci95_low_kb) }} – {{ '%.2f'|format(s.mem_ci95_high_kb) }}
+                  {% else %}-{% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:.5rem;">Timing Min/Max/Range (ms)</div>
+        <table class="vlines">
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              {% set ops = ['keygen','encapsulate','decapsulate'] if compare.kind=='KEM' else ['keygen','sign','verify'] %}
+              {% for op in ops %}
+                <th>{{ op|capitalize }} (min/max/range)</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in compare.algos %}
+            <tr>
+              <td>{{ a.label }}</td>
+              {% for op in ops %}
+                {% set s = a.ops.get(op) %}
+                <td>
+                  {% if s %}
+                    {{ '%.3f'|format(s.min_ms) }} / {{ '%.3f'|format(s.max_ms) }} / {{ '%.3f'|format(s.range_ms) }}
+                  {% else %}-{% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:.5rem;">Memory Min/Max/Range (KB)</div>
+        <table class="vlines">
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              {% set ops = ['keygen','encapsulate','decapsulate'] if compare.kind=='KEM' else ['keygen','sign','verify'] %}
+              {% for op in ops %}
+                <th>{{ op|capitalize }} (min/max/range)</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in compare.algos %}
+            <tr>
+              <td>{{ a.label }}</td>
+              {% for op in ops %}
+                {% set s = a.ops.get(op) %}
+                <td>
+                  {% if s and s.mem_min_kb is not none and s.mem_max_kb is not none and s.mem_range_kb is not none %}
+                    {{ '%.2f'|format(s.mem_min_kb) }} / {{ '%.2f'|format(s.mem_max_kb) }} / {{ '%.2f'|format(s.mem_range_kb) }}
+                  {% else %}-{% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Benchmark Environment summary (from first algorithm) -->
+  <div class="island">
+    <div class="card card--full">
+      <div style="font-weight:700; margin-bottom:.5rem;">Benchmark Environment</div>
+      {% set ns = namespace(env=None, done=false) %}
+      {% for a in compare.algos %}
+        {% if not ns.done and a.meta and a.meta.environment %}
+          {% set ns.env = a.meta.environment %}
+          {% set ns.done = true %}
+        {% endif %}
+      {% endfor %}
+      {% set env = ns.env %}
+      {% if env %}
+        <div class="grid" style="gap:.75rem;">
+          <div class="card">
+            <div style="font-weight:600; margin-bottom:.35rem;">Host</div>
+            <table class="kv">
+              <tbody>
+                <tr><td class="kv-label">CPU</td><td class="kv-value">{{ env.cpu_model or '-' }}</td></tr>
+                <tr><td class="kv-label">OS</td><td class="kv-value">{{ env.os or '-' }}</td></tr>
+                <tr><td class="kv-label">Python</td><td class="kv-value">{{ env.python or '-' }}</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div style="font-weight:600; margin-bottom:.35rem;">Dependencies</div>
+            {% set deps = env.dependencies if env.dependencies else None %}
+            {% if deps %}
+            <table class="kv"><tbody>
+              {% for k, v in deps.items() %}
+                {% set v_str = v|string %}
+                <tr>
+                  <td class="kv-label">{{ k }}</td>
+                  <td class="kv-value kv-mono">
+                    <span title="{{ v_str }}">{{ v_str[:12] }}{% if v_str|length > 12 %}…{% endif %}</span>
+                    <button type="button" data-copy="{{ v_str }}" style="margin-left:.5rem; padding:.2rem .5rem; font-size:.75rem; border-radius:.35rem; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.25); color:#fff;">Copy</button>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody></table>
+            {% else %}
+              <div class="kv-sub">No dependency metadata recorded.</div>
+            {% endif %}
+          </div>
+          <div class="card">
+            <div style="font-weight:600; margin-bottom:.35rem;">Build Flags</div>
+            {% set bf = env.build_flags if env.build_flags else None %}
+            {% if bf %}
+              {% for k, flags in bf.items() %}
+                {% set block_id = 'bf_' ~ loop.index0 ~ '_' ~ k %}
+                <details style="margin:.35rem 0;">
+                  <summary style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:.5rem;">
+                    <span>{{ k }} <span class="kv-sub">({{ flags|length }} entries)</span></span>
+                    <button type="button" data-copy-target="{{ block_id }}" style="padding:.25rem .6rem; font-size:.78rem; border-radius:.35rem; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.25); color:#fff;">Copy JSON</button>
+                  </summary>
+                  <pre id="{{ block_id }}" style="margin-top:.35rem; background:rgba(0,0,0,0.3); padding:.6rem .7rem; border-radius:.5rem; max-height:220px; overflow:auto;">{{ flags | tojson(indent=2) }}</pre>
+                </details>
+              {% endfor %}
+            {% else %}
+              <div class="kv-sub">No build flags recorded.</div>
+            {% endif %}
+          </div>
+        </div>
+      {% else %}
+        <div class="kv-sub">Environment metadata unavailable.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    // Lightweight copy helpers for environment cards
+    (function(){
+      function copyText(txt){
+        if (!txt) return;
+        try { navigator.clipboard.writeText(txt); } catch(e) { /* ignore */ }
+      }
+      function copyFromEl(id){
+        var el = document.getElementById(id);
+        if (!el) return;
+        var t = el.innerText || el.textContent || '';
+        copyText(t);
+      }
+      document.addEventListener('click', function(ev){
+        var btn = ev.target;
+        if (btn && btn.getAttribute) {
+          var v = btn.getAttribute('data-copy');
+          if (v != null) { copyText(v); }
+          var id = btn.getAttribute('data-copy-target');
+          if (id) { copyFromEl(id); }
+        }
+      }, false);
+    })();
+  </script>
 
   <!-- Additional statistics tables moved into the island above -->
 
@@ -749,6 +978,95 @@
       }
       cb.addEventListener('change', update);
       update();
+    })();
+  </script>
+
+  <!-- Projected runtimes (runtime scaling) -->
+  <div class="island">
+    <div class="card card--full">
+      <div style="font-weight:700; margin-bottom:.5rem;">Projected Runtimes (by device)</div>
+      <div id="runtime-charts" class="grid"></div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const data = {{ compare|tojson }};
+      const ops = data.kind === 'KEM' ? ['keygen','encapsulate','decapsulate'] : ['keygen','sign','verify'];
+      const host = document.getElementById('runtime-charts');
+      if (!host) return;
+      // Collect available target devices across algos/ops
+      const deviceSet = new Set();
+      for (const a of (data.algos||[])) {
+        for (const op of ops) {
+          const s = a.ops && a.ops[op];
+          const rs = s && s.runtime_scaling;
+          if (rs && rs.predictions) {
+            Object.keys(rs.predictions).forEach(k => deviceSet.add(k));
+          }
+        }
+      }
+      const devices = Array.from(deviceSet);
+      if (!devices.length) {
+        const msg = document.createElement('div');
+        msg.className = 'kv-sub';
+        msg.textContent = 'Runtime scaling unavailable (no device predictions).';
+        host.appendChild(msg);
+        return;
+      }
+      // Prefer MCU targets if present
+      const preferred = ['esp32_s3','nrf52840'];
+      const chosen = [];
+      for (const p of preferred) if (devices.includes(p)) chosen.push(p);
+      for (const d of devices) if (chosen.length < 2 && !chosen.includes(d)) chosen.push(d);
+      const palette = ['#1fb6b8','#ffd166','#4d9dff'];
+      function addDeviceChart(device){
+        const wrap = document.createElement('div');
+        wrap.className = 'card';
+        const title = document.createElement('div');
+        title.style.fontWeight = '600';
+        title.style.marginBottom = '.25rem';
+        title.textContent = `Device: ${device}`;
+        wrap.appendChild(title);
+        const canvas = document.createElement('canvas');
+        canvas.style.width = '100%';
+        canvas.style.height = '260px';
+        wrap.appendChild(canvas);
+        // Labels are algorithm display names
+        const labels = (data.algos||[]).map(a => a.label || a.name || '?');
+        const datasets = ops.map((op, idx) => {
+          const series = [];
+          for (const a of (data.algos||[])) {
+            const rs = a.ops && a.ops[op] && a.ops[op].runtime_scaling;
+            const pred = rs && rs.predictions && rs.predictions[device];
+            series.push(pred && typeof pred.predicted_ms === 'number' ? pred.predicted_ms : null);
+          }
+          return {
+            label: op.charAt(0).toUpperCase()+op.slice(1),
+            data: series,
+            backgroundColor: palette[idx % palette.length],
+          };
+        });
+        try {
+          const ctx = canvas.getContext('2d');
+          new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets },
+            options: {
+              responsive: true,
+              scales: {
+                y: { beginAtZero: true, title: { display: true, text: 'ms' }, ticks:{ color:'#fff' } },
+                x: { ticks:{ color:'#fff' } }
+              },
+              plugins: { legend: { position:'bottom', labels:{ color:'#fff', usePointStyle:true, boxWidth:10, boxHeight:10 } } },
+              animation: false,
+              normalized: true,
+            }
+          });
+        } catch (e) {}
+        host.appendChild(wrap);
+      }
+      chosen.slice(0,2).forEach(addDeviceChart);
     })();
   </script>
 

@@ -389,6 +389,47 @@
               {% endfor %}
             </tbody>
           </table>
+          <!-- Confidence intervals for timings/memory -->
+          <div style="margin-top:.75rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:.75rem;">
+            <div style="background:rgba(0,0,0,.2); padding:.6rem .7rem; border-radius:.5rem;">
+              <div style="font-weight:700; margin-bottom:.45rem;">Timing 95% CI (ms)</div>
+              <table style="width:100%;">
+                <thead>
+                  <tr style="border-bottom:1px solid rgba(255,255,255,.15);"><th style="text-align:left; padding:.25rem 0;">Op</th><th style="text-align:right; padding:.25rem 0;">Low – High</th></tr>
+                </thead>
+                <tbody>
+                  {% for op in op_order %}
+                  {% set row = result_json.ops.get(op) %}
+                  {% if row %}
+                  <tr style="border-bottom:1px dashed rgba(255,255,255,.1);">
+                    <td style="padding:.25rem 0; text-transform:capitalize;">{{ op }}</td>
+                    <td style="padding:.25rem 0; text-align:right;">{% if row.ci95_low_ms is not none and row.ci95_high_ms is not none %}{{ (row.ci95_low_ms)|round(3) }} – {{ (row.ci95_high_ms)|round(3) }}{% else %}-{% endif %}</td>
+                  </tr>
+                  {% endif %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <div style="background:rgba(0,0,0,.2); padding:.6rem .7rem; border-radius:.5rem;">
+              <div style="font-weight:700; margin-bottom:.45rem;">Memory 95% CI (KB)</div>
+              <table style="width:100%;">
+                <thead>
+                  <tr style="border-bottom:1px solid rgba(255,255,255,.15);"><th style="text-align:left; padding:.25rem 0;">Op</th><th style="text-align:right; padding:.25rem 0;">Low – High</th></tr>
+                </thead>
+                <tbody>
+                  {% for op in op_order %}
+                  {% set row = result_json.ops.get(op) %}
+                  {% if row and row.mem_ci95_low_kb is not none and row.mem_ci95_high_kb is not none %}
+                  <tr style="border-bottom:1px dashed rgba(255,255,255,.1);">
+                    <td style="padding:.25rem 0; text-transform:capitalize;">{{ op }}</td>
+                    <td style="padding:.25rem 0; text-align:right;">{{ (row.mem_ci95_low_kb)|round(2) }} – {{ (row.mem_ci95_high_kb)|round(2) }}</td>
+                  </tr>
+                  {% endif %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
         <div style="flex:1 1 320px; background:rgba(0,0,0,.25); padding:1rem; border-radius:.75rem;">
           <div style="font-size:1.1rem; font-weight:700; margin-bottom:.75rem;">Metadata</div>
@@ -411,6 +452,60 @@
               {% endfor %}
             </tbody>
           </table>
+          {% set env = result_json.meta.get('environment') if result_json.meta else None %}
+          {% if env %}
+          <details style="margin-top:.6rem;">
+            <summary style="cursor:pointer;">Environment</summary>
+            <div style="margin-top:.5rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:.6rem;">
+              <div style="background:rgba(0,0,0,.2); padding:.6rem .7rem; border-radius:.5rem;">
+                <div style="font-weight:600; margin-bottom:.35rem;">Host</div>
+                <table style="width:100%"><tbody>
+                  <tr><td style="opacity:.9;">CPU</td><td style="text-align:right; font-weight:600;">{{ env.cpu_model or '-' }}</td></tr>
+                  <tr><td style="opacity:.9;">OS</td><td style="text-align:right; font-weight:600;">{{ env.os or '-' }}</td></tr>
+                  <tr><td style="opacity:.9;">Python</td><td style="text-align:right; font-weight:600;">{{ env.python or '-' }}</td></tr>
+                </tbody></table>
+              </div>
+              <div style="background:rgba(0,0,0,.2); padding:.6rem .7rem; border-radius:.5rem;">
+                <div style="font-weight:600; margin-bottom:.35rem;">Dependencies</div>
+                {% set deps = env.dependencies if env.dependencies else None %}
+                {% if deps %}
+                  <table style="width:100%"><tbody>
+                  {% for k, v in deps.items() %}
+                    {% set v_str = v|string %}
+                    <tr>
+                      <td style="opacity:.9;">{{ k }}</td>
+                      <td style="text-align:right; font-weight:600;" class="kv-mono">
+                        <span title="{{ v_str }}">{{ v_str[:12] }}{% if v_str|length > 12 %}…{% endif %}</span>
+                        <button type="button" data-copy="{{ v_str }}" style="margin-left:.5rem; padding:.2rem .5rem; font-size:.75rem; border-radius:.35rem; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.25); color:#fff;">Copy</button>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                  </tbody></table>
+                {% else %}
+                  <div class="kv-sub">No dependency metadata recorded.</div>
+                {% endif %}
+              </div>
+              <div style="background:rgba(0,0,0,.2); padding:.6rem .7rem; border-radius:.5rem;">
+                <div style="font-weight:600; margin-bottom:.35rem;">Build Flags</div>
+                {% set bf = env.build_flags if env.build_flags else None %}
+                {% if bf %}
+                  {% for k, flags in bf.items() %}
+                    {% set block_id = 'bf_single_' ~ loop.index0 ~ '_' ~ k %}
+                    <details style="margin:.35rem 0;">
+                      <summary style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:.5rem;">
+                        <span>{{ k }} <span class="kv-sub">({{ flags|length }} entries)</span></span>
+                        <button type="button" data-copy-target="{{ block_id }}" style="padding:.25rem .6rem; font-size:.78rem; border-radius:.35rem; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.25); color:#fff;">Copy JSON</button>
+                      </summary>
+                      <pre id="{{ block_id }}" style="white-space:pre-wrap; margin:.4rem 0 0 0; max-height:220px; overflow:auto;">{{ flags | tojson(indent=2) }}</pre>
+                    </details>
+                  {% endfor %}
+                {% else %}
+                  <div class="kv-sub">No build flags recorded.</div>
+                {% endif %}
+              </div>
+            </div>
+          </details>
+          {% endif %}
           {% if last_export %}
             <div style="margin-top:.75rem; font-size:.9rem;">Saved as: <code>{{ last_export }}</code></div>
           {% endif %}
@@ -508,6 +603,14 @@
         <div id="mem-charts" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1rem; margin-top:.75rem;"></div>
       </div>
 
+      <!-- Projected runtimes (runtime scaling) -->
+      <div style="background:rgba(0,0,0,.25); padding:1rem; border-radius:.75rem; margin-top:.75rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+          <div style="font-size:1.1rem; font-weight:700;">Projected Runtimes (by device)</div>
+        </div>
+        <div id="runtime-charts" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1rem; margin-top:.75rem;"></div>
+      </div>
+
       {% if last_export %}
       <div style="background:rgba(0,0,0,.25); padding:1rem; border-radius:.75rem;">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
@@ -566,6 +669,7 @@
       const result = {{ (result_json or {})|tojson }};
       const chartsEl = document.getElementById('charts');
       const memChartsEl = document.getElementById('mem-charts');
+      const runtimeHost = document.getElementById('runtime-charts');
       const autoScaleY = document.getElementById('autoscale-y');
       const trimCtl = document.getElementById('trim-outliers');
       const charts = [];
@@ -751,6 +855,71 @@
               } catch (e) {}
             });
           }
+          // Runtime scaling charts (if any)
+          if (runtimeHost && result && result.ops) {
+            runtimeHost.innerHTML = '';
+            const opOrder = (result.kind === 'KEM') ? ['keygen','encapsulate','decapsulate'] : ['keygen','sign','verify'];
+            // Collect devices
+            const deviceSet = new Set();
+            for (const op of opOrder) {
+              const row = result.ops[op];
+              const rs = row && row.runtime_scaling;
+              if (rs && rs.predictions) Object.keys(rs.predictions).forEach(k => deviceSet.add(k));
+            }
+            const devices = Array.from(deviceSet);
+            if (devices.length) {
+              const preferred = ['esp32_s3','nrf52840'];
+              const chosen = [];
+              for (const p of preferred) if (devices.includes(p)) chosen.push(p);
+              for (const d of devices) if (chosen.length < 2 && !chosen.includes(d)) chosen.push(d);
+              const palette = ['#1fb6b8','#ffd166','#4d9dff'];
+              function addDeviceChart(device) {
+                const wrap = document.createElement('div');
+                wrap.className = 'chart-card';
+                const title = document.createElement('div');
+                title.textContent = `Device: ${device}`; title.className = 'chart-title';
+                wrap.appendChild(title);
+                const canvas = document.createElement('canvas');
+                canvas.className = 'chart-canvas';
+                wrap.appendChild(canvas);
+                runtimeHost.appendChild(wrap);
+                const labels = opOrder.map(op => op.charAt(0).toUpperCase()+op.slice(1));
+                const values = opOrder.map(op => {
+                  const row = result.ops[op];
+                  const rs = row && row.runtime_scaling;
+                  const pred = rs && rs.predictions && rs.predictions[device];
+                  return pred && typeof pred.predicted_ms === 'number' ? pred.predicted_ms : null;
+                });
+                requestAnimationFrame(() => {
+                  const rect = wrap.getBoundingClientRect();
+                  const pxW = Math.max(260, Math.floor(rect.width) || Math.floor(runtimeHost.clientWidth/2) || 320);
+                  const pxH = 150;
+                  canvas.width = pxW; canvas.height = pxH; canvas.style.width = pxW+'px'; canvas.style.height = pxH+'px';
+                  const chart = new Chart(canvas.getContext('2d'), {
+                    type: 'bar',
+                    data: { labels, datasets: [{ label: 'ms', data: values, backgroundColor: palette[0] }] },
+                    options: {
+                      responsive: false,
+                      scales: {
+                        x: { grid:{ color:'rgba(255,255,255,.08)' }, ticks:{ color:'#fff' } },
+                        y: { beginAtZero:true, title:{ display:true, text:'ms' }, grid:{ color:'rgba(255,255,255,.08)' }, ticks:{ color:'#fff' } },
+                      },
+                      plugins: { legend: { display:false } },
+                      animation: false,
+                      normalized: true,
+                    }
+                  });
+                  charts.push(chart);
+                });
+              }
+              chosen.slice(0,2).forEach(addDeviceChart);
+            } else {
+              const msg = document.createElement('div');
+              msg.className = 'kv-sub';
+              msg.textContent = 'Runtime scaling unavailable (no device predictions).';
+              runtimeHost.appendChild(msg);
+            }
+          }
           // After all charts are queued, schedule a further repaint
           requestAnimationFrame(() => setTimeout(repaintAll, 220));
           // Observe size changes and repaint
@@ -766,6 +935,18 @@
       if (trimCtl) trimCtl.addEventListener('change', refresh);
       window.addEventListener('load', () => setTimeout(repaintAll, 200));
       refresh();
+    })();
+  </script>
+  <script>
+    // Copy helpers for environment panel
+    (function(){
+      function copyText(txt){ try { navigator.clipboard.writeText(txt); } catch(e) {} }
+      function copyFromEl(id){ var el=document.getElementById(id); if(!el) return; var t=el.innerText||el.textContent||''; copyText(t); }
+      document.addEventListener('click', function(ev){
+        var el = ev.target; if (!el || !el.getAttribute) return;
+        var v = el.getAttribute('data-copy'); if (v!=null) copyText(v);
+        var id = el.getAttribute('data-copy-target'); if (id) copyFromEl(id);
+      }, false);
     })();
   </script>
 </body>
