@@ -1006,7 +1006,7 @@
           }
         }
       }
-      const devices = Array.from(deviceSet);
+      const devices = Array.from(deviceSet).sort();
       if (!devices.length) {
         const msg = document.createElement('div');
         msg.className = 'kv-sub';
@@ -1014,11 +1014,6 @@
         host.appendChild(msg);
         return;
       }
-      // Prefer MCU targets if present
-      const preferred = ['esp32_s3','nrf52840'];
-      const chosen = [];
-      for (const p of preferred) if (devices.includes(p)) chosen.push(p);
-      for (const d of devices) if (chosen.length < 2 && !chosen.includes(d)) chosen.push(d);
       const palette = ['#1fb6b8','#ffd166','#4d9dff'];
       function addDeviceChart(device){
         const wrap = document.createElement('div');
@@ -1066,9 +1061,61 @@
         } catch (e) {}
         host.appendChild(wrap);
       }
-      chosen.slice(0,2).forEach(addDeviceChart);
+      devices.forEach(addDeviceChart);
     })();
   </script>
+
+  <!-- Brute-Force Baseline (educational) -->
+  <div class="island">
+    <div class="card card--full">
+      <div style="font-weight:700; margin-bottom:.5rem;">Brute-Force Baseline (educational)</div>
+      <div class="grid">
+        {% for a in compare.algos %}
+        {% set s = a.security if a.security else {} %}
+        {% set bf = s.bruteforce if s and s.bruteforce else None %}
+        <div class="card" style="min-width:260px;">
+          <div style="font-weight:700; margin-bottom:.35rem;">{{ a.label }}</div>
+          {% if bf %}
+            <table class="kv"><tbody>
+              <tr><td class="kv-label">Model</td><td class="kv-value">{{ bf.model }}</td></tr>
+              <tr><td class="kv-label">Search space</td><td class="kv-value">2^{{ '%.0f'|format(bf.space_bits) if bf.space_bits is number else bf.space_bits }}</td></tr>
+              <tr><td class="kv-label">Rate unit</td><td class="kv-value">{{ bf.rate_unit }}</td></tr>
+            </tbody></table>
+            <div style="margin-top:.5rem; font-weight:600;">Time to succeed (years)</div>
+            <table class="vlines" style="margin-top:.25rem;">
+              <thead>
+                <tr>
+                  <th style="text-align:left;">Rate</th>
+                  <th>Years</th>
+                  <th>log10</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for rate in bf.rates %}
+                {% set key = (rate|string) %}
+                {% set row = bf.time_years[key] if bf.time_years and key in bf.time_years else None %}
+                <tr>
+                  <td style="text-align:left;">
+                    {% if bf.rate_unit == 'cores' %}{{ rate|int }} cores{% else %}{{ '%.0e'|format(rate) }} t/s{% endif %}
+                  </td>
+                  <td>{% if row and row.sci %}{{ row.sci }}{% else %}-{% endif %}</td>
+                  <td>{% if row and row.log10 is not none %}{{ '%.2f'|format(row.log10) }}{% else %}-{% endif %}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% if bf.assumptions and bf.assumptions.rationale %}
+              <div class="kv-sub" style="margin-top:.35rem;">{{ bf.assumptions.rationale }}</div>
+            {% endif %}
+          {% else %}
+            <div class="kv-sub">No brute-force baseline available.</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="kv-sub" style="margin-top:.5rem; opacity:.85;">Note: This baseline is educational. Real parameters are astronomically out of reach; see docs/security/BRUTEFORCE.md.</div>
+    </div>
+  </div>
 
   <script>
     (function(){

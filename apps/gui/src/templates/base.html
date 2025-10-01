@@ -562,6 +562,39 @@
                   <div>Available: {{ 'Yes' if estimator.available else 'No' }}</div>
                 </div>
               {% endif %}
+              {% set bf = security.bruteforce if security.bruteforce else None %}
+              {% if bf %}
+                <div style="margin-top:.75rem;">
+                  <div style="font-weight:700; margin-bottom:.35rem;">Brute-Force Baseline</div>
+                  <table style="width:100%; border-collapse:collapse;">
+                    <tbody>
+                      <tr style="border-bottom:1px dashed rgba(255,255,255,.15);"><td style="padding:.35rem .2rem; opacity:.9;">Model</td><td style="padding:.35rem .2rem; font-weight:600; text-align:right;">{{ bf.model }}</td></tr>
+                      <tr style="border-bottom:1px dashed rgba(255,255,255,.15);"><td style="padding:.35rem .2rem; opacity:.9;">Search space</td><td style="padding:.35rem .2rem; font-weight:600; text-align:right;">2^{{ '%.0f'|format(bf.space_bits) if bf.space_bits is number else bf.space_bits }}</td></tr>
+                      <tr style="border-bottom:1px dashed rgba(255,255,255,.15);"><td style="padding:.35rem .2rem; opacity:.9;">Rate unit</td><td style="padding:.35rem .2rem; font-weight:600; text-align:right;">{{ bf.rate_unit }}</td></tr>
+                    </tbody>
+                  </table>
+                  <div style="margin-top:.35rem;"><span class="kv-sub">Time to succeed (years)</span></div>
+                  <table class="vlines" style="margin-top:.25rem;">
+                    <thead>
+                      <tr><th style="text-align:left;">Rate</th><th>Years</th><th>log10</th></tr>
+                    </thead>
+                    <tbody>
+                      {% for rate in bf.rates %}
+                        {% set key = (rate|string) %}
+                        {% set row = bf.time_years[key] if bf.time_years and key in bf.time_years else None %}
+                        <tr>
+                          <td style="text-align:left;">{% if bf.rate_unit == 'cores' %}{{ rate|int }} cores{% else %}{{ '%.0e'|format(rate) }} t/s{% endif %}</td>
+                          <td>{% if row and row.sci %}{{ row.sci }}{% else %}-{% endif %}</td>
+                          <td>{% if row and row.log10 is not none %}{{ '%.2f'|format(row.log10) }}{% else %}-{% endif %}</td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                  {% if bf.assumptions and bf.assumptions.rationale %}
+                    <div class="kv-sub" style="margin-top:.35rem;">{{ bf.assumptions.rationale }}</div>
+                  {% endif %}
+                </div>
+              {% endif %}
               {% set extras = [
                 ('Parameters', 'parameters'),
                 ('Resources', 'resources'),
@@ -866,12 +899,8 @@
               const rs = row && row.runtime_scaling;
               if (rs && rs.predictions) Object.keys(rs.predictions).forEach(k => deviceSet.add(k));
             }
-            const devices = Array.from(deviceSet);
+            const devices = Array.from(deviceSet).sort();
             if (devices.length) {
-              const preferred = ['esp32_s3','nrf52840'];
-              const chosen = [];
-              for (const p of preferred) if (devices.includes(p)) chosen.push(p);
-              for (const d of devices) if (chosen.length < 2 && !chosen.includes(d)) chosen.push(d);
               const palette = ['#1fb6b8','#ffd166','#4d9dff'];
               function addDeviceChart(device) {
                 const wrap = document.createElement('div');
@@ -912,7 +941,7 @@
                   charts.push(chart);
                 });
               }
-              chosen.slice(0,2).forEach(addDeviceChart);
+              devices.forEach(addDeviceChart);
             } else {
               const msg = document.createElement('div');
               msg.className = 'kv-sub';
