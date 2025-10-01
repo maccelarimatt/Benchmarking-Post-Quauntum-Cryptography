@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Image Encryption (PQC)</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" sizes="any" />
+  <link rel="mask-icon" href="/static/favicon.svg" color="#1fb6b8" />
+  <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
+  <meta name="theme-color" content="#0b0f14" />
+  <style>
+    :root { --island-bg: rgba(38,41,45,.92); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
+    body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
+    .island { background:var(--island-bg); border-radius:var(--island-radius); padding:1.25rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 1.6vh auto; box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+    .btn, button, input[type="submit"], a.btn { display:inline-block; padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; text-decoration:none; box-shadow: 0 4px 14px rgba(31,182,184,.25); transition: background-color .2s ease, filter .15s ease, box-shadow .2s ease; }
+    .btn:hover, button:hover, input[type="submit"]:hover, a.btn:hover { filter: brightness(0.92); box-shadow: 0 6px 18px rgba(31,182,184,.32); }
+    label { display:block; margin:.4rem 0 .25rem 0; }
+    input[type="file"], select { width:100%; padding:.6rem .7rem; border-radius:.6rem; border:1px solid rgba(255,255,255,.35); background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.94)); color:#111; }
+    .row { display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 820px) { .row { grid-template-columns: 1fr; } }
+    .muted { opacity:.92; }
+    textarea { width:100%; min-height: 120px; border-radius:.6rem; padding:.6rem .7rem; resize: vertical; border:1px solid rgba(255,255,255,.35); background: rgba(0,0,0,.25); color:#fff; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
+  </style>
+  <script>
+    function copySecret() {
+      try {
+        const el = document.getElementById('sk-b64');
+        el.select();
+        document.execCommand('copy');
+      } catch (e) {}
+    }
+  </script>
+</head>
+<body>
+  <div class="island" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+    <div>
+      <div style="font-size:1.6rem; font-weight:800;">Image Encryption (PQC)</div>
+      <div class="muted">Encrypt an image using a PQC KEM-derived keystream.</div>
+    </div>
+    <div>
+      <a href="/" class="btn">Back to home</a>
+    </div>
+  </div>
+
+  <div class="island">
+    <form method="post" enctype="multipart/form-data">
+      <div class="row">
+        <div>
+          <label for="algo">Algorithm (KEM)</label>
+          <select id="algo" name="algo" required>
+            <option value="" disabled {% if not selected_algo %}selected{% endif %}>Select algorithm</option>
+            {% for n in kem_algos %}
+              <option value="{{ n }}" {% if selected_algo==n %}selected{% endif %}>{{ n }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="image">Image file</label>
+          <input type="file" id="image" name="image" accept="image/*" required />
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:.6rem; margin-top:1rem;">
+        <input type="submit" class="btn" value="Encrypt Image" />
+      </div>
+    </form>
+  </div>
+
+  {% if error %}
+    <div class="island" style="background: rgba(128, 0, 32, .65); border: 1px solid rgba(255,255,255,.18);">
+      <div><strong>Error:</strong> {{ error }}</div>
+    </div>
+  {% endif %}
+
+  {% if result %}
+  <div class="island">
+    <div style="font-weight:700; margin-bottom:.35rem;">Encrypted Output</div>
+    <div class="muted">Algorithm: <code>{{ result.algo }}</code></div>
+    <div style="margin-top:.6rem; display:flex; gap:.75rem; flex-wrap:wrap;">
+      <a class="btn" href="/{{ result.enc_path }}" download>Download encrypted file</a>
+      <a class="btn" href="/{{ result.meta_path }}" target="_blank">View metadata (JSON)</a>
+    </div>
+    <div style="margin-top:1rem;">
+      <div style="font-weight:600; margin-bottom:.35rem;">Secret key (base64)</div>
+      <textarea id="sk-b64" readonly>{{ result.secret_key_b64 }}</textarea>
+      <div style="display:flex; justify-content:flex-end; gap:.5rem; margin-top:.5rem;">
+        <button type="button" class="btn" onclick="copySecret()">Copy</button>
+      </div>
+      <div class="muted" style="margin-top:.6rem;">Keep this secret key safe; it is needed to decapsulate and decrypt.</div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if result and (result.pk_img_path or result.sk_img_path or result.ct_img_path or result.enc_visual_path) %}
+  <div class="island">
+    <div style="font-weight:700; margin-bottom:.6rem;">Visualizations</div>
+    {% if result.vis_error %}
+      <div class="muted" style="margin-bottom:.6rem; color:#ffd1d1;">{{ result.vis_error }}</div>
+    {% endif %}
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; align-items:start;">
+      {% if result.pk_img_path %}
+      <div>
+        <div style="font-weight:600; margin-bottom:.35rem;">Public Key Visualization</div>
+        <img src="/{{ result.pk_img_path }}" alt="Public key visualization" style="width:100%; height:auto; border-radius:.5rem; border:1px solid rgba(255,255,255,.2);" />
+        {% if result.pk_entropy is not none %}
+          <div class="muted" style="margin-top:.35rem;">Entropy: {{ '%.3f'|format(result.pk_entropy) }} bits/byte</div>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% if result.sk_img_path %}
+      <div>
+        <div style="font-weight:600; margin-bottom:.35rem;">Secret Key Visualization</div>
+        <img src="/{{ result.sk_img_path }}" alt="Secret key visualization" style="width:100%; height:auto; border-radius:.5rem; border:1px solid rgba(255,255,255,.2);" />
+        {% if result.sk_entropy is not none %}
+          <div class="muted" style="margin-top:.35rem;">Entropy: {{ '%.3f'|format(result.sk_entropy) }} bits/byte</div>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% if result.ct_img_path %}
+      <div>
+        <div style="font-weight:600; margin-bottom:.35rem;">Ciphertext Visualization</div>
+        <img src="/{{ result.ct_img_path }}" alt="Ciphertext visualization" style="width:100%; height:auto; border-radius:.5rem; border:1px solid rgba(255,255,255,.2);" />
+        {% if result.ct_entropy is not none %}
+          <div class="muted" style="margin-top:.35rem;">Entropy: {{ '%.3f'|format(result.ct_entropy) }} bits/byte</div>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% if result.enc_visual_path %}
+      <div>
+        <div style="font-weight:600; margin-bottom:.35rem;">Encrypted Image (Pixel XOR)</div>
+        <img src="/{{ result.enc_visual_path }}" alt="Encrypted image visualization" style="width:100%; height:auto; border-radius:.5rem; border:1px solid rgba(255,255,255,.2);" />
+        {% if result.enc_entropy is not none %}
+          <div class="muted" style="margin-top:.35rem;">Entropy: {{ '%.3f'|format(result.enc_entropy) }} bits/byte</div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</body>
+</html>

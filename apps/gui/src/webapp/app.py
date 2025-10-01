@@ -22,6 +22,10 @@ from typing import Dict, Any, Mapping, Optional
 import threading
 import time
 import uuid
+import secrets
+import hashlib
+import io
+import math
 
 
 _HERE = Path(__file__).resolve()
@@ -1261,6 +1265,154 @@ def favicon_redirect():
     except Exception:
         # As a last resort, return 204 to avoid 404 spam in logs
         return ("", 204)
+
+
+# Optional imaging support
+try:
+    from PIL import Image  # type: ignore
+    _PIL_AVAILABLE = True
+except Exception:
+    Image = None  # type: ignore
+    _PIL_AVAILABLE = False
+
+
+@app.route("/image-encryption", methods=["GET", "POST"])
+def image_encryption():
+    """Simple image encryption demo using a PQC KEM-derived keystream.
+
+    Flow (Encrypt):
+      - Choose a KEM (e.g., Kyber)
+      - Generate ephemeral keypair (pk, sk)
+      - Encapsulate to pk -> (ct, ss)
+      - Derive keystream via SHAKE-256 keyed by (ss || nonce)
+      - XOR keystream with image bytes
+
+    Outputs:
+      - Encrypted image written to results/<id>.bin
+      - Metadata (without secret key) written to results/<id>.json
+      - Secret key is shown inline as base64 so the user can copy/store it
+    """
+    _ensure_adapters_loaded()
+    kinds = _algo_kinds()
+    kem_algos = [n for n, k in kinds.items() if k == "KEM"]
+    error = None
+    result: dict[str, Any] | None = None
+
+    if request.method == "POST":
+        algo_name = (request.form.get("algo") or "").strip()
+        file = request.files.get("image")
+        if not algo_name or algo_name not in kinds or kinds.get(algo_name) != "KEM":
+            error = "Please select a valid KEM algorithm."
+        elif not file or not getattr(file, "filename", ""):
+            error = "Please choose an image file to encrypt."
+        else:
+            try:
+                algo_cls = registry.get(algo_name)
+                algo = algo_cls()
+                pk, sk = algo.keygen()
+                ct, ss = algo.encapsulate(pk)
+
+                file_bytes = file.read()
+                if not file_bytes:
+                    raise ValueError("Uploaded file is empty")
+
+                # Derive a nonce and keystream via SHAKE-256
+                nonce = secrets.token_bytes(16)
+                shake = hashlib.shake_256(ss + nonce)
+                keystream = shake.digest(len(file_bytes))
+                enc = bytes(b ^ k for b, k in zip(file_bytes, keystream))
+
+                # Persist encrypted blob + metadata under results/
+                out_dir = _PROJECT_ROOT / "results"
+                out_dir.mkdir(parents=True, exist_ok=True)
+                rid = uuid.uuid4().hex
+                enc_name = f"image_enc_{rid}.bin"
+                meta_name = f"image_enc_{rid}.json"
+                (out_dir / enc_name).write_bytes(enc)
+                meta = {
+                    "algorithm": algo_name,
+                    "nonce_b64": base64.b64encode(nonce).decode("ascii"),
+                    "ciphertext_b64": base64.b64encode(ct).decode("ascii"),
+                    "public_key_b64": base64.b64encode(pk).decode("ascii"),
+                    # Do not persist secret key to disk by default; show inline only
+                }
+                import json as _json
+                (out_dir / meta_name).write_text(_json.dumps(meta, indent=2))
+
+                # Optional: visualization images derived from the uploaded image's shape
+                pk_img_path = sk_img_path = ct_img_path = enc_visual_path = None
+                vis_error = None
+                if _PIL_AVAILABLE:
+                    try:
+                        img = Image.open(io.BytesIO(file_bytes)).convert("RGB")  # type: ignore[name-defined]
+                        w, h = img.size
+                        pixels = img.tobytes()
+                        # Keystream for pixel domain (separate label to avoid reuse)
+                        ks_img = hashlib.shake_256(ss + nonce + b"/img").digest(len(pixels))
+                        enc_pixels = bytes(a ^ b for a, b in zip(pixels, ks_img))
+                        enc_img = Image.frombytes("RGB", (w, h), enc_pixels)  # type: ignore[name-defined]
+                        enc_visual_name = f"image_enc_visual_{rid}.png"
+                        enc_img.save(out_dir / enc_visual_name, format="PNG")
+                        enc_visual_path = f"results/{enc_visual_name}"
+
+                        def _entropy(data: bytes) -> float:
+                            # Shannon entropy (bits per byte)
+                            if not data:
+                                return 0.0
+                            # Frequency of byte values 0..255
+                            counts = [0] * 256
+                            for b in data:
+                                counts[b] += 1
+                            n = float(len(data))
+                            ent = 0.0
+                            for c in counts:
+                                if c:
+                                    p = c / n
+                                    ent -= p * math.log2(p)
+                            return ent
+
+                        # Visualize pk/sk/ct as pseudo-images by expanding with SHAKE to pixel length
+                        def _as_image(seed: bytes, label: bytes, fname: str) -> tuple[str, float]:
+                            stream = hashlib.shake_256(seed + nonce + label).digest(len(pixels))
+                            raw = stream[: w * h * 3]
+                            im = Image.frombytes("RGB", (w, h), raw)  # type: ignore[name-defined]
+                            im.save(out_dir / fname, format="PNG")
+                            return f"results/{fname}", _entropy(raw)
+
+                        pk_img_path, pk_entropy = _as_image(pk, b"/pk", f"image_pk_visual_{rid}.png")
+                        sk_img_path, sk_entropy = _as_image(sk, b"/sk", f"image_sk_visual_{rid}.png")
+                        ct_img_path, ct_entropy = _as_image(ct, b"/ct", f"image_ct_visual_{rid}.png")
+                        enc_entropy = _entropy(enc_pixels)
+                    except Exception as _exc:
+                        vis_error = str(_exc)
+                else:
+                    vis_error = "Pillow not installed; install 'Pillow' to enable image visualizations."
+
+                result = {
+                    "algo": algo_name,
+                    "enc_path": f"results/{enc_name}",
+                    "meta_path": f"results/{meta_name}",
+                    "secret_key_b64": base64.b64encode(sk).decode("ascii"),
+                    "pk_img_path": pk_img_path,
+                    "sk_img_path": sk_img_path,
+                    "ct_img_path": ct_img_path,
+                    "enc_visual_path": enc_visual_path,
+                    "vis_error": vis_error,
+                    "pk_entropy": float(pk_entropy) if 'pk_entropy' in locals() else None,
+                    "sk_entropy": float(sk_entropy) if 'sk_entropy' in locals() else None,
+                    "ct_entropy": float(ct_entropy) if 'ct_entropy' in locals() else None,
+                    "enc_entropy": float(enc_entropy) if 'enc_entropy' in locals() else None,
+                }
+            except Exception as exc:
+                error = str(exc)
+
+    return render_template(
+        "image_encryption.html",
+        kem_algos=kem_algos,
+        selected_algo=(request.form.get("algo") if request.method == "POST" else None),
+        error=error,
+        result=result,
+    )
 
 
 @app.route("/api/analysis", methods=["POST"])
