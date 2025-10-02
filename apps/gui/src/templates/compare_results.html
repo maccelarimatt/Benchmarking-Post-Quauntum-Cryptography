@@ -1286,13 +1286,27 @@
       <div style="display:flex; gap:.5rem; justify-content:flex-end; align-items:center;">
         <button id="llm-generate" type="button">Generate Analysis</button>
         <button id="llm-regenerate" type="button" style="display:none;" class="btn">Regenerate</button>
+        <button id="llm-open" type="button" style="display:none;" class="btn">Open Window</button>
       </div>
       <div id="llm-analysis-error" style="display:none; color:#ffdddd; background:#902; padding:.5rem .75rem; border-radius:.4rem;"></div>
     </div>
   </div>
 
-  <!-- Markdown rendering libs (tiny, via CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Modal window to render server-generated HTML page -->
+  <div id="llm-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:#101418; border-radius:.7rem; width:min(95vw, 1100px); height:min(90vh, 850px); display:flex; flex-direction:column; box-shadow: 0 10px 30px rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.1);">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:.6rem .8rem; border-bottom:1px solid rgba(255,255,255,.1);">
+        <div style="font-weight:700;">AI Analysis (HTML)</div>
+        <div style="display:flex; gap:.5rem; align-items:center;">
+          <button id="llm-modal-print" type="button" class="btn">Print</button>
+          <button id="llm-modal-close" type="button" class="btn" style="background:#3a3f45;">Close</button>
+        </div>
+      </div>
+      <iframe id="llm-modal-frame" name="llmModalFrame" style="flex:1; width:100%; border:0; background:#fff;"></iframe>
+    </div>
+  </div>
+
+  <!-- HTML sanitization lib -->
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
 
   <script>
@@ -1301,9 +1315,16 @@
       const out = document.getElementById('llm-analysis-output');
       const btn = document.getElementById('llm-generate');
       const btnRe = document.getElementById('llm-regenerate');
+      const btnOpen = document.getElementById('llm-open');
       const err = document.getElementById('llm-analysis-error');
       const hint = document.getElementById('llm-provider-hint');
       const reqEl = document.getElementById('llm-user-request');
+      let lastAnalysisHTML = '';
+      // Modal elements
+      const modal = document.getElementById('llm-modal');
+      const modalFrame = document.getElementById('llm-modal-frame');
+      const modalClose = document.getElementById('llm-modal-close');
+      const modalPrint = document.getElementById('llm-modal-print');
 
       async function runAnalysis() {
         err.style.display = 'none';
@@ -1330,13 +1351,16 @@
           const text = (data.analysis || '').trim();
           if (text) {
             try {
-              const html = (window.marked ? marked.parse(text) : text);
-              out.innerHTML = (window.DOMPurify ? DOMPurify.sanitize(html) : html);
+              const html = text; // server returns HTML only
+              lastAnalysisHTML = (window.DOMPurify ? DOMPurify.sanitize(html) : html);
+              out.innerHTML = lastAnalysisHTML;
             } catch (e) {
               out.textContent = text; // fallback to plain text
+              lastAnalysisHTML = out.textContent;
             }
           } else {
             out.textContent = 'No analysis returned.';
+            lastAnalysisHTML = '';
           }
           // Surface provider error inline if we fell back
           if (usedFallback && data.error) {
@@ -1351,6 +1375,7 @@
             err.textContent = '';
           }
           btnRe.style.display = 'inline-block';
+          btnOpen.style.display = (lastAnalysisHTML && lastAnalysisHTML.trim()) ? 'inline-block' : 'none';
         } catch (e) {
           out.innerHTML = prevHTML;
           err.style.display = 'block';
@@ -1362,6 +1387,42 @@
 
       btn.addEventListener('click', runAnalysis);
       btnRe.addEventListener('click', runAnalysis);
+      btnOpen.addEventListener('click', () => {
+        try {
+          // Show modal and submit a POST targeted to the iframe
+          if (!modal || !modalFrame) return;
+          modal.style.display = 'flex';
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = '/analysis/html';
+          form.target = 'llmModalFrame';
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'data';
+          input.value = JSON.stringify({
+            compare: compareData,
+            request: (reqEl && reqEl.value && reqEl.value.trim()) ? reqEl.value.trim() : undefined
+          });
+          form.appendChild(input);
+          document.body.appendChild(form);
+          form.submit();
+          setTimeout(() => form.remove(), 1000);
+        } catch (e) { /* ignore */ }
+      });
+
+      function hideModal() {
+        if (modal) modal.style.display = 'none';
+        if (modalFrame) {
+          try { modalFrame.src = 'about:blank'; } catch (e) {}
+        }
+      }
+      if (modalClose) modalClose.addEventListener('click', hideModal);
+      if (modal) modal.addEventListener('click', (ev) => {
+        if (ev.target === modal) hideModal();
+      });
+      if (modalPrint) modalPrint.addEventListener('click', () => {
+        try { if (modalFrame && modalFrame.contentWindow) modalFrame.contentWindow.print(); } catch (e) {}
+      });
       // Auto-run once when the section loads
       try { runAnalysis(); } catch (e) {}
     })();

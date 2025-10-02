@@ -80,10 +80,10 @@ SYSTEM_PROMPT = (
         "results. Provide concise, practical insights without making security claims. "
         "Prefer actionable observations about performance and footprint trade-offs.",
     )
-)
+) + "\n\nFormat your response as clean HTML (no scripts), using semantic headings, lists, and, when helpful, tables."
 
 
-def _build_user_prompt(summary: Dict[str, Any], user_request: Optional[str] = None) -> str:
+def _build_user_prompt(summary: Dict[str, Any], user_request: Optional[str] = None, *, prefer_html: bool = False) -> str:
     """Render a compact, structured prompt from the condensed summary.
 
     If ``user_request`` is provided, it is included to steer the analysis
@@ -136,13 +136,17 @@ def _build_user_prompt(summary: Dict[str, Any], user_request: Optional[str] = No
         lines.append("Avoid security claims or recommendations beyond performance/footprint observations.")
     else:
         # Default guidance
-        lines.append("Task: In 6–9 concise bullets, explain:")
+        lines.append("Task: In 6-9 concise bullets, explain:")
         lines.append("- which algorithms are fastest per operation (and by how much, roughly)")
         lines.append("- memory trade-offs and any large differences")
         lines.append("- key/ciphertext/signature size implications")
         lines.append("- suitability for constrained devices vs. throughput use")
         lines.append("- note if high variance/outliers might affect reliability")
         lines.append("Avoid security claims or recommendations beyond performance/footprint observations.")
+    # Always request clean HTML formatting
+    lines.append(
+        "Format the response as clean HTML (no scripts), using semantic headings, lists, and tables where helpful."
+    )
     return "\n".join(lines)
 
 
@@ -346,6 +350,62 @@ def _heuristic_summary(summary: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _heuristic_summary_html(summary: Dict[str, Any]) -> str:
+    kind = summary.get("kind")
+    ops_order = ["keygen", "encapsulate", "decapsulate"] if kind == "KEM" else ["keygen", "sign", "verify"]
+
+    def best_for_op(op: str) -> Optional[Tuple[str, float]]:
+        best: Optional[Tuple[str, float]] = None
+        for a in summary.get("algos", []):
+            s = a.get("ops", {}).get(op, {})
+            mean = s.get("mean_ms")
+            if isinstance(mean, (int, float)):
+                if best is None or mean < best[1]:
+                    best = (a.get("label") or a.get("name") or "?", float(mean))
+        return best
+
+    html: List[str] = []
+    html.append("<section>")
+    html.append("<h2>Automatic Analysis</h2>")
+    html.append("<p>This is a local fallback summary (no external LLM configured or provider failed).</p>")
+    html.append("<h3>Fastest Operations</h3>")
+    html.append("<ul>")
+    for op in ops_order:
+        best = best_for_op(op)
+        if best:
+            html.append(f"<li>Fastest {op}: <strong>{best[0]}</strong> (~{best[1]:.3f} ms mean)</li>")
+    html.append("</ul>")
+    html.append("<h3>Lowest Memory Usage</h3>")
+    html.append("<ul>")
+    for op in ops_order:
+        best_mem: Optional[Tuple[str, float]] = None
+        for a in summary.get("algos", []):
+            s = a.get("ops", {}).get(op, {})
+            mm = s.get("mem_mean_kb")
+            if isinstance(mm, (int, float)):
+                if best_mem is None or mm < best_mem[1]:
+                    best_mem = (a.get("label") or a.get("name") or "?", float(mm))
+        if best_mem:
+            html.append(f"<li>Lowest memory {op}: <strong>{best_mem[0]}</strong> (~{best_mem[1]:.2f} KB)</li>")
+    html.append("</ul>")
+    html.append("<h3>Key and Artifact Sizes</h3>")
+    html.append("<ul>")
+    for a in summary.get("algos", []):
+        md = a.get("meta", {}) or {}
+        sizes: List[str] = []
+        for k, label in (("public_key_len", "pk"), ("secret_key_len", "sk"), ("ciphertext_len", "ct"), ("signature_len", "sig")):
+            v = md.get(k)
+            if isinstance(v, (int, float)):
+                sizes.append(f"{label}:{int(v)}B")
+        if sizes:
+            name = a.get('label') or a.get('name') or '?'
+            html.append(f"<li><strong>{name}</strong>: {', '.join(sizes)}</li>")
+    html.append("</ul>")
+    html.append("<p><em>Note:</em> For nuanced interpretation, enable an LLM provider.</p>")
+    html.append("</section>")
+    return "".join(html)
+
+
 # --- Public API
 
 def condense_compare(compare: Dict[str, Any]) -> Dict[str, Any]:
@@ -399,14 +459,16 @@ def condense_compare(compare: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def analyze_compare_results(compare: Dict[str, Any], user_request: Optional[str] = None) -> Dict[str, Any]:
+def analyze_compare_results(compare: Dict[str, Any], user_request: Optional[str] = None, *, prefer_html: Optional[bool] = None) -> Dict[str, Any]:
     """Produce an analysis string for a compare payload using the configured LLM.
 
     Returns a dict: { ok, provider, model, analysis, error?, used_fallback? }
     """
     cfg = LLMConfig()
     condensed = condense_compare(compare)
-    prompt = _build_user_prompt(condensed, user_request=user_request)
+    # Always prefer HTML output
+    want_html = True
+    prompt = _build_user_prompt(condensed, user_request=user_request, prefer_html=True)
 
     # Provider selection
     provider = (cfg.provider or "none").strip().lower()
@@ -418,7 +480,7 @@ def analyze_compare_results(compare: Dict[str, Any], user_request: Optional[str]
                 "provider": provider,
                 "model": cfg.model,
                 "analysis": text.strip(),
-                "meta": meta,
+                "meta": {**meta, "format": "html"},
             }
         elif provider == "huggingface":
             text, meta = _call_huggingface_inference(cfg, prompt)
@@ -427,7 +489,7 @@ def analyze_compare_results(compare: Dict[str, Any], user_request: Optional[str]
                 "provider": provider,
                 "model": cfg.hf_model,
                 "analysis": text.strip(),
-                "meta": meta,
+                "meta": {**meta, "format": "html"},
             }
         elif provider == "ollama":
             text, meta = _call_ollama(cfg, prompt)
@@ -436,21 +498,22 @@ def analyze_compare_results(compare: Dict[str, Any], user_request: Optional[str]
                 "provider": provider,
                 "model": cfg.model,
                 "analysis": text.strip(),
-                "meta": meta,
+                "meta": {**meta, "format": "html"},
             }
         else:
             # No external provider: use heuristic
-            text = _heuristic_summary(condensed)
+            text = _heuristic_summary_html(condensed)
             return {
                 "ok": True,
                 "provider": "none",
                 "model": "heuristic",
                 "analysis": text.strip(),
                 "used_fallback": True,
+                "meta": {"format": "html"},
             }
     except Exception as exc:
         # Error while calling provider: fallback to heuristic, include error and endpoint
-        text = _heuristic_summary(condensed)
+        text = _heuristic_summary_html(condensed)
         endpoint = None
         try:
             if provider == "openai_compatible":
@@ -470,5 +533,5 @@ def analyze_compare_results(compare: Dict[str, Any], user_request: Optional[str]
             "analysis": text.strip(),
             "used_fallback": True,
             "error": str(exc),
-            "meta": ({"endpoint": endpoint} if endpoint else {}),
+            "meta": ({"endpoint": endpoint, "format": "html"} if endpoint else {"format": "html"}),
         }
