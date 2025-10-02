@@ -291,6 +291,34 @@ def reset_adapter_cache(name: Optional[str] = None) -> None:
     _ADAPTER_INSTANCE_CACHE.pop(name, None)
 
 
+def _value_in_range(value: Any, range_list: Any) -> Optional[List[float]]:
+    try:
+        val = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not (isinstance(range_list, (list, tuple)) and len(range_list) == 2):
+        return None
+    try:
+        lo = float(range_list[0])
+        hi = float(range_list[1])
+    except (TypeError, ValueError):
+        return None
+    if lo > hi:
+        lo, hi = hi, lo
+    slack = max(1.0, abs(hi - lo) * 0.01)
+    if lo - slack <= val <= hi + slack:
+        return [lo, hi]
+    return None
+
+
+def _ensure_list(value: Any) -> List[str]:
+    if isinstance(value, list):
+        return [str(v) for v in value if v is not None]
+    if value in (None, ""):
+        return []
+    return [str(value)]
+
+
 def _compute_ci95(mean: float, samples: Sequence[float]) -> Tuple[float, float]:
     if not samples:
         return mean, mean
@@ -1256,9 +1284,397 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
     if isinstance(extras.get("bruteforce"), dict):
         out["bruteforce"] = extras["bruteforce"]
 
+    out["headline"] = _build_security_headline(out, extras)
+    out["detail_rows"] = _build_security_details(out, extras)
+
     return out
 
 
+def _build_security_headline(out: Dict[str, Any], extras: Dict[str, Any]) -> Dict[str, Any]:
+    family = (out.get("family") or "").upper()
+    estimates = out.get("estimates") or {}
+    curated = estimates.get("curated") if isinstance(estimates, dict) else None
+    calc = estimates.get("calculated") if isinstance(estimates, dict) else None
+    details = out.get("details") or {}
+    params = out.get("parameters") or {}
+    category_floor = out.get("category_floor")
+    nist_category = out.get("nist_category")
+    estimator_block = out.get("estimator") or {}
+
+    def _fallback_floor(reason: Optional[str] = None) -> Dict[str, Any]:
+        classical = float(category_floor or 0.0)
+        if family in {"SPHINCS+", "XMSSMT", "XMSS"}:
+            quantum = classical / 2.0 if classical else None
+        else:
+            quantum = classical
+        notes: List[str] = []
+        if reason:
+            notes.append(reason)
+        if estimator_block and not estimator_block.get("available", True):
+            notes.append("Estimator unavailable; showing NIST category floor.")
+        return {
+            "nist_category": nist_category,
+            "category_floor": category_floor,
+            "classical_bits": classical,
+            "quantum_bits": quantum,
+            "classical_bits_range": None,
+            "quantum_bits_range": None,
+            "estimator": estimator_block.get("name") or "floor",
+            "model": estimator_block.get("profile"),
+            "attack": None,
+            "notes": notes,
+        }
+
+    def _curated_summary(label: str, attack: Optional[str] = None, prefer_calc: bool = False) -> Dict[str, Any]:
+        src = curated if isinstance(curated, dict) else None
+        target = calc if (prefer_calc and isinstance(calc, dict)) else src
+        if not target:
+            return _fallback_floor(None)
+        classical = target.get("classical_bits") or target.get("classical_bits_mid")
+        quantum = target.get("quantum_bits") or target.get("quantum_bits_mid")
+        notes: List[str] = []
+        if src and src is not target and src.get("classical_bits_mid") is not None:
+            notes.append("Curated design target shown; raw estimator output available in details.")
+        if src and src.get("source"):
+            notes.append(f"Source: {src['source']}")
+        return {
+            "nist_category": nist_category,
+            "category_floor": category_floor,
+            "classical_bits": float(classical) if classical is not None else None,
+            "quantum_bits": float(quantum) if quantum is not None else None,
+            "classical_bits_range": _value_in_range(classical, target.get("classical_bits_range")) if target else None,
+            "quantum_bits_range": _value_in_range(quantum, target.get("quantum_bits_range")) if target else None,
+            "estimator": label,
+            "model": target.get("profile") or estimator_block.get("profile"),
+            "attack": target.get("attack") or attack,
+            "notes": notes,
+        }
+
+    if family == "ML-KEM":
+        module = (details.get("module_lwe_core_svp") or {})
+        primal = module.get("primal") or {}
+        classical = primal.get("classical_bits")
+        quantum = primal.get("quantum_bits")
+        if classical is not None and quantum is not None:
+            ranges = curated if isinstance(curated, dict) else {}
+            class_range = _value_in_range(classical, ranges.get("classical_bits_range"))
+            quant_range = _value_in_range(quantum, ranges.get("quantum_bits_range"))
+            notes: List[str] = []
+            if ranges.get("source"):
+                notes.append(f"Curated range: {ranges['source']}")
+            ref = (out.get("assumptions") or {}).get("module_lwe_reference") or extras.get("estimator_reference")
+            if ref:
+                notes.append(f"Reference: {ref}")
+            notes.append(
+                f"Core-SVP table (β={primal.get('beta')}, dim={primal.get('dimension')}, samples={primal.get('samples')})."
+            )
+            if params:
+                notes.append(f"Module parameters: k={params.get('k')}, n={params.get('n')}, q={params.get('q')}.")
+            return {
+                "nist_category": nist_category,
+                "category_floor": category_floor,
+                "classical_bits": float(classical),
+                "quantum_bits": float(quantum),
+                "classical_bits_range": class_range,
+                "quantum_bits_range": quant_range,
+                "estimator": "core-svp",
+                "model": "module-LWE",
+                "attack": primal.get("attack"),
+                "notes": notes,
+            }
+        return _fallback_floor("Module-LWE headline unavailable.")
+
+    if family == "ML-DSA":
+        module = (details.get("module_lwe_core_svp") or {})
+        primal = module.get("primal") or {}
+        classical = primal.get("classical_bits")
+        quantum = primal.get("quantum_bits")
+        if classical is not None and quantum is not None:
+            ranges = curated if isinstance(curated, dict) else {}
+            class_range = _value_in_range(classical, ranges.get("classical_bits_range"))
+            quant_range = _value_in_range(quantum, ranges.get("quantum_bits_range"))
+            notes: List[str] = [
+                f"Core-SVP table (β={primal.get('beta')}, dim={primal.get('dimension')}, samples={primal.get('samples')})."
+            ]
+            if params:
+                notes.append(
+                    f"Module parameters: k={params.get('k')}, l={params.get('l')}, n={params.get('n')}, q={params.get('q')}.")
+            if not class_range and ranges.get("classical_bits_mid") is not None:
+                notes.append("Spec core-SVP value lies outside literature range; showing table headline.")
+            if ranges.get("source"):
+                notes.append(f"Curated range: {ranges['source']}")
+            ref = (out.get("assumptions") or {}).get("module_lwe_reference") or extras.get("estimator_reference")
+            if ref:
+                notes.append(f"Reference: {ref}")
+            return {
+                "nist_category": nist_category,
+                "category_floor": category_floor,
+                "classical_bits": float(classical),
+                "quantum_bits": float(quantum),
+                "classical_bits_range": class_range,
+                "quantum_bits_range": quant_range,
+                "estimator": "core-svp",
+                "model": "module-LWE",
+                "attack": primal.get("attack"),
+                "notes": notes,
+            }
+        return _fallback_floor("Module-LWE headline unavailable.")
+
+    if family == "FALCON":
+        if isinstance(curated, dict):
+            headline = _curated_summary("curated-range (Falcon BKZ)")
+            headline.setdefault("notes", []).append(
+                "Core-SVP constants: classical 0.292, quantum 0.262 (documented)."
+            )
+            if isinstance(calc, dict):
+                headline.setdefault("notes", []).append(
+                    "BKZ projection available in details; curated range used for summary."
+                )
+            if params:
+                headline.setdefault("notes", []).append(
+                    f"Parameters: n={params.get('n')}, q={params.get('q')} (NTRU lattice)."
+                )
+            return headline
+        if isinstance(calc, dict):
+            notes = ["Using BKZ projection output."]
+            if params:
+                notes.append(f"Parameters: n={params.get('n')}, q={params.get('q')}.")
+            return {
+                "nist_category": nist_category,
+                "category_floor": category_floor,
+                "classical_bits": float(calc.get("classical_bits")) if calc.get("classical_bits") is not None else None,
+                "quantum_bits": float(calc.get("quantum_bits")) if calc.get("quantum_bits") is not None else None,
+                "classical_bits_range": _value_in_range(calc.get("classical_bits"), calc.get("classical_bits_range")),
+                "quantum_bits_range": _value_in_range(calc.get("quantum_bits"), calc.get("quantum_bits_range")),
+                "estimator": calc.get("profile") or "bkz",
+                "model": "NTRU lattice",
+                "attack": calc.get("attack"),
+                "notes": notes,
+            }
+        return _fallback_floor(None)
+
+    if family == "HQC":
+        if isinstance(curated, dict):
+            notes = ["Design target from HQC submission (Round 3)."]
+            notes.append("Classical bits reflect code-decoding target; Grover-style √ speedup for quantum bits.")
+            if estimates.get("hqc_isd"):
+                notes.append("See ISD heuristics (Stern/BJMM) in details.")
+            return {
+                "nist_category": nist_category,
+                "category_floor": category_floor,
+                "classical_bits": float(curated.get("classical_bits_mid")),
+                "quantum_bits": float(curated.get("quantum_bits_mid")),
+                "classical_bits_range": _value_in_range(curated.get("classical_bits_mid"), curated.get("classical_bits_range")),
+                "quantum_bits_range": _value_in_range(curated.get("quantum_bits_mid"), curated.get("quantum_bits_range")),
+                "estimator": "ISD design-target",
+                "model": "code-based ISD",
+                "attack": "design-target",
+                "notes": notes,
+            }
+        return _fallback_floor("Using NIST category floor for HQC.")
+
+    if family in {"SPHINCS+", "XMSSMT", "XMSS"}:
+        target = calc if isinstance(calc, dict) else curated
+        family_block = (extras.get("sphincs") or extras.get("xmss") or {})
+        if target:
+            classical = target.get("classical_bits") or target.get("classical_bits_mid")
+            quantum = target.get("quantum_bits") or target.get("quantum_bits_mid")
+            notes = [
+                "Hash-based security: collision ≈ n/2 bits (classical); quantum collision ≈ n/3 via Grover/BHT.",
+            ]
+            hash_info = (family_block.get("hash_costs") or {})
+            if hash_info:
+                notes.append(
+                    f"Hash costs: collision {hash_info.get('collision_bits')} bits, preimage {hash_info.get('preimage_bits')} bits."
+                )
+            structure = family_block.get("structure") or {}
+            if structure:
+                notes.append(
+                    "Structure: " + ", ".join([f"{k}={v}" for k, v in structure.items() if v is not None])
+                )
+            return {
+                "nist_category": nist_category,
+                "category_floor": category_floor,
+                "classical_bits": float(classical) if classical is not None else None,
+                "quantum_bits": float(quantum) if quantum is not None else None,
+                "classical_bits_range": _value_in_range(classical, target.get("classical_bits_range")),
+                "quantum_bits_range": _value_in_range(quantum, target.get("quantum_bits_range")),
+                "estimator": target.get("profile") or "hash",
+                "model": "hash-based",
+                "attack": target.get("attack"),
+                "notes": notes,
+            }
+        return _fallback_floor(None)
+
+    if family == "MAYO":
+        if isinstance(curated, dict):
+            notes = ["Design target per MAYO submission."]
+            if (estimates.get("checks")):
+                notes.append("Rank / minrank heuristic checks available in details.")
+            if params:
+                notes.append(
+                    f"Structure: n={params.get('n')}, m={params.get('m')}, oil={params.get('oil')}, vinegar={params.get('vinegar')}, q={params.get('q')}"
+                )
+            return {
+                "nist_category": nist_category,
+                "category_floor": category_floor,
+                "classical_bits": float(curated.get("classical_bits_mid")),
+                "quantum_bits": float(curated.get("quantum_bits_mid")),
+                "classical_bits_range": _value_in_range(curated.get("classical_bits_mid"), curated.get("classical_bits_range")),
+                "quantum_bits_range": _value_in_range(curated.get("quantum_bits_mid"), curated.get("quantum_bits_range")),
+                "estimator": "mq design-target",
+                "model": "MQ (whipping)",
+                "attack": "design-target",
+                "notes": notes,
+            }
+        return _fallback_floor("Using category floor for MAYO.")
+
+    if family == "RSA":
+        notes = ["Classical strength per NIST SP 800-57 mapping.", "Quantum security broken by Shor (0 bits)."]
+        if extras.get("shor_profiles"):
+            notes.append("Surface-code resource estimates available in details.")
+        logical = extras.get("logical") or {}
+        if logical:
+            notes.append(
+                f"Logical qubits ≈ {int(logical.get('logical_qubits', logical.get('qubits', 0)))}; Toffoli count ≈ {int(logical.get('toffoli', 0))}."
+            )
+        return {
+            "nist_category": nist_category,
+            "category_floor": category_floor,
+            "classical_bits": float(out.get("classical_bits")) if out.get("classical_bits") is not None else None,
+            "quantum_bits": float(out.get("quantum_bits")) if out.get("quantum_bits") is not None else None,
+            "classical_bits_range": None,
+            "quantum_bits_range": None,
+            "estimator": "SP 800-57 mapping",
+            "model": "NFS / Shor",
+            "attack": "NFS",
+            "notes": notes,
+        }
+
+    if isinstance(curated, dict):
+        return _curated_summary(estimator_block.get("name") or "curated", attack=curated.get("attack"))
+
+    if isinstance(calc, dict):
+        classical = calc.get("classical_bits")
+        quantum = calc.get("quantum_bits")
+        return {
+            "nist_category": nist_category,
+            "category_floor": category_floor,
+            "classical_bits": float(classical) if classical is not None else None,
+            "quantum_bits": float(quantum) if quantum is not None else None,
+            "classical_bits_range": _value_in_range(classical, calc.get("classical_bits_range")),
+            "quantum_bits_range": _value_in_range(quantum, calc.get("quantum_bits_range")),
+            "estimator": calc.get("profile") or estimator_block.get("name"),
+            "model": None,
+            "attack": calc.get("attack"),
+            "notes": [],
+        }
+
+    return _fallback_floor(None)
+
+
+def _build_security_details(out: Dict[str, Any], extras: Dict[str, Any]) -> List[Tuple[str, str]]:
+    family = (out.get("family") or "").upper()
+    details = out.get("details") or {}
+    estimates = out.get("estimates") or {}
+    params = out.get("parameters") or {}
+    rows: List[Tuple[str, str]] = []
+
+    def add(label: str, value: Any, precision: int = 2) -> None:
+        if value in (None, ""):
+            return
+        if isinstance(value, float):
+            fmt = f"{{:.{precision}f}}"
+            rows.append((label, fmt.format(value)))
+        else:
+            rows.append((label, str(value)))
+
+    if family == "ML-KEM":
+        primal = (details.get("module_lwe_core_svp") or {}).get("primal") or {}
+        if primal:
+            add("BKZ β", primal.get("beta"))
+            add("Samples", primal.get("samples"))
+            add("Dimension", primal.get("dimension"))
+            add("Sieving dimension", primal.get("sieving_dimension"))
+            add("log₂ memory", primal.get("log2_memory"))
+        if params:
+            add("Parameters", f"k={params.get('k')}, n={params.get('n')}, q={params.get('q')}")
+
+    elif family == "ML-DSA":
+        primal = (details.get("module_lwe_core_svp") or {}).get("primal") or {}
+        if primal:
+            add("BKZ β", primal.get("beta"))
+            add("Samples", primal.get("samples"))
+            add("Dimension", primal.get("dimension"))
+            add("log₂ memory", primal.get("log2_memory"))
+        if params:
+            add("Parameters", f"k={params.get('k')}, l={params.get('l')}, n={params.get('n')}, q={params.get('q')}")
+
+    elif family == "FALCON":
+        bkz = (details.get("falcon_bkz_model") or {})
+        attacks = bkz.get("attacks") if isinstance(bkz, dict) else None
+        best_attack = None
+        if attacks:
+            for entry in attacks:
+                if entry.get("success"):
+                    best_attack = entry
+                    break
+        if best_attack:
+            add("BKZ attack", best_attack.get("attack"))
+            add("β success", best_attack.get("beta_success"))
+            curve = best_attack.get("beta_curve") or []
+            if curve:
+                add("Classical bits", curve[0].get("classical_bits"))
+                add("Quantum bits", curve[0].get("quantum_bits"))
+        if params:
+            add("Parameters", f"n={params.get('n')}, q={params.get('q')}")
+
+    elif family == "HQC":
+        isd = estimates.get("hqc_isd") or {}
+        stern = isd.get("stern_entropy") or {}
+        bjmm = isd.get("bjmm") or {}
+        add("Stern time bits", stern.get("time_bits_classical"))
+        add("Stern memory bits", stern.get("memory_bits_classical"))
+        add("BJMM time bits", bjmm.get("time_bits_classical"))
+        add("Grover factor", isd.get("grover_factor"))
+        hqc_params = ((extras.get("params") or {}).get("extras")) or {}
+        if hqc_params:
+            add("Parameters", f"n={hqc_params.get('n')}, k={hqc_params.get('k')}, w={hqc_params.get('w')}")
+
+    elif family in {"SPHINCS+", "XMSSMT", "XMSS"}:
+        family_block = (extras.get("sphincs") or extras.get("xmss") or {})
+        hash_block = family_block.get("hash_costs") or {}
+        add("Hash output bits", family_block.get("hash_output_bits"), precision=0)
+        add("Collision bits", hash_block.get("collision_bits"))
+        add("Quantum collision bits", hash_block.get("quantum_collision_bits"))
+        add("Preimage bits", hash_block.get("preimage_bits"))
+        structure = family_block.get("structure") or {}
+        if structure:
+            add("Structure", ", ".join([f"{k}={v}" for k, v in structure.items() if v is not None]))
+
+    elif family == "MAYO":
+        checks = estimates.get("checks") or {}
+        rank = (checks.get("rank_attack") or {}).get("bits")
+        minrank = (checks.get("minrank") or {}).get("bits")
+        oil_guess = checks.get("oil_guess_bits")
+        add("Rank attack bits", rank)
+        add("MinRank bits", minrank)
+        add("Oil guess bits", oil_guess)
+        if params:
+            add("Parameters", f"n={params.get('n')}, m={params.get('m')}, oil={params.get('oil')}, vinegar={params.get('vinegar')}, q={params.get('q')}")
+
+    elif family == "RSA":
+        logical = extras.get("logical") or {}
+        add("Logical qubits", logical.get("logical_qubits") or logical.get("qubits"))
+        add("Toffoli count", logical.get("toffoli"))
+        t_counts = extras.get("t_counts") or {}
+        add("Catalyzed T-count", t_counts.get("catalyzed"))
+        add("Textbook T-count", t_counts.get("textbook"))
+        if extras.get("shor_profiles"):
+            scenarios = extras.get("shor_profiles", {}).get("scenarios", [])
+            add("Surface scenarios", len(scenarios))
+
+    return rows
 def _build_export_payload(
     summary: AlgoSummary,
     *,
