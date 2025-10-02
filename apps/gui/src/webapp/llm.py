@@ -56,7 +56,7 @@ class LLMConfig:
         # For Ollama local server
         self.ollama_url: str = _env("OLLAMA_HOST", _env("LLM_OLLAMA_URL", "http://localhost:11434"))
         # Generation settings
-        self.max_tokens: int = int(_env("LLM_MAX_TOKENS", "600") or 600)
+        self.max_tokens: int = int(_env("LLM_MAX_TOKENS", "1200") or 1200)
         self.temperature: float = float(_env("LLM_TEMPERATURE", "0.2") or 0.2)
 
         # Resolve 'auto' provider if requested
@@ -76,14 +76,109 @@ class LLMConfig:
 SYSTEM_PROMPT = (
     os.getenv(
         "LLM_SYSTEM_PROMPT",
-        "You are a careful assistant analyzing post-quantum cryptography benchmark "
-        "results. Provide concise, practical insights without making security claims. "
-        "Prefer actionable observations about performance and footprint trade-offs.",
+        "You are an expert analyst for post-quantum cryptography (PQC) benchmarking. "
+        "Write clear, structured reports that highlight performance, memory, and size trade-offs. "
+        "Provide security considerations (standardization status, side-channel posture, implementation caveats) without making cryptanalytic guarantees or safety claims. "
+        "Be factual and cautious; avoid recommendations beyond performance/footprint guidance."
     )
+) + (
+    "\n\nGeneral rules:" \
+    "\n- Output clean HTML only (no scripts)." \
+    "\n- Use semantic headings and short paragraphs." \
+    "\n- Prefer small tables for comparisons." \
+    "\n- Use consistent units: ms for time, KB for memory, B for sizes." \
+    "\n- If a field is missing, write 'n/a' rather than inventing values." \
+    "\n- Treat measured metrics as 'baseline desktop'; when projecting to other devices, mark projections as rough and state assumptions."
 )
 
+def _output_template(kind: Optional[str]) -> str:
+    ops = "keygen, encapsulate, decapsulate" if (kind or "") == "KEM" else "keygen, sign, verify"
+    return (
+        "You must follow this HTML structure exactly (omit any empty sections):\n"
+        "<section>\n"
+        "  <h2>Summary</h2>\n"
+        "  <p>1–2 sentences on overall trends.</p>\n"
+        "  <ul>\n"
+        f"    <li>Fastest operations: identify leaders per operation ({ops}).</li>\n"
+        "    <li>Notable memory or size extremes.</li>\n"
+        "  </ul>\n"
+        "  <h3>Relative Performance</h3>\n"
+        "  <table>\n"
+        "    <thead><tr><th>Algorithm</th><th>Op</th><th>Mean (ms)</th><th>Memory (KB)</th></tr></thead>\n"
+        "    <tbody><!-- one row per algorithm-op with known mean --></tbody>\n"
+        "  </table>\n"
+        "  <h3>Artifact Sizes</h3>\n"
+        "  <table>\n"
+        "    <thead><tr><th>Algorithm</th><th>pk (B)</th><th>sk (B)</th><th>ct/sig (B)</th></tr></thead>\n"
+        "    <tbody><!-- use 'ct' for KEM, 'sig' for SIG; use n/a if missing --></tbody>\n"
+        "  </table>\n"
+        "  <h3>Device Projections (rough)</h3>\n"
+        "  <p>Baseline is measured environment. Multiply mean times by: Desktop x1; Laptop x1.2–1.5; Mobile/ARM x3–5; Microcontroller x20–100. Projections are approximate.</p>\n"
+        "  <ul>\n"
+        "    <li>Throughput (server/desktop): call out fastest ops.</li>\n"
+        "    <li>Constrained (mobile/embedded): call out smallest sizes and lowest memory.</li>\n"
+        "  </ul>\n"
+        "  <h3>Security Considerations</h3>\n"
+        "  <ul>\n"
+        "    <li>Standardization status or typical usage if known (e.g., NIST selections).</li>\n"
+        "    <li>Implementation posture: side-channel hardening needs, parameter sensitivity.</li>\n"
+        "    <li>Scope: no cryptanalytic guarantees; treat as considerations only.</li>\n"
+        "  </ul>\n"
+        "  <h3>Notes & Caveats</h3>\n"
+        "  <ul>\n"
+        "    <li>Variance or outliers that may affect reliability.</li>\n"
+        "    <li>Any missing data explicitly marked as n/a.</li>\n"
+        "  </ul>\n"
+        "</section>\n"
+    )
 
-def _build_user_prompt(summary: Dict[str, Any], user_request: Optional[str] = None) -> str:
+
+def _build_user_prompt_v2(summary: Dict[str, Any], user_request: Optional[str] = None, *, prefer_html: bool = True) -> str:
+    """New prompt builder with a consistent HTML template and expanded guidance."""
+    lines: List[str] = []
+    lines.append("Context: Post-quantum crypto benchmarking results.")
+    lines.append(f"Kind: {summary.get('kind')} | Runs: {summary.get('runs')} | Mode: {summary.get('mode')}")
+    if summary.get("message_size") is not None:
+        lines.append(f"Message size (B): {summary.get('message_size')}")
+    lines.append("")
+    lines.append("Algorithms (per-op stats, time in ms, mem in KB):")
+    for a in summary.get("algos", []):
+        name = a.get('label') or a.get('name') or '?'
+        lines.append(f"- {name}")
+        md = a.get("meta", {}) or {}
+        sizes: List[str] = []
+        for k, label in (("public_key_len", "pk"), ("secret_key_len", "sk"), ("ciphertext_len", "ct"), ("signature_len", "sig")):
+            v = md.get(k)
+            if isinstance(v, (int, float)):
+                sizes.append(f"{label}:{int(v)}B")
+        if sizes:
+            lines.append("  sizes: " + ", ".join(sizes))
+        for op in a.get("ops_order", []):
+            s = (a.get("ops", {}) or {}).get(op, {}) or {}
+            mean = s.get("mean_ms"); median = s.get("median_ms"); mem = s.get("mem_mean_kb")
+            mean_txt = f"{float(mean):.3f}" if isinstance(mean, (int, float)) else "n/a"
+            med_txt = f"{float(median):.3f}" if isinstance(median, (int, float)) else "n/a"
+            mem_txt = f"{float(mem):.2f}" if isinstance(mem, (int, float)) else "n/a"
+            lines.append(f"  {op}: mean_ms={mean_txt}, median_ms={med_txt}, mem_kb={mem_txt}")
+    lines.append("")
+    req = (str(user_request).strip() if user_request is not None else "")
+    if len(req) > 4000:
+        req = req[:4000] + "…"
+    lines.append("User request: " + (req or "(none)"))
+    lines.append("Incorporate the request where relevant; keep structure consistent; avoid cryptanalytic guarantees.")
+    lines.append("")
+    lines.append("Task: Provide an expansive analysis with the sections below. Highlight:")
+    lines.append("- fastest algorithms per operation and approximate margins")
+    lines.append("- memory trade-offs and key/ciphertext/signature size implications")
+    lines.append("- rough device projections (desktop/server vs mobile/embedded)")
+    lines.append("- security considerations (standardization status, side-channel posture)")
+    lines.append("- variance/outliers and caveats")
+    lines.append("")
+    lines.append(_output_template(summary.get("kind")))
+    return "\n".join(lines)
+
+
+def _build_user_prompt(summary: Dict[str, Any], user_request: Optional[str] = None, *, prefer_html: bool = False) -> str:
     """Render a compact, structured prompt from the condensed summary.
 
     If ``user_request`` is provided, it is included to steer the analysis
@@ -136,13 +231,17 @@ def _build_user_prompt(summary: Dict[str, Any], user_request: Optional[str] = No
         lines.append("Avoid security claims or recommendations beyond performance/footprint observations.")
     else:
         # Default guidance
-        lines.append("Task: In 6–9 concise bullets, explain:")
+        lines.append("Task: In 6-9 concise bullets, explain:")
         lines.append("- which algorithms are fastest per operation (and by how much, roughly)")
         lines.append("- memory trade-offs and any large differences")
         lines.append("- key/ciphertext/signature size implications")
         lines.append("- suitability for constrained devices vs. throughput use")
         lines.append("- note if high variance/outliers might affect reliability")
         lines.append("Avoid security claims or recommendations beyond performance/footprint observations.")
+    # Always request clean HTML formatting
+    lines.append(
+        "Format the response as clean HTML (no scripts), using semantic headings, lists, and tables where helpful."
+    )
     return "\n".join(lines)
 
 
@@ -346,6 +445,62 @@ def _heuristic_summary(summary: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _heuristic_summary_html(summary: Dict[str, Any]) -> str:
+    kind = summary.get("kind")
+    ops_order = ["keygen", "encapsulate", "decapsulate"] if kind == "KEM" else ["keygen", "sign", "verify"]
+
+    def best_for_op(op: str) -> Optional[Tuple[str, float]]:
+        best: Optional[Tuple[str, float]] = None
+        for a in summary.get("algos", []):
+            s = a.get("ops", {}).get(op, {})
+            mean = s.get("mean_ms")
+            if isinstance(mean, (int, float)):
+                if best is None or mean < best[1]:
+                    best = (a.get("label") or a.get("name") or "?", float(mean))
+        return best
+
+    html: List[str] = []
+    html.append("<section>")
+    html.append("<h2>Automatic Analysis</h2>")
+    html.append("<p>This is a local fallback summary (no external LLM configured or provider failed).</p>")
+    html.append("<h3>Fastest Operations</h3>")
+    html.append("<ul>")
+    for op in ops_order:
+        best = best_for_op(op)
+        if best:
+            html.append(f"<li>Fastest {op}: <strong>{best[0]}</strong> (~{best[1]:.3f} ms mean)</li>")
+    html.append("</ul>")
+    html.append("<h3>Lowest Memory Usage</h3>")
+    html.append("<ul>")
+    for op in ops_order:
+        best_mem: Optional[Tuple[str, float]] = None
+        for a in summary.get("algos", []):
+            s = a.get("ops", {}).get(op, {})
+            mm = s.get("mem_mean_kb")
+            if isinstance(mm, (int, float)):
+                if best_mem is None or mm < best_mem[1]:
+                    best_mem = (a.get("label") or a.get("name") or "?", float(mm))
+        if best_mem:
+            html.append(f"<li>Lowest memory {op}: <strong>{best_mem[0]}</strong> (~{best_mem[1]:.2f} KB)</li>")
+    html.append("</ul>")
+    html.append("<h3>Key and Artifact Sizes</h3>")
+    html.append("<ul>")
+    for a in summary.get("algos", []):
+        md = a.get("meta", {}) or {}
+        sizes: List[str] = []
+        for k, label in (("public_key_len", "pk"), ("secret_key_len", "sk"), ("ciphertext_len", "ct"), ("signature_len", "sig")):
+            v = md.get(k)
+            if isinstance(v, (int, float)):
+                sizes.append(f"{label}:{int(v)}B")
+        if sizes:
+            name = a.get('label') or a.get('name') or '?'
+            html.append(f"<li><strong>{name}</strong>: {', '.join(sizes)}</li>")
+    html.append("</ul>")
+    html.append("<p><em>Note:</em> For nuanced interpretation, enable an LLM provider.</p>")
+    html.append("</section>")
+    return "".join(html)
+
+
 # --- Public API
 
 def condense_compare(compare: Dict[str, Any]) -> Dict[str, Any]:
@@ -399,14 +554,16 @@ def condense_compare(compare: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def analyze_compare_results(compare: Dict[str, Any], user_request: Optional[str] = None) -> Dict[str, Any]:
+def analyze_compare_results(compare: Dict[str, Any], user_request: Optional[str] = None, *, prefer_html: Optional[bool] = None) -> Dict[str, Any]:
     """Produce an analysis string for a compare payload using the configured LLM.
 
     Returns a dict: { ok, provider, model, analysis, error?, used_fallback? }
     """
     cfg = LLMConfig()
     condensed = condense_compare(compare)
-    prompt = _build_user_prompt(condensed, user_request=user_request)
+    # Always prefer HTML output
+    want_html = True
+    prompt = _build_user_prompt_v2(condensed, user_request=user_request, prefer_html=True)
 
     # Provider selection
     provider = (cfg.provider or "none").strip().lower()
@@ -418,7 +575,7 @@ def analyze_compare_results(compare: Dict[str, Any], user_request: Optional[str]
                 "provider": provider,
                 "model": cfg.model,
                 "analysis": text.strip(),
-                "meta": meta,
+                "meta": {**meta, "format": "html"},
             }
         elif provider == "huggingface":
             text, meta = _call_huggingface_inference(cfg, prompt)
@@ -427,7 +584,7 @@ def analyze_compare_results(compare: Dict[str, Any], user_request: Optional[str]
                 "provider": provider,
                 "model": cfg.hf_model,
                 "analysis": text.strip(),
-                "meta": meta,
+                "meta": {**meta, "format": "html"},
             }
         elif provider == "ollama":
             text, meta = _call_ollama(cfg, prompt)
@@ -436,21 +593,22 @@ def analyze_compare_results(compare: Dict[str, Any], user_request: Optional[str]
                 "provider": provider,
                 "model": cfg.model,
                 "analysis": text.strip(),
-                "meta": meta,
+                "meta": {**meta, "format": "html"},
             }
         else:
             # No external provider: use heuristic
-            text = _heuristic_summary(condensed)
+            text = _heuristic_summary_html(condensed)
             return {
                 "ok": True,
                 "provider": "none",
                 "model": "heuristic",
                 "analysis": text.strip(),
                 "used_fallback": True,
+                "meta": {"format": "html"},
             }
     except Exception as exc:
         # Error while calling provider: fallback to heuristic, include error and endpoint
-        text = _heuristic_summary(condensed)
+        text = _heuristic_summary_html(condensed)
         endpoint = None
         try:
             if provider == "openai_compatible":
@@ -470,5 +628,5 @@ def analyze_compare_results(compare: Dict[str, Any], user_request: Optional[str]
             "analysis": text.strip(),
             "used_fallback": True,
             "error": str(exc),
-            "meta": ({"endpoint": endpoint} if endpoint else {}),
+            "meta": ({"endpoint": endpoint, "format": "html"} if endpoint else {"format": "html"}),
         }

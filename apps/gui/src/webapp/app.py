@@ -1461,6 +1461,127 @@ def api_analysis():
         })
 
 
+@app.route("/analysis/html", methods=["POST"])
+def analysis_html():
+    """Return a standalone HTML page with the LLM analysis rendered as HTML.
+
+    Accepts either a JSON body like /api/analysis or a form field 'data' containing JSON.
+    Forces HTML-preferred output hint for the provider.
+    """
+    try:
+        if request.is_json:
+            data = request.get_json(silent=True) or {}
+        else:
+            raw = request.form.get("data") or (request.data.decode("utf-8", errors="ignore") if request.data else "")
+            import json as _json
+            try:
+                data = _json.loads(raw) if raw else {}
+            except Exception:
+                data = {}
+        compare = data.get("compare")
+        user_request = data.get("request") or data.get("prompt") or data.get("question")
+        if user_request is not None and not isinstance(user_request, str):
+            try:
+                user_request = str(user_request)
+            except Exception:
+                user_request = None
+        if not isinstance(compare, dict):
+            html = (
+                "<!DOCTYPE html><html><head><meta charset='utf-8'/><title>Analysis Error</title></head>"
+                "<body style='font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;padding:1.5rem;'>"
+                "<h1>Analysis Error</h1><p>Invalid or missing 'compare' payload.</p>"
+                "</body></html>"
+            )
+            return Response(html, mimetype="text/html")
+
+        # Produce analysis
+        provider = "none"
+        model = "heuristic"
+        used_fallback = False
+        analysis_text = None
+        try:
+            if llm is not None:
+                result = llm.analyze_compare_results(compare, user_request=user_request)  # type: ignore[attr-defined]
+                provider = result.get("provider") or provider
+                model = result.get("model") or model
+                used_fallback = bool(result.get("used_fallback"))
+                analysis_text = (result.get("analysis") or "").strip()
+            else:
+                analysis_text = _heuristic_analysis(compare)
+                provider = "none"
+                model = "heuristic(local)"
+                used_fallback = True
+        except Exception:
+            # Last-resort fallback
+            analysis_text = _heuristic_analysis(compare)
+            used_fallback = True
+
+        # Build final HTML page. We sanitize client-side via DOMPurify.
+        import json as _json
+        raw_js = _json.dumps(analysis_text or "")
+        provider_js = _json.dumps(str(provider or ""))
+        model_js = _json.dumps(str(model or ""))
+        used_fb_js = "true" if used_fallback else "false"
+        page = f"""
+<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"utf-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <title>AI Analysis</title>
+  <style>
+    :root {{ --text:#0b0f14; --bg:#ffffff; --muted:#445; --accent:#1fb6b8; }}
+    @media (prefers-color-scheme: dark) {{ :root {{ --text:#eef2f7; --bg:#0b0f14; --muted:#aab; }} }}
+    html, body {{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, \"Helvetica Neue\", Arial, sans-serif; }}
+    .container {{ max-width: 920px; margin: 2rem auto; padding: 0 1rem 4rem; }}
+    .header {{ display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1rem; }}
+    .title {{ font-weight:800; font-size:1.3rem; }}
+    .hint {{ color: var(--muted); font-size:.9rem; }}
+    .content {{ line-height:1.6; font-size:1.02rem; }}
+    .content h1, .content h2, .content h3 {{ margin-top:1.2em; }}
+    .content code {{ background: rgba(127,127,127,.15); padding:.1rem .25rem; border-radius:.25rem; }}
+    .content pre {{ background: rgba(127,127,127,.15); padding:.75rem; border-radius:.4rem; overflow:auto; }}
+    .content a {{ color: var(--accent); }}
+    .toolbar {{ display:flex; gap:.5rem; align-items:center; }}
+    .btn {{ display:inline-block; padding:.5rem .9rem; border:none; border-radius:.45rem; background: var(--accent); color:#fff; cursor:pointer; text-decoration:none; }}
+  </style>
+  <script>
+    const RAW = {raw_js};
+    const PROVIDER = {provider_js};
+    const MODEL = {model_js};
+    const USED_FB = {used_fb_js};
+    function render() {{
+      const out = document.getElementById('content');
+      const hint = document.getElementById('hint');
+      if (hint) {{
+        hint.textContent = 'Provider: ' + (PROVIDER || 'auto') + (MODEL ? (' · ' + MODEL) : '') + (USED_FB ? ' (fallback)' : '');
+      }}
+      try {{
+        out.innerHTML = RAW; // as requested: no sanitization
+      }} catch (e) {{
+        out.textContent = RAW || 'No analysis returned.';
+      }}
+    }}
+    window.addEventListener('DOMContentLoaded', render);
+  </script>
+</head>
+<body>
+  <div class=\"container\">
+    <div class=\"header\"><div class=\"title\">AI-Assisted Analysis</div><div id=\"hint\" class=\"hint\"></div><div class=\"toolbar\"><button onclick=\"window.print()\" class=\"btn\">Print</button></div></div>
+    <div id=\"content\" class=\"content\">Generating...</div>
+  </div>
+</body>
+</html>
+"""
+        return Response(page, mimetype="text/html; charset=utf-8")
+    except Exception as exc:  # pragma: no cover - defensive
+        html = (
+            "<!DOCTYPE html><html><head><meta charset='utf-8'/><title>Analysis Error</title></head>"
+            f"<body style='font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;padding:1.5rem;'><h1>Analysis Error</h1><pre>{str(exc)}</pre></body></html>"
+        )
+        return Response(html, mimetype="text/html; charset=utf-8")
+
+
 def _heuristic_analysis(compare: dict) -> str:
     """Simple local summary when LLM is not available."""
     kind = compare.get("kind")
