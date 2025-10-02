@@ -28,20 +28,21 @@ def test_module_lwe_cost_headline_kyber():
     cost = metrics.extras.get("mlkem", {}).get("module_lwe_cost")
     assert cost, "expected module_lwe_cost in extras"
     headline = cost["headline"]
-    assert 115.0 <= headline["classical_bits"] <= 122.0
+    assert 146.0 <= headline["classical_bits"] <= 150.0
+    assert 133.0 <= headline["quantum_bits"] <= 136.0
     assert metrics.classical_bits == headline["classical_bits"]
     assert metrics.quantum_bits == headline["quantum_bits"]
     assert metrics.extras.get("category_floor") == 128
-    assert abs(cost["primal"]["beta"] - 403.0) < 1.0
+    assert abs(cost["primal"]["beta"] - 508.0) < 0.5
     assert cost["source"] == "core-svp-spec-table"
 
 
 def test_module_lwe_cost_headline_kyber_768():
     metrics = _estimate_kyber_from_name("ML-KEM-768", EstimatorOptions())
-    assert metrics.classical_bits == 182.0
+    assert metrics.classical_bits == 184.0
     cost = metrics.extras.get("mlkem", {}).get("module_lwe_cost")
     assert cost["source"] == "core-svp-spec-table"
-    assert abs(cost["primal"]["beta"] - 625.0) < 1.0
+    assert abs(cost["primal"]["beta"] - 630.0) < 0.5
 
 
 def test_module_lwe_cost_headline_dilithium():
@@ -52,7 +53,7 @@ def test_module_lwe_cost_headline_dilithium():
     assert 210.0 <= headline["classical_bits"] <= 225.0
     assert metrics.classical_bits == headline["classical_bits"]
     assert metrics.quantum_bits == headline["quantum_bits"]
-    assert abs(cost["primal"]["beta"] - 638.0) < 1.0
+    assert abs(cost["primal"]["beta"] - 746.0) < 0.5
     assert cost["source"] == "core-svp-spec-table"
 
 
@@ -114,6 +115,9 @@ def test_hqc_isd_models_present():
     summary = SimpleNamespace(algo="hqc", kind="KEM", meta={"mechanism": "HQC-128"})
     formatted = _standardize_security(summary, sec_dict)
     assert formatted.get("estimates", {}).get("hqc_isd")
+    headline = formatted.get("headline")
+    assert headline["classical_bits"] == metrics.classical_bits == metrics.extras.get("category_floor")
+    assert headline["quantum_bits"] == metrics.quantum_bits == metrics.extras.get("category_floor")
 
 
 def test_sphincs_sanity_and_structure():

@@ -35,6 +35,8 @@ if HAS_RSA:
 
         def __init__(self) -> None:
             self._bits = _rsa_bits()
+            self.mech = f"RSA-{self._bits}-OAEP"
+            self.algorithm = self.mech
 
         def keygen(self) -> tuple[bytes, bytes]:
             return rsa_keypair(self._bits)
@@ -52,6 +54,8 @@ if HAS_RSA:
 
         def __init__(self) -> None:
             self._bits = _rsa_bits()
+            self.mech = f"RSA-{self._bits}-PSS"
+            self.algorithm = self.mech
 
         def keygen(self) -> tuple[bytes, bytes]:
             return rsa_keypair(self._bits)

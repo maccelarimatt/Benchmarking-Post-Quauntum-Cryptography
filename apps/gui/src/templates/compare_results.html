@@ -218,6 +218,9 @@
             <col class="kv-value" />
           </colgroup>
           <tbody>
+            {% set sec_obj = a.security or {} %}
+            {% set sec_params = sec_obj.get('parameters', {}) %}
+            {% set canonical_sizes = sec_params.get('sizes_bytes') %}
             <tr>
               <td class="kv-label">Version</td>
               <td class="kv-value">
@@ -256,6 +259,12 @@
                 {% else %}-{% endif %}
               </td>
             </tr>
+            {% if canonical_sizes and canonical_sizes.get('public_key') %}
+            <tr>
+              <td class="kv-label">Spec public key length</td>
+              <td class="kv-value kv-mono">{{ canonical_sizes.get('public_key') }} B</td>
+            </tr>
+            {% endif %}
             <tr>
               <td class="kv-label">Secret key length</td>
               <td class="kv-value kv-mono">
@@ -264,15 +273,33 @@
                 {% else %}-{% endif %}
               </td>
             </tr>
+            {% if canonical_sizes and canonical_sizes.get('secret_key') %}
+            <tr>
+              <td class="kv-label">Spec secret key length</td>
+              <td class="kv-value kv-mono">{{ canonical_sizes.get('secret_key') }} B</td>
+            </tr>
+            {% endif %}
             {% if compare.kind == 'KEM' %}
             <tr>
               <td class="kv-label">Ciphertext length</td>
               <td class="kv-value kv-mono">{% if a.meta.ciphertext_len is not none %}{{ a.meta.ciphertext_len }} B{% else %}-{% endif %}</td>
             </tr>
+            {% if canonical_sizes and canonical_sizes.get('ciphertext') %}
+            <tr>
+              <td class="kv-label">Spec ciphertext length</td>
+              <td class="kv-value kv-mono">{{ canonical_sizes.get('ciphertext') }} B</td>
+            </tr>
+            {% endif %}
             <tr>
               <td class="kv-label">Shared secret length</td>
               <td class="kv-value kv-mono">{% if a.meta.shared_secret_len is not none %}{{ a.meta.shared_secret_len }} B{% else %}-{% endif %}</td>
             </tr>
+            {% if canonical_sizes and canonical_sizes.get('shared_secret') %}
+            <tr>
+              <td class="kv-label">Spec shared secret length</td>
+              <td class="kv-value kv-mono">{{ canonical_sizes.get('shared_secret') }} B</td>
+            </tr>
+            {% endif %}
             <tr>
               <td class="kv-label">CT expansion ratio (ct / shared secret)</td>
               <td class="kv-value">{% if a.meta.ciphertext_expansion_ratio is not none %}{{ '%.3f'|format(a.meta.ciphertext_expansion_ratio) }}{% else %}-{% endif %}</td>
@@ -282,6 +309,20 @@
               <td class="kv-label">Signature length</td>
               <td class="kv-value kv-mono">{% if a.meta.signature_len is not none %}{{ a.meta.signature_len }} B{% else %}-{% endif %}</td>
             </tr>
+            {% if canonical_sizes and canonical_sizes.get('signature') %}
+            <tr>
+              <td class="kv-label">Spec signature length</td>
+              <td class="kv-value kv-mono">
+                {{ canonical_sizes.get('signature') }} B
+                {% if canonical_sizes.get('signature_min') %}
+                  <div class="kv-sub">Min {{ canonical_sizes.get('signature_min') }} B</div>
+                {% endif %}
+                {% if canonical_sizes.get('signature_note') %}
+                  <div class="kv-sub">{{ canonical_sizes.get('signature_note') }}</div>
+                {% endif %}
+              </td>
+            </tr>
+            {% endif %}
             <tr>
               <td class="kv-label">Message size</td>
               <td class="kv-value kv-mono">{% if a.meta.message_size is not none %}{{ a.meta.message_size }} B{% else %}-{% endif %}</td>
@@ -924,22 +965,32 @@
         <tbody>
           {% for a in compare.algos %}
           {% set s = a.security if a.security else {} %}
-          {% set est = s.estimator if s and s.estimator else {} %}
-          {% set calc = (s.estimates and s.estimates.calculated) if s and s.estimates else None %}
+          {% set headline = s.headline if s and s.headline else {} %}
           <tr>
             <td>{{ a.label }}</td>
             <td>{% if s.nist_category is not none %}{{ s.nist_category }}{% else %}-{% endif %}</td>
             <td>{% if s.category_floor is not none %}{{ s.category_floor }}{% else %}-{% endif %}</td>
-            <td>{% if s.classical_bits is number %}{{ '%.2f'|format(s.classical_bits) }}{% else %}-{% endif %}</td>
-            <td>{% if s.quantum_bits is number %}{{ '%.2f'|format(s.quantum_bits) }}{% else %}-{% endif %}</td>
+            <td>{% if headline.classical_bits is number %}{{ '%.2f'|format(headline.classical_bits) }}{% else %}-{% endif %}</td>
+            <td>{% if headline.quantum_bits is number %}{{ '%.2f'|format(headline.quantum_bits) }}{% else %}-{% endif %}</td>
             <td>
               {% if s.shor_breakable is not none %}
                 {% if s.shor_breakable %}<span style="color:#ffb3b3;">Yes</span>{% else %}<span style="color:#b3ffb3;">No</span>{% endif %}
               {% else %}-{% endif %}
             </td>
-            <td>{% if est.name %}{{ est.name }}{% else %}-{% endif %}{% if est.profile %} <span class="kv-sub">({{ est.profile }})</span>{% endif %}</td>
-            <td class="col-modeled" style="display:none;">{% if calc and calc.classical_bits is number %}{{ '%.2f'|format(calc.classical_bits) }}{% else %}-{% endif %}</td>
-            <td class="col-modeled" style="display:none;">{% if calc and calc.quantum_bits is number %}{{ '%.2f'|format(calc.quantum_bits) }}{% else %}-{% endif %}</td>
+            <td>
+              {% if headline.estimator %}{{ headline.estimator }}{% else %}-{% endif %}
+              {% if headline.attack %} <span class="kv-sub">({{ headline.attack }})</span>{% endif %}
+            </td>
+            <td class="col-modeled" style="display:none;">
+              {% if headline.classical_bits_range %}
+                {{ '%.2f'|format(headline.classical_bits_range[0]) }} – {{ '%.2f'|format(headline.classical_bits_range[1]) }}
+              {% else %}-{% endif %}
+            </td>
+            <td class="col-modeled" style="display:none;">
+              {% if headline.quantum_bits_range %}
+                {{ '%.2f'|format(headline.quantum_bits_range[0]) }} – {{ '%.2f'|format(headline.quantum_bits_range[1]) }}
+              {% else %}-{% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -950,37 +1001,32 @@
     </div>
     <!-- Security Model Details (Lattice/ISD/Hash/MQ) -->
     <div class="card" style="margin-top:1.25rem;">
-      <div style="font-weight:700; margin-bottom:.5rem;">Security Model Details (calculated)</div>
+      <div style="font-weight:700; margin-bottom:.5rem;">Security Model Details</div>
       <table class="vlines">
         <thead>
           <tr>
             <th>Algorithm</th>
             <th>Model</th>
             <th>Best attack</th>
-            <th>Classical (calc)</th>
-            <th>Quantum (calc)</th>
-            <th>Classical range</th>
-            <th>Quantum range</th>
+            <th>Key metrics &amp; parameters</th>
           </tr>
         </thead>
         <tbody>
           {% for a in compare.algos %}
           {% set s = a.security if a.security else {} %}
-          {% set calc = (s.estimates and s.estimates.calculated) if s and s.estimates else None %}
+          {% set headline = s.headline if s and s.headline else {} %}
+          {% set rows = s.detail_rows if s and s.detail_rows else [] %}
           <tr>
             <td>{{ a.label }}</td>
-            <td>{% if calc and calc.profile %}{{ calc.profile }}{% else %}-{% endif %}</td>
-            <td>{% if calc and calc.attack %}{{ calc.attack }}{% else %}-{% endif %}</td>
-            <td>{% if calc and calc.classical_bits is number %}{{ '%.2f'|format(calc.classical_bits) }}{% else %}-{% endif %}</td>
-            <td>{% if calc and calc.quantum_bits is number %}{{ '%.2f'|format(calc.quantum_bits) }}{% else %}-{% endif %}</td>
+            <td>{% if headline.model %}{{ headline.model }}{% else %}-{% endif %}</td>
+            <td>{% if headline.attack %}{{ headline.attack }}{% else %}-{% endif %}</td>
             <td>
-              {% if calc and calc.classical_bits_range %}
-                {{ '%.2f'|format(calc.classical_bits_range[0]) }} – {{ '%.2f'|format(calc.classical_bits_range[1]) }}
-              {% else %}-{% endif %}
-            </td>
-            <td>
-              {% if calc and calc.quantum_bits_range %}
-                {{ '%.2f'|format(calc.quantum_bits_range[0]) }} – {{ '%.2f'|format(calc.quantum_bits_range[1]) }}
+              {% if rows %}
+                <ul style="margin:0; padding-left:1.1rem;">
+                  {% for row in rows %}
+                    <li style="margin-bottom:0.25rem;"><strong>{{ row[0] }}:</strong> {{ row[1] }}</li>
+                  {% endfor %}
+                </ul>
               {% else %}-{% endif %}
             </td>
           </tr>
@@ -992,6 +1038,29 @@
         SPHINCS+/XMSS → hash bounds; MAYO → MQ checks (rank/minrank). Detailed curves and constants appear in raw JSON
         under "details.*" blocks (e.g., details.module_lwe_*, details.falcon_bkz_model).
       </div>
+    </div>
+    <div class="card" style="margin-top:1.25rem;">
+      <div style="font-weight:700; margin-bottom:.5rem;">Security Notes</div>
+      {% set ns = namespace(found=False) %}
+      {% for a in compare.algos %}
+        {% set s = a.security if a.security else {} %}
+        {% set headline = s.headline if s and s.headline else {} %}
+        {% set notes = headline.notes if headline and headline.notes else [] %}
+        {% if notes %}
+          {% set ns.found = True %}
+          <div style="margin-bottom:.9rem;">
+            <div style="font-weight:600;">{{ a.label }}</div>
+            <ul style="margin:0.35rem 0 0 1.2rem; padding:0;">
+              {% for note in notes %}
+              <li style="margin-bottom:0.25rem;">{{ note }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+      {% endfor %}
+      {% if not ns.found %}
+        <div class="kv-sub">No additional notes for these algorithms.</div>
+      {% endif %}
     </div>
   </div>
 
