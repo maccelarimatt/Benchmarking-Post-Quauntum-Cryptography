@@ -79,8 +79,8 @@
       <div class="brand-text">
         <div class="brand-title"><strong>Post-Quantum Cryptography Benchmarking</strong></div>
         <div class="brand-subtitle">Run and Compare Different Cryptographic Algorithms</div>
-      </div>
-    </div>
+  </div>
+  </div>
   </header>
   <div class="island" style="display:flex; justify-content:space-between; align-items:center;">
     <div>
@@ -93,8 +93,88 @@
     </div>
     <div>
       <a href="/" class="btn">Back to setup</a>
+  </div>
+  </div>
+  
+  <!-- Floating LLM widget (bottom-right) -->
+  <style>
+    /* Hide legacy LLM block/modal */
+    #llm-modal { display:none !important; }
+    .llm-fab { position: fixed; right: 22px; bottom: 22px; z-index: 1100; display: inline-flex; align-items: center; gap:.5rem; background: var(--accent); color: #fff; padding:.6rem .9rem; border: none; border-radius: 999px; box-shadow: 0 10px 24px rgba(0,0,0,.35); cursor: pointer; }
+    .llm-fab:hover { filter: brightness(.95); }
+    .llm-panel { position: fixed; right: 22px; bottom: 84px; width: min(90vw, 420px); height: min(75vh, 520px); z-index: 1100; display:none; background: rgba(0,0,0,.82); border: 1px solid rgba(255,255,255,.15); border-radius: .9rem; box-shadow: 0 16px 36px rgba(0,0,0,.45); backdrop-filter: blur(6px); overflow: hidden; }
+    .llm-panel.open { display:flex; flex-direction: column; }
+    .llm-head { display:flex; align-items:center; justify-content:space-between; padding:.6rem .8rem; border-bottom:1px solid rgba(255,255,255,.12); }
+    .llm-title { font-weight:700; }
+    .llm-hint { font-size:.85rem; opacity:.9; }
+    .llm-body { flex: 1; overflow: auto; padding:.75rem .85rem; line-height:1.45; }
+    .llm-input { display:flex; gap:.5rem; padding:.55rem .6rem; border-top:1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.35); }
+    .llm-input textarea { flex:1; resize:none; min-height:42px; max-height:110px; padding:.5rem .6rem; border-radius:.5rem; border:1px solid rgba(255,255,255,.2); background: rgba(0,0,0,.25); color:#fff; }
+    .llm-btn { padding:.55rem .9rem; border:none; border-radius:.55rem; background: var(--accent); color:#fff; cursor:pointer; }
+  </style>
+  <div id="llm-widget">
+    <button id="llm-fab" class="llm-fab">Chat with me</button>
+    <div id="llm-panel" class="llm-panel" role="dialog" aria-label="AI analysis">
+      <div class="llm-head">
+        <div class="llm-title">AI-Assisted Analysis</div>
+        <div class="llm-hint" id="llm-provider-hint">Provider: auto</div>
+      </div>
+      <div id="llm-chat-output" class="llm-body">Ask for a summary or request a focus area.</div>
+      <div class="llm-input">
+        <textarea id="llm-chat-input" placeholder="e.g., Focus on verify latency outliers and memory spikes..."></textarea>
+        <button id="llm-send" class="llm-btn">Send</button>
+      </div>
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+  <script>
+    (function(){
+      const compareData = {{ compare|tojson }};
+      const fab = document.getElementById('llm-fab');
+      const panel = document.getElementById('llm-panel');
+      const out = document.getElementById('llm-chat-output');
+      const input = document.getElementById('llm-chat-input');
+      const send = document.getElementById('llm-send');
+      const hint = document.getElementById('llm-provider-hint');
+
+      function togglePanel(force) {
+        const open = panel.classList.contains('open');
+        const next = (typeof force === 'boolean') ? force : !open;
+        if (next) panel.classList.add('open'); else panel.classList.remove('open');
+      }
+      fab.addEventListener('click', () => togglePanel());
+
+      async function runAnalysis() {
+        try {
+          send.disabled = true; input.disabled = true;
+          const req = (input && input.value && input.value.trim()) ? input.value.trim() : undefined;
+          out.textContent = 'Generating analysis...';
+          const res = await fetch('/api/analysis', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ compare: compareData, request: req })
+          });
+          const data = await res.json();
+          if (!data || data.ok === false) throw new Error((data && data.error) || 'Analysis failed');
+          if (hint) {
+            const provider = (data.provider || 'auto');
+            const model = (data.model || '');
+            const usedFallback = !!data.used_fallback;
+            hint.textContent = 'Provider: ' + provider + (model ? (' · ' + model) : '') + (usedFallback ? ' (fallback)' : '');
+          }
+          const html = String(data.analysis || '').trim();
+          out.innerHTML = window.DOMPurify ? DOMPurify.sanitize(html) : html;
+        } catch (e) {
+          out.textContent = String(e);
+        } finally {
+          send.disabled = false; input.disabled = false;
+        }
+      }
+      function sendHandler(){ if (!panel.classList.contains('open')) togglePanel(true); runAnalysis(); }
+      send.addEventListener('click', sendHandler);
+      input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); sendHandler(); } });
+    })();
+  </script>
+  -->
 
   {% if errors and errors|length %}
   <div class="island" style="background: rgba(128,0,0,.35);">
@@ -108,7 +188,7 @@
   {% endif %}
 
   <!-- Algorithm Details -->
-  <div class="island">
+  <div class="island" id="llm-block" style="display:none;">
     <div style="font-weight:700; margin-bottom:.75rem;">Algorithm Details</div>
     <div class="details-grid">
       {% for a in compare.algos %}
@@ -624,7 +704,7 @@
 
   <script>
     // Lightweight copy helpers for environment cards
-    (function(){
+    (function(){ return; /* inline LLM analysis removed
       function copyText(txt){
         if (!txt) return;
         try { navigator.clipboard.writeText(txt); } catch(e) { /* ignore */ }
@@ -1264,53 +1344,15 @@
     })();
   </script>
 
-  <!-- LLM Analysis section (appears before Raw Exports) -->
-  <div class="island">
-    <div class="card card--full" style="display:flex; flex-direction:column; gap:.6rem;">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
-        <div style="font-weight:700;">AI-Assisted Analysis</div>
-        <div style="opacity:.9; font-size:.9rem;">
-          <span id="llm-provider-hint">Provider: auto (configurable)</span>
-        </div>
-      </div>
-      <div style="display:flex; gap:.6rem; align-items:flex-start; flex-wrap:wrap;">
-        <div style="flex:1 1 420px; min-width:260px;">
-          <label for="llm-user-request" style="display:block; font-weight:600; margin-bottom:.25rem;">Custom request (optional)</label>
-          <textarea id="llm-user-request" rows="2" placeholder="e.g., Focus on verify latency outliers and memory spikes; call out which algos fit microcontrollers vs. servers." style="width:100%; max-width:100%; resize:none; padding:.6rem .7rem; border-radius:.45rem; border:1px solid rgba(255,255,255,.2); background:rgba(0,0,0,.2); color:#fff; box-sizing:border-box;"></textarea>
-          <div class="kv-sub" style="margin-top:.25rem; opacity:.85;">Leave empty for a general summary.</div>
-        </div>
-      </div>
-      <div id="llm-analysis-output" style="background:rgba(0,0,0,.25); padding:1rem; border-radius:.5rem; min-height: 80px; line-height:1.35; margin-top:.5rem;">
-        Click "Generate Analysis" to summarize these results.
-      </div>
-      <div style="display:flex; gap:.5rem; justify-content:flex-end; align-items:center;">
-        <button id="llm-generate" type="button">Generate Analysis</button>
-        <button id="llm-regenerate" type="button" style="display:none;" class="btn">Regenerate</button>
-        <button id="llm-open" type="button" style="display:none;" class="btn">Open Window</button>
-      </div>
-      <div id="llm-analysis-error" style="display:none; color:#ffdddd; background:#902; padding:.5rem .75rem; border-radius:.4rem;"></div>
-    </div>
-  </div>
+  <!-- LLM Analysis section removed; using floating chatbot only -->
 
-  <!-- Modal window to render server-generated HTML page -->
-  <div id="llm-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:1000; align-items:center; justify-content:center;">
-    <div style="background:#101418; border-radius:.7rem; width:min(95vw, 1100px); height:min(90vh, 850px); display:flex; flex-direction:column; box-shadow: 0 10px 30px rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.1);">
-      <div style="display:flex; align-items:center; justify-content:space-between; padding:.6rem .8rem; border-bottom:1px solid rgba(255,255,255,.1);">
-        <div style="font-weight:700;">AI Analysis (HTML)</div>
-        <div style="display:flex; gap:.5rem; align-items:center;">
-          <button id="llm-modal-print" type="button" class="btn">Print</button>
-          <button id="llm-modal-close" type="button" class="btn" style="background:#3a3f45;">Close</button>
-        </div>
-      </div>
-      <iframe id="llm-modal-frame" name="llmModalFrame" style="flex:1; width:100%; border:0; background:#fff;"></iframe>
-    </div>
-  </div>
+  
 
   <!-- HTML sanitization lib -->
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
 
   <script>
-    (function(){
+    (function(){ return; /* inline LLM analysis removed */
       const compareData = {{ compare|tojson }};
       const out = document.getElementById('llm-analysis-output');
       const btn = document.getElementById('llm-generate');
@@ -1423,9 +1465,8 @@
       if (modalPrint) modalPrint.addEventListener('click', () => {
         try { if (modalFrame && modalFrame.contentWindow) modalFrame.contentWindow.print(); } catch (e) {}
       });
-      // Auto-run once when the section loads
-      try { runAnalysis(); } catch (e) {}
-    })();
+      // Auto-run disabled; use floating widget to trigger analysis
+    */ })();
   </script>
 
   <!-- Raw exports section -->
