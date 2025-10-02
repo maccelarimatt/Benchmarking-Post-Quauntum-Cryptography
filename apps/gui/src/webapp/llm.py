@@ -166,6 +166,7 @@ def _build_user_prompt_v2(summary: Dict[str, Any], user_request: Optional[str] =
         req = req[:4000] + "…"
     lines.append("User request: " + (req or "(none)"))
     lines.append("Incorporate the request where relevant; keep structure consistent; avoid cryptanalytic guarantees.")
+    lines.append("In the Summary section, add one sentence that explicitly references the user's request focus if provided.")
     lines.append("")
     lines.append("Task: Provide an expansive analysis with the sections below. Highlight:")
     lines.append("- fastest algorithms per operation and approximate margins")
@@ -175,6 +176,7 @@ def _build_user_prompt_v2(summary: Dict[str, Any], user_request: Optional[str] =
     lines.append("- variance/outliers and caveats")
     lines.append("")
     lines.append(_output_template(summary.get("kind")))
+    lines.append("Append a <h3>Conclusion</h3> section at the end with 2–3 sentences or bullets summarizing key trade-offs and when each algorithm is preferable (no security guarantees).")
     return "\n".join(lines)
 
 

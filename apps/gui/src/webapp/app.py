@@ -1545,6 +1545,7 @@ def analysis_html():
     .toolbar {{ display:flex; gap:.5rem; align-items:center; }}
     .btn {{ display:inline-block; padding:.5rem .9rem; border:none; border-radius:.45rem; background: var(--accent); color:#fff; cursor:pointer; text-decoration:none; }}
   </style>
+  <script src=\"https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js\"></script>
   <script>
     const RAW = {raw_js};
     const PROVIDER = {provider_js};
@@ -1563,11 +1564,39 @@ def analysis_html():
       }}
     }}
     window.addEventListener('DOMContentLoaded', render);
+
+    async function downloadPDF() {{
+      try {{
+        const source = document.getElementById('content');
+        if (!source) return;
+        const html = source.innerHTML || '';
+        if (!html.trim()) return;
+        const doc = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>PQC LLM Analysis</title>
+        <style>
+          body {{ background:#fff; color:#000; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; line-height:1.5; padding:16px; }}
+          h1,h2,h3 {{ margin-top:1.1em; }}
+          table {{ width:100%; border-collapse:collapse; }}
+          th,td {{ border:1px solid #ccc; padding:.4rem .5rem; }}
+          ul {{ margin: .5rem 0 .75rem 1.25rem; }}
+        </style></head><body>${html}</body></html>`;
+
+        const opts = {{
+          margin: 10,
+          filename: 'pqc-llm-analysis.pdf',
+          image: {{ type: 'jpeg', quality: 0.98 }},
+          html2canvas: {{ scale: 2, useCORS: true, background: '#ffffff', scrollX: 0, scrollY: 0 }},
+          jsPDF: {{ unit: 'mm', format: 'a4', orientation: 'portrait' }}
+        }};
+        if (window.html2pdf) {{
+          await window.html2pdf().from(doc).set(opts).save();
+        }}
+      }} catch (e) {{ /* ignore */ }}
+    }}
   </script>
 </head>
 <body>
   <div class=\"container\">
-    <div class=\"header\"><div class=\"title\">AI-Assisted Analysis</div><div id=\"hint\" class=\"hint\"></div><div class=\"toolbar\"><button onclick=\"window.print()\" class=\"btn\">Print</button></div></div>
+    <div class=\"header\"><div class=\"title\">AI-Assisted Analysis</div><div id=\"hint\" class=\"hint\"></div><div class=\"toolbar\"><button onclick=\"window.print()\" class=\"btn\">Print</button><button onclick=\"downloadPDF()\" class=\"btn\">Download PDF</button></div></div>
     <div id=\"content\" class=\"content\">Generating...</div>
   </div>
 </body>

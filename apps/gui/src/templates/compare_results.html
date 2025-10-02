@@ -22,6 +22,24 @@
     table.vlines td:not(:last-child) { border-right: 1px solid rgba(255,255,255,.25); }
     table.vlines thead th { border-bottom: 1px solid rgba(255,255,255,.35); }
 
+    /* Hide default disclosure arrow markers on <summary> to avoid stray arrows */
+    summary { list-style: none; }
+    summary::marker { content: none; }
+    details > summary::marker { content: none; }
+    /* WebKit/Blink */
+    summary::-webkit-details-marker { display: none; }
+    details > summary::-webkit-details-marker { display: none; }
+
+    /* Defensive: suppress any stray pseudo-element arrows injected by defaults */
+    body::before, body::after,
+    header::before, header::after,
+    .island::before, .island::after,
+    details > summary::before, details > summary::after {
+      content: none !important;
+    }
+    /* As a last resort on this page only, clear before/after on all descendants */
+    :where(body) *::before, :where(body) *::after { content: none !important; }
+
     /* Refined details layout */
     /* Layout: fewer cards per row for better readability */
     .details-grid { display:grid; grid-template-columns: 1fr; gap:1.25rem; }
@@ -117,7 +135,10 @@
     <div id="llm-panel" class="llm-panel" role="dialog" aria-label="AI analysis">
       <div class="llm-head">
         <div class="llm-title">AI-Assisted Analysis</div>
-        <div class="llm-hint" id="llm-provider-hint">Provider: auto</div>
+        <div style="display:flex; gap:.5rem; align-items:center;">
+          <div class="llm-hint" id="llm-provider-hint">Provider: auto</div>
+          <button id="llm-download" class="llm-btn" title="Download PDF" style="display:none;" disabled>Download PDF</button>
+        </div>
       </div>
       <div id="llm-chat-output" class="llm-body">Ask for a summary or request a focus area.</div>
       <div class="llm-input">
@@ -127,6 +148,7 @@
     </div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
   <script>
     (function(){
       const compareData = {{ compare|tojson }};
@@ -136,6 +158,8 @@
       const input = document.getElementById('llm-chat-input');
       const send = document.getElementById('llm-send');
       const hint = document.getElementById('llm-provider-hint');
+      const downloadBtn = document.getElementById('llm-download');
+      if (downloadBtn) { downloadBtn.style.display = 'none'; downloadBtn.disabled = true; }
 
       function togglePanel(force) {
         const open = panel.classList.contains('open');
@@ -143,10 +167,44 @@
         if (next) panel.classList.add('open'); else panel.classList.remove('open');
       }
       fab.addEventListener('click', () => togglePanel());
+      async function downloadPdf() {
+        try {
+          const source = document.getElementById('llm-chat-output');
+          if (!source) return;
+          const html = source.innerHTML || '';
+          if (!html.trim()) return;
+          const doc = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>PQC LLM Analysis</title>
+          <style>
+            body { background:#fff; color:#000; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; line-height:1.5; padding:16px; }
+            h1,h2,h3 { margin-top:1.1em; }
+            table { width:100%; border-collapse:collapse; }
+            th,td { border:1px solid #ccc; padding:.4rem .5rem; }
+            ul { margin: .5rem 0 .75rem 1.25rem; }
+          </style></head><body>${html}</body></html>`;
+          const opts = {
+            margin: 10,
+            filename: 'pqc-llm-analysis.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, background: '#ffffff', scrollX: 0, scrollY: 0 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+          };
+          if (window.html2pdf) {
+            await window.html2pdf().from(doc).set(opts).save();
+          } else {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js';
+            s.onload = () => window.html2pdf().from(doc).set(opts).save();
+            document.head.appendChild(s);
+          }
+        } catch (e) { console.error(e); }
+      }
+      if (downloadBtn) downloadBtn.addEventListener('click', downloadPdf);
 
       async function runAnalysis() {
         try {
           send.disabled = true; input.disabled = true;
+          if (downloadBtn) { downloadBtn.disabled = true; downloadBtn.style.display = 'none'; }
+          if (downloadBtn) { downloadBtn.disabled = true; downloadBtn.style.display = 'none'; }
           const req = (input && input.value && input.value.trim()) ? input.value.trim() : undefined;
           out.textContent = 'Generating analysis...';
           const res = await fetch('/api/analysis', {
@@ -163,8 +221,12 @@
           }
           const html = String(data.analysis || '').trim();
           out.innerHTML = window.DOMPurify ? DOMPurify.sanitize(html) : html;
+          if (downloadBtn && html) { downloadBtn.style.display = 'inline-block'; downloadBtn.disabled = false; }
+          if (downloadBtn && html) { downloadBtn.style.display = 'inline-block'; downloadBtn.disabled = false; }
         } catch (e) {
           out.textContent = String(e);
+          if (downloadBtn) { downloadBtn.disabled = true; downloadBtn.style.display = 'none'; }
+          if (downloadBtn) { downloadBtn.disabled = true; downloadBtn.style.display = 'none'; }
         } finally {
           send.disabled = false; input.disabled = false;
         }
