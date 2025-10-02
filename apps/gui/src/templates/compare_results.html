@@ -114,7 +114,6 @@
   </div>
   </div>
   
-  <!-- Floating LLM widget (bottom-right) -->
   <style>
     /* Hide legacy LLM block/modal */
     #llm-modal { display:none !important; }
@@ -236,7 +235,7 @@
       input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); sendHandler(); } });
     })();
   </script>
-  -->
+
 
   {% if errors and errors|length %}
   <div class="island" style="background: rgba(128,0,0,.35);">
