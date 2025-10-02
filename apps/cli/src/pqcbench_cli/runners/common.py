@@ -1019,7 +1019,7 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
             try:
                 attacks = bkz_model.get("attacks") or []
                 c_const = (bkz_model.get("core_svp_constants") or {}).get("classical", 0.292)
-                q_const = (bkz_model.get("core_svp_constants") or {}).get("quantum", 0.262)
+                q_const = (bkz_model.get("core_svp_constants") or {}).get("quantum", 0.265)
                 best = None
                 for a_entry in attacks:
                     bsucc = a_entry.get("beta_success")
@@ -1243,6 +1243,8 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
             core_details["primal"] = module_cost["primal"]
         if module_cost.get("dual"):
             core_details["dual"] = module_cost["dual"]
+        if module_cost.get("headline"):
+            core_details["headline"] = module_cost["headline"]
         if core_details:
             out.setdefault("details", {})["module_lwe_core_svp"] = core_details
         if module_cost.get("reference"):
@@ -1352,22 +1354,29 @@ def _build_security_headline(out: Dict[str, Any], extras: Dict[str, Any]) -> Dic
 
     if family == "ML-KEM":
         module = (details.get("module_lwe_core_svp") or {})
-        primal = module.get("primal") or {}
-        classical = primal.get("classical_bits")
-        quantum = primal.get("quantum_bits")
+        headline_entry = module.get("headline") or module.get("primal") or {}
+        classical = headline_entry.get("classical_bits")
+        quantum = headline_entry.get("quantum_bits")
         if classical is not None and quantum is not None:
             ranges = curated if isinstance(curated, dict) else {}
             class_range = _value_in_range(classical, ranges.get("classical_bits_range"))
             quant_range = _value_in_range(quantum, ranges.get("quantum_bits_range"))
             notes: List[str] = []
+            attack_label = headline_entry.get("attack")
+            beta = headline_entry.get("beta")
+            dim = headline_entry.get("dimension")
+            samples = headline_entry.get("samples")
+            if attack_label:
+                notes.append(
+                    f"Headline attack: {attack_label} (β={beta}, dim={dim}, samples={samples})."
+                )
+            if module.get("primal") and headline_entry is not module.get("primal"):
+                notes.append("Primal attack available in details; headline shows lower-cost path.")
             if ranges.get("source"):
                 notes.append(f"Curated range: {ranges['source']}")
             ref = (out.get("assumptions") or {}).get("module_lwe_reference") or extras.get("estimator_reference")
             if ref:
                 notes.append(f"Reference: {ref}")
-            notes.append(
-                f"Core-SVP table (β={primal.get('beta')}, dim={primal.get('dimension')}, samples={primal.get('samples')})."
-            )
             if params:
                 notes.append(f"Module parameters: k={params.get('k')}, n={params.get('n')}, q={params.get('q')}.")
             return {
@@ -1379,23 +1388,31 @@ def _build_security_headline(out: Dict[str, Any], extras: Dict[str, Any]) -> Dic
                 "quantum_bits_range": quant_range,
                 "estimator": "core-svp",
                 "model": "module-LWE",
-                "attack": primal.get("attack"),
+                "attack": attack_label,
                 "notes": notes,
             }
         return _fallback_floor("Module-LWE headline unavailable.")
 
     if family == "ML-DSA":
         module = (details.get("module_lwe_core_svp") or {})
-        primal = module.get("primal") or {}
-        classical = primal.get("classical_bits")
-        quantum = primal.get("quantum_bits")
+        headline_entry = module.get("headline") or module.get("primal") or {}
+        classical = headline_entry.get("classical_bits")
+        quantum = headline_entry.get("quantum_bits")
         if classical is not None and quantum is not None:
             ranges = curated if isinstance(curated, dict) else {}
             class_range = _value_in_range(classical, ranges.get("classical_bits_range"))
             quant_range = _value_in_range(quantum, ranges.get("quantum_bits_range"))
-            notes: List[str] = [
-                f"Core-SVP table (β={primal.get('beta')}, dim={primal.get('dimension')}, samples={primal.get('samples')})."
-            ]
+            attack_label = headline_entry.get("attack")
+            beta = headline_entry.get("beta")
+            dim = headline_entry.get("dimension")
+            samples = headline_entry.get("samples")
+            notes: List[str] = []
+            if attack_label:
+                notes.append(
+                    f"Headline attack: {attack_label} (β={beta}, dim={dim}, samples={samples})."
+                )
+            if module.get("primal") and headline_entry is not module.get("primal"):
+                notes.append("Primal attack available in details; headline shows lower-cost path.")
             if params:
                 notes.append(
                     f"Module parameters: k={params.get('k')}, l={params.get('l')}, n={params.get('n')}, q={params.get('q')}.")
@@ -1415,7 +1432,7 @@ def _build_security_headline(out: Dict[str, Any], extras: Dict[str, Any]) -> Dic
                 "quantum_bits_range": quant_range,
                 "estimator": "core-svp",
                 "model": "module-LWE",
-                "attack": primal.get("attack"),
+                "attack": attack_label,
                 "notes": notes,
             }
         return _fallback_floor("Module-LWE headline unavailable.")
@@ -1424,7 +1441,7 @@ def _build_security_headline(out: Dict[str, Any], extras: Dict[str, Any]) -> Dic
         if isinstance(curated, dict):
             headline = _curated_summary("curated-range (Falcon BKZ)")
             headline.setdefault("notes", []).append(
-                "Core-SVP constants: classical 0.292, quantum 0.262 (documented)."
+                "Core-SVP constants: classical 0.292, quantum 0.265."
             )
             if isinstance(calc, dict):
                 headline.setdefault("notes", []).append(
@@ -1455,22 +1472,21 @@ def _build_security_headline(out: Dict[str, Any], extras: Dict[str, Any]) -> Dic
 
     if family == "HQC":
         if isinstance(curated, dict):
-            notes = ["Design target from HQC submission (Round 3)."]
-            notes.append("Classical bits reflect code-decoding target; Grover-style √ speedup for quantum bits.")
+            headline = _fallback_floor(None)
+            notes = ["Showing NIST category floor for HQC headline cells."]
+            notes.append("Design targets (Stern/BJMM) available in details.")
+            design_mid = curated.get("classical_bits_mid")
+            design_quant = curated.get("quantum_bits_mid")
+            if design_mid is not None and design_quant is not None:
+                notes.append(
+                    f"Design target (details): classical ≈ {design_mid}, quantum ≈ {design_quant}."
+                )
             if estimates.get("hqc_isd"):
-                notes.append("See ISD heuristics (Stern/BJMM) in details.")
-            return {
-                "nist_category": nist_category,
-                "category_floor": category_floor,
-                "classical_bits": float(curated.get("classical_bits_mid")),
-                "quantum_bits": float(curated.get("quantum_bits_mid")),
-                "classical_bits_range": _value_in_range(curated.get("classical_bits_mid"), curated.get("classical_bits_range")),
-                "quantum_bits_range": _value_in_range(curated.get("quantum_bits_mid"), curated.get("quantum_bits_range")),
-                "estimator": "ISD design-target",
-                "model": "code-based ISD",
-                "attack": "design-target",
-                "notes": notes,
-            }
+                notes.append("ISD heuristics (Stern/BJMM) recorded under details.")
+            if curated.get("source"):
+                notes.append(f"Source: {curated['source']}")
+            headline["notes"] = notes
+            return headline
         return _fallback_floor("Using NIST category floor for HQC.")
 
     if family in {"SPHINCS+", "XMSSMT", "XMSS"}:
@@ -1590,7 +1606,14 @@ def _build_security_details(out: Dict[str, Any], extras: Dict[str, Any]) -> List
             rows.append((label, str(value)))
 
     if family == "ML-KEM":
-        primal = (details.get("module_lwe_core_svp") or {}).get("primal") or {}
+        module_block = (details.get("module_lwe_core_svp") or {})
+        headline_entry = module_block.get("headline") or {}
+        if headline_entry:
+            add("Headline attack", headline_entry.get("attack"))
+            add("Headline β", headline_entry.get("beta"))
+            add("Headline samples", headline_entry.get("samples"))
+            add("Headline dimension", headline_entry.get("dimension"))
+        primal = module_block.get("primal") or {}
         if primal:
             add("BKZ β", primal.get("beta"))
             add("Samples", primal.get("samples"))
@@ -1601,7 +1624,14 @@ def _build_security_details(out: Dict[str, Any], extras: Dict[str, Any]) -> List
             add("Parameters", f"k={params.get('k')}, n={params.get('n')}, q={params.get('q')}")
 
     elif family == "ML-DSA":
-        primal = (details.get("module_lwe_core_svp") or {}).get("primal") or {}
+        module_block = (details.get("module_lwe_core_svp") or {})
+        headline_entry = module_block.get("headline") or {}
+        if headline_entry:
+            add("Headline attack", headline_entry.get("attack"))
+            add("Headline β", headline_entry.get("beta"))
+            add("Headline samples", headline_entry.get("samples"))
+            add("Headline dimension", headline_entry.get("dimension"))
+        primal = module_block.get("primal") or {}
         if primal:
             add("BKZ β", primal.get("beta"))
             add("Samples", primal.get("samples"))

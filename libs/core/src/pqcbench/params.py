@@ -274,7 +274,7 @@ _add(["MAYO-1"], family="MAYO", category_floor=128,
          "q": 16,
          "sizes_bytes": {"public_key": 1420, "secret_key": 24, "signature": 454},
      })
-_add(["MAYO-2"], family="MAYO", category_floor=128,
+_add(["MAYO-2", "MAYO_two", "MAYO-two"], family="MAYO", category_floor=128,
      notes="n=81, m=64, o=17, v=64; k=4; q=16",
      extras={
          "n": 81,

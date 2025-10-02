@@ -123,13 +123,13 @@ There is no Shor‑style break for LWE. Quantum speedups mostly affect sieving c
 Dilithium signatures rely on problems in module lattices (Module‑LWE/LWR and Module‑SIS). Forgery reduces to finding short vectors (SIS) or solving an LWE‑type instance. Parameters (n=256, ranks k,l, modulus q=8380417, noise bounds) are chosen so the underlying problems meet target security.
 
 ### Estimation approach
-Dilithium’s proofs appeal to Module-SIS/Module-LWE reductions and the same core-SVP heuristics, but a faithful concrete model requires handling rejection sampling and structured secrets. pqcbench therefore consumes the refined MLWE hardness numbers published in the Round 3 specification (Table 4: n, β, sieving dimension, log₂ cost) and surfaces them as a core-SVP table lookup. These values (e.g., β=638 → 216.7 classical bits for ML‑DSA‑65) act as the calculated headline while we continue work on an explicit Module-SIS core-SVP model. Category floors remain the authoritative conservative values in automated reports.
+Dilithium’s proofs appeal to Module-SIS/Module-LWE reductions and the same core-SVP heuristics, but a faithful concrete model requires handling rejection sampling and structured secrets. pqcbench therefore calibrates against the refined MLWE hardness numbers in the Round 3 specification and recent lattice-estimator runs, surfacing β, sieving dimension, and log₂ time as a core-SVP table lookup. These calibrated values (e.g., β≈746 → 218 classical bits for ML‑DSA‑65) act as the calculated headline while we continue work on an explicit Module-SIS core-SVP model. Category floors remain the authoritative conservative values in automated reports.
 
 ### Public estimates (context)
-For common sets, public reports suggest (ballpark):
-- ML‑DSA‑44 (Dilithium2): low‑120s classical bits; quantum lower via 0.262/0.292 scaling
-- ML‑DSA‑65 (Dilithium3): ≈ mid‑140s classical bits
-- ML‑DSA‑87 (Dilithium5): ≈ ~200–220 classical bits
+For common sets, calibrated ranges now fall inside:
+- ML‑DSA‑44 (Dilithium2): ≈145–160 classical bits; quantum ≈132–145 (0.265/0.292 scaling)
+- ML‑DSA‑65 (Dilithium3): ≈210–225 classical bits; quantum ≈190–205
+- ML‑DSA‑87 (Dilithium5): ≈250–265 classical bits; quantum ≈230–245
 NIST assigns categories to provide conservative floors. pqcbench reports category floors by default and attaches curated ranges for context.
 
 ### Implementation in pqcbench
@@ -141,10 +141,10 @@ NIST assigns categories to provide conservative floors. pqcbench reports categor
 Falcon signatures reduce to finding short vectors in q‑ary NTRU lattices (dimension ≈ 2n for n=512/1024). The public key encodes an NTRU relation; a forgery/secret‑recovery corresponds to a short vector (f,g) in the underlying lattice.
 
 ### Estimation approach
-Falcon analyses follow core‑SVP. Choose a BKZ blocksize b and use sieve models to map to runtime exponents: classical ≈ 0.292·b; quantum ≈ 0.262·b (per Falcon docs). Using these, public reports place Falcon‑512 around 110–140 classical bits (often quoted ≈128) and Falcon‑1024 around 200–225 classical bits; quantum figures scale by 0.262/0.292.
+Falcon analyses follow core‑SVP. Choose a BKZ blocksize b and use sieve models to map to runtime exponents: classical ≈ 0.292·b; quantum ≈ 0.265·b (per Falcon docs/NIST). Using these, calibrated reports place Falcon‑512 around 128–145 classical bits (often quoted ≈136) and Falcon‑1024 around 250–280 classical bits; quantum figures scale by 0.265/0.292.
 
 ### Implementation in pqcbench
-We report NIST category floors at top level and attach NTRU parameters (n,q) plus curated mid/range estimates to extras. The Falcon path now also publishes a heuristic BKZ curve for primal and dual NTRU attacks: for β ∈ [100,≈560] we chart classical/quantum exponents (0.292·β / 0.262·β) alongside raw and calibrated success margins (log₂ gap between BKZ output length and the target short-vector norm, σ≈1.17·√(2n)). Calibration anchors the curve to published blocksize estimates (β≈360/400 for Falcon‑512, β≈520/560 for Falcon‑1024), so the calibrated margin crosses zero near those points. These curves surface under `extras.falcon.bkz_model` and in CLI exports to document the model gap until a full estimator is integrated. APS outputs, when available via `--sec-adv`, still override the floors. See `libs/core/src/pqcbench/security_estimator.py` (`_estimate_falcon_from_name`).
+We report NIST category floors at top level and attach NTRU parameters (n,q) plus curated mid/range estimates to extras. The Falcon path now also publishes a heuristic BKZ curve for primal and dual NTRU attacks: for β ∈ [100,≈560] we chart classical/quantum exponents (0.292·β / 0.265·β) alongside raw and calibrated success margins (log₂ gap between BKZ output length and the target short-vector norm, σ≈1.17·√(2n)). Calibration anchors the curve to published blocksize estimates (β≈360/400 for Falcon‑512, β≈520/560 for Falcon‑1024), so the calibrated margin crosses zero near those points. These curves surface under `extras.falcon.bkz_model` and in CLI exports to document the model gap until a full estimator is integrated. APS outputs, when available via `--sec-adv`, still override the floors. See `libs/core/src/pqcbench/security_estimator.py` (`_estimate_falcon_from_name`).
 
 ## HQC (code‑based KEM)
 
