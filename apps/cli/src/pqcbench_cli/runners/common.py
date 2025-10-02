@@ -1069,8 +1069,19 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         if my.get("curated_estimates"):
             ce = my.get("curated_estimates")
             if isinstance(ce, dict):
-                ce.setdefault("source", "curated-range")
+                ce = ce.copy()
+                ce.setdefault("source", "design-target")
             estimates["curated"] = ce
+            if isinstance(ce, dict):
+                estimates.setdefault("calculated", {
+                    "profile": "mq-design",
+                    "attack": "design-target",
+                    "classical_bits": ce.get("classical_bits_mid"),
+                    "quantum_bits": ce.get("quantum_bits_mid"),
+                    "classical_bits_range": ce.get("classical_bits_range"),
+                    "quantum_bits_range": ce.get("quantum_bits_range"),
+                    "source": ce.get("source"),
+                })
         if my.get("checks"):
             estimates["checks"] = my.get("checks")
 
@@ -1163,6 +1174,24 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         except Exception:
             pass
 
+    # Propagate curated ranges into the calculated block when available.
+    calc_block = estimates.get("calculated") if isinstance(estimates, dict) else None
+    curated_block = estimates.get("curated") if isinstance(estimates, dict) else None
+    if isinstance(calc_block, dict) and isinstance(curated_block, dict):
+        for value_key, range_key in (("classical_bits", "classical_bits_range"), ("quantum_bits", "quantum_bits_range")):
+            if calc_block.get(range_key) is not None:
+                continue
+            range_val = curated_block.get(range_key)
+            if not (isinstance(range_val, list) and len(range_val) == 2):
+                continue
+            value = calc_block.get(value_key)
+            if isinstance(value, (int, float)):
+                lo, hi = range_val
+                if isinstance(lo, (int, float)) and isinstance(hi, (int, float)) and lo <= value <= hi:
+                    calc_block[range_key] = range_val
+            else:
+                calc_block[range_key] = range_val
+
     if module_cost:
         headline = module_cost.get("headline") or {}
         estimates["calculated"] = {
@@ -1190,6 +1219,23 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
             out.setdefault("details", {})["module_lwe_core_svp"] = core_details
         if module_cost.get("reference"):
             out.setdefault("assumptions", {})["module_lwe_reference"] = module_cost["reference"]
+
+        calc_block = estimates.get("calculated")
+        curated_block = estimates.get("curated")
+        if isinstance(calc_block, dict) and isinstance(curated_block, dict):
+            for value_key, range_key in (("classical_bits", "classical_bits_range"), ("quantum_bits", "quantum_bits_range")):
+                if calc_block.get(range_key) is not None:
+                    continue
+                range_val = curated_block.get(range_key)
+                if not (isinstance(range_val, list) and len(range_val) == 2):
+                    continue
+                value = calc_block.get(value_key)
+                if isinstance(value, (int, float)):
+                    lo, hi = range_val
+                    if isinstance(lo, (int, float)) and isinstance(hi, (int, float)) and lo <= value <= hi:
+                        calc_block[range_key] = range_val
+                else:
+                    calc_block[range_key] = range_val
 
     # Lattice estimator details
     if "classical_sieve" in extras or "qram_assisted" in extras or "beta" in extras:

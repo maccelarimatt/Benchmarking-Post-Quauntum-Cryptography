@@ -487,7 +487,17 @@ def _core_svp_dual_summary(params: Dict[str, int], sigma_e: float, sigma_s: Opti
             tau = (ell * sigma) / float(q)
             if tau <= 0.0:
                 continue
-            advantage = 4.0 * math.exp(-2.0 * (math.pi ** 2) * (tau ** 2))
+            if tau > 1e154:
+                continue
+            exponent = -2.0 * (math.pi ** 2) * (tau ** 2)
+            if exponent < -745.0:
+                advantage = 0.0
+            else:
+                capped = min(exponent, 709.0)
+                try:
+                    advantage = 4.0 * math.exp(capped)
+                except OverflowError:
+                    advantage = float("inf")
             if advantage <= 0.0:
                 continue
             repeats = 1.0
