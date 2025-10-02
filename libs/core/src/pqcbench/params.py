@@ -37,25 +37,67 @@ def _add(alias_list, family: str, category_floor: int, notes: str = "", extras: 
 # Include common noise parameters (eta1, eta2) to help external estimators map to sigma.
 _add(["ML-KEM-512", "Kyber512"], family="ML-KEM", category_floor=128,
      notes="k=2; ring n=256; q=3329; eta1=3, eta2=2",
-     extras={"k": 2, "n": 256, "q": 3329, "eta1": 3, "eta2": 2})
+     extras={
+         "k": 2,
+         "n": 256,
+         "q": 3329,
+         "eta1": 3,
+         "eta2": 2,
+         "sizes_bytes": {"public_key": 800, "secret_key": 1632, "ciphertext": 768, "shared_secret": 32},
+     })
 _add(["ML-KEM-768", "Kyber768"], family="ML-KEM", category_floor=192,
      notes="k=3; ring n=256; q=3329; eta1=2, eta2=2",
-     extras={"k": 3, "n": 256, "q": 3329, "eta1": 2, "eta2": 2})
+     extras={
+         "k": 3,
+         "n": 256,
+         "q": 3329,
+         "eta1": 2,
+         "eta2": 2,
+         "sizes_bytes": {"public_key": 1184, "secret_key": 2400, "ciphertext": 1088, "shared_secret": 32},
+     })
 _add(["ML-KEM-1024", "Kyber1024"], family="ML-KEM", category_floor=256,
      notes="k=4; ring n=256; q=3329; eta1=2, eta2=2",
-     extras={"k": 4, "n": 256, "q": 3329, "eta1": 2, "eta2": 2})
+     extras={
+         "k": 4,
+         "n": 256,
+         "q": 3329,
+         "eta1": 2,
+         "eta2": 2,
+         "sizes_bytes": {"public_key": 1568, "secret_key": 3168, "ciphertext": 1568, "shared_secret": 32},
+     })
 
 # ML-DSA (Dilithium)
 # Provide typical module ranks (k, l) and modulus for reference; detailed parameters are scheme-specific.
 _add(["ML-DSA-44", "Dilithium2"], family="ML-DSA", category_floor=128,
      notes="k=4, l=4; n=256; q=8380417; eta=2",
-     extras={"k": 4, "l": 4, "n": 256, "q": 8380417, "eta": 2})
+     extras={
+         "k": 4,
+         "l": 4,
+         "n": 256,
+         "q": 8380417,
+         "eta": 2,
+         "sizes_bytes": {"public_key": 1312, "secret_key": 2528, "signature": 2420},
+     })
 _add(["ML-DSA-65", "Dilithium3"], family="ML-DSA", category_floor=192,
      notes="k=6, l=5; n=256; q=8380417; eta=4",
-     extras={"k": 6, "l": 5, "n": 256, "q": 8380417, "eta": 4})
+     extras={
+         "k": 6,
+         "l": 5,
+         "n": 256,
+         "q": 8380417,
+         "eta": 4,
+         "sizes_bytes": {"public_key": 1952, "secret_key": 4000, "signature": 3309, "signature_min": 3293},
+     })
 _add(["ML-DSA-87", "Dilithium5"], family="ML-DSA", category_floor=256,
      notes="k=8, l=7; n=256; q=8380417; eta=2",
-     extras={"k": 8, "l": 7, "n": 256, "q": 8380417, "eta": 2})
+     extras={
+         "k": 8,
+         "l": 7,
+         "n": 256,
+         "q": 8380417,
+         "eta": 2,
+         "sizes_bytes": {"public_key": 2592, "secret_key": 4864, "signature": 4627},
+     })
 # Some liboqs builds expose ML-DSA-110; treat as Cat-5 floor for labeling
 _add(["ML-DSA-110"], family="ML-DSA", category_floor=256,
      notes="non-FIPS param; treated as Cat-5 floor for labeling")
@@ -64,10 +106,28 @@ _add(["ML-DSA-110"], family="ML-DSA", category_floor=256,
 # Provide common ring dimension and modulus for reference (NTRU lattice over Z_q[x]/(x^n+1)).
 _add(["Falcon-512"], family="Falcon", category_floor=128,
      notes="n=512; q=12289; NTRU lattice",
-     extras={"n": 512, "q": 12289})
+     extras={
+         "n": 512,
+         "q": 12289,
+         "sizes_bytes": {
+             "public_key": 897,
+             "secret_key": 1281,
+             "signature": 666,
+            "signature_note": "Deterministic padded encoding = 666 bytes; compressed signatures vary ~650-670 bytes; uncompressed ~752 bytes.",
+         },
+     })
 _add(["Falcon-1024"], family="Falcon", category_floor=256,
      notes="n=1024; q=12289; NTRU lattice",
-     extras={"n": 1024, "q": 12289})
+     extras={
+         "n": 1024,
+         "q": 12289,
+         "sizes_bytes": {
+             "public_key": 1793,
+             "secret_key": 2305,
+             "signature": 1280,
+            "signature_note": "Deterministic padded = 1280 bytes; compressed signatures vary; uncompressed ~1536 bytes.",
+         },
+     })
 
 # RSA (classical baseline)
 _add(["rsa-oaep"], family="RSA", category_floor=112,
@@ -80,13 +140,46 @@ _add(["rsa-pss"], family="RSA", category_floor=112,
 # HQC (code-based) — include structural parameters from PQClean
 _add(["HQC-128"], family="HQC", category_floor=128,
      notes="n=17669; RS n1=46,k=16,delta=15; RM n2=384; omega=66; omega_e=75; omega_r=75",
-     extras={"n": 17669, "k": 16, "w": 66, "n1": 46, "n2": 384, "omega": 66, "omega_e": 75, "omega_r": 75, "delta": 15})
+     extras={
+         "n": 17669,
+         "k": 16,
+         "w": 66,
+         "n1": 46,
+         "n2": 384,
+         "omega": 66,
+         "omega_e": 75,
+         "omega_r": 75,
+         "delta": 15,
+         "sizes_bytes": {"public_key": 2249, "secret_key": 2305, "ciphertext": 4433, "shared_secret": 64},
+     })
 _add(["HQC-192"], family="HQC", category_floor=192,
      notes="n=35851; RS n1=56,k=24,delta=16; RM n2=640; omega=100; omega_e=114; omega_r=114",
-     extras={"n": 35851, "k": 24, "w": 100, "n1": 56, "n2": 640, "omega": 100, "omega_e": 114, "omega_r": 114, "delta": 16})
+     extras={
+         "n": 35851,
+         "k": 24,
+         "w": 100,
+         "n1": 56,
+         "n2": 640,
+         "omega": 100,
+         "omega_e": 114,
+         "omega_r": 114,
+         "delta": 16,
+         "sizes_bytes": {"public_key": 4522, "secret_key": 4586, "ciphertext": 8978, "shared_secret": 64},
+     })
 _add(["HQC-256"], family="HQC", category_floor=256,
      notes="n=57637; RS n1=90,k=32,delta=29; RM n2=640; omega=131; omega_e=149; omega_r=149",
-     extras={"n": 57637, "k": 32, "w": 131, "n1": 90, "n2": 640, "omega": 131, "omega_e": 149, "omega_r": 149, "delta": 29})
+     extras={
+         "n": 57637,
+         "k": 32,
+         "w": 131,
+         "n1": 90,
+         "n2": 640,
+         "omega": 131,
+         "omega_e": 149,
+         "omega_r": 149,
+         "delta": 29,
+         "sizes_bytes": {"public_key": 7245, "secret_key": 7317, "ciphertext": 14421, "shared_secret": 64},
+     })
 # Some liboqs names carry CCA2 suffix; map them to the same floors (reuse closest set)
 _add(["HQC-128-1-CCA2"], family="HQC", category_floor=128,
      notes="alias of HQC-128",
@@ -112,30 +205,54 @@ def _sphincs_extras(tag: str) -> Dict[str, Any]:
     return dict(_SPHINCS_EXTRAS.get(tag, {}))
 
 
-_add(["SPHINCS+-SHA2-128s-simple"], family="SPHINCS+", category_floor=128, extras=_sphincs_extras("128s"))
-_add(["SPHINCS+-SHA2-128f-simple"], family="SPHINCS+", category_floor=128, extras=_sphincs_extras("128f"))
-_add(["SPHINCS+-SHA2-192s-simple"], family="SPHINCS+", category_floor=192, extras=_sphincs_extras("192s"))
-_add(["SPHINCS+-SHA2-192f-simple"], family="SPHINCS+", category_floor=192, extras=_sphincs_extras("192f"))
-_add(["SPHINCS+-SHA2-256s-simple"], family="SPHINCS+", category_floor=256, extras=_sphincs_extras("256s"))
-_add(["SPHINCS+-SHA2-256f-simple"], family="SPHINCS+", category_floor=256, extras=_sphincs_extras("256f"))
-_add(["SPHINCS+-SHAKE-128s-simple"], family="SPHINCS+", category_floor=128, extras=_sphincs_extras("128s"))
-_add(["SPHINCS+-SHAKE-128f-simple"], family="SPHINCS+", category_floor=128, extras=_sphincs_extras("128f"))
-_add(["SPHINCS+-SHAKE-192s-simple"], family="SPHINCS+", category_floor=192, extras=_sphincs_extras("192s"))
-_add(["SPHINCS+-SHAKE-192f-simple"], family="SPHINCS+", category_floor=192, extras=_sphincs_extras("192f"))
-_add(["SPHINCS+-SHAKE-256s-simple"], family="SPHINCS+", category_floor=256, extras=_sphincs_extras("256s"))
-_add(["SPHINCS+-SHAKE-256f-simple"], family="SPHINCS+", category_floor=256, extras=_sphincs_extras("256f"))
-_add(["SPHINCS+-SHA2-128s-robust"], family="SPHINCS+", category_floor=128, extras=_sphincs_extras("128s"))
-_add(["SPHINCS+-SHA2-128f-robust"], family="SPHINCS+", category_floor=128, extras=_sphincs_extras("128f"))
-_add(["SPHINCS+-SHA2-192s-robust"], family="SPHINCS+", category_floor=192, extras=_sphincs_extras("192s"))
-_add(["SPHINCS+-SHA2-192f-robust"], family="SPHINCS+", category_floor=192, extras=_sphincs_extras("192f"))
-_add(["SPHINCS+-SHA2-256s-robust"], family="SPHINCS+", category_floor=256, extras=_sphincs_extras("256s"))
-_add(["SPHINCS+-SHA2-256f-robust"], family="SPHINCS+", category_floor=256, extras=_sphincs_extras("256f"))
-_add(["SPHINCS+-SHAKE-128s-robust"], family="SPHINCS+", category_floor=128, extras=_sphincs_extras("128s"))
-_add(["SPHINCS+-SHAKE-128f-robust"], family="SPHINCS+", category_floor=128, extras=_sphincs_extras("128f"))
-_add(["SPHINCS+-SHAKE-192s-robust"], family="SPHINCS+", category_floor=192, extras=_sphincs_extras("192s"))
-_add(["SPHINCS+-SHAKE-192f-robust"], family="SPHINCS+", category_floor=192, extras=_sphincs_extras("192f"))
-_add(["SPHINCS+-SHAKE-256s-robust"], family="SPHINCS+", category_floor=256, extras=_sphincs_extras("256s"))
-_add(["SPHINCS+-SHAKE-256f-robust"], family="SPHINCS+", category_floor=256, extras=_sphincs_extras("256f"))
+_add(["SPHINCS+-SHA2-128s-simple"], family="SPHINCS+", category_floor=128,
+     extras={**_sphincs_extras("128s"), "sizes_bytes": {"public_key": 32, "secret_key": 64, "signature": 7856}})
+_add(["SPHINCS+-SHA2-128f-simple"], family="SPHINCS+", category_floor=128,
+     extras={**_sphincs_extras("128f"), "sizes_bytes": {"public_key": 32, "secret_key": 64, "signature": 17088}})
+_add(["SPHINCS+-SHA2-192s-simple"], family="SPHINCS+", category_floor=192,
+     extras={**_sphincs_extras("192s"), "sizes_bytes": {"public_key": 48, "secret_key": 96, "signature": 16224}})
+_add(["SPHINCS+-SHA2-192f-simple"], family="SPHINCS+", category_floor=192,
+     extras={**_sphincs_extras("192f"), "sizes_bytes": {"public_key": 48, "secret_key": 96, "signature": 35664}})
+_add(["SPHINCS+-SHA2-256s-simple"], family="SPHINCS+", category_floor=256,
+     extras={**_sphincs_extras("256s"), "sizes_bytes": {"public_key": 64, "secret_key": 128, "signature": 29792}})
+_add(["SPHINCS+-SHA2-256f-simple"], family="SPHINCS+", category_floor=256,
+     extras={**_sphincs_extras("256f"), "sizes_bytes": {"public_key": 64, "secret_key": 128, "signature": 49856}})
+_add(["SPHINCS+-SHAKE-128s-simple"], family="SPHINCS+", category_floor=128,
+     extras={**_sphincs_extras("128s"), "sizes_bytes": {"public_key": 32, "secret_key": 64, "signature": 7856}})
+_add(["SPHINCS+-SHAKE-128f-simple"], family="SPHINCS+", category_floor=128,
+     extras={**_sphincs_extras("128f"), "sizes_bytes": {"public_key": 32, "secret_key": 64, "signature": 17088}})
+_add(["SPHINCS+-SHAKE-192s-simple"], family="SPHINCS+", category_floor=192,
+     extras={**_sphincs_extras("192s"), "sizes_bytes": {"public_key": 48, "secret_key": 96, "signature": 16224}})
+_add(["SPHINCS+-SHAKE-192f-simple"], family="SPHINCS+", category_floor=192,
+     extras={**_sphincs_extras("192f"), "sizes_bytes": {"public_key": 48, "secret_key": 96, "signature": 35664}})
+_add(["SPHINCS+-SHAKE-256s-simple"], family="SPHINCS+", category_floor=256,
+     extras={**_sphincs_extras("256s"), "sizes_bytes": {"public_key": 64, "secret_key": 128, "signature": 29792}})
+_add(["SPHINCS+-SHAKE-256f-simple"], family="SPHINCS+", category_floor=256,
+     extras={**_sphincs_extras("256f"), "sizes_bytes": {"public_key": 64, "secret_key": 128, "signature": 49856}})
+_add(["SPHINCS+-SHA2-128s-robust"], family="SPHINCS+", category_floor=128,
+     extras={**_sphincs_extras("128s"), "sizes_bytes": {"public_key": 32, "secret_key": 64, "signature": 8080}})
+_add(["SPHINCS+-SHA2-128f-robust"], family="SPHINCS+", category_floor=128,
+     extras={**_sphincs_extras("128f"), "sizes_bytes": {"public_key": 32, "secret_key": 64, "signature": 16976}})
+_add(["SPHINCS+-SHA2-192s-robust"], family="SPHINCS+", category_floor=192,
+     extras={**_sphincs_extras("192s"), "sizes_bytes": {"public_key": 48, "secret_key": 96, "signature": 16256}})
+_add(["SPHINCS+-SHA2-192f-robust"], family="SPHINCS+", category_floor=192,
+     extras={**_sphincs_extras("192f"), "sizes_bytes": {"public_key": 48, "secret_key": 96, "signature": 35680}})
+_add(["SPHINCS+-SHA2-256s-robust"], family="SPHINCS+", category_floor=256,
+     extras={**_sphincs_extras("256s"), "sizes_bytes": {"public_key": 64, "secret_key": 128, "signature": 49856}})
+_add(["SPHINCS+-SHA2-256f-robust"], family="SPHINCS+", category_floor=256,
+     extras={**_sphincs_extras("256f"), "sizes_bytes": {"public_key": 64, "secret_key": 128, "signature": 78112}})
+_add(["SPHINCS+-SHAKE-128s-robust"], family="SPHINCS+", category_floor=128,
+     extras={**_sphincs_extras("128s"), "sizes_bytes": {"public_key": 32, "secret_key": 64, "signature": 8080}})
+_add(["SPHINCS+-SHAKE-128f-robust"], family="SPHINCS+", category_floor=128,
+     extras={**_sphincs_extras("128f"), "sizes_bytes": {"public_key": 32, "secret_key": 64, "signature": 16976}})
+_add(["SPHINCS+-SHAKE-192s-robust"], family="SPHINCS+", category_floor=192,
+     extras={**_sphincs_extras("192s"), "sizes_bytes": {"public_key": 48, "secret_key": 96, "signature": 16256}})
+_add(["SPHINCS+-SHAKE-192f-robust"], family="SPHINCS+", category_floor=192,
+     extras={**_sphincs_extras("192f"), "sizes_bytes": {"public_key": 48, "secret_key": 96, "signature": 35680}})
+_add(["SPHINCS+-SHAKE-256s-robust"], family="SPHINCS+", category_floor=256,
+     extras={**_sphincs_extras("256s"), "sizes_bytes": {"public_key": 64, "secret_key": 128, "signature": 49856}})
+_add(["SPHINCS+-SHAKE-256f-robust"], family="SPHINCS+", category_floor=256,
+     extras={**_sphincs_extras("256f"), "sizes_bytes": {"public_key": 64, "secret_key": 128, "signature": 78112}})
 
 # XMSSMT — security target depends on the parameter set; provide common examples
 _add(["XMSSMT-SHA2_20/2_256"], family="XMSSMT", category_floor=128)
@@ -148,16 +265,48 @@ _add(["XMSS-SHAKE_20_256"], family="XMSS", category_floor=128)
 # MAYO (multivariate signatures) — include structural parameters from liboqs pqmayo
 _add(["MAYO-1"], family="MAYO", category_floor=128,
      notes="n=86, m=78, o=8, v=78; k=10; q=16",
-     extras={"n": 86, "m": 78, "oil": 8, "vinegar": 78, "k": 10, "q": 16})
-_add(["MAYO-2"], family="MAYO", category_floor=160,
+     extras={
+         "n": 86,
+         "m": 78,
+         "oil": 8,
+         "vinegar": 78,
+         "k": 10,
+         "q": 16,
+         "sizes_bytes": {"public_key": 1420, "secret_key": 24, "signature": 454},
+     })
+_add(["MAYO-2"], family="MAYO", category_floor=128,
      notes="n=81, m=64, o=17, v=64; k=4; q=16",
-     extras={"n": 81, "m": 64, "oil": 17, "vinegar": 64, "k": 4, "q": 16})
+     extras={
+         "n": 81,
+         "m": 64,
+         "oil": 17,
+         "vinegar": 64,
+         "k": 4,
+         "q": 16,
+         "sizes_bytes": {"public_key": 4912, "secret_key": 24, "signature": 186},
+     })
 _add(["MAYO-3"], family="MAYO", category_floor=192,
      notes="n=118, m=108, o=10, v=108; k=11; q=16",
-     extras={"n": 118, "m": 108, "oil": 10, "vinegar": 108, "k": 11, "q": 16})
+     extras={
+         "n": 118,
+         "m": 108,
+         "oil": 10,
+         "vinegar": 108,
+         "k": 11,
+         "q": 16,
+         "sizes_bytes": {"public_key": 2986, "secret_key": 32, "signature": 681},
+     })
 _add(["MAYO-5"], family="MAYO", category_floor=256,
      notes="n=154, m=142, o=12, v=142; k=12; q=16",
-     extras={"n": 154, "m": 142, "oil": 12, "vinegar": 142, "k": 12, "q": 16})
+     extras={
+         "n": 154,
+         "m": 142,
+         "oil": 12,
+         "vinegar": 142,
+         "k": 12,
+         "q": 16,
+         "sizes_bytes": {"public_key": 5554, "secret_key": 40, "signature": 964},
+     })
 
 
 def find(mechanism: Optional[str]) -> Optional[ParamHint]:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Sequence, Tuple
+from typing import Sequence, Tuple, Optional
 
 from pqcbench import registry
 
@@ -15,7 +15,7 @@ from ._core import (
 )
 
 
-_KEM_ALGORITHM_CACHE: dict[Tuple[str, Tuple[str, ...], Tuple[str, ...]], str] = {}
+_KEM_ALGORITHM_CACHE: dict[Tuple[str, Optional[str], Tuple[Optional[str], ...], Tuple[str, ...]], str] = {}
 
 
 def _pick_kem(
@@ -24,7 +24,9 @@ def _pick_kem(
     legacy_envs: Sequence[str],
     label: str,
 ) -> str:
-    key = (env_var, tuple(candidates), tuple(legacy_envs))
+    env_value = os.getenv(env_var)
+    legacy_values = tuple(os.getenv(name) for name in legacy_envs)
+    key = (env_var, env_value, legacy_values, tuple(candidates))
     cached = _KEM_ALGORITHM_CACHE.get(key)
     if cached:
         return cached

@@ -283,6 +283,14 @@ def _get_adapter_instance(name: str):
     return adapter
 
 
+def reset_adapter_cache(name: Optional[str] = None) -> None:
+    """Drop cached adapter instances so env-driven overrides take effect."""
+    if name is None:
+        _ADAPTER_INSTANCE_CACHE.clear()
+        return
+    _ADAPTER_INSTANCE_CACHE.pop(name, None)
+
+
 def _compute_ci95(mean: float, samples: Sequence[float]) -> Tuple[float, float]:
     if not samples:
         return mean, mean
@@ -907,6 +915,9 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         # Include any extras provided in ParamHint
         if isinstance(ph.get("extras"), dict):
             params.update(ph["extras"])  # type: ignore
+    params = params or {}
+    if extras.get("sizes_bytes"):
+        params.setdefault("sizes_bytes", extras.get("sizes_bytes"))
     if params:
         out["parameters"] = params
 
@@ -961,6 +972,15 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
             if isinstance(ce, dict):
                 ce.setdefault("source", "curated-range")
             estimates["curated"] = ce
+            estimates["calculated"] = {
+                "profile": "curated-range",
+                "attack": "design-target",
+                "classical_bits": ce.get("classical_bits_mid"),
+                "quantum_bits": ce.get("quantum_bits_mid"),
+                "classical_bits_range": ce.get("classical_bits_range"),
+                "quantum_bits_range": ce.get("quantum_bits_range"),
+                "source": ce.get("source"),
+            }
         consts = falcon_block.get("core_svp_constants") if isinstance(falcon_block, dict) else None
         if consts:
             out.setdefault("assumptions", {})["core_svp_constants"] = consts
@@ -982,13 +1002,11 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
                         if best is None or c_bits < best[0]:
                             best = tup
                 if best is not None:
-                    estimates["calculated"] = {
-                        "profile": "bkz-core-svp",
+                    out.setdefault("details", {})["falcon_bkz_projection"] = {
                         "attack": best[1],
+                        "beta": best[2],
                         "classical_bits": best[0],
                         "quantum_bits": best[3],
-                        "classical_bits_range": None,
-                        "quantum_bits_range": None,
                         "source": "falcon-bkz-curve",
                     }
             except Exception:
@@ -1032,6 +1050,20 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
             isd = {k: extras.get(k) for k in keys if k in extras}
             if isd:
                 estimates["hqc_isd"] = isd
+        curated = extras.get("curated_estimates")
+        if isinstance(curated, dict):
+            curated = curated.copy()
+            curated.setdefault("source", curated.get("source", "hqc-round3-design"))
+            estimates["curated"] = curated
+            estimates["calculated"] = {
+                "profile": "design-target",
+                "attack": "design-target",
+                "classical_bits": curated.get("classical_bits_mid"),
+                "quantum_bits": curated.get("quantum_bits_mid"),
+                "classical_bits_range": curated.get("classical_bits_range"),
+                "quantum_bits_range": curated.get("quantum_bits_range"),
+                "source": curated.get("source"),
+            }
     elif algo == "mayo":
         my = extras.get("mayo") or {}
         if my.get("curated_estimates"):

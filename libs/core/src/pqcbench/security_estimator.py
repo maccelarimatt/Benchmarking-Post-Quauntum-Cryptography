@@ -1188,6 +1188,34 @@ def _estimate_lattice_like_from_name(name: str, opts: Optional[EstimatorOptions]
     return metrics
 
 
+_HQC_CURATED_ESTIMATES: Dict[str, Dict[str, Any]] = {
+    "hqc-128": {
+        "classical_bits_mid": 128.0,
+        "classical_bits_range": [126.0, 132.0],
+        "quantum_bits_mid": 118.0,
+        "quantum_bits_range": [114.0, 122.0],
+        "source": "hqc-round3-design",
+        "notes": "Design target per HQC submission; quantum via Grover-style square-root reduction.",
+    },
+    "hqc-192": {
+        "classical_bits_mid": 192.0,
+        "classical_bits_range": [188.0, 196.0],
+        "quantum_bits_mid": 182.0,
+        "quantum_bits_range": [176.0, 186.0],
+        "source": "hqc-round3-design",
+        "notes": "Design target per HQC submission; quantum via Grover-style square-root reduction.",
+    },
+    "hqc-256": {
+        "classical_bits_mid": 256.0,
+        "classical_bits_range": [250.0, 260.0],
+        "quantum_bits_mid": 246.0,
+        "quantum_bits_range": [238.0, 250.0],
+        "source": "hqc-round3-design",
+        "notes": "Design target per HQC submission; quantum via Grover-style square-root reduction.",
+    },
+}
+
+
 def _estimate_hqc_from_name(name: str, opts: Optional[EstimatorOptions]) -> SecMetrics:
     """Estimator for HQC (code-based KEM) with documented ISD theory.
 
@@ -1224,11 +1252,20 @@ def _estimate_hqc_from_name(name: str, opts: Optional[EstimatorOptions]) -> SecM
         return float(n) * _H2(p)
 
     # Try to fetch (n, k, w) from params to compute ISD exponents (coarse Stern-style)
+    mech_norm = str(name or "").lower()
+    if mech_norm.endswith("-1-cca2"):
+        mech_norm = mech_norm.replace("-1-cca2", "")
+
     extras: Dict[str, Any] = {"category_floor": floor, "nist_category": nist_category}
+    curated = _HQC_CURATED_ESTIMATES.get(mech_norm)
+    if curated:
+        extras["curated_estimates"] = curated.copy()
     try:
         from pqcbench.params import find as find_params  # type: ignore
         ph = find_params(name)
         if ph and ph.extras:
+            if ph.extras.get("sizes_bytes"):
+                extras.setdefault("sizes_bytes", ph.extras.get("sizes_bytes"))
             n = int(ph.extras.get("n", 0) or 0)
             k = int(ph.extras.get("k", 0) or 0)
             w = int(ph.extras.get("w", 0) or 0)
@@ -1293,9 +1330,15 @@ def _estimate_hqc_from_name(name: str, opts: Optional[EstimatorOptions]) -> SecM
     except Exception:
         pass
 
+    classical_bits = float(floor)
+    quantum_bits = float(floor)
+    if curated:
+        classical_bits = float(curated.get("classical_bits_mid", classical_bits))
+        quantum_bits = float(curated.get("quantum_bits_mid", quantum_bits))
+
     return SecMetrics(
-        classical_bits=float(floor),
-        quantum_bits=float(floor),
+        classical_bits=classical_bits,
+        quantum_bits=quantum_bits,
         shor_breakable=False,
         notes=(
             "Code-based (HQC): NIST category floor; Stern/BJMM-style ISD heuristics attached when parameters available. "
@@ -1806,7 +1849,7 @@ def _estimate_mayo_from_name(name: str) -> SecMetrics:
         ph = None
 
     floor = (ph.category_floor if ph else (_nist_floor_from_name(name) or 128))
-    nist_category = {128: 1, 160: 2, 192: 3, 256: 5}.get(int(floor), None)
+    nist_category = {128: 1, 192: 3, 256: 5}.get(int(floor), None)
 
     extras: Dict[str, Any] = {
         "category_floor": floor,
@@ -1826,6 +1869,9 @@ def _estimate_mayo_from_name(name: str) -> SecMetrics:
                 "vinegar": ex.get("vinegar"),
                 "k_submaps": ex.get("k"),
             }
+            if ex.get("sizes_bytes"):
+                mayo_params["sizes_bytes"] = ex.get("sizes_bytes")
+                extras.setdefault("sizes_bytes", ex.get("sizes_bytes"))
             n = int(ex.get("n", 0) or 0)
             m = int(ex.get("m", 0) or 0)
             q = int(ex.get("q", 0) or 0)
@@ -1960,6 +2006,8 @@ def _estimate_kyber_from_name(name: str, opts: Optional[EstimatorOptions]) -> Se
                 "eta2": eta2,
                 "n_lwe": (n * k) if k else None,
             }
+            if ex.get("sizes_bytes"):
+                kyber_info["sizes_bytes"] = ex.get("sizes_bytes")
     except Exception:
         pass
 
@@ -1967,6 +2015,9 @@ def _estimate_kyber_from_name(name: str, opts: Optional[EstimatorOptions]) -> Se
     cost_extras = {k: v for k, v in kyber_info.items() if v is not None}
     if cost_extras:
         module_cost = _module_lwe_cost_summary(cost_extras)
+
+    if kyber_info.get("sizes_bytes"):
+        base.extras.setdefault("sizes_bytes", kyber_info.get("sizes_bytes"))
 
     table_entry = _kyber_core_svp_table_entry(name)
     if table_entry:
@@ -2141,6 +2192,8 @@ def _estimate_falcon_from_name(name: str, opts: Optional[EstimatorOptions]) -> S
                 "q": q or None,
                 "dim_lattice": (2 * n) if n else None,
             }
+            if ex.get("sizes_bytes"):
+                falcon_info["sizes_bytes"] = ex.get("sizes_bytes")
     except Exception:
         pass
 
@@ -2197,6 +2250,9 @@ def _estimate_falcon_from_name(name: str, opts: Optional[EstimatorOptions]) -> S
             "bkz_model": bkz_model,
         }
     })
+
+    if falcon_info.get("sizes_bytes"):
+        base.extras.setdefault("sizes_bytes", falcon_info.get("sizes_bytes"))
 
     if curated:
         base.classical_bits = float(curated["classical_bits_mid"])
@@ -2270,6 +2326,9 @@ def _estimate_dilithium_from_name(name: str, opts: Optional[EstimatorOptions]) -
                 "eta": eta,
                 "n_lwe": (n * k) if k else None,
             }
+            if ex.get("sizes_bytes"):
+                dsa_info["sizes_bytes"] = ex.get("sizes_bytes")
+                base.extras.setdefault("sizes_bytes", ex.get("sizes_bytes"))
     except Exception:
         pass
 

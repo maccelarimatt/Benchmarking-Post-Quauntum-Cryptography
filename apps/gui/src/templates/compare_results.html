@@ -138,6 +138,9 @@
             <col class="kv-value" />
           </colgroup>
           <tbody>
+            {% set sec_obj = a.security or {} %}
+            {% set sec_params = sec_obj.get('parameters', {}) %}
+            {% set canonical_sizes = sec_params.get('sizes_bytes') %}
             <tr>
               <td class="kv-label">Version</td>
               <td class="kv-value">
@@ -176,6 +179,12 @@
                 {% else %}-{% endif %}
               </td>
             </tr>
+            {% if canonical_sizes and canonical_sizes.get('public_key') %}
+            <tr>
+              <td class="kv-label">Spec public key length</td>
+              <td class="kv-value kv-mono">{{ canonical_sizes.get('public_key') }} B</td>
+            </tr>
+            {% endif %}
             <tr>
               <td class="kv-label">Secret key length</td>
               <td class="kv-value kv-mono">
@@ -184,15 +193,33 @@
                 {% else %}-{% endif %}
               </td>
             </tr>
+            {% if canonical_sizes and canonical_sizes.get('secret_key') %}
+            <tr>
+              <td class="kv-label">Spec secret key length</td>
+              <td class="kv-value kv-mono">{{ canonical_sizes.get('secret_key') }} B</td>
+            </tr>
+            {% endif %}
             {% if compare.kind == 'KEM' %}
             <tr>
               <td class="kv-label">Ciphertext length</td>
               <td class="kv-value kv-mono">{% if a.meta.ciphertext_len is not none %}{{ a.meta.ciphertext_len }} B{% else %}-{% endif %}</td>
             </tr>
+            {% if canonical_sizes and canonical_sizes.get('ciphertext') %}
+            <tr>
+              <td class="kv-label">Spec ciphertext length</td>
+              <td class="kv-value kv-mono">{{ canonical_sizes.get('ciphertext') }} B</td>
+            </tr>
+            {% endif %}
             <tr>
               <td class="kv-label">Shared secret length</td>
               <td class="kv-value kv-mono">{% if a.meta.shared_secret_len is not none %}{{ a.meta.shared_secret_len }} B{% else %}-{% endif %}</td>
             </tr>
+            {% if canonical_sizes and canonical_sizes.get('shared_secret') %}
+            <tr>
+              <td class="kv-label">Spec shared secret length</td>
+              <td class="kv-value kv-mono">{{ canonical_sizes.get('shared_secret') }} B</td>
+            </tr>
+            {% endif %}
             <tr>
               <td class="kv-label">CT expansion ratio (ct / shared secret)</td>
               <td class="kv-value">{% if a.meta.ciphertext_expansion_ratio is not none %}{{ '%.3f'|format(a.meta.ciphertext_expansion_ratio) }}{% else %}-{% endif %}</td>
@@ -202,6 +229,20 @@
               <td class="kv-label">Signature length</td>
               <td class="kv-value kv-mono">{% if a.meta.signature_len is not none %}{{ a.meta.signature_len }} B{% else %}-{% endif %}</td>
             </tr>
+            {% if canonical_sizes and canonical_sizes.get('signature') %}
+            <tr>
+              <td class="kv-label">Spec signature length</td>
+              <td class="kv-value kv-mono">
+                {{ canonical_sizes.get('signature') }} B
+                {% if canonical_sizes.get('signature_min') %}
+                  <div class="kv-sub">Min {{ canonical_sizes.get('signature_min') }} B</div>
+                {% endif %}
+                {% if canonical_sizes.get('signature_note') %}
+                  <div class="kv-sub">{{ canonical_sizes.get('signature_note') }}</div>
+                {% endif %}
+              </td>
+            </tr>
+            {% endif %}
             <tr>
               <td class="kv-label">Message size</td>
               <td class="kv-value kv-mono">{% if a.meta.message_size is not none %}{{ a.meta.message_size }} B{% else %}-{% endif %}</td>

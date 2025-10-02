@@ -73,6 +73,7 @@ try:
         export_trace_sig,
         _build_export_payload,
         run_acvp_validation,
+        reset_adapter_cache,
     )
 except Exception:
     # If CLI package isn't installed, try best-effort import of adapters directly
@@ -387,10 +388,12 @@ def _security_override_scope(override: Optional[SecurityOverride]):
         return
     env_var = override.env_var
     previous = os.environ.get(env_var)
+    reset_adapter_cache(override.algo)
     os.environ[env_var] = str(override.value)
     try:
         yield override
     finally:
+        reset_adapter_cache(override.algo)
         if previous is None:
             os.environ.pop(env_var, None)
         else:
