@@ -21,6 +21,16 @@ def _gen_rsa_keypair(bits: int = 2048):
     )
     return pk_bytes, sk_bytes
 
+
+def _rsa_bits() -> int:
+    override = os.getenv("PQCBENCH_RSA_BITS")
+    if override:
+        try:
+            return int(override)
+        except ValueError as exc:
+            raise ValueError("PQCBENCH_RSA_BITS must be an integer") from exc
+    return 2048
+
 def _load_private_key(sk_bytes: bytes):
     return serialization.load_der_private_key(sk_bytes, password=None, backend=default_backend())
 
@@ -35,8 +45,14 @@ class RSAKEM:
     RSA-OAEP to provide a classical baseline for comparison.
     """
     name = "rsa-oaep"
+
+    def __init__(self) -> None:
+        self._bits = _rsa_bits()
+        self.mech = f"RSA-{self._bits}-OAEP"
+        self.algorithm = self.mech
+
     def keygen(self) -> Tuple[bytes, bytes]:
-        return _gen_rsa_keypair(2048)
+        return _gen_rsa_keypair(self._bits)
 
     def encapsulate(self, public_key: bytes) -> Tuple[bytes, bytes]:
         # KEM-style: sample a random shared secret and encrypt it with RSA-OAEP
@@ -75,8 +91,13 @@ class RSASignature:
     mgf_hash_algorithm_name = "sha256"
     salt_length = hash_digest_size  # Recommended salt length: match hash size
 
+    def __init__(self) -> None:
+        self._bits = _rsa_bits()
+        self.mech = f"RSA-{self._bits}-PSS"
+        self.algorithm = self.mech
+
     def keygen(self) -> Tuple[bytes, bytes]:
-        return _gen_rsa_keypair(2048)
+        return _gen_rsa_keypair(self._bits)
 
     def sign(self, secret_key: bytes, message: bytes) -> bytes:
         sk = _load_private_key(secret_key)

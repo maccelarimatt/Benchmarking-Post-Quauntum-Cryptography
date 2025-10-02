@@ -311,6 +311,51 @@ def _value_in_range(value: Any, range_list: Any) -> Optional[List[float]]:
     return None
 
 
+def _format_runtime(seconds: Any) -> Optional[str]:
+    try:
+        sec = float(seconds)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(sec) or sec <= 0.0:
+        return None
+    if sec < 1.0:
+        return f"{sec * 1000.0:.0f}ms"
+    if sec < 120.0:
+        return f"{sec:.1f}s"
+    minutes = sec / 60.0
+    if minutes < 120.0:
+        return f"{minutes:.1f}m"
+    hours = sec / 3600.0
+    if hours < 48.0:
+        return f"{hours:.1f}h"
+    days = sec / 86400.0
+    if days < 730.0:
+        return f"{days:.1f}d"
+    years = sec / 31557600.0
+    return f"{years:.1f}y"
+
+
+def _format_quantity(value: Any, unit: str = "", precision: int = 1) -> Optional[str]:
+    try:
+        val = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(val):
+        return None
+    abs_val = abs(val)
+    divisor = 1.0
+    suffix = ""
+    for threshold, marker in ((1e12, "T"), (1e9, "B"), (1e6, "M"), (1e3, "k")):
+        if abs_val >= threshold:
+            divisor = threshold
+            suffix = marker
+            break
+    formatted = f"{val / divisor:.{precision}f}{suffix}"
+    if unit:
+        formatted += unit
+    return formatted
+
+
 def _ensure_list(value: Any) -> List[str]:
     if isinstance(value, list):
         return [str(v) for v in value if v is not None]
@@ -1547,13 +1592,58 @@ def _build_security_headline(out: Dict[str, Any], extras: Dict[str, Any]) -> Dic
 
     if family == "RSA":
         notes = ["Classical strength per NIST SP 800-57 mapping.", "Quantum security broken by Shor (0 bits)."]
-        if extras.get("shor_profiles"):
+        shor_profiles = extras.get("shor_profiles") or {}
+        target_modulus_bits: Optional[int] = None
+        if isinstance(params, dict):
+            try:
+                target_modulus_bits = int(round(float(params.get("modulus_bits"))))
+            except (TypeError, ValueError):
+                target_modulus_bits = None
+        if shor_profiles:
             notes.append("Surface-code resource estimates available in details.")
+            scenario_entries = shor_profiles.get("scenarios") or []
+            scenario_notes: List[str] = []
+            for entry in scenario_entries:
+                mod_bits = entry.get("modulus_bits")
+                if target_modulus_bits is not None:
+                    try:
+                        entry_bits = int(round(float(mod_bits)))
+                    except (TypeError, ValueError):
+                        entry_bits = None
+                    if entry_bits is None or entry_bits != target_modulus_bits:
+                        continue
+                for scenario in entry.get("scenarios") or []:
+                    label = scenario.get("label") or "scenario"
+                    parts: List[str] = []
+                    runtime_fmt = _format_runtime(scenario.get("runtime_seconds"))
+                    if runtime_fmt:
+                        parts.append(f"runtime≈{runtime_fmt}")
+                    qubits_fmt = _format_quantity(scenario.get("phys_qubits_total"), " qubits")
+                    if qubits_fmt:
+                        parts.append(f"qubits≈{qubits_fmt}")
+                    factories = scenario.get("factory_count")
+                    if factories:
+                        parts.append(f"factories={int(factories)}")
+                    code_distance = scenario.get("code_distance")
+                    if code_distance:
+                        parts.append(f"d={int(code_distance)}")
+                    summary = ", ".join(parts) if parts else "n/a"
+                    label_bits = f"{label}@{int(mod_bits)}" if isinstance(mod_bits, (int, float)) and mod_bits else label
+                    scenario_notes.append(f"{label_bits}: {summary}")
+            if scenario_notes:
+                max_notes = 4
+                notes.extend(scenario_notes[:max_notes])
+                if len(scenario_notes) > max_notes:
+                    notes.append(f"(+{len(scenario_notes) - max_notes} more scenarios)")
         logical = extras.get("logical") or {}
         if logical:
-            notes.append(
-                f"Logical qubits ≈ {int(logical.get('logical_qubits', logical.get('qubits', 0)))}; Toffoli count ≈ {int(logical.get('toffoli', 0))}."
-            )
+            log_qubits = _format_quantity(logical.get("logical_qubits"), " qubits") or str(int(logical.get("logical_qubits", logical.get("qubits", 0)) or 0))
+            toffoli = logical.get("toffoli")
+            tof_fmt = _format_quantity(toffoli, " Toffoli") if toffoli is not None else None
+            summary_bits = f"Logical qubits ≈ {log_qubits}"
+            if tof_fmt:
+                summary_bits += f"; Toffoli count ≈ {tof_fmt}"
+            notes.append(summary_bits)
         return {
             "nist_category": nist_category,
             "category_floor": category_floor,
@@ -1700,9 +1790,48 @@ def _build_security_details(out: Dict[str, Any], extras: Dict[str, Any]) -> List
         t_counts = extras.get("t_counts") or {}
         add("Catalyzed T-count", t_counts.get("catalyzed"))
         add("Textbook T-count", t_counts.get("textbook"))
-        if extras.get("shor_profiles"):
-            scenarios = extras.get("shor_profiles", {}).get("scenarios", [])
-            add("Surface scenarios", len(scenarios))
+        shor_profiles = extras.get("shor_profiles") or {}
+        scenario_entries = shor_profiles.get("scenarios") or []
+        total_scenarios = 0
+        target_modulus_bits: Optional[int] = None
+        if isinstance(params, dict):
+            try:
+                target_modulus_bits = int(round(float(params.get("modulus_bits"))))
+            except (TypeError, ValueError):
+                target_modulus_bits = None
+        for entry in scenario_entries:
+            mod_bits = entry.get("modulus_bits")
+            if target_modulus_bits is not None:
+                try:
+                    entry_bits = int(round(float(mod_bits)))
+                except (TypeError, ValueError):
+                    entry_bits = None
+                if entry_bits is None or entry_bits != target_modulus_bits:
+                    continue
+            for scenario in entry.get("scenarios") or []:
+                total_scenarios += 1
+                label = scenario.get("label") or "scenario"
+                runtime_fmt = _format_runtime(scenario.get("runtime_seconds"))
+                qubits_fmt = _format_quantity(scenario.get("phys_qubits_total"), " qubits")
+                factories = scenario.get("factory_count")
+                code_distance = scenario.get("code_distance")
+                util = scenario.get("factory_utilization_actual")
+                parts: List[str] = []
+                if runtime_fmt:
+                    parts.append(f"runtime≈{runtime_fmt}")
+                if qubits_fmt:
+                    parts.append(f"qubits≈{qubits_fmt}")
+                if factories:
+                    parts.append(f"factories={int(factories)}")
+                if code_distance:
+                    parts.append(f"d={int(code_distance)}")
+                if isinstance(util, (int, float)) and math.isfinite(util):
+                    parts.append(f"util≈{util:.2f}")
+                summary = "; ".join(parts) if parts else "n/a"
+                label_bits = f"{label} @{int(mod_bits)}-bit" if isinstance(mod_bits, (int, float)) and mod_bits else label
+                add(label_bits, summary)
+        if total_scenarios:
+            add("Surface scenarios", total_scenarios)
 
     return rows
 def _build_export_payload(
