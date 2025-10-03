@@ -75,3 +75,19 @@ The metadata file captures run-level information:
 - `environment` – machine context collected from `_collect_environment_meta()` (CPU model, OS, dependency commits, etc.).
 
 Both files are intentionally JSON-friendly so they can be consumed by notebooks, dashboards, or batch pipelines for further analysis.
+
+## Rendering graphs
+
+After collecting metrics you can visualise the results with:
+
+```
+python benchmarks/render_category_floor_graphs.py [--csv PATH] [--session SESSION_ID] [--passes timing memory]
+```
+
+Graphs are written to `results/graphs/<session_id>/` (the `results/` tree is already ignored by Git). The renderer produces:
+
+- `latency_timing_<kind>.png` / `latency_memory_<kind>.png`: grouped mean-latency bar charts per operation for KEM and SIG algorithms.
+- `memory_peak_<kind>.png`: peak RSS bars (memory pass only).
+- `security_vs_latency_<pass>.png`: scatter plot of classical security bits vs keygen latency, annotated per algorithm.
+
+The script requires `matplotlib` (`pip install matplotlib`). It defaults to the latest session in the CSV; use `--session` to override.
