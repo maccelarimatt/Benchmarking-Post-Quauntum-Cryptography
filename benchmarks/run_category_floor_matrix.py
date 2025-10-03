@@ -6,6 +6,8 @@ import datetime as _dt
 import json
 import pathlib
 from dataclasses import asdict, dataclass, is_dataclass
+import contextlib
+import os
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 from pqcbench import registry
@@ -18,6 +20,7 @@ from pqcbench_cli.runners.common import (
     run_sig,
 )
 from pqcbench.security_estimator import estimate_for_summary
+from pqcbench.security_levels import resolve_security_override
 
 HERE = pathlib.Path(__file__).resolve().parent
 RESULTS_DIR = HERE.parent / "results"
@@ -33,6 +36,8 @@ _FLOOR_TO_CATEGORY = {
     256: ("cat-5", 5),
 }
 _CATEGORY_TO_FLOOR = {v[1]: k for k, v in _FLOOR_TO_CATEGORY.items()}
+
+
 
 
 @dataclass
@@ -108,6 +113,38 @@ def _json_dumps(data: Any) -> str:
         return json.dumps(data, default=_json_default, sort_keys=True, separators=(",", ":"))
     except TypeError:
         return json.dumps(str(data))
+
+
+def _variant_env_for_category(category: int) -> Dict[str, str]:
+    overrides: Dict[str, str] = {}
+    for algo_name in registry.list().keys():
+        override = resolve_security_override(algo_name, category)
+        if not override:
+            continue
+        overrides[override.env_var] = str(override.value)
+    return overrides
+
+
+@contextlib.contextmanager
+def _temporary_env(overrides: Dict[str, str]):
+    if not overrides:
+        yield
+        return
+    original: Dict[str, Optional[str]] = {}
+    try:
+        for key, value in overrides.items():
+            original[key] = os.environ.get(key)
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+        yield
+    finally:
+        for key, previous in original.items():
+            if previous is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = previous
 
 
 def _detect_kind(candidate: Any) -> Optional[str]:
@@ -317,63 +354,80 @@ def main() -> None:
         raise SystemExit("No valid categories selected; choose from 1, 3, 5.")
 
     _load_adapters()
-    specs = discover_algorithms(selected_categories)
-    if not specs:
-        raise SystemExit("No algorithms matched the requested categories.")
 
     rows: List[Dict[str, Any]] = []
     failures: List[Dict[str, Any]] = []
     env_meta = _collect_environment_meta()
+    collected_specs: List[AlgorithmSpec] = []
 
     passes = [
         ("timing", False),
         ("memory", True),
     ]
 
-    for spec in specs:
-        for pass_name, capture_memory in passes:
-            try:
-                summary = _run_summary(
-                    spec,
-                    args.runs,
-                    args.message_size,
-                    capture_memory=capture_memory,
-                    memory_interval=args.memory_interval,
-                )
-                security = estimate_for_summary(summary)
-                pass_config = {
-                    "capture_memory": capture_memory,
-                    "memory_interval_seconds": args.memory_interval if capture_memory else None,
-                    "runs": args.runs,
-                    "cold": True,
-                }
-                merged_meta = dict(summary.meta or {})
-                if env_meta and "environment" not in merged_meta:
-                    merged_meta["environment"] = env_meta
-                summary.meta = merged_meta
-                rows.extend(
-                    _build_rows(
-                        summary,
-                        spec,
-                        pass_name,
-                        security,
-                        pass_config,
-                        session_id,
-                    )
-                )
-            except Exception as exc:  # noqa: BLE001 - best-effort collection
+    for category in sorted(selected_categories):
+        overrides = _variant_env_for_category(category)
+        with _temporary_env(overrides):
+            reset_adapter_cache()
+            category_specs = discover_algorithms({category})
+            if not category_specs:
                 failures.append(
                     {
-                        "algo": spec.name,
-                        "kind": spec.kind,
-                        "category_number": spec.category_number,
-                        "measurement_pass": pass_name,
-                        "error": repr(exc),
+                        "algo": None,
+                        "kind": None,
+                        "category_number": category,
+                        "measurement_pass": "setup",
+                        "error": f"No adapters available for category {category}.",
                     }
                 )
-                break
-            finally:
-                reset_adapter_cache(spec.name)
+                continue
+            for spec in category_specs:
+                collected_specs.append(spec)
+                for pass_name, capture_memory in passes:
+                    try:
+                        summary = _run_summary(
+                            spec,
+                            args.runs,
+                            args.message_size,
+                            capture_memory=capture_memory,
+                            memory_interval=args.memory_interval,
+                        )
+                        security = estimate_for_summary(summary)
+                        pass_config = {
+                            "capture_memory": capture_memory,
+                            "memory_interval_seconds": args.memory_interval if capture_memory else None,
+                            "runs": args.runs,
+                            "cold": True,
+                            "category": category,
+                        }
+                        merged_meta = dict(summary.meta or {})
+                        if env_meta and "environment" not in merged_meta:
+                            merged_meta["environment"] = env_meta
+                        summary.meta = merged_meta
+                        rows.extend(
+                            _build_rows(
+                                summary,
+                                spec,
+                                pass_name,
+                                security,
+                                pass_config,
+                                session_id,
+                            )
+                        )
+                    except Exception as exc:  # noqa: BLE001 - best-effort collection
+                        failures.append(
+                            {
+                                "algo": spec.name,
+                                "kind": spec.kind,
+                                "category_number": category,
+                                "measurement_pass": pass_name,
+                                "error": repr(exc),
+                            }
+                        )
+                        break
+                    finally:
+                        reset_adapter_cache(spec.name)
+            reset_adapter_cache()
 
     if not rows and failures:
         raise SystemExit("All benchmark passes failed; see metadata for details.")
@@ -417,7 +471,7 @@ def main() -> None:
                 "notes": spec.hint.notes,
                 "extras": spec.hint.extras,
             }
-            for spec in specs
+            for spec in collected_specs
         ],
         "output_csv": str(output_path),
         "row_count": len(rows),

@@ -21,7 +21,9 @@ Example (quick smoke test):
 python benchmarks/run_category_floor_matrix.py --runs 2 --output results/test.csv --metadata results/test.meta.json
 ```
 
-The script will run two passes per algorithm:
+The script automatically cycles through the requested NIST floors (Cat 1/3/5 by default). For each category it resolves parameter-set overrides via the same `security_levels.resolve_security_override` helper used by the UI (e.g., ML-KEM-512 for Cat 1, ML-KEM-768 for Cat 3, ML-KEM-1024 for Cat 5) before instantiating the adapters. That keeps CLI behaviour aligned with the app and avoids manual environment tweaks.
+
+Two measurement passes are collected per (category, algorithm) pair:
 1. **timing** – disables memory sampling for the cleanest latency measurements.
 2. **memory** – enables high-frequency memory sampling (default 0.5 ms interval) for peak-RSS and tracemalloc statistics.
 
