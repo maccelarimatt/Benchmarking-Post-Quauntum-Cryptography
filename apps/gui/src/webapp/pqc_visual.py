@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import base64
 import hashlib
@@ -8,8 +8,10 @@ import random
 import secrets
 import sys
 import time
+import importlib
 from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
 from typing import Any, Dict, Iterable, List, Tuple
 
 from cryptography.hazmat.primitives import hashes
@@ -31,7 +33,62 @@ if "OQS_LIB_PATH" not in os.environ:
             os.environ["OQS_LIB_PATH"] = str(_candidate)
             break
 
-import oqs  # noqa: E402  (import after sys.path/env setup)
+
+
+def _rewrite_oqs_source(source: str) -> str:
+    lines = source.splitlines()
+    out: List[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped == "native().OQS_SIG_supports_ctx_str.restype = ct.c_bool":
+            indent = line[: len(line) - len(line.lstrip())]
+            out.append(f"{indent}if hasattr(native(), 'OQS_SIG_supports_ctx_str'):")
+            out.append(f"{indent}    native().OQS_SIG_supports_ctx_str.restype = ct.c_bool")
+        elif stripped == "native().OQS_SIG_supports_ctx_str.argtypes = [ct.c_char_p]":
+            indent = line[: len(line) - len(line.lstrip())]
+            out.append(f"{indent}if hasattr(native(), 'OQS_SIG_supports_ctx_str'):")
+            out.append(f"{indent}    native().OQS_SIG_supports_ctx_str.argtypes = [ct.c_char_p]")
+        elif stripped == "return bool(native().OQS_SIG_supports_ctx_str(ct.create_string_buffer(alg_name.encode())))":
+            indent = line[: len(line) - len(line.lstrip())]
+            out.append(f"{indent}if not hasattr(native(), 'OQS_SIG_supports_ctx_str'):")
+            out.append(f"{indent}    return False")
+            out.append(f"{indent}return bool(native().OQS_SIG_supports_ctx_str(ct.create_string_buffer(alg_name.encode())))")
+        else:
+            out.append(line)
+    return "\n".join(out) + "\n"
+
+
+
+def _inject_patched_oqs_module() -> ModuleType:
+    path = _LIBOQS_PYTHON / "oqs" / "oqs.py"
+    if not path.exists():
+        raise ImportError("oqs module not found in local liboqs-python directory")
+    source = path.read_text(encoding="utf-8")
+    patched = _rewrite_oqs_source(source)
+    module = ModuleType("oqs.oqs")
+    module.__file__ = str(path)
+    module.__package__ = "oqs"
+    exec(compile(patched, str(path), "exec"), module.__dict__)
+    sys.modules["oqs.oqs"] = module
+    return module
+
+
+
+def _import_oqs():
+    try:
+        return importlib.import_module("oqs")
+    except AttributeError as exc:
+        if "OQS_SIG_supports_ctx_str" not in str(exc):
+            raise
+        sys.modules.pop("oqs", None)
+        sys.modules.pop("oqs.oqs", None)
+        _inject_patched_oqs_module()
+        importlib.invalidate_caches()
+        return importlib.import_module("oqs")
+
+
+
+oqs = _import_oqs()
 
 CHANNELS = 4
 
@@ -357,3 +414,5 @@ def decrypt_image_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     if verify_ok is not None:
         response["verifyOk"] = bool(verify_ok)
     return response
+
+
