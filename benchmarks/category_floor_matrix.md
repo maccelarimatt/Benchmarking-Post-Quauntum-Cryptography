@@ -12,8 +12,12 @@ Common options:
 - `--runs N` (default `40`): number of iterations per operation for each pass. Use a smaller value (e.g. `--runs 2`) for smoke tests.
 - `--categories C [C ...]` (default `1 3 5`): NIST floor categories to include. Each category maps to the floors 128, 192, and 256 bits respectively.
 - `--message-size BYTES` (default `1024`): message size used when benchmarking signature algorithms.
-- `--memory-interval SECONDS` (default `0.0005`): sampling interval for memory measurements during the memory pass. Timing-only passes ignore this value.
+- `--warm`: include additional in-process passes (`timing-warm`, `memory-warm`) alongside the default cold-process runs so you can compare cache-friendly throughput against isolated measurements.
+- `--memory-interval SECONDS` (default `0.0005`): sampling interval for memory measurements during any memory-enabled pass.
+- `--no-security`: skip the security estimator (handy when iterating on timings). Cached estimates are reused automatically when this flag is omitted.
 - `--output PATH` (default `results/category_floor_benchmarks.csv`): CSV destination. Use `--append` to accumulate multiple sessions.
+- `--jsonl-output PATH`: optional newline-delimited JSON export (one row per line) to simplify notebook ingestion.
+- `--parquet-output PATH`: optional Parquet export (requires `pandas` plus a compatible engine such as `pyarrow`).
 - `--metadata PATH` (default `results/category_floor_benchmarks.meta.json`): JSON metadata snapshot describing the run.
 
 Example (quick smoke test):
@@ -23,9 +27,11 @@ python benchmarks/run_category_floor_matrix.py --runs 2 --output results/test.cs
 
 The script automatically cycles through the requested NIST floors (Cat 1/3/5 by default). For each category it resolves parameter-set overrides via the same `security_levels.resolve_security_override` helper used by the UI (e.g., ML-KEM-512 for Cat 1, ML-KEM-768 for Cat 3, ML-KEM-1024 for Cat 5) before instantiating the adapters. That keeps CLI behaviour aligned with the app and avoids manual environment tweaks.
 
-Two measurement passes are collected per (category, algorithm) pair:
+Two measurement passes are collected per (category, algorithm) pair by default:
 1. **timing** – disables memory sampling for the cleanest latency measurements.
 2. **memory** – enables high-frequency memory sampling (default 0.5 ms interval) for peak-RSS and tracemalloc statistics.
+
+When `--warm` is supplied, matching warm in-process passes (`timing-warm`, `memory-warm`) are appended to capture cache-friendly performance characteristics.
 
 Each pass executes cold measurements (fresh child processes) for every operation exposed by the adapter (`keygen`, `encapsulate`, `decapsulate`, `sign`, `verify`).
 
@@ -37,7 +43,7 @@ Each row corresponds to a single `(algorithm, operation, measurement_pass)` tupl
 | --- | --- |
 | `session_id` | UTC timestamp identifier shared by all rows from one invocation. |
 | `timestamp_iso` | UTC time when the row was written (ISO 8601). |
-| `measurement_pass` | Either `timing` or `memory`. |
+| `measurement_pass` | Pass name (`timing`, `memory`, `timing-warm`, `memory-warm`, …). |
 | `algo` | Registry key (e.g. `kyber`, `dilithium`). |
 | `kind` | `KEM` or `SIG`. |
 | `family` | Mechanism family from `pqcbench.params` (e.g. `ML-KEM`). |
@@ -64,15 +70,15 @@ Each row corresponds to a single `(algorithm, operation, measurement_pass)` tupl
 | `security_notes` | Additional context from the estimator. |
 | `security_mechanism` | Mechanism identifier used by the estimator. |
 | `security_extras_json` | JSON-encoded estimator extras (e.g. model choice, brute-force summary). |
-| `pass_config_json` | JSON blob describing how the pass was configured (memory enabled, interval, run count).
+| `pass_config_json` | JSON blob describing how the pass was configured (memory enabled, interval, run count, category, warm/cold flag).
 
 ## Metadata JSON
 
 The metadata file captures run-level information:
 - `session_id`, `generated_at` – identifiers matching the CSV.
-- `runs`, `message_size`, `memory_interval_seconds`, `categories` – command-line settings.
+- `runs`, `message_size`, `memory_interval_seconds`, `categories`, `includes_warm`, `security_estimation` – command-line settings in effect.
 - `algorithms` – array of algorithm descriptors (name, kind, mechanism, category floor, notes, extras).
-- `output_csv`, `row_count` – where the CSV was written and how many rows were produced.
+- `output_csv`, `output_jsonl`, `output_parquet`, `row_count` – where artefacts were written and how many rows were produced.
 - `failures` – any algorithms or passes that failed to execute (empty when all succeed).
 - `environment` – machine context collected from `_collect_environment_meta()` (CPU model, OS, dependency commits, etc.).
 
@@ -83,15 +89,17 @@ Both files are intentionally JSON-friendly so they can be consumed by notebooks,
 After collecting metrics you can visualise the results with:
 
 ```
-python benchmarks/render_category_floor_graphs.py [--csv PATH] [--session SESSION_ID] [--passes timing memory]
+python benchmarks/render_category_floor_graphs.py [--csv PATH] [--session SESSION_ID] [--sessions S1 S2 ...] [--passes timing memory-warm]
 ```
 
 Graphs are written to `results/graphs/<session_id>/` (the `results/` tree is already ignored by Git). The renderer produces:
 
 - `latency_timing_<kind>.png` / `latency_memory_<kind>.png`: grouped mean-latency bar charts per operation for KEM and SIG algorithms.
-- `memory_peak_<kind>.png`: peak RSS bars (memory pass only).
+- `latency_distribution_<pass>_<kind>_<op>.png`: violin + box plots derived from `series_json` so you can inspect spread/percentiles.
+- `memory_peak_<pass>_<kind>.png` and `memory_distribution_<pass>_<kind>_<op>.png`: peak RSS summaries and distributions for memory-enabled passes.
 - `security_vs_latency_<pass>.png`: scatter plot of classical security bits vs keygen latency, annotated per algorithm.
+- `trend_latency_<pass>_<kind>_<op>.png` / `trend_memory_<pass>_<kind>_<op>.png`: multi-session overlays showing how means evolve across sessions (emitted when you pass multiple session IDs).
 
-The script requires `matplotlib` (`pip install matplotlib`). It defaults to the latest session in the CSV; use `--session` to override.
+The script requires `matplotlib` (`pip install matplotlib`). It defaults to the latest session in the CSV; use `--session` for a single run or `--sessions S1 S2 ...` to render multiple runs and emit comparison plots.
 
 Per-category subdirectories are created automatically (e.g. `category_1/`, `category_3/`, `category_5/`) containing the same set of plots filtered to algorithms whose parameter hints map to the corresponding floor. This makes it easy to compare Cat‑1, Cat‑3, and Cat‑5 families side by side.

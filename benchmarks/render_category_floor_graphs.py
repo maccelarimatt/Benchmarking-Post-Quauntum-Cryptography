@@ -197,8 +197,7 @@ def plot_latency_bars(records: Sequence[Record], output_dir: pathlib.Path, pass_
         plt.close(fig)
 
 
-def plot_memory_bars(records: Sequence[Record], output_dir: pathlib.Path) -> None:
-    pass_name = "memory"
+def plot_memory_bars(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str) -> None:
     by_kind: Dict[str, Dict[Tuple[str, str], Optional[float]]] = defaultdict(dict)
     algorithms_by_kind: Dict[str, List[Tuple[int, str]]] = defaultdict(list)
     ops_by_kind: Dict[str, set] = defaultdict(set)
@@ -231,11 +230,11 @@ def plot_memory_bars(records: Sequence[Record], output_dir: pathlib.Path) -> Non
         ax.set_xticks([pos + (len(operations) - 1) * width / 2 for pos in x_positions])
         ax.set_xticklabels(algorithms, rotation=45, ha="right")
         ax.set_ylabel("Peak memory (KB)")
-        ax.set_title("Memory pass peak RSS — {kind}".format(kind=kind))
+        ax.set_title(f"{pass_name.title()} peak RSS — {kind}")
         ax.legend()
         ax.grid(True, axis="y", linestyle="--", alpha=0.3)
         fig.tight_layout()
-        outfile = output_dir / f"memory_peak_{kind.lower()}.png"
+        outfile = output_dir / f"memory_peak_{pass_name}_{kind.lower()}.png"
         fig.savefig(outfile, dpi=200)
         plt.close(fig)
 
@@ -278,20 +277,157 @@ def plot_security_vs_latency(records: Sequence[Record], output_dir: pathlib.Path
     plt.close(fig)
 
 
+def plot_latency_distributions(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str) -> None:
+    grouped: Dict[Tuple[str, str], List[Tuple[str, Sequence[float]]]] = defaultdict(list)
+    for rec in records:
+        if rec.measurement_pass != pass_name or not rec.series:
+            continue
+        grouped[(rec.kind, rec.operation)].append((rec.algo, rec.series))
+
+    for (kind, operation), entries in grouped.items():
+        entries = sorted(entries, key=lambda item: item[0])
+        data = [list(series) for _, series in entries if series]
+        if not data:
+            continue
+        labels = [algo for algo, series in entries if series]
+        positions = list(range(1, len(data) + 1))
+
+        fig, ax = plt.subplots(figsize=(max(6, len(labels) * 0.75), 4.5))
+        violins = ax.violinplot(data, positions=positions, showmeans=True, showextrema=False)
+        for body in violins['bodies']:
+            body.set_alpha(0.6)
+        ax.boxplot(data, positions=positions, widths=0.2, patch_artist=True)
+        ax.set_xticks(positions)
+        ax.set_xticklabels(labels, rotation=45, ha="right")
+        ax.set_ylabel("Latency (ms)")
+        ax.set_title(f"{pass_name.title()} latency distribution — {kind} / {operation}")
+        ax.grid(True, axis="y", linestyle="--", alpha=0.3)
+        fig.tight_layout()
+        outfile = output_dir / f"latency_distribution_{pass_name}_{kind.lower()}_{operation}.png"
+        fig.savefig(outfile, dpi=200)
+        plt.close(fig)
+
+
+def plot_memory_distributions(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str) -> None:
+    grouped: Dict[Tuple[str, str], List[Tuple[str, Sequence[float]]]] = defaultdict(list)
+    for rec in records:
+        if rec.measurement_pass != pass_name or not rec.mem_series:
+            continue
+        grouped[(rec.kind, rec.operation)].append((rec.algo, rec.mem_series))
+
+    for (kind, operation), entries in grouped.items():
+        entries = sorted(entries, key=lambda item: item[0])
+        data = [list(series) for _, series in entries if series]
+        if not data:
+            continue
+        labels = [algo for algo, series in entries if series]
+        positions = list(range(1, len(data) + 1))
+
+        fig, ax = plt.subplots(figsize=(max(6, len(labels) * 0.75), 4.5))
+        violins = ax.violinplot(data, positions=positions, showmeans=True, showextrema=False)
+        for body in violins['bodies']:
+            body.set_alpha(0.6)
+        ax.boxplot(data, positions=positions, widths=0.2, patch_artist=True)
+        ax.set_xticks(positions)
+        ax.set_xticklabels(labels, rotation=45, ha="right")
+        ax.set_ylabel("Peak memory (KB)")
+        ax.set_title(f"{pass_name.title()} memory distribution — {kind} / {operation}")
+        ax.grid(True, axis="y", linestyle="--", alpha=0.3)
+        fig.tight_layout()
+        outfile = output_dir / f"memory_distribution_{pass_name}_{kind.lower()}_{operation}.png"
+        fig.savefig(outfile, dpi=200)
+        plt.close(fig)
+
+
 def generate_graphs(records: Sequence[Record], output_dir: pathlib.Path, passes: Sequence[str]) -> None:
     if not records:
         return
     _ensure_output_dir(output_dir)
-    have_timing = any(rec.measurement_pass == "timing" for rec in records)
-    have_memory = any(rec.measurement_pass == "memory" for rec in records)
+    available_passes = {rec.measurement_pass for rec in records}
 
-    if "timing" in passes and have_timing:
-        plot_latency_bars(records, output_dir, "timing")
-        plot_security_vs_latency(records, output_dir, "timing")
-    if "memory" in passes and have_memory:
-        plot_latency_bars(records, output_dir, "memory")
-        plot_memory_bars(records, output_dir)
-        plot_security_vs_latency(records, output_dir, "memory")
+    for pass_name in passes:
+        if pass_name not in available_passes:
+            continue
+        plot_latency_bars(records, output_dir, pass_name)
+        plot_latency_distributions(records, output_dir, pass_name)
+        plot_security_vs_latency(records, output_dir, pass_name)
+        if pass_name.startswith("memory"):
+            plot_memory_bars(records, output_dir, pass_name)
+            plot_memory_distributions(records, output_dir, pass_name)
+
+
+def plot_session_comparisons(
+    session_records: Dict[str, List[Record]],
+    output_dir: pathlib.Path,
+    passes: Sequence[str],
+) -> None:
+    if not session_records:
+        return
+    sessions = sorted(session_records.keys())
+    available_passes = {
+        rec.measurement_pass
+        for records in session_records.values()
+        for rec in records
+    }
+    pass_list = [p for p in passes if p in available_passes]
+    if not pass_list:
+        return
+    _ensure_output_dir(output_dir)
+
+    for pass_name in pass_list:
+        latency_lines: Dict[Tuple[str, str], Dict[str, Dict[str, float]]] = defaultdict(lambda: defaultdict(dict))
+        memory_lines: Dict[Tuple[str, str], Dict[str, Dict[str, float]]] = defaultdict(lambda: defaultdict(dict))
+        for session_id in sessions:
+            for rec in session_records[session_id]:
+                if rec.measurement_pass != pass_name:
+                    continue
+                if rec.mean_ms is not None:
+                    latency_lines[(rec.kind, rec.operation)][rec.algo][session_id] = rec.mean_ms
+                if rec.mem_mean_kb is not None:
+                    memory_lines[(rec.kind, rec.operation)][rec.algo][session_id] = rec.mem_mean_kb
+
+        x_positions = list(range(len(sessions)))
+
+        for (kind, operation), algo_map in latency_lines.items():
+            fig, ax = plt.subplots(figsize=(max(6, len(sessions) * 0.75), 4.5))
+            for algo, values_by_session in sorted(algo_map.items()):
+                values = [values_by_session.get(sid) for sid in sessions]
+                if all(v is None for v in values):
+                    continue
+                ax.plot(x_positions, values, marker="o", label=algo)
+            ax.set_title(f"{pass_name.title()} latency trend — {kind} / {operation}")
+            ax.set_ylabel("Mean latency (ms)")
+            ax.set_xlabel("Session")
+            ax.grid(True, linestyle="--", alpha=0.3)
+            if ax.lines:
+                ax.legend()
+            ax.set_xticks(x_positions)
+            ax.set_xticklabels(sessions, rotation=45, ha="right")
+            fig.tight_layout()
+            outfile = output_dir / f"trend_latency_{pass_name}_{kind.lower()}_{operation}.png"
+            fig.savefig(outfile, dpi=200)
+            plt.close(fig)
+
+        if pass_name.startswith("memory"):
+            for (kind, operation), algo_map in memory_lines.items():
+                fig, ax = plt.subplots(figsize=(max(6, len(sessions) * 0.75), 4.5))
+                for algo, values_by_session in sorted(algo_map.items()):
+                    values = [values_by_session.get(sid) for sid in sessions]
+                    if all(v is None for v in values):
+                        continue
+                    ax.plot(x_positions, values, marker="o", label=algo)
+                ax.set_title(f"{pass_name.title()} peak RSS trend — {kind} / {operation}")
+                ax.set_ylabel("Peak memory (KB)")
+                ax.set_xlabel("Session")
+                ax.grid(True, linestyle="--", alpha=0.3)
+                if ax.lines:
+                    ax.legend()
+                ax.set_xticks(x_positions)
+                ax.set_xticklabels(sessions, rotation=45, ha="right")
+                fig.tight_layout()
+                outfile = output_dir / f"trend_memory_{pass_name}_{kind.lower()}_{operation}.png"
+                fig.savefig(outfile, dpi=200)
+                plt.close(fig)
 
 
 def parse_args() -> argparse.Namespace:
@@ -300,12 +436,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--csv", default=DEFAULT_CSV, type=pathlib.Path, help="Input CSV (default: results/category_floor_benchmarks.csv)")
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR, type=pathlib.Path, help="Directory for generated graphs (default: results/graphs)")
-    parser.add_argument("--session", default=None, help="Optional session_id to render. Defaults to latest session in CSV.")
+    parser.add_argument("--session", default=None, help="Optional session_id to render (ignored if --sessions used).")
+    parser.add_argument("--sessions", nargs="*", default=None, help="Render multiple sessions and produce comparison plots.")
     parser.add_argument(
         "--passes",
         nargs="*",
-        choices=["timing", "memory"],
-        help="Limit to specific measurement passes (default: both if present).",
+        help="Limit to specific measurement passes (e.g. timing memory-warm). Default uses all present in the data.",
     )
     return parser.parse_args()
 
@@ -313,21 +449,47 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     records = load_records(args.csv)
-    session_id, session_records = select_session(records, args.session)
-    passes = args.passes or sorted({rec.measurement_pass for rec in session_records})
-    output_dir = args.output_dir / session_id
+    records_by_session: Dict[str, List[Record]] = defaultdict(list)
+    for rec in records:
+        if rec.session_id:
+            records_by_session[rec.session_id].append(rec)
 
-    generate_graphs(session_records, output_dir, passes)
+    if not records_by_session:
+        raise SystemExit("No session data found in CSV.")
 
-    categories = sorted({rec.category_number for rec in session_records if rec.category_number})
-    for category in categories:
-        cat_records = [rec for rec in session_records if rec.category_number == category]
-        if not cat_records:
-            continue
-        cat_dir = output_dir / f"category_{category}"
-        generate_graphs(cat_records, cat_dir, passes)
+    if args.sessions:
+        session_ids = args.sessions
+        missing = [sid for sid in session_ids if sid not in records_by_session]
+        if missing:
+            raise SystemExit(f"Sessions not found: {', '.join(missing)}")
+    else:
+        if args.session:
+            if args.session not in records_by_session:
+                raise SystemExit(f"Session '{args.session}' not present. Available: {', '.join(sorted(records_by_session))}")
+            session_ids = [args.session]
+        else:
+            session_ids = [sorted(records_by_session.keys())[-1]]
 
-    print(f"Graphs written to {output_dir}")
+    passes = args.passes or sorted({rec.measurement_pass for sid in session_ids for rec in records_by_session[sid]})
+
+    for session_id in session_ids:
+        session_records = records_by_session[session_id]
+        output_dir = args.output_dir / session_id
+        generate_graphs(session_records, output_dir, passes)
+
+        categories = sorted({rec.category_number for rec in session_records if rec.category_number})
+        for category in categories:
+            cat_records = [rec for rec in session_records if rec.category_number == category]
+            if not cat_records:
+                continue
+            cat_dir = output_dir / f"category_{category}"
+            generate_graphs(cat_records, cat_dir, passes)
+
+    if len(session_ids) > 1:
+        compare_dir = args.output_dir / "multi_session"
+        plot_session_comparisons({sid: records_by_session[sid] for sid in session_ids}, compare_dir, passes)
+
+    print(f"Graphs written to {args.output_dir}")
 
 
 if __name__ == "__main__":

@@ -5,10 +5,11 @@ import csv
 import datetime as _dt
 import json
 import pathlib
+import sys
 from dataclasses import asdict, dataclass, is_dataclass
 import contextlib
 import os
-from typing import Any, Dict, Iterable, List, Optional, Sequence
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from pqcbench import registry
 from pqcbench.params import ParamHint, find as find_param_hint
@@ -282,12 +283,13 @@ def _run_summary(
     *,
     capture_memory: bool,
     memory_interval: float,
+    cold: bool,
 ):
     if spec.kind == "KEM":
         return run_kem(
             spec.name,
             runs,
-            cold=True,
+            cold=cold,
             capture_memory=capture_memory,
             memory_interval=memory_interval,
         )
@@ -295,7 +297,7 @@ def _run_summary(
         spec.name,
         runs,
         message_size,
-        cold=True,
+        cold=cold,
         capture_memory=capture_memory,
         memory_interval=memory_interval,
     )
@@ -320,6 +322,11 @@ def parse_args() -> argparse.Namespace:
         help="Message size (bytes) for signature benchmarks (default: 1024)",
     )
     parser.add_argument(
+        "--warm",
+        action="store_true",
+        help="Add warm in-process passes alongside the default cold measurements.",
+    )
+    parser.add_argument(
         "--memory-interval",
         type=float,
         default=0.0005,
@@ -342,6 +349,23 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Append to existing CSV instead of overwriting",
     )
+    parser.add_argument(
+        "--no-security",
+        action="store_true",
+        help="Skip security estimator (speeds up large batches).",
+    )
+    parser.add_argument(
+        "--jsonl-output",
+        type=pathlib.Path,
+        default=None,
+        help="Optional JSONL export path (one JSON object per line).",
+    )
+    parser.add_argument(
+        "--parquet-output",
+        type=pathlib.Path,
+        default=None,
+        help="Optional Parquet export path (requires pandas + pyarrow/fastparquet).",
+    )
     return parser.parse_args()
 
 
@@ -360,10 +384,20 @@ def main() -> None:
     env_meta = _collect_environment_meta()
     collected_specs: List[AlgorithmSpec] = []
 
-    passes = [
-        ("timing", False),
-        ("memory", True),
+    Pass = Tuple[str, bool, bool]  # (name, capture_memory, cold)
+    passes: List[Pass] = [
+        ("timing", False, True),
+        ("memory", True, True),
     ]
+    if args.warm:
+        passes.extend(
+            [
+                ("timing-warm", False, False),
+                ("memory-warm", True, False),
+            ]
+        )
+
+    security_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
 
     for category in sorted(selected_categories):
         overrides = _variant_env_for_category(category)
@@ -383,7 +417,7 @@ def main() -> None:
                 continue
             for spec in category_specs:
                 collected_specs.append(spec)
-                for pass_name, capture_memory in passes:
+                for pass_name, capture_memory, cold in passes:
                     try:
                         summary = _run_summary(
                             spec,
@@ -391,14 +425,22 @@ def main() -> None:
                             args.message_size,
                             capture_memory=capture_memory,
                             memory_interval=args.memory_interval,
+                            cold=cold,
                         )
-                        security = estimate_for_summary(summary)
+                        if args.no_security:
+                            security: Dict[str, Any] = {}
+                        else:
+                            cache_key = (spec.name, spec.mechanism or spec.name)
+                            if cache_key not in security_cache:
+                                security_cache[cache_key] = estimate_for_summary(summary)
+                            security = security_cache[cache_key]
                         pass_config = {
                             "capture_memory": capture_memory,
                             "memory_interval_seconds": args.memory_interval if capture_memory else None,
                             "runs": args.runs,
-                            "cold": True,
+                            "cold": cold,
                             "category": category,
+                            "warm_pass": not cold,
                         }
                         merged_meta = dict(summary.meta or {})
                         if env_meta and "environment" not in merged_meta:
@@ -458,6 +500,8 @@ def main() -> None:
         "runs": args.runs,
         "message_size": args.message_size,
         "memory_interval_seconds": args.memory_interval,
+        "includes_warm": bool(args.warm),
+        "security_estimation": not args.no_security,
         "categories": sorted(selected_categories),
         "algorithms": [
             {
@@ -479,10 +523,37 @@ def main() -> None:
         "environment": env_meta,
     }
 
+    if args.jsonl_output:
+        meta_payload["output_jsonl"] = str(args.jsonl_output)
+    if args.parquet_output:
+        meta_payload["output_parquet"] = str(args.parquet_output)
+
     meta_path = args.metadata
     meta_path.parent.mkdir(parents=True, exist_ok=True)
     with meta_path.open("w", encoding="utf-8") as handle:
         json.dump(meta_payload, handle, indent=2, sort_keys=True, default=_json_default)
+
+    if args.jsonl_output:
+        args.jsonl_output.parent.mkdir(parents=True, exist_ok=True)
+        with args.jsonl_output.open("w", encoding="utf-8") as handle:
+            for row in rows:
+                handle.write(json.dumps(row, default=_json_default, separators=(",", ":")) + "\n")
+
+    if args.parquet_output:
+        try:
+            import pandas as pd  # type: ignore
+        except Exception as exc:  # pragma: no cover - optional dependency
+            print(
+                f"Parquet export skipped: pandas not available ({exc}).",
+                file=sys.stderr,
+            )
+        else:
+            args.parquet_output.parent.mkdir(parents=True, exist_ok=True)
+            df = pd.DataFrame(rows)
+            try:
+                df.to_parquet(args.parquet_output, index=False)
+            except Exception as exc:
+                print(f"Failed to write Parquet file: {exc}", file=sys.stderr)
 
     print(f"Wrote {len(rows)} rows to {output_path}")
     if failures:
