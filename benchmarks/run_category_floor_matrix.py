@@ -221,6 +221,8 @@ def _build_rows(
         meta_mech = summary.meta.get("mechanism")
     resolved_mech = meta_mech or security_mech or spec.mechanism or spec.name
     family = spec.hint.family if hasattr(spec.hint, "family") else None
+    category_number = int(pass_config.get("category") or spec.category_number)
+    category_label = f"cat-{category_number}" if category_number else spec.category_label
     meta_json = _json_dumps(summary.meta)
     security_extras_json = _json_dumps(security.get("extras") if isinstance(security, dict) else None)
     pass_config_json = _json_dumps(pass_config)
@@ -237,8 +239,8 @@ def _build_rows(
                 "kind": summary.kind,
                 "family": family,
                 "mechanism": resolved_mech,
-                "category_label": spec.category_label,
-                "category_number": spec.category_number,
+                "category_label": category_label,
+                "category_number": category_number,
                 "category_floor_bits": spec.category_bits,
                 "parameter_notes": spec.hint.notes or "",
                 "parameter_extras_json": param_extras_json,

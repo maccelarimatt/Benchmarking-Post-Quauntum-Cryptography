@@ -7,7 +7,7 @@ import math
 import pathlib
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 try:
     import matplotlib.pyplot as plt
@@ -55,12 +55,16 @@ class Record:
     operation: str
     category_number: int
     mean_ms: Optional[float]
+    ci95_low_ms: Optional[float]
+    ci95_high_ms: Optional[float]
     mem_mean_kb: Optional[float]
+    mem_ci95_low_kb: Optional[float]
+    mem_ci95_high_kb: Optional[float]
     security_classical_bits: Optional[float]
     security_quantum_bits: Optional[float]
     category_label: str
     mechanism: str
-    meta_json: str
+    meta: Dict[str, Any]
     series: Sequence[float]
     mem_series: Sequence[float]
 
@@ -102,6 +106,13 @@ def load_records(csv_path: pathlib.Path) -> List[Record]:
     with csv_path.open("r", newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
         for row in reader:
+            try:
+                meta = json.loads(row.get("meta_json", "") or "{}")
+                if not isinstance(meta, dict):
+                    meta = {}
+            except json.JSONDecodeError:
+                meta = {}
+
             record = Record(
                 session_id=row.get("session_id", ""),
                 measurement_pass=(row.get("measurement_pass", "") or "timing").lower(),
@@ -110,12 +121,16 @@ def load_records(csv_path: pathlib.Path) -> List[Record]:
                 operation=row.get("operation", ""),
                 category_number=int(row.get("category_number", "0") or 0),
                 mean_ms=_parse_float(row.get("mean_ms")),
+                ci95_low_ms=_parse_float(row.get("ci95_low_ms")),
+                ci95_high_ms=_parse_float(row.get("ci95_high_ms")),
                 mem_mean_kb=_parse_float(row.get("mem_mean_kb")),
+                mem_ci95_low_kb=_parse_float(row.get("mem_ci95_low_kb")),
+                mem_ci95_high_kb=_parse_float(row.get("mem_ci95_high_kb")),
                 security_classical_bits=_parse_float(row.get("security_classical_bits")),
                 security_quantum_bits=_parse_float(row.get("security_quantum_bits")),
                 category_label=row.get("category_label", ""),
                 mechanism=row.get("mechanism", ""),
-                meta_json=row.get("meta_json", ""),
+                meta=meta,
                 series=_parse_series(row.get("series_json")),
                 mem_series=_parse_series(row.get("mem_series_json")),
             )
@@ -339,6 +354,294 @@ def plot_memory_distributions(records: Sequence[Record], output_dir: pathlib.Pat
         plt.close(fig)
 
 
+def plot_latency_ecdf(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str) -> None:
+    grouped: Dict[Tuple[str, str], List[Tuple[str, Sequence[float]]]] = defaultdict(list)
+    for rec in records:
+        if rec.measurement_pass != pass_name or not rec.series:
+            continue
+        grouped[(rec.kind, rec.operation)].append((rec.algo, rec.series))
+
+    for (kind, operation), entries in grouped.items():
+        entries = sorted(entries, key=lambda item: item[0])
+        fig, ax = plt.subplots(figsize=(6, 4.5))
+        for algo, series in entries:
+            if not series:
+                continue
+            sorted_vals = sorted(series)
+            n = len(sorted_vals)
+            y_vals = [i / n for i in range(1, n + 1)]
+            ax.step(sorted_vals, y_vals, where="post", label=algo)
+        ax.set_title(f"{pass_name.title()} latency ECDF — {kind} / {operation}")
+        ax.set_xlabel("Latency (ms)")
+        ax.set_ylabel("F(x)")
+        ax.grid(True, linestyle="--", alpha=0.3)
+        if ax.lines:
+            ax.legend()
+        fig.tight_layout()
+        outfile = output_dir / f"latency_ecdf_{pass_name}_{kind.lower()}_{operation}.png"
+        fig.savefig(outfile, dpi=200)
+        plt.close(fig)
+
+
+def plot_throughput_vs_category(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str) -> None:
+    grouped: Dict[Tuple[str, str], Dict[str, Dict[int, float]]] = defaultdict(lambda: defaultdict(dict))
+    for rec in records:
+        if rec.measurement_pass != pass_name or rec.mean_ms is None or rec.mean_ms <= 0.0:
+            continue
+        throughput = 1000.0 / rec.mean_ms  # operations per second
+        grouped[(rec.kind, rec.operation)][rec.algo][rec.category_number] = throughput
+
+    for (kind, operation), algo_map in grouped.items():
+        categories = sorted({cat for points in algo_map.values() for cat in points.keys()})
+        if not categories or len(algo_map) < 1:
+            continue
+        fig, ax = plt.subplots(figsize=(max(6, len(categories) * 1.2), 4.5))
+        x_positions = range(len(categories))
+        for algo, values in sorted(algo_map.items()):
+            y_vals = [values.get(cat) for cat in categories]
+            if all(v is None for v in y_vals):
+                continue
+            ax.plot(x_positions, y_vals, marker="o", label=algo)
+        ax.set_title(f"Throughput ({pass_name}) — {kind} / {operation}")
+        ax.set_ylabel("Ops per second")
+        ax.set_xlabel("Security category")
+        ax.set_xticks(list(x_positions))
+        ax.set_xticklabels([str(cat) for cat in categories])
+        ax.grid(True, linestyle="--", alpha=0.3)
+        if ax.lines:
+            ax.legend()
+        fig.tight_layout()
+        outfile = output_dir / f"throughput_{pass_name}_{kind.lower()}_{operation}.png"
+        fig.savefig(outfile, dpi=200)
+        plt.close(fig)
+
+
+def _collect_unique_meta(records: Sequence[Record]) -> Dict[Tuple[str, str, int], Record]:
+    unique: Dict[Tuple[str, str, int], Record] = {}
+    for rec in records:
+        key = (rec.kind, rec.algo, rec.category_number)
+        if key not in unique:
+            unique[key] = rec
+    return unique
+
+
+def plot_size_stacked_bars(records: Sequence[Record], output_dir: pathlib.Path) -> None:
+    unique = _collect_unique_meta(records)
+    kem_entries: List[Tuple[int, str, Dict[str, Any]]] = []
+    sig_entries: List[Tuple[int, str, Dict[str, Any]]] = []
+    for (kind, algo, category), rec in unique.items():
+        if rec.operation.lower() != "keygen":
+            continue
+        entry = (category, algo, rec.meta)
+        if kind.upper() == "KEM":
+            kem_entries.append(entry)
+        elif kind.upper() == "SIG":
+            sig_entries.append(entry)
+
+    def _plot(entries: List[Tuple[int, str, Dict[str, Any]]], kind_label: str) -> None:
+        if not entries:
+            return
+        entries.sort()
+        labels = [f"{algo}\nCat-{cat}" for cat, algo, _ in entries]
+        components = []
+        if kind_label == "KEM":
+            components = [
+                ("Public key", "public_key_len"),
+                ("Secret key", "secret_key_len"),
+                ("Ciphertext", "ciphertext_len"),
+                ("Shared secret", "shared_secret_len"),
+            ]
+        else:
+            components = [
+                ("Public key", "public_key_len"),
+                ("Secret key", "secret_key_len"),
+                ("Signature", "signature_len"),
+            ]
+
+        fig, ax = plt.subplots(figsize=(max(6, len(entries) * 0.8), 4.5))
+        bottoms = [0.0] * len(entries)
+        for label, key in components:
+            values = []
+            for _, _, meta in entries:
+                val = meta.get(key)
+                values.append(float(val) if isinstance(val, (int, float)) else 0.0)
+            ax.bar(labels, values, bottom=bottoms, label=label)
+            bottoms = [b + v for b, v in zip(bottoms, values)]
+        ax.set_ylabel("Bytes")
+        ax.set_title(f"Key material sizes — {kind_label}")
+        ax.legend()
+        ax.grid(True, axis="y", linestyle="--", alpha=0.3)
+        fig.tight_layout()
+        outfile = output_dir / f"sizes_{kind_label.lower()}.png"
+        fig.savefig(outfile, dpi=200)
+        plt.close(fig)
+
+    _plot(kem_entries, "KEM")
+    _plot(sig_entries, "SIG")
+
+
+def plot_expansion_scatter(records: Sequence[Record], output_dir: pathlib.Path) -> None:
+    unique = _collect_unique_meta(records)
+    kem_points: List[Tuple[float, int, str]] = []
+    sig_points: List[Tuple[float, int, str]] = []
+    for (kind, algo, category), rec in unique.items():
+        meta = rec.meta
+        ratio = None
+        if kind.upper() == "KEM":
+            ratio = meta.get("ciphertext_expansion_ratio")
+            if not ratio and meta.get("ciphertext_len") and meta.get("shared_secret_len"):
+                ss = meta.get("shared_secret_len") or 0
+                if ss:
+                    ratio = float(meta.get("ciphertext_len")) / float(ss)
+            if ratio:
+                kem_points.append((float(ratio), category, algo))
+        elif kind.upper() == "SIG":
+            ratio = meta.get("signature_expansion_ratio")
+            msg_size = meta.get("message_size")
+            if not ratio and meta.get("signature_len") and msg_size:
+                if msg_size:
+                    ratio = float(meta.get("signature_len")) / float(msg_size)
+            if ratio:
+                sig_points.append((float(ratio), category, algo))
+
+    def _plot(points: List[Tuple[float, int, str]], label: str) -> None:
+        if not points:
+            return
+        fig, ax = plt.subplots(figsize=(6, 4.5))
+        for ratio, category, algo in sorted(points, key=lambda x: (x[1], x[2])):
+            ax.scatter(category, ratio, label=algo)
+            ax.annotate(algo, (category, ratio), textcoords="offset points", xytext=(4, 4), fontsize=7)
+        ax.set_title(f"Expansion ratio vs category — {label}")
+        ax.set_xlabel("Security category")
+        ax.set_ylabel("Expansion ratio")
+        ax.grid(True, linestyle="--", alpha=0.3)
+        fig.tight_layout()
+        outfile = output_dir / f"expansion_{label.lower()}.png"
+        fig.savefig(outfile, dpi=200)
+        plt.close(fig)
+
+    _plot(kem_points, "KEM")
+    _plot(sig_points, "SIG")
+
+
+def plot_memory_error_bars(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str) -> None:
+    grouped: Dict[str, Dict[str, Tuple[float, float, float]]] = defaultdict(dict)
+    for rec in records:
+        if rec.measurement_pass != pass_name:
+            continue
+        if (
+            rec.mem_mean_kb is None
+            or rec.mem_ci95_low_kb is None
+            or rec.mem_ci95_high_kb is None
+        ):
+            continue
+        key = f"{rec.kind} / {rec.operation}"
+        grouped[key][rec.algo] = (
+            rec.mem_mean_kb,
+            max(0.0, rec.mem_mean_kb - rec.mem_ci95_low_kb),
+            max(0.0, rec.mem_ci95_high_kb - rec.mem_mean_kb),
+        )
+
+    for label, data in grouped.items():
+        if not data:
+            continue
+        algorithms = sorted(data.keys())
+        means = [data[a][0] for a in algorithms]
+        yerr = [[data[a][1] for a in algorithms], [data[a][2] for a in algorithms]]
+        fig, ax = plt.subplots(figsize=(max(6, len(algorithms) * 0.75), 4.5))
+        ax.bar(algorithms, means, yerr=yerr, capsize=4)
+        ax.set_ylabel("Peak memory (KB)")
+        ax.set_title(f"Peak RSS with 95% CI — {label} ({pass_name})")
+        ax.grid(True, axis="y", linestyle="--", alpha=0.3)
+        ax.tick_params(axis="x", rotation=45, ha="right")
+        fig.tight_layout()
+        safe_label = label.replace(" / ", "_").replace(" ", "_").lower()
+        outfile = output_dir / f"memory_errorbars_{pass_name}_{safe_label}.png"
+        fig.savefig(outfile, dpi=200)
+        plt.close(fig)
+
+
+def plot_security_cost_bars(records: Sequence[Record], output_dir: pathlib.Path) -> None:
+    unique = _collect_unique_meta(records)
+    entries = []
+    for (kind, algo, category), rec in unique.items():
+        if rec.security_classical_bits is None and rec.security_quantum_bits is None:
+            continue
+        label = f"{algo}\nCat-{category}"
+        entries.append((label, rec.security_classical_bits or 0.0, rec.security_quantum_bits or 0.0))
+    if not entries:
+        return
+    entries.sort()
+    labels = [item[0] for item in entries]
+    classical = [item[1] for item in entries]
+    quantum = [item[2] for item in entries]
+    x = range(len(entries))
+    fig, ax = plt.subplots(figsize=(max(6, len(entries) * 0.8), 4.5))
+    ax.bar(x, classical, width=0.4, label="Classical bits")
+    ax.bar([i + 0.4 for i in x], quantum, width=0.4, label="Quantum bits")
+    ax.set_xticks([i + 0.2 for i in x])
+    ax.set_xticklabels(labels, rotation=45, ha="right")
+    ax.set_ylabel("Bits of security")
+    ax.set_title("Classical vs quantum cost estimates")
+    ax.legend()
+    ax.grid(True, axis="y", linestyle="--", alpha=0.3)
+    fig.tight_layout()
+    outfile = output_dir / "security_bits_comparison.png"
+    fig.savefig(outfile, dpi=200)
+    plt.close(fig)
+
+
+def plot_tradeoff_frontier(records: Sequence[Record], output_dir: pathlib.Path, preferred_passes: Sequence[str]) -> None:
+    available_passes = {rec.measurement_pass for rec in records}
+    pass_name = next((p for p in preferred_passes if p in available_passes), None)
+    if pass_name is None:
+        return
+
+    unique = _collect_unique_meta(records)
+    points = []
+    for (kind, algo, category), rec in unique.items():
+        relevant = [
+            r
+            for r in records
+            if r.algo == algo
+            and r.kind == kind
+            and r.category_number == category
+            and r.measurement_pass == pass_name
+            and r.operation.lower() == "keygen"
+        ]
+        if not relevant:
+            continue
+        mean_latency = next((r.mean_ms for r in relevant if r.mean_ms is not None), None)
+        if mean_latency is None or rec.security_classical_bits is None:
+            continue
+        size = (
+            rec.meta.get("public_key_len")
+            or rec.meta.get("signature_len")
+            or rec.meta.get("ciphertext_len")
+            or 0
+        )
+        points.append((mean_latency, rec.security_classical_bits, size, algo, category, kind))
+
+    if not points:
+        return
+
+    fig, ax = plt.subplots(figsize=(6, 4.5))
+    for latency, sec_bits, size, algo, category, kind in sorted(points, key=lambda x: (x[5], x[0])):
+        marker = "o" if kind.upper() == "KEM" else "^"
+        ax.scatter(latency, sec_bits, s=max(20, size / 5), marker=marker, alpha=0.7, label=f"{algo} Cat-{category}")
+        ax.annotate(f"{algo}\nCat-{category}", (latency, sec_bits), textcoords="offset points", xytext=(4, 4), fontsize=7)
+    ax.set_xlabel(f"Latency (ms) — {pass_name}")
+    ax.set_ylabel("Security bits (classical)")
+    ax.set_title("Performance vs security trade-off")
+    ax.grid(True, linestyle="--", alpha=0.3)
+    handles, labels = ax.get_legend_handles_labels()
+    unique_pairs = dict(zip(labels, handles))
+    ax.legend(unique_pairs.values(), unique_pairs.keys(), fontsize=8)
+    fig.tight_layout()
+    outfile = output_dir / f"tradeoff_{pass_name}.png"
+    fig.savefig(outfile, dpi=200)
+    plt.close(fig)
+
 def generate_graphs(records: Sequence[Record], output_dir: pathlib.Path, passes: Sequence[str]) -> None:
     if not records:
         return
@@ -350,10 +653,20 @@ def generate_graphs(records: Sequence[Record], output_dir: pathlib.Path, passes:
             continue
         plot_latency_bars(records, output_dir, pass_name)
         plot_latency_distributions(records, output_dir, pass_name)
+        plot_latency_ecdf(records, output_dir, pass_name)
         plot_security_vs_latency(records, output_dir, pass_name)
+        if "timing" in pass_name:
+            plot_throughput_vs_category(records, output_dir, pass_name)
         if pass_name.startswith("memory"):
             plot_memory_bars(records, output_dir, pass_name)
             plot_memory_distributions(records, output_dir, pass_name)
+            plot_memory_error_bars(records, output_dir, pass_name)
+
+    # Pass-agnostic summaries
+    plot_size_stacked_bars(records, output_dir)
+    plot_expansion_scatter(records, output_dir)
+    plot_security_cost_bars(records, output_dir)
+    plot_tradeoff_frontier(records, output_dir, preferred_passes=[p for p in passes if "timing" in p] + list(passes))
 
 
 def plot_session_comparisons(

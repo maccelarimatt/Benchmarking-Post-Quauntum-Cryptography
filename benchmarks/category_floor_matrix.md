@@ -94,10 +94,16 @@ python benchmarks/render_category_floor_graphs.py [--csv PATH] [--session SESSIO
 
 Graphs are written to `results/graphs/<session_id>/` (the `results/` tree is already ignored by Git). The renderer produces:
 
-- `latency_timing_<kind>.png` / `latency_memory_<kind>.png`: grouped mean-latency bar charts per operation for KEM and SIG algorithms.
+- `latency_<pass>_<kind>.png`: grouped mean-latency bar charts per operation for KEM and SIG algorithms.
 - `latency_distribution_<pass>_<kind>_<op>.png`: violin + box plots derived from `series_json` so you can inspect spread/percentiles.
-- `memory_peak_<pass>_<kind>.png` and `memory_distribution_<pass>_<kind>_<op>.png`: peak RSS summaries and distributions for memory-enabled passes.
-- `security_vs_latency_<pass>.png`: scatter plot of classical security bits vs keygen latency, annotated per algorithm.
+- `latency_ecdf_<pass>_<kind>_<op>.png`: empirical CDFs for each algorithm to highlight tail behaviour.
+- `throughput_<pass>_<kind>_<op>.png`: throughput scaling (ops/sec) across security categories for timing-oriented passes.
+- `memory_peak_<pass>_<kind>.png`, `memory_distribution_<pass>_<kind>_<op>.png`, and `memory_errorbars_<pass>_*.png`: peak RSS summaries, distributions, and CI error bars for memory-enabled passes.
+- `sizes_{kem,sig}.png`: stacked bars for public/secret key and ciphertext/signature sizes.
+- `expansion_{kem,sig}.png`: ciphertext/signature expansion ratios versus security category.
+- `security_bits_comparison.png`: classical vs quantum cost estimates side-by-side.
+- `tradeoff_<pass>.png`: latency vs security scatter with marker size proportional to key/signature footprint.
+- `security_vs_latency_<pass>.png`: scatter plot of classical security bits vs keygen latency.
 - `trend_latency_<pass>_<kind>_<op>.png` / `trend_memory_<pass>_<kind>_<op>.png`: multi-session overlays showing how means evolve across sessions (emitted when you pass multiple session IDs).
 
 The script requires `matplotlib` (`pip install matplotlib`). It defaults to the latest session in the CSV; use `--session` for a single run or `--sessions S1 S2 ...` to render multiple runs and emit comparison plots.
