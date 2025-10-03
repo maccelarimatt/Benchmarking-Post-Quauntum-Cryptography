@@ -278,6 +278,22 @@ def plot_security_vs_latency(records: Sequence[Record], output_dir: pathlib.Path
     plt.close(fig)
 
 
+def generate_graphs(records: Sequence[Record], output_dir: pathlib.Path, passes: Sequence[str]) -> None:
+    if not records:
+        return
+    _ensure_output_dir(output_dir)
+    have_timing = any(rec.measurement_pass == "timing" for rec in records)
+    have_memory = any(rec.measurement_pass == "memory" for rec in records)
+
+    if "timing" in passes and have_timing:
+        plot_latency_bars(records, output_dir, "timing")
+        plot_security_vs_latency(records, output_dir, "timing")
+    if "memory" in passes and have_memory:
+        plot_latency_bars(records, output_dir, "memory")
+        plot_memory_bars(records, output_dir)
+        plot_security_vs_latency(records, output_dir, "memory")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Render graphs from category floor benchmark CSV outputs.",
@@ -300,15 +316,16 @@ def main() -> None:
     session_id, session_records = select_session(records, args.session)
     passes = args.passes or sorted({rec.measurement_pass for rec in session_records})
     output_dir = args.output_dir / session_id
-    _ensure_output_dir(output_dir)
 
-    if "timing" in passes:
-        plot_latency_bars(session_records, output_dir, "timing")
-        plot_security_vs_latency(session_records, output_dir, "timing")
-    if "memory" in passes:
-        plot_latency_bars(session_records, output_dir, "memory")
-        plot_memory_bars(session_records, output_dir)
-        plot_security_vs_latency(session_records, output_dir, "memory")
+    generate_graphs(session_records, output_dir, passes)
+
+    categories = sorted({rec.category_number for rec in session_records if rec.category_number})
+    for category in categories:
+        cat_records = [rec for rec in session_records if rec.category_number == category]
+        if not cat_records:
+            continue
+        cat_dir = output_dir / f"category_{category}"
+        generate_graphs(cat_records, cat_dir, passes)
 
     print(f"Graphs written to {output_dir}")
 

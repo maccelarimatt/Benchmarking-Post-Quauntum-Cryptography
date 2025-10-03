@@ -91,3 +91,5 @@ Graphs are written to `results/graphs/<session_id>/` (the `results/` tree is alr
 - `security_vs_latency_<pass>.png`: scatter plot of classical security bits vs keygen latency, annotated per algorithm.
 
 The script requires `matplotlib` (`pip install matplotlib`). It defaults to the latest session in the CSV; use `--session` to override.
+
+Per-category subdirectories are created automatically (e.g. `category_1/`, `category_3/`, `category_5/`) containing the same set of plots filtered to algorithms whose parameter hints map to the corresponding floor. This makes it easy to compare Cat‑1, Cat‑3, and Cat‑5 families side by side.
