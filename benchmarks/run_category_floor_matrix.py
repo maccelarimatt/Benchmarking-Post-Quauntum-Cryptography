@@ -9,6 +9,7 @@ import sys
 from dataclasses import asdict, dataclass, is_dataclass
 import contextlib
 import os
+import copy
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from pqcbench import registry
@@ -21,7 +22,7 @@ from pqcbench_cli.runners.common import (
     run_sig,
 )
 from pqcbench.security_estimator import estimate_for_summary
-from pqcbench.security_levels import resolve_security_override
+from pqcbench.security_levels import resolve_security_override, available_categories
 
 HERE = pathlib.Path(__file__).resolve().parent
 RESULTS_DIR = HERE.parent / "results"
@@ -38,6 +39,7 @@ _FLOOR_TO_CATEGORY = {
     256: ("cat-5", 5),
 }
 _CATEGORY_TO_FLOOR = {v[1]: k for k, v in _FLOOR_TO_CATEGORY.items()}
+_CATEGORY_DEFAULT_FLOOR = {1: 128, 3: 192, 5: 256}
 
 
 
@@ -166,8 +168,23 @@ def _resolve_mechanism(candidate: Any, fallback_name: str) -> str | None:
     return fallback_name
 
 
+def _clone_hint_for_category(hint: ParamHint, category: int, override_value: Any) -> ParamHint:
+    extras = copy.deepcopy(hint.extras) if hint.extras else {}
+    category_floor = _CATEGORY_DEFAULT_FLOOR.get(category, hint.category_floor)
+    if isinstance(override_value, int):
+        extras = dict(extras)
+        extras["modulus_bits"] = int(override_value)
+    return ParamHint(
+        family=hint.family,
+        mechanism=hint.mechanism,
+        category_floor=category_floor,
+        notes=hint.notes,
+        extras=extras,
+    )
+
+
 def discover_algorithms(categories: Iterable[int]) -> List[AlgorithmSpec]:
-    desired = {cat for cat in categories if cat in _CATEGORY_TO_FLOOR}
+    desired = [cat for cat in categories if cat in (1, 3, 5)]
     specs: List[AlgorithmSpec] = []
     for name, cls in registry.list().items():
         try:
@@ -181,24 +198,24 @@ def discover_algorithms(categories: Iterable[int]) -> List[AlgorithmSpec]:
         hint = find_param_hint(mechanism) or find_param_hint(name)
         if not hint:
             continue
-        floor_bits = hint.category_floor
-        mapping = _FLOOR_TO_CATEGORY.get(floor_bits)
-        if not mapping:
-            continue
-        label, cat_number = mapping
-        if cat_number not in desired:
-            continue
-        specs.append(
-            AlgorithmSpec(
-                name=name,
-                kind=kind,
-                mechanism=mechanism,
-                hint=hint,
-                category_bits=floor_bits,
-                category_label=label,
-                category_number=cat_number,
+        available = set(available_categories(name))
+        for category in desired:
+            if available and category not in available:
+                continue
+            override = resolve_security_override(name, category)
+            hint_for_cat = _clone_hint_for_category(hint, category, override.value if override else None)
+            label = f"cat-{category}"
+            specs.append(
+                AlgorithmSpec(
+                    name=name,
+                    kind=kind,
+                    mechanism=mechanism,
+                    hint=hint_for_cat,
+                    category_bits=hint_for_cat.category_floor,
+                    category_label=label,
+                    category_number=category,
+                )
             )
-        )
     specs.sort(key=lambda s: (s.category_number, s.kind, s.name))
     return specs
 

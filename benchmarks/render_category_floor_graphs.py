@@ -6,7 +6,7 @@ import json
 import math
 import pathlib
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 try:
@@ -67,6 +67,26 @@ class Record:
     meta: Dict[str, Any]
     series: Sequence[float]
     mem_series: Sequence[float]
+
+
+@dataclass
+class CaptionLog:
+    entries: List[Tuple[pathlib.Path, str]] = field(default_factory=list)
+
+    def add(self, path: pathlib.Path, text: str) -> None:
+        self.entries.append((path, text))
+
+    def write(self, root: pathlib.Path) -> None:
+        if not self.entries:
+            return
+        root.mkdir(parents=True, exist_ok=True)
+        lines = ["# Graph Captions\n"]
+        for rel_path, heading in sorted(
+            ((p.relative_to(root), h) for p, h in self.entries),
+            key=lambda item: str(item[0]),
+        ):
+            lines.append(f"- `{rel_path}` — {heading}\n")
+        (root / "captions.md").write_text("\n".join(lines), encoding="utf-8")
 
 
 def _parse_float(value: str | None) -> Optional[float]:
@@ -170,7 +190,7 @@ def _operations_for_kind(kind: str, present_ops: Iterable[str]) -> List[str]:
     return [op for op in base if op in present_ops]
 
 
-def plot_latency_bars(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str) -> None:
+def plot_latency_bars(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str, captions: CaptionLog) -> None:
     by_kind: Dict[str, Dict[Tuple[str, str], Optional[float]]] = defaultdict(dict)
     algorithms_by_kind: Dict[str, List[Tuple[int, str]]] = defaultdict(list)
     ops_by_kind: Dict[str, set] = defaultdict(set)
@@ -209,10 +229,11 @@ def plot_latency_bars(records: Sequence[Record], output_dir: pathlib.Path, pass_
         fig.tight_layout()
         outfile = output_dir / f"latency_{pass_name}_{kind.lower()}.png"
         fig.savefig(outfile, dpi=200)
+        captions.add(outfile, f"Mean latency per operation for {kind} ({pass_name})")
         plt.close(fig)
 
 
-def plot_memory_bars(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str) -> None:
+def plot_memory_bars(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str, captions: CaptionLog) -> None:
     by_kind: Dict[str, Dict[Tuple[str, str], Optional[float]]] = defaultdict(dict)
     algorithms_by_kind: Dict[str, List[Tuple[int, str]]] = defaultdict(list)
     ops_by_kind: Dict[str, set] = defaultdict(set)
@@ -251,10 +272,11 @@ def plot_memory_bars(records: Sequence[Record], output_dir: pathlib.Path, pass_n
         fig.tight_layout()
         outfile = output_dir / f"memory_peak_{pass_name}_{kind.lower()}.png"
         fig.savefig(outfile, dpi=200)
+        captions.add(outfile, f"Peak RSS per operation for {kind} ({pass_name})")
         plt.close(fig)
 
 
-def plot_security_vs_latency(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str) -> None:
+def plot_security_vs_latency(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str, captions: CaptionLog) -> None:
     points: List[Tuple[float, float, str, str]] = []  # (classical_bits, latency, kind, algo)
     for rec in records:
         if rec.measurement_pass != pass_name:
@@ -289,10 +311,11 @@ def plot_security_vs_latency(records: Sequence[Record], output_dir: pathlib.Path
     fig.tight_layout()
     outfile = output_dir / f"security_vs_latency_{pass_name}.png"
     fig.savefig(outfile, dpi=200)
+    captions.add(outfile, f"Keygen latency vs. classical security ({pass_name})")
     plt.close(fig)
 
 
-def plot_latency_distributions(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str) -> None:
+def plot_latency_distributions(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str, captions: CaptionLog) -> None:
     grouped: Dict[Tuple[str, str], List[Tuple[str, Sequence[float]]]] = defaultdict(list)
     for rec in records:
         if rec.measurement_pass != pass_name or not rec.series:
@@ -320,10 +343,11 @@ def plot_latency_distributions(records: Sequence[Record], output_dir: pathlib.Pa
         fig.tight_layout()
         outfile = output_dir / f"latency_distribution_{pass_name}_{kind.lower()}_{operation}.png"
         fig.savefig(outfile, dpi=200)
+        captions.add(outfile, f"Latency distribution for {kind} {operation} ({pass_name})")
         plt.close(fig)
 
 
-def plot_memory_distributions(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str) -> None:
+def plot_memory_distributions(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str, captions: CaptionLog) -> None:
     grouped: Dict[Tuple[str, str], List[Tuple[str, Sequence[float]]]] = defaultdict(list)
     for rec in records:
         if rec.measurement_pass != pass_name or not rec.mem_series:
@@ -351,10 +375,11 @@ def plot_memory_distributions(records: Sequence[Record], output_dir: pathlib.Pat
         fig.tight_layout()
         outfile = output_dir / f"memory_distribution_{pass_name}_{kind.lower()}_{operation}.png"
         fig.savefig(outfile, dpi=200)
+        captions.add(outfile, f"Memory distribution for {kind} {operation} ({pass_name})")
         plt.close(fig)
 
 
-def plot_latency_ecdf(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str) -> None:
+def plot_latency_ecdf(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str, captions: CaptionLog) -> None:
     grouped: Dict[Tuple[str, str], List[Tuple[str, Sequence[float]]]] = defaultdict(list)
     for rec in records:
         if rec.measurement_pass != pass_name or not rec.series:
@@ -380,10 +405,11 @@ def plot_latency_ecdf(records: Sequence[Record], output_dir: pathlib.Path, pass_
         fig.tight_layout()
         outfile = output_dir / f"latency_ecdf_{pass_name}_{kind.lower()}_{operation}.png"
         fig.savefig(outfile, dpi=200)
+        captions.add(outfile, f"Latency ECDF for {kind} {operation} ({pass_name})")
         plt.close(fig)
 
 
-def plot_throughput_vs_category(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str) -> None:
+def plot_throughput_vs_category(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str, captions: CaptionLog) -> None:
     grouped: Dict[Tuple[str, str], Dict[str, Dict[int, float]]] = defaultdict(lambda: defaultdict(dict))
     for rec in records:
         if rec.measurement_pass != pass_name or rec.mean_ms is None or rec.mean_ms <= 0.0:
@@ -413,6 +439,7 @@ def plot_throughput_vs_category(records: Sequence[Record], output_dir: pathlib.P
         fig.tight_layout()
         outfile = output_dir / f"throughput_{pass_name}_{kind.lower()}_{operation}.png"
         fig.savefig(outfile, dpi=200)
+        captions.add(outfile, f"Throughput across categories for {kind} {operation} ({pass_name})")
         plt.close(fig)
 
 
@@ -425,7 +452,7 @@ def _collect_unique_meta(records: Sequence[Record]) -> Dict[Tuple[str, str, int]
     return unique
 
 
-def plot_size_stacked_bars(records: Sequence[Record], output_dir: pathlib.Path) -> None:
+def plot_size_stacked_bars(records: Sequence[Record], output_dir: pathlib.Path, captions: CaptionLog) -> None:
     unique = _collect_unique_meta(records)
     kem_entries: List[Tuple[int, str, Dict[str, Any]]] = []
     sig_entries: List[Tuple[int, str, Dict[str, Any]]] = []
@@ -474,13 +501,14 @@ def plot_size_stacked_bars(records: Sequence[Record], output_dir: pathlib.Path) 
         fig.tight_layout()
         outfile = output_dir / f"sizes_{kind_label.lower()}.png"
         fig.savefig(outfile, dpi=200)
+        captions.add(outfile, f"Key material sizes ({kind_label})")
         plt.close(fig)
 
     _plot(kem_entries, "KEM")
     _plot(sig_entries, "SIG")
 
 
-def plot_expansion_scatter(records: Sequence[Record], output_dir: pathlib.Path) -> None:
+def plot_expansion_scatter(records: Sequence[Record], output_dir: pathlib.Path, captions: CaptionLog) -> None:
     unique = _collect_unique_meta(records)
     kem_points: List[Tuple[float, int, str]] = []
     sig_points: List[Tuple[float, int, str]] = []
@@ -518,13 +546,14 @@ def plot_expansion_scatter(records: Sequence[Record], output_dir: pathlib.Path) 
         fig.tight_layout()
         outfile = output_dir / f"expansion_{label.lower()}.png"
         fig.savefig(outfile, dpi=200)
+        captions.add(outfile, f"Expansion ratio vs category ({label})")
         plt.close(fig)
 
     _plot(kem_points, "KEM")
     _plot(sig_points, "SIG")
 
 
-def plot_memory_error_bars(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str) -> None:
+def plot_memory_error_bars(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str, captions: CaptionLog) -> None:
     grouped: Dict[str, Dict[str, Tuple[float, float, float]]] = defaultdict(dict)
     for rec in records:
         if rec.measurement_pass != pass_name:
@@ -560,10 +589,11 @@ def plot_memory_error_bars(records: Sequence[Record], output_dir: pathlib.Path, 
         safe_label = label.replace(" / ", "_").replace(" ", "_").lower()
         outfile = output_dir / f"memory_errorbars_{pass_name}_{safe_label}.png"
         fig.savefig(outfile, dpi=200)
+        captions.add(outfile, f"Peak memory with 95% CI — {label} ({pass_name})")
         plt.close(fig)
 
 
-def plot_security_cost_bars(records: Sequence[Record], output_dir: pathlib.Path) -> None:
+def plot_security_cost_bars(records: Sequence[Record], output_dir: pathlib.Path, captions: CaptionLog) -> None:
     unique = _collect_unique_meta(records)
     entries = []
     for (kind, algo, category), rec in unique.items():
@@ -590,10 +620,11 @@ def plot_security_cost_bars(records: Sequence[Record], output_dir: pathlib.Path)
     fig.tight_layout()
     outfile = output_dir / "security_bits_comparison.png"
     fig.savefig(outfile, dpi=200)
+    captions.add(outfile, "Classical vs quantum security estimates")
     plt.close(fig)
 
 
-def plot_tradeoff_frontier(records: Sequence[Record], output_dir: pathlib.Path, preferred_passes: Sequence[str]) -> None:
+def plot_tradeoff_frontier(records: Sequence[Record], output_dir: pathlib.Path, preferred_passes: Sequence[str], captions: CaptionLog) -> None:
     available_passes = {rec.measurement_pass for rec in records}
     pass_name = next((p for p in preferred_passes if p in available_passes), None)
     if pass_name is None:
@@ -642,9 +673,10 @@ def plot_tradeoff_frontier(records: Sequence[Record], output_dir: pathlib.Path, 
     fig.tight_layout()
     outfile = output_dir / f"tradeoff_{pass_name}.png"
     fig.savefig(outfile, dpi=200)
+    captions.add(outfile, "Performance vs security trade-off")
     plt.close(fig)
 
-def generate_graphs(records: Sequence[Record], output_dir: pathlib.Path, passes: Sequence[str]) -> None:
+def generate_graphs(records: Sequence[Record], output_dir: pathlib.Path, passes: Sequence[str], captions: CaptionLog) -> None:
     if not records:
         return
     _ensure_output_dir(output_dir)
@@ -653,28 +685,28 @@ def generate_graphs(records: Sequence[Record], output_dir: pathlib.Path, passes:
     for pass_name in passes:
         if pass_name not in available_passes:
             continue
-        plot_latency_bars(records, output_dir, pass_name)
-        plot_latency_distributions(records, output_dir, pass_name)
-        plot_latency_ecdf(records, output_dir, pass_name)
-        plot_security_vs_latency(records, output_dir, pass_name)
+        plot_latency_bars(records, output_dir, pass_name, captions)
+        plot_latency_distributions(records, output_dir, pass_name, captions)
+        plot_latency_ecdf(records, output_dir, pass_name, captions)
+        plot_security_vs_latency(records, output_dir, pass_name, captions)
         if "timing" in pass_name:
-            plot_throughput_vs_category(records, output_dir, pass_name)
+            plot_throughput_vs_category(records, output_dir, pass_name, captions)
         if pass_name.startswith("memory"):
-            plot_memory_bars(records, output_dir, pass_name)
-            plot_memory_distributions(records, output_dir, pass_name)
-            plot_memory_error_bars(records, output_dir, pass_name)
+            plot_memory_bars(records, output_dir, pass_name, captions)
+            plot_memory_distributions(records, output_dir, pass_name, captions)
+            plot_memory_error_bars(records, output_dir, pass_name, captions)
 
-    # Pass-agnostic summaries
-    plot_size_stacked_bars(records, output_dir)
-    plot_expansion_scatter(records, output_dir)
-    plot_security_cost_bars(records, output_dir)
-    plot_tradeoff_frontier(records, output_dir, preferred_passes=[p for p in passes if "timing" in p] + list(passes))
+    plot_size_stacked_bars(records, output_dir, captions)
+    plot_expansion_scatter(records, output_dir, captions)
+    plot_security_cost_bars(records, output_dir, captions)
+    plot_tradeoff_frontier(records, output_dir, preferred_passes=[p for p in passes if "timing" in p] + list(passes), captions=captions)
 
 
 def plot_session_comparisons(
     session_records: Dict[str, List[Record]],
     output_dir: pathlib.Path,
     passes: Sequence[str],
+    captions: CaptionLog,
 ) -> None:
     if not session_records:
         return
@@ -721,6 +753,7 @@ def plot_session_comparisons(
             fig.tight_layout()
             outfile = output_dir / f"trend_latency_{pass_name}_{kind.lower()}_{operation}.png"
             fig.savefig(outfile, dpi=200)
+            captions.add(outfile, f"Latency trend across sessions — {kind} {operation} ({pass_name})")
             plt.close(fig)
 
         if pass_name.startswith("memory"):
@@ -742,6 +775,7 @@ def plot_session_comparisons(
                 fig.tight_layout()
                 outfile = output_dir / f"trend_memory_{pass_name}_{kind.lower()}_{operation}.png"
                 fig.savefig(outfile, dpi=200)
+                captions.add(outfile, f"Peak memory trend across sessions — {kind} {operation} ({pass_name})")
                 plt.close(fig)
 
 
@@ -763,6 +797,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    captions = CaptionLog()
     records = load_records(args.csv)
     records_by_session: Dict[str, List[Record]] = defaultdict(list)
     for rec in records:
@@ -790,7 +825,7 @@ def main() -> None:
     for session_id in session_ids:
         session_records = records_by_session[session_id]
         output_dir = args.output_dir / session_id
-        generate_graphs(session_records, output_dir, passes)
+        generate_graphs(session_records, output_dir, passes, captions)
 
         categories = sorted({rec.category_number for rec in session_records if rec.category_number})
         for category in categories:
@@ -798,12 +833,13 @@ def main() -> None:
             if not cat_records:
                 continue
             cat_dir = output_dir / f"category_{category}"
-            generate_graphs(cat_records, cat_dir, passes)
+            generate_graphs(cat_records, cat_dir, passes, captions)
 
     if len(session_ids) > 1:
         compare_dir = args.output_dir / "multi_session"
-        plot_session_comparisons({sid: records_by_session[sid] for sid in session_ids}, compare_dir, passes)
+        plot_session_comparisons({sid: records_by_session[sid] for sid in session_ids}, compare_dir, passes, captions)
 
+    captions.write(args.output_dir)
     print(f"Graphs written to {args.output_dir}")
 
 
