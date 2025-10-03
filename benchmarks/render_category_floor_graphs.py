@@ -553,7 +553,9 @@ def plot_memory_error_bars(records: Sequence[Record], output_dir: pathlib.Path, 
         ax.set_ylabel("Peak memory (KB)")
         ax.set_title(f"Peak RSS with 95% CI — {label} ({pass_name})")
         ax.grid(True, axis="y", linestyle="--", alpha=0.3)
-        ax.tick_params(axis="x", rotation=45, ha="right")
+        ax.tick_params(axis="x", rotation=45)
+        for label_tick in ax.get_xticklabels():
+            label_tick.set_horizontalalignment("right")
         fig.tight_layout()
         safe_label = label.replace(" / ", "_").replace(" ", "_").lower()
         outfile = output_dir / f"memory_errorbars_{pass_name}_{safe_label}.png"

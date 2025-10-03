@@ -26,6 +26,7 @@ from pqcbench.security_levels import resolve_security_override
 HERE = pathlib.Path(__file__).resolve().parent
 RESULTS_DIR = HERE.parent / "results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+_UTC = _dt.UTC
 
 DEFAULT_OUTPUT = RESULTS_DIR / "category_floor_benchmarks.csv"
 DEFAULT_META = RESULTS_DIR / "category_floor_benchmarks.meta.json"
@@ -203,7 +204,7 @@ def discover_algorithms(categories: Iterable[int]) -> List[AlgorithmSpec]:
 
 
 def _timestamp_iso() -> str:
-    return _dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    return _dt.datetime.now(_UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _build_rows(
@@ -373,7 +374,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    session_id = _dt.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    session_id = _dt.datetime.now(_UTC).strftime("%Y%m%dT%H%M%SZ")
     start_iso = _timestamp_iso()
     selected_categories = {cat for cat in args.categories if cat in _CATEGORY_TO_FLOOR}
     if not selected_categories:
