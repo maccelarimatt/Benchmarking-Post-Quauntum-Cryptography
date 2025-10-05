@@ -447,23 +447,28 @@ def measure(
     *,
     cold: bool = True,
     progress_cb: Optional[Callable[[int, int], None]] = None,
+    capture_memory: bool = True,
+    memory_interval: float | None = None,
 ) -> OpStats:
     """Measure time and memory footprint in isolated runs.
 
     Every iteration executes in a fresh Python process so caches, allocator pools,
     and liboqs state from previous runs cannot influence the measurement.
     Reported memory captures the peak unique RSS delta observed during the run
-    (sampled every ~1.5 ms) merged with the Python heap peak (KB). If psutil or
-    tracemalloc are unavailable, the fields remain None.
+    (sampled every ~1.5 ms by default) merged with the Python heap peak (KB).
+    If psutil or tracemalloc are unavailable, or `capture_memory` is False, the
+    memory fields remain None. Set `memory_interval` to control the sampling
+    cadence (seconds) when memory capture is enabled.
     """
     times: List[float] = []
     mem_peaks_kb: List[float] = []
+    interval = _MEMORY_SAMPLE_INTERVAL if memory_interval is None else float(memory_interval)
 
     for i in range(runs):
         if cold:
-            dt_ms, mem_kb = _run_isolated(fn)
+            dt_ms, mem_kb = _run_isolated(fn, capture_memory=capture_memory, memory_interval=interval)
         else:
-            dt_ms, mem_kb = _single_run_metrics(fn)
+            dt_ms, mem_kb = _single_run_metrics(fn, capture_memory=capture_memory, memory_interval=interval)
         times.append(dt_ms)
         if mem_kb is not None:
             mem_peaks_kb.append(mem_kb)
@@ -532,6 +537,8 @@ def measure_factory(
     *,
     cold: bool = True,
     progress_cb: Optional[Callable[[int, int], None]] = None,
+    capture_memory: bool = True,
+    memory_interval: float | None = None,
 ) -> OpStats:
     """Measure only the core operation produced by `factory`.
 
@@ -542,13 +549,14 @@ def measure_factory(
     """
     times: List[float] = []
     mem_peaks_kb: List[float] = []
+    interval = _MEMORY_SAMPLE_INTERVAL if memory_interval is None else float(memory_interval)
 
     for i in range(runs):
         if cold:
-            dt_ms, mem_kb = _run_isolated_factory(factory)
+            dt_ms, mem_kb = _run_isolated_factory(factory, capture_memory=capture_memory, memory_interval=interval)
         else:
             op = factory()
-            dt_ms, mem_kb = _single_run_metrics(op)
+            dt_ms, mem_kb = _single_run_metrics(op, capture_memory=capture_memory, memory_interval=interval)
         times.append(dt_ms)
         if mem_kb is not None:
             mem_peaks_kb.append(mem_kb)
@@ -610,10 +618,18 @@ def measure_factory(
         )
 
 
-def _run_isolated(fn: Callable[[], None]) -> Tuple[float, float | None]:
+def _run_isolated(
+    fn: Callable[[], None],
+    *,
+    capture_memory: bool = True,
+    memory_interval: float = _MEMORY_SAMPLE_INTERVAL,
+) -> Tuple[float, float | None]:
     """Execute `fn` in a fresh process and return (time_ms, memory_kb)."""
     parent_conn, child_conn = _MP_CONTEXT.Pipe(duplex=False)
-    proc = _MP_CONTEXT.Process(target=_isolated_worker, args=(fn, child_conn))
+    proc = _MP_CONTEXT.Process(
+        target=_isolated_worker,
+        args=(fn, child_conn, bool(capture_memory), float(memory_interval)),
+    )
     proc.start()
     child_conn.close()
     try:
@@ -635,14 +651,22 @@ def _run_isolated(fn: Callable[[], None]) -> Tuple[float, float | None]:
     raise RuntimeError(message)
 
 
-def _run_isolated_factory(factory: Callable[[], Callable[[], None]]) -> Tuple[float, float | None]:
+def _run_isolated_factory(
+    factory: Callable[[], Callable[[], None]],
+    *,
+    capture_memory: bool = True,
+    memory_interval: float = _MEMORY_SAMPLE_INTERVAL,
+) -> Tuple[float, float | None]:
     """Execute factory->op in a fresh process and return (time_ms, memory_kb).
 
     The factory runs before timing to prepare inputs; only the returned op
     callable is measured under timing/memory monitoring.
     """
     parent_conn, child_conn = _MP_CONTEXT.Pipe(duplex=False)
-    proc = _MP_CONTEXT.Process(target=_isolated_worker_factory, args=(factory, child_conn))
+    proc = _MP_CONTEXT.Process(
+        target=_isolated_worker_factory,
+        args=(factory, child_conn, bool(capture_memory), float(memory_interval)),
+    )
     proc.start()
     child_conn.close()
     try:
@@ -664,10 +688,19 @@ def _run_isolated_factory(factory: Callable[[], Callable[[], None]]) -> Tuple[fl
     raise RuntimeError(message)
 
 
-def _isolated_worker(fn: Callable[[], None], conn) -> None:
+def _isolated_worker(
+    fn: Callable[[], None],
+    conn,
+    capture_memory: bool,
+    memory_interval: float,
+) -> None:
     """Child-process entry point for isolated measurements."""
     try:
-        dt, mem_kb = _single_run_metrics(fn)
+        dt, mem_kb = _single_run_metrics(
+            fn,
+            capture_memory=capture_memory,
+            memory_interval=memory_interval,
+        )
         conn.send({"status": "ok", "time_ms": dt, "mem_kb": mem_kb})
     except Exception as exc:
         import traceback
@@ -680,12 +713,21 @@ def _isolated_worker(fn: Callable[[], None], conn) -> None:
         conn.close()
 
 
-def _isolated_worker_factory(factory: Callable[[], Callable[[], None]], conn) -> None:
+def _isolated_worker_factory(
+    factory: Callable[[], Callable[[], None]],
+    conn,
+    capture_memory: bool,
+    memory_interval: float,
+) -> None:
     """Child-process entry point for factory-based isolated measurements."""
     try:
         # Prepare inputs before timing begins
         op = factory()
-        dt, mem_kb = _single_run_metrics(op)
+        dt, mem_kb = _single_run_metrics(
+            op,
+            capture_memory=capture_memory,
+            memory_interval=memory_interval,
+        )
         conn.send({"status": "ok", "time_ms": dt, "mem_kb": mem_kb})
     except Exception as exc:
         import traceback
@@ -698,12 +740,19 @@ def _isolated_worker_factory(factory: Callable[[], Callable[[], None]], conn) ->
         conn.close()
 
 
-def _single_run_metrics(fn: Callable[[], None]) -> Tuple[float, float | None]:
-    """Run `fn` exactly once, capturing time and memory usage."""
+def _single_run_metrics(
+    fn: Callable[[], None],
+    *,
+    capture_memory: bool = True,
+    memory_interval: float = _MEMORY_SAMPLE_INTERVAL,
+) -> Tuple[float, float | None]:
+    """Run `fn` exactly once, capturing time (and optionally memory usage)."""
     import os
     import gc
     import time as _time
 
+    interval = _MEMORY_SAMPLE_INTERVAL if memory_interval <= 0 else memory_interval
+    gc.collect()
     baseline_bytes: int | None = None
     after_bytes: int | None = None
     rss_peak_kb: float | None = None
@@ -711,65 +760,77 @@ def _single_run_metrics(fn: Callable[[], None]) -> Tuple[float, float | None]:
     monitor_stop: threading.Event | None = None
     monitor_thread: threading.Thread | None = None
     peak_bytes_holder: list[int | None] = []
+    monitor_enabled = False
+    sample_process_bytes: Callable[[], int] | None = None
 
-    try:
-        import psutil  # type: ignore
-        proc = psutil.Process(os.getpid())
+    if capture_memory:
+        try:
+            import psutil  # type: ignore
 
-        def _sample_process_bytes() -> int:
-            try:
-                full = proc.memory_full_info()
-                uss = getattr(full, "uss", None)
-                if uss is not None:
-                    return int(uss)
-            except Exception:
-                pass
-            return int(proc.memory_info().rss)
+            proc = psutil.Process(os.getpid())
 
-        gc.collect()
-        baseline_bytes = _sample_process_bytes()
-        monitor_stop = threading.Event()
-        peak_bytes_holder = [baseline_bytes]
+            def _sample_process_bytes() -> int:
+                try:
+                    full = proc.memory_full_info()
+                    uss = getattr(full, "uss", None)
+                    if uss is not None:
+                        return int(uss)
+                except Exception:
+                    pass
+                return int(proc.memory_info().rss)
 
-        def _monitor_peak() -> None:
-            base = baseline_bytes if baseline_bytes is not None else 0
-            local_peak = base
-            while not monitor_stop.is_set():
+            sample_process_bytes = _sample_process_bytes
+            baseline_bytes = sample_process_bytes()
+            monitor_stop = threading.Event()
+            peak_bytes_holder = [baseline_bytes]
+
+            def _monitor_peak() -> None:
+                base = baseline_bytes if baseline_bytes is not None else 0
+                local_peak = base
+                wait_interval = interval if interval > 0 else _MEMORY_SAMPLE_INTERVAL
+                while not monitor_stop.is_set():
+                    try:
+                        sample = _sample_process_bytes()
+                        if sample is not None and sample > local_peak:
+                            local_peak = sample
+                    except Exception:
+                        pass
+                    if monitor_stop.wait(wait_interval):
+                        break
                 try:
                     sample = _sample_process_bytes()
                     if sample is not None and sample > local_peak:
                         local_peak = sample
                 except Exception:
                     pass
-                if monitor_stop.wait(_MEMORY_SAMPLE_INTERVAL):
-                    break
-            try:
-                sample = _sample_process_bytes()
-                if sample is not None and sample > local_peak:
-                    local_peak = sample
-            except Exception:
-                pass
-            peak_bytes_holder[0] = local_peak
+                peak_bytes_holder[0] = local_peak
 
-        monitor_thread = threading.Thread(
-            target=_monitor_peak,
-            name="pqcbench-memmon",
-            daemon=True,
-        )
-        monitor_thread.start()
-    except Exception:
-        proc = None  # type: ignore
-        monitor_stop = None
-        monitor_thread = None
-        peak_bytes_holder = []
+            monitor_thread = threading.Thread(
+                target=_monitor_peak,
+                name="pqcbench-memmon",
+                daemon=True,
+            )
+            monitor_thread.start()
+            monitor_enabled = True
+        except Exception:
+            proc = None  # type: ignore
+            monitor_stop = None
+            monitor_thread = None
+            peak_bytes_holder = []
+            monitor_enabled = False
+            sample_process_bytes = None
 
-    try:
-        import tracemalloc  # type: ignore
-        tracemalloc.start()
-        use_tracemalloc = True
-    except Exception:
-        tracemalloc = None  # type: ignore
-        use_tracemalloc = False
+    tracemalloc = None  # type: ignore
+    use_tracemalloc = False
+    if capture_memory:
+        try:
+            import tracemalloc  # type: ignore
+
+            tracemalloc.start()
+            use_tracemalloc = True
+        except Exception:
+            tracemalloc = None  # type: ignore
+            use_tracemalloc = False
 
     t0 = _time.perf_counter()
     try:
@@ -787,9 +848,9 @@ def _single_run_metrics(fn: Callable[[], None]) -> Tuple[float, float | None]:
         if isinstance(candidate, int):
             rss_peak_bytes = candidate
 
-    if proc is not None and baseline_bytes is not None:
+    if monitor_enabled and sample_process_bytes is not None and baseline_bytes is not None:
         try:
-            after_bytes = _sample_process_bytes()
+            after_bytes = sample_process_bytes()
         except Exception:
             after_bytes = None
         gc.collect()
@@ -813,6 +874,9 @@ def _single_run_metrics(fn: Callable[[], None]) -> Tuple[float, float | None]:
 
     if py_peak_kb is not None:
         rss_peak_kb = max(rss_peak_kb or 0.0, py_peak_kb)
+
+    if not capture_memory:
+        rss_peak_kb = None
 
     gc.collect()
     return dt_ms, rss_peak_kb
@@ -2687,6 +2751,8 @@ def run_kem(
     runs: int,
     *,
     cold: bool = True,
+    capture_memory: bool = True,
+    memory_interval: float | None = None,
     progress: Optional[_CallableOptional[[str, str, int, int], None]] = None,
 ) -> AlgoSummary:
     """Run a KEM micro-benchmark for the registered algorithm `name`.
@@ -2706,14 +2772,29 @@ def run_kem(
         return lambda i, total: progress(stage, name, i, total)
 
     ops["keygen"] = measure_factory(
-        partial(_sig_keygen_factory, name), runs, cold=cold, progress_cb=_p("keygen")
+        partial(_sig_keygen_factory, name),
+        runs,
+        cold=cold,
+        progress_cb=_p("keygen"),
+        capture_memory=capture_memory,
+        memory_interval=memory_interval,
     )
     # Ensure encapsulate/decapsulate timings exclude setup (keygen, prior steps)
     ops["encapsulate"] = measure_factory(
-        partial(_kem_encapsulate_factory, name), runs, cold=cold, progress_cb=_p("encapsulate")
+        partial(_kem_encapsulate_factory, name),
+        runs,
+        cold=cold,
+        progress_cb=_p("encapsulate"),
+        capture_memory=capture_memory,
+        memory_interval=memory_interval,
     )
     ops["decapsulate"] = measure_factory(
-        partial(_kem_decapsulate_factory, name), runs, cold=cold, progress_cb=_p("decapsulate")
+        partial(_kem_decapsulate_factory, name),
+        runs,
+        cold=cold,
+        progress_cb=_p("decapsulate"),
+        capture_memory=capture_memory,
+        memory_interval=memory_interval,
     )
     adapter = _get_adapter_instance(name)
     adapter_cls = adapter.__class__
@@ -2773,6 +2854,8 @@ def run_sig(
     message_size: int,
     *,
     cold: bool = True,
+    capture_memory: bool = True,
+    memory_interval: float | None = None,
     progress: Optional[_CallableOptional[[str, str, int, int], None]] = None,
 ) -> AlgoSummary:
     """Run a signature micro-benchmark for the registered algorithm `name`.
@@ -2789,14 +2872,29 @@ def run_sig(
         return lambda i, total: progress(stage, name, i, total)
 
     ops["keygen"] = measure_factory(
-        partial(_kem_keygen_factory, name), runs, cold=cold, progress_cb=_p("keygen")
+        partial(_kem_keygen_factory, name),
+        runs,
+        cold=cold,
+        progress_cb=_p("keygen"),
+        capture_memory=capture_memory,
+        memory_interval=memory_interval,
     )
     # Ensure sign/verify timings exclude setup (keygen, sign)
     ops["sign"] = measure_factory(
-        partial(_sig_sign_factory, name, message_size), runs, cold=cold, progress_cb=_p("sign")
+        partial(_sig_sign_factory, name, message_size),
+        runs,
+        cold=cold,
+        progress_cb=_p("sign"),
+        capture_memory=capture_memory,
+        memory_interval=memory_interval,
     )
     ops["verify"] = measure_factory(
-        partial(_sig_verify_factory, name, message_size), runs, cold=cold, progress_cb=_p("verify")
+        partial(_sig_verify_factory, name, message_size),
+        runs,
+        cold=cold,
+        progress_cb=_p("verify"),
+        capture_memory=capture_memory,
+        memory_interval=memory_interval,
     )
     adapter = _get_adapter_instance(name)
     adapter_cls = adapter.__class__
