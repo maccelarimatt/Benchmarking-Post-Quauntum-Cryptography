@@ -15,6 +15,7 @@ Common options:
 - `--warm`: include additional in-process passes (`timing-warm`, `memory-warm`) alongside the default cold-process runs so you can compare cache-friendly throughput against isolated measurements.
 - `--memory-interval SECONDS` (default `0.0005`): sampling interval for memory measurements during any memory-enabled pass.
 - `--no-security`: skip the security estimator (handy when iterating on timings). Cached estimates are reused automatically when this flag is omitted.
+- `--rsa-max-category N` (default `5`): limit RSA baseline runs to categories ≤ N. Use `--rsa-max-category 3` to skip the Cat‑5 RSA (15 360‑bit) sweeps.
 - `--output PATH` (default `results/category_floor_benchmarks.csv`): CSV destination. Use `--append` to accumulate multiple sessions.
 - `--jsonl-output PATH`: optional newline-delimited JSON export (one row per line) to simplify notebook ingestion.
 - `--parquet-output PATH`: optional Parquet export (requires `pandas` plus a compatible engine such as `pyarrow`).

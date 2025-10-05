@@ -183,7 +183,7 @@ def _clone_hint_for_category(hint: ParamHint, category: int, override_value: Any
     )
 
 
-def discover_algorithms(categories: Iterable[int]) -> List[AlgorithmSpec]:
+def discover_algorithms(categories: Iterable[int], *, rsa_max_category: int = 5) -> List[AlgorithmSpec]:
     desired = [cat for cat in categories if cat in (1, 3, 5)]
     specs: List[AlgorithmSpec] = []
     for name, cls in registry.list().items():
@@ -203,6 +203,8 @@ def discover_algorithms(categories: Iterable[int]) -> List[AlgorithmSpec]:
             if available and category not in available:
                 continue
             override = resolve_security_override(name, category)
+            if name in {"rsa-oaep", "rsa-pss"} and int(category) > int(rsa_max_category):
+                continue
             hint_for_cat = _clone_hint_for_category(hint, category, override.value if override else None)
             label = f"cat-{category}"
             specs.append(
@@ -375,6 +377,12 @@ def parse_args() -> argparse.Namespace:
         help="Skip security estimator (speeds up large batches).",
     )
     parser.add_argument(
+        "--rsa-max-category",
+        type=int,
+        default=5,
+        help="Highest RSA category to benchmark (default 5). Use 3 to skip Cat-5 RSA.",
+    )
+    parser.add_argument(
         "--jsonl-output",
         type=pathlib.Path,
         default=None,
@@ -424,7 +432,7 @@ def main() -> None:
         overrides = _variant_env_for_category(category)
         with _temporary_env(overrides):
             reset_adapter_cache()
-            specs_for_cat = discover_algorithms({category})
+            specs_for_cat = discover_algorithms({category}, rsa_max_category=args.rsa_max_category)
         category_spec_map[category] = specs_for_cat
         total_steps += len(specs_for_cat) * len(passes)
     reset_adapter_cache()
@@ -544,6 +552,7 @@ def main() -> None:
         "memory_interval_seconds": args.memory_interval,
         "includes_warm": bool(args.warm),
         "security_estimation": not args.no_security,
+        "rsa_max_category": int(args.rsa_max_category),
         "categories": sorted(selected_categories),
         "algorithms": [
             {
