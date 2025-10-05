@@ -433,9 +433,9 @@ def _attach_security_meta(summary, requested_category: Optional[int], override: 
     if override.applied_category != override.requested_category:
         display += f" (requested {override.requested_category})"
     if isinstance(override.value, int):
-        display += f" â€” {int(override.value)}-bit"
+        display += f" - {int(override.value)}-bit"
     elif override.value:
-        display += f" â€” {override.value}"
+        display += f" - {override.value}"
     if override.note:
         display += f". {override.note}"
     meta["security_level_display"] = display
@@ -914,7 +914,7 @@ def execute_async():
                         "sign": "Sign",
                         "verify": "Verify",
                     }.get(stage, stage.title())
-                    _update_job(jid, stage=f"{label} â€” Trial {ii}/{runs}", detail=algo, percent=pct)
+                    _update_job(jid, stage=f"{label} - Trial {ii}/{runs}", detail=algo, percent=pct)
                 try:
                     override = resolve_security_override(algo_name, requested_category)
                     if kind == "KEM":
@@ -1041,7 +1041,7 @@ def execute_async():
                     ii = runs
                 global_done = so * runs + ii
                 pct = int((global_done / float(total_tasks)) * 100)
-                _update_job(jid, stage=f"{label} â€” Trial {ii}/{runs}", detail=name, percent=pct)
+                _update_job(jid, stage=f"{label} - Trial {ii}/{runs}", detail=name, percent=pct)
 
             kind = kinds.get(name) or ""
             raw_cold = form.get("cold")

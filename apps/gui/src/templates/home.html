@@ -9,6 +9,27 @@
   <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
   <meta name="theme-color" content="#0b0f14" />
   <style>
+    /* Dark scrollbar styling */
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(36, 49, 63, 0.85) rgba(7, 11, 17, 0.92);
+    }
+    html::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+    html::-webkit-scrollbar-track {
+      background: rgba(7, 11, 17, 0.92);
+    }
+    html::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.45);
+      border-radius: 999px;
+      border: 2px solid rgba(7, 11, 17, 0.92);
+    }
+    html::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.65);
+    }
+
     * { box-sizing: border-box; }
     :root {
       --island-bg: rgba(38, 41, 45, 0.92);
@@ -217,6 +238,7 @@ input[type="checkbox"]:checked::after { opacity: 1; }
       transition: color .15s ease, border-color .15s ease, opacity .15s ease;
     }
     .nav-link:hover { color:#fff; border-bottom-color: var(--accent); opacity:1; }
+    .nav-link--active { color:#fff; border-bottom-color: var(--accent); opacity:1; }
     .nav-link:focus-visible { outline:none; border-bottom-color: var(--accent); box-shadow: 0 1px 0 var(--accent); }
   </style>
   </head>
@@ -246,6 +268,7 @@ input[type="checkbox"]:checked::after { opacity: 1; }
         </div>
       </div>
       <nav class="nav-actions">
+        <a href="/" class="nav-link nav-link--active" aria-current="page" title="Benchmark cryptographic algorithms">Benchmarking</a>
         <a href="/image-encryption" class="nav-link" title="Encrypt an image using PQCs">Image Encryption</a>
       </nav>
     </div>

@@ -9,6 +9,27 @@
   <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
   <meta name="theme-color" content="#0b0f14" />
   <style>
+    /* Dark scrollbar styling */
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(36, 49, 63, 0.85) rgba(7, 11, 17, 0.92);
+    }
+    html::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+    html::-webkit-scrollbar-track {
+      background: rgba(7, 11, 17, 0.92);
+    }
+    html::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.45);
+      border-radius: 999px;
+      border: 2px solid rgba(7, 11, 17, 0.92);
+    }
+    html::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.65);
+    }
+
     * { box-sizing: border-box; }
     :root {
       --island-bg: rgba(38, 41, 45, 0.92);
@@ -28,7 +49,7 @@
     }
     body {
       margin: 0;
-      padding: 5vh 5vw;
+      padding: 0 5vw 5vh;
       color: var(--text);
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
       background-image: url('/static/Images/background.gif');
@@ -48,14 +69,45 @@
       max-width: 1200px;
       margin: 0 auto 1.75rem auto;
     }
-    .header-island {
+    .intro-island {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+    }
+    .intro-island > * {
+      flex: 1 1 100%;
     }
     .header-title { font-size: 1.8rem; font-weight: 700; margin: 0; }
-    .header-sub { margin: 0; color: var(--muted); font-size: 0.95rem; max-width: 640px; }
+    .header-sub { margin: 0; color: var(--muted); font-size: 0.95rem; max-width: none; }
+    .header-strip {
+      width: 100%;
+      background: #060a0f; /* very dark */
+      color: var(--text);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      padding: .7rem 0;
+      margin-bottom: 2vh;
+    }
+    .brand { display:flex; align-items:center; gap: 1.25rem; }
+    .brand-logo { height: 56px; width:auto; object-fit:contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
+    .brand-text { display:flex; flex-direction:column; }
+    .brand-title { font-size:1.6rem; font-weight:900; line-height:1.1; letter-spacing:.2px; }
+    .brand-subtitle { opacity:.85; font-size:.98rem; }
+    .nav-actions { margin-left:auto; display:flex; align-items:center; gap:2.4rem; padding-right:.5rem; }
+    .nav-link {
+      display:inline-block;
+      padding:.55rem 0;
+      color: rgba(255,255,255,.92);
+      text-decoration:none;
+      font-weight:600;
+      letter-spacing:.2px;
+      border-bottom: 2px solid transparent;
+      transition: color .15s ease, border-color .15s ease, opacity .15s ease;
+    }
+    .nav-link:hover { color:#fff; border-bottom-color: var(--accent); opacity:1; }
+    .nav-link--active { color:#fff; border-bottom-color: var(--accent); opacity:1; }
+    .nav-link:focus-visible { outline:none; border-bottom-color: var(--accent); box-shadow: 0 1px 0 var(--accent); }
     .btn, button, input[type="submit"], input[type="button"], a.btn {
       display: inline-flex;
       align-items: center;
@@ -90,6 +142,15 @@
       display: grid;
       grid-template-columns: minmax(340px, 0.55fr) minmax(0, 1fr);
       gap: 1.5rem;
+      align-items: start;
+    }
+    .layout > * {
+      align-self: start;
+    }
+    .left-column {
+      display: grid;
+      gap: 1.25rem;
+      align-content: start;
     }
     @media (max-width: 980px) {
       .layout { grid-template-columns: 1fr; }
@@ -172,6 +233,11 @@
       color: var(--text);
       font-weight: 600;
     }
+    .metrics-mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
     .badge {
       padding: 0.35rem 0.75rem;
       border-radius: 999px;
@@ -185,8 +251,13 @@
     .badge.pending { background: rgba(250, 204, 21, 0.18); color: var(--gold); }
     .panel-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1.25rem;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.5rem;
+    }
+    @media (max-width: 960px) {
+      .panel-grid {
+        grid-template-columns: 1fr;
+      }
     }
     figure {
       margin: 0;
@@ -223,6 +294,11 @@
       display: block;
       width: 100%;
       height: auto;
+      transition: opacity 0.18s ease;
+    }
+    .panel-canvas--hidden {
+      opacity: 0;
+      pointer-events: none;
     }
     .entropy-heatmap {
       position: absolute;
@@ -309,15 +385,44 @@
     }
     .histogram-grid {
       display: grid;
-      gap: 0.75rem;
+      gap: 1rem;
     }
-    .histogram-grid canvas {
+    .histogram-wrap {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      grid-template-rows: minmax(0, 1fr) auto;
+      column-gap: 0.6rem;
+      row-gap: 0.45rem;
+      align-items: center;
+    }
+    .histogram-wrap canvas {
+      grid-column: 2;
+      grid-row: 1;
       width: 100%;
       height: 160px;
       background: rgba(15, 23, 42, 0.55);
       border-radius: 0.75rem;
       border: 1px solid rgba(255, 255, 255, 0.08);
     }
+    .histogram-label {
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .histogram-label--y {
+      grid-column: 1;
+      grid-row: 1 / span 2;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      align-self: center;
+    }
+    .histogram-label--x {
+      grid-column: 2;
+      grid-row: 2;
+      justify-self: center;
+    }
+
     .histogram-toggle {
       display: flex;
       gap: 0.5rem;
@@ -331,17 +436,32 @@
   </style>
 </head>
 <body>
-  <div class="island header-island">
+  <header class="header-strip">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem;">
+      <div class="brand">
+        <img src="/static/Images/pqc-bench-logo.png" alt="Post-Quantum Cryptography Bench" class="brand-logo" />
+        <div class="brand-text">
+          <div class="brand-title"><strong>Post-Quantum Cryptography Benchmarking</strong></div>
+          <div class="brand-subtitle">Run and Compare Different Cryptographic Algorithms</div>
+        </div>
+      </div>
+      <nav class="nav-actions">
+        <a href="/" class="nav-link" title="Benchmark cryptographic algorithms">Benchmarking</a>
+        <a href="/image-encryption" class="nav-link nav-link--active" aria-current="page" title="Encrypt an image using PQCs">Image Encryption</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="island intro-island">
     <div>
       <h1 class="header-title">PQC Image Encryption Visualizer</h1>
       <p class="header-sub">Panels (a)-(d) mirror the reference visualization: original pixels, permuted ciphertext, a wrong-key ghost, and a random pad baseline. Entropy analytics expose how structure dissolves as PQC primitives kick in.</p>
     </div>
-    <a class="btn" href="/">Back to home</a>
   </div>
 
   <div class="island">
     <div class="layout">
-      <div class="left-column" style="display:grid; gap:1.25rem;">
+      <div class="left-column">
         <div class="card">
           <h2>Workflow</h2>
           <div>
@@ -404,7 +524,7 @@
             </div>
             <div>
               <dt>Nonce (hex)</dt>
-              <dd id="info-nonce">-</dd>
+              <dd id="info-nonce" class="metrics-mono">-</dd>
             </div>
             <div>
               <dt>Ciphertext length</dt>
@@ -438,6 +558,7 @@
             <div class="panel-meta">
               <div class="panel-controls">
                 <button type="button" class="btn-soft" data-heatmap="original">Show heatmap</button>
+                <button type="button" class="btn-soft" data-heatmap-only="original">Heatmap only</button>
                 <button type="button" class="btn-soft" data-hist="original">Histograms</button>
               </div>
             </div>
@@ -454,6 +575,7 @@
             <div class="panel-meta">
               <div class="panel-controls">
                 <button type="button" class="btn-soft" data-heatmap="ciphertext">Show heatmap</button>
+                <button type="button" class="btn-soft" data-heatmap-only="ciphertext">Heatmap only</button>
                 <button type="button" class="btn-soft" data-hist="ciphertext">Histograms</button>
               </div>
             </div>
@@ -470,6 +592,7 @@
             <div class="panel-meta">
               <div class="panel-controls">
                 <button type="button" class="btn-soft" data-heatmap="wrongKey">Show heatmap</button>
+                <button type="button" class="btn-soft" data-heatmap-only="wrongKey">Heatmap only</button>
               </div>
             </div>
             <div class="entropy-readout" id="entropy-wrongKey">Entropy pending.</div>
@@ -485,6 +608,7 @@
             <div class="panel-meta">
               <div class="panel-controls">
                 <button type="button" class="btn-soft" data-heatmap="randomPad">Show heatmap</button>
+                <button type="button" class="btn-soft" data-heatmap-only="randomPad">Heatmap only</button>
               </div>
             </div>
             <div class="entropy-readout" id="entropy-randomPad">Entropy pending.</div>
@@ -525,13 +649,26 @@
         <button type="button" class="btn-soft" data-hist-mode="ciphertext">Ciphertext</button>
       </div>
       <div class="histogram-grid">
-        <canvas id="histogram-r" width="512" height="160" aria-label="Red channel histogram"></canvas>
-        <canvas id="histogram-g" width="512" height="160" aria-label="Green channel histogram"></canvas>
-        <canvas id="histogram-b" width="512" height="160" aria-label="Blue channel histogram"></canvas>
+        <div class="histogram-wrap">
+          <span class="histogram-label histogram-label--y">Frequency</span>
+          <canvas id="histogram-r" width="512" height="160" aria-label="Red channel histogram"></canvas>
+          <span class="histogram-label histogram-label--x">Pixel value (0-255)</span>
+        </div>
+        <div class="histogram-wrap">
+          <span class="histogram-label histogram-label--y">Frequency</span>
+          <canvas id="histogram-g" width="512" height="160" aria-label="Green channel histogram"></canvas>
+          <span class="histogram-label histogram-label--x">Pixel value (0-255)</span>
+        </div>
+        <div class="histogram-wrap">
+          <span class="histogram-label histogram-label--y">Frequency</span>
+          <canvas id="histogram-b" width="512" height="160" aria-label="Blue channel histogram"></canvas>
+          <span class="histogram-label histogram-label--x">Pixel value (0-255)</span>
+        </div>
       </div>
     </div>
   </div>
 
   <script src="/static/js/pqc-image-app.js" defer></script>
 </body>
-</html>
+</html>
+

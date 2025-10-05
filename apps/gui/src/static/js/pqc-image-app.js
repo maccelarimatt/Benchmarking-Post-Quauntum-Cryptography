@@ -26,6 +26,13 @@
       randomPad: false,
       recovered: false,
     },
+    heatmapOnly: {
+      original: false,
+      ciphertext: false,
+      wrongKey: false,
+      randomPad: false,
+      recovered: false,
+    },
     histogramPanel: "original",
     originalBase64: null,
     wrongKeyBase64: null,
@@ -36,6 +43,7 @@
   const dom = {
     panels: {},
     heatmapButtons: {},
+    heatmapOnlyButtons: {},
   };
 
   function qs(id) {
@@ -106,6 +114,13 @@
       if (!key) return;
       dom.heatmapButtons[key] = btn;
       btn.addEventListener("click", () => toggleHeatmap(key));
+    });
+
+    document.querySelectorAll("[data-heatmap-only]").forEach((btn) => {
+      const key = btn.getAttribute("data-heatmap-only");
+      if (!key) return;
+      dom.heatmapOnlyButtons[key] = btn;
+      btn.addEventListener("click", () => toggleHeatmapOnly(key));
     });
 
     document.querySelectorAll("[data-hist]").forEach((btn) => {
@@ -222,6 +237,7 @@
       if (panel?.canvas) {
         const ctx = panel.canvas.getContext("2d");
         if (ctx) ctx.clearRect(0, 0, panel.canvas.width, panel.canvas.height);
+        panel.canvas.classList.remove("panel-canvas--hidden");
       }
       if (panel?.heatmap) {
         clearHeatmap(panel.heatmap);
@@ -231,6 +247,13 @@
       }
       state.entropy[key] = null;
       state.heatmapVisible[key] = false;
+      state.heatmapOnly[key] = false;
+      const toggleBtn = dom.heatmapButtons[key];
+      if (toggleBtn) {
+        toggleBtn.classList.remove("active");
+        toggleBtn.textContent = "Show heatmap";
+      }
+      updateHeatmapOnlyButton(key);
     });
   }
 
@@ -349,14 +372,28 @@
     });
   }
 
+  function updateHeatmapOnlyButton(panelKey) {
+    const btn = dom.heatmapOnlyButtons[panelKey];
+    if (!btn) return;
+    const hasData = Boolean(state.entropy[panelKey]?.blockEntropy);
+    const active = Boolean(state.heatmapOnly[panelKey] && state.heatmapVisible[panelKey] && hasData);
+    btn.disabled = !hasData;
+    btn.classList.toggle("active", active);
+    btn.textContent = active ? "Show image" : "Heatmap only";
+  }
+
   function setHeatmapVisibility(panelKey, visible, preserveState = false) {
     if (!preserveState) {
       state.heatmapVisible[panelKey] = visible;
+      if (!visible) {
+        state.heatmapOnly[panelKey] = false;
+      }
     }
     const panel = dom.panels[panelKey];
     const heatmap = panel?.heatmap;
+    const hasData = Boolean(state.entropy[panelKey]?.blockEntropy);
     if (heatmap) {
-      if (visible) {
+      if (visible && hasData) {
         const drawn = drawHeatmapForPanel(panelKey);
         if (!drawn) {
           clearHeatmap(heatmap);
@@ -365,10 +402,13 @@
         clearHeatmap(heatmap);
       }
     }
+    if (panel?.canvas) {
+      const hideCanvas = Boolean(state.heatmapOnly[panelKey] && state.heatmapVisible[panelKey] && hasData);
+      panel.canvas.classList.toggle("panel-canvas--hidden", hideCanvas);
+    }
     const btn = dom.heatmapButtons[panelKey];
     if (btn) {
       const requestVisible = Boolean(state.heatmapVisible[panelKey]);
-      const hasData = Boolean(state.entropy[panelKey]?.blockEntropy);
       btn.classList.toggle("active", requestVisible);
       if (requestVisible && !hasData) {
         btn.textContent = "Heatmap pending";
@@ -378,12 +418,31 @@
         btn.textContent = "Show heatmap";
       }
     }
+    updateHeatmapOnlyButton(panelKey);
   }
 
   function toggleHeatmap(panelKey) {
     const next = !state.heatmapVisible[panelKey];
     state.heatmapVisible[panelKey] = next;
+    if (!next) {
+      state.heatmapOnly[panelKey] = false;
+    }
     setHeatmapVisibility(panelKey, next);
+  }
+
+  function toggleHeatmapOnly(panelKey) {
+    const hasData = Boolean(state.entropy[panelKey]?.blockEntropy);
+    if (!hasData) {
+      state.heatmapOnly[panelKey] = false;
+      updateHeatmapOnlyButton(panelKey);
+      return;
+    }
+    const next = !state.heatmapOnly[panelKey];
+    state.heatmapOnly[panelKey] = next;
+    if (next && !state.heatmapVisible[panelKey]) {
+      state.heatmapVisible[panelKey] = true;
+    }
+    setHeatmapVisibility(panelKey, state.heatmapVisible[panelKey]);
   }
 
   function drawHeatmapForPanel(panelKey) {

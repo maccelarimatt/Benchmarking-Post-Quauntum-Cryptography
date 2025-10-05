@@ -9,6 +9,27 @@
   <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
   <meta name="theme-color" content="#0b0f14" />
   <style>
+    /* Dark scrollbar styling */
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(36, 49, 63, 0.85) rgba(7, 11, 17, 0.92);
+    }
+    html::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+    html::-webkit-scrollbar-track {
+      background: rgba(7, 11, 17, 0.92);
+    }
+    html::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.45);
+      border-radius: 999px;
+      border: 2px solid rgba(7, 11, 17, 0.92);
+    }
+    html::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.65);
+    }
+
   :root { --island-bg: rgba(38,41,45,.92); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
     body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
     .island { background:var(--island-bg); border-radius:var(--island-radius); padding:1.25rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 1.6vh auto; }
