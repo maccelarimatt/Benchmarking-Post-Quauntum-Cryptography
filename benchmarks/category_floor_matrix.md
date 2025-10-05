@@ -101,6 +101,7 @@ Graphs are written to `results/graphs/<session_id>/` (the `results/` tree is alr
 - `memory_peak_<pass>_<kind>.png`, `memory_distribution_<pass>_<kind>_<op>.png`, and `memory_errorbars_<pass>_*.png`: peak RSS summaries, distributions, and CI error bars for memory-enabled passes.
 - `sizes_{kem,sig}.png`: stacked bars for public/secret key and ciphertext/signature sizes.
 - `expansion_{kem,sig}.png`: ciphertext/signature expansion ratios versus security category.
+- `hamming_weight_*.png` / `hamming_distance_*.png`: Hamming-weight and Hamming-distance summaries (overall and per-category) from the sampled secret keys.
 - `security_bits_comparison.png`: classical vs quantum cost estimates side-by-side.
 - `tradeoff_<pass>.png`: latency vs security scatter with marker size proportional to key/signature footprint.
 - `security_vs_latency_<pass>.png`: scatter plot of classical security bits vs keygen latency.
@@ -109,3 +110,13 @@ Graphs are written to `results/graphs/<session_id>/` (the `results/` tree is alr
 The script requires `matplotlib` (`pip install matplotlib`). It defaults to the latest session in the CSV; use `--session` for a single run or `--sessions S1 S2 ...` to render multiple runs and emit comparison plots.
 
 Per-category subdirectories are created automatically (e.g. `category_1/`, `category_3/`, `category_5/`) containing the same set of plots filtered to algorithms whose parameter hints map to the corresponding floor. This makes it easy to compare Cat‑1, Cat‑3, and Cat‑5 families side by side.
+
+A `captions.md` file is emitted alongside the images with entries of the form:
+
+```
+![results/graphs/<session>/...png](results/graphs/<session>/...png)
+
+Caption text
+```
+
+so the caption naturally sits beneath the image when embedded in reports.

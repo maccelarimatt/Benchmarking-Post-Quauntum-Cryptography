@@ -80,13 +80,29 @@ class CaptionLog:
         if not self.entries:
             return
         root.mkdir(parents=True, exist_ok=True)
-        lines = ["# Graph Captions\n"]
-        for rel_path, heading in sorted(
+        entries = sorted(
             ((p.relative_to(root), h) for p, h in self.entries),
             key=lambda item: str(item[0]),
-        ):
-            lines.append(f"- `{rel_path}` — {heading}\n")
+        )
+        lines = ["# Graph Captions\n"]
+        for rel_path, heading in entries:
+            lines.append(f"![{rel_path}]({rel_path})\n")
+            lines.append(f"{heading}\n")
         (root / "captions.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+def _save_with_caption(
+    fig: plt.Figure,
+    outfile: pathlib.Path,
+    caption: str,
+    captions: CaptionLog,
+    rect: Tuple[float, float, float, float] = (0, 0.08, 1, 1),
+) -> None:
+    fig.tight_layout(rect=rect)
+    fig.text(0.5, 0.02, caption, ha="center", va="center")
+    fig.savefig(outfile, dpi=200)
+    captions.add(outfile, caption)
+    plt.close(fig)
 
 
 def _parse_float(value: str | None) -> Optional[float]:
@@ -223,14 +239,14 @@ def plot_latency_bars(records: Sequence[Record], output_dir: pathlib.Path, pass_
         ax.set_xticks([pos + (len(operations) - 1) * width / 2 for pos in x_positions])
         ax.set_xticklabels(algorithms, rotation=45, ha="right")
         ax.set_ylabel("Mean latency (ms)")
-        ax.set_title(f"{pass_name.title()} pass latency — {kind}")
+        title = f"{pass_name.title()} pass latency — {kind}"
         ax.legend()
         ax.grid(True, axis="y", linestyle="--", alpha=0.3)
-        fig.tight_layout()
+        for tick in ax.get_xticklabels():
+            tick.set_horizontalalignment("right")
         outfile = output_dir / f"latency_{pass_name}_{kind.lower()}.png"
-        fig.savefig(outfile, dpi=200)
-        captions.add(outfile, f"Mean latency per operation for {kind} ({pass_name})")
-        plt.close(fig)
+        caption = f"Mean latency per operation for {kind} ({pass_name})"
+        _save_with_caption(fig, outfile, caption, captions)
 
 
 def plot_memory_bars(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str, captions: CaptionLog) -> None:
@@ -266,14 +282,12 @@ def plot_memory_bars(records: Sequence[Record], output_dir: pathlib.Path, pass_n
         ax.set_xticks([pos + (len(operations) - 1) * width / 2 for pos in x_positions])
         ax.set_xticklabels(algorithms, rotation=45, ha="right")
         ax.set_ylabel("Peak memory (KB)")
-        ax.set_title(f"{pass_name.title()} peak RSS — {kind}")
+        title = f"{pass_name.title()} peak RSS — {kind}"
         ax.legend()
         ax.grid(True, axis="y", linestyle="--", alpha=0.3)
-        fig.tight_layout()
         outfile = output_dir / f"memory_peak_{pass_name}_{kind.lower()}.png"
-        fig.savefig(outfile, dpi=200)
-        captions.add(outfile, f"Peak RSS per operation for {kind} ({pass_name})")
-        plt.close(fig)
+        caption = f"Peak RSS per operation for {kind} ({pass_name})"
+        _save_with_caption(fig, outfile, caption, captions)
 
 
 def plot_security_vs_latency(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str, captions: CaptionLog) -> None:
@@ -302,32 +316,29 @@ def plot_security_vs_latency(records: Sequence[Record], output_dir: pathlib.Path
 
     ax.set_xlabel("Classical security bits")
     ax.set_ylabel("Keygen mean latency (ms)")
-    ax.set_title(f"Security vs keygen latency — {pass_name.title()} pass")
     ax.grid(True, linestyle="--", alpha=0.3)
     handles = [plt.Line2D([0], [0], marker=markers[k], color="w", markerfacecolor=colors[k], markersize=8) for k in markers if any(pt[2] == k for pt in points)]
     labels = [k for k in markers if any(pt[2] == k for pt in points)]
     if handles:
         ax.legend(handles, labels, title="Kind")
-    fig.tight_layout()
     outfile = output_dir / f"security_vs_latency_{pass_name}.png"
-    fig.savefig(outfile, dpi=200)
-    captions.add(outfile, f"Keygen latency vs. classical security ({pass_name})")
-    plt.close(fig)
+    caption = f"Keygen latency vs. classical security ({pass_name})"
+    _save_with_caption(fig, outfile, caption, captions)
 
 
 def plot_latency_distributions(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str, captions: CaptionLog) -> None:
-    grouped: Dict[Tuple[str, str], List[Tuple[str, Sequence[float]]]] = defaultdict(list)
+    grouped: Dict[Tuple[str, str], List[Tuple[str, int, Sequence[float]]]] = defaultdict(list)
     for rec in records:
         if rec.measurement_pass != pass_name or not rec.series:
             continue
-        grouped[(rec.kind, rec.operation)].append((rec.algo, rec.series))
+        grouped[(rec.kind, rec.operation)].append((rec.algo, rec.category_number, rec.series))
 
     for (kind, operation), entries in grouped.items():
-        entries = sorted(entries, key=lambda item: item[0])
-        data = [list(series) for _, series in entries if series]
+        entries = sorted(entries, key=lambda item: (item[0], item[1]))
+        data = [list(series) for _, _, series in entries if series]
         if not data:
             continue
-        labels = [algo for algo, series in entries if series]
+        labels = [f"{algo} (Cat-{category})" for algo, category, series in entries if series]
         positions = list(range(1, len(data) + 1))
 
         fig, ax = plt.subplots(figsize=(max(6, len(labels) * 0.75), 4.5))
@@ -336,30 +347,29 @@ def plot_latency_distributions(records: Sequence[Record], output_dir: pathlib.Pa
             body.set_alpha(0.6)
         ax.boxplot(data, positions=positions, widths=0.2, patch_artist=True)
         ax.set_xticks(positions)
-        ax.set_xticklabels(labels, rotation=45, ha="right")
+        ax.set_xticklabels(labels, rotation=45)
+        for tick in ax.get_xticklabels():
+            tick.set_horizontalalignment("right")
         ax.set_ylabel("Latency (ms)")
-        ax.set_title(f"{pass_name.title()} latency distribution — {kind} / {operation}")
         ax.grid(True, axis="y", linestyle="--", alpha=0.3)
-        fig.tight_layout()
         outfile = output_dir / f"latency_distribution_{pass_name}_{kind.lower()}_{operation}.png"
-        fig.savefig(outfile, dpi=200)
-        captions.add(outfile, f"Latency distribution for {kind} {operation} ({pass_name})")
-        plt.close(fig)
+        caption = f"Latency distribution for {kind} {operation} ({pass_name})"
+        _save_with_caption(fig, outfile, caption, captions)
 
 
 def plot_memory_distributions(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str, captions: CaptionLog) -> None:
-    grouped: Dict[Tuple[str, str], List[Tuple[str, Sequence[float]]]] = defaultdict(list)
+    grouped: Dict[Tuple[str, str], List[Tuple[str, int, Sequence[float]]]] = defaultdict(list)
     for rec in records:
         if rec.measurement_pass != pass_name or not rec.mem_series:
             continue
-        grouped[(rec.kind, rec.operation)].append((rec.algo, rec.mem_series))
+        grouped[(rec.kind, rec.operation)].append((rec.algo, rec.category_number, rec.mem_series))
 
     for (kind, operation), entries in grouped.items():
-        entries = sorted(entries, key=lambda item: item[0])
-        data = [list(series) for _, series in entries if series]
+        entries = sorted(entries, key=lambda item: (item[0], item[1]))
+        data = [list(series) for _, _, series in entries if series]
         if not data:
             continue
-        labels = [algo for algo, series in entries if series]
+        labels = [f"{algo} (Cat-{category})" for algo, category, series in entries if series]
         positions = list(range(1, len(data) + 1))
 
         fig, ax = plt.subplots(figsize=(max(6, len(labels) * 0.75), 4.5))
@@ -368,45 +378,42 @@ def plot_memory_distributions(records: Sequence[Record], output_dir: pathlib.Pat
             body.set_alpha(0.6)
         ax.boxplot(data, positions=positions, widths=0.2, patch_artist=True)
         ax.set_xticks(positions)
-        ax.set_xticklabels(labels, rotation=45, ha="right")
+        ax.set_xticklabels(labels, rotation=45)
+        for tick in ax.get_xticklabels():
+            tick.set_horizontalalignment("right")
         ax.set_ylabel("Peak memory (KB)")
-        ax.set_title(f"{pass_name.title()} memory distribution — {kind} / {operation}")
         ax.grid(True, axis="y", linestyle="--", alpha=0.3)
-        fig.tight_layout()
         outfile = output_dir / f"memory_distribution_{pass_name}_{kind.lower()}_{operation}.png"
-        fig.savefig(outfile, dpi=200)
-        captions.add(outfile, f"Memory distribution for {kind} {operation} ({pass_name})")
-        plt.close(fig)
+        caption = f"Memory distribution for {kind} {operation} ({pass_name})"
+        _save_with_caption(fig, outfile, caption, captions)
 
 
 def plot_latency_ecdf(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str, captions: CaptionLog) -> None:
-    grouped: Dict[Tuple[str, str], List[Tuple[str, Sequence[float]]]] = defaultdict(list)
+    grouped: Dict[Tuple[str, str], List[Tuple[str, int, Sequence[float]]]] = defaultdict(list)
     for rec in records:
         if rec.measurement_pass != pass_name or not rec.series:
             continue
-        grouped[(rec.kind, rec.operation)].append((rec.algo, rec.series))
+        grouped[(rec.kind, rec.operation)].append((rec.algo, rec.category_number, rec.series))
 
     for (kind, operation), entries in grouped.items():
-        entries = sorted(entries, key=lambda item: item[0])
+        entries = sorted(entries, key=lambda item: (item[0], item[1]))
         fig, ax = plt.subplots(figsize=(6, 4.5))
-        for algo, series in entries:
+        for algo, category, series in entries:
             if not series:
                 continue
             sorted_vals = sorted(series)
             n = len(sorted_vals)
             y_vals = [i / n for i in range(1, n + 1)]
-            ax.step(sorted_vals, y_vals, where="post", label=algo)
-        ax.set_title(f"{pass_name.title()} latency ECDF — {kind} / {operation}")
+            label = f"{algo} (Cat-{category})"
+            ax.step(sorted_vals, y_vals, where="post", label=label)
         ax.set_xlabel("Latency (ms)")
         ax.set_ylabel("F(x)")
         ax.grid(True, linestyle="--", alpha=0.3)
         if ax.lines:
             ax.legend()
-        fig.tight_layout()
         outfile = output_dir / f"latency_ecdf_{pass_name}_{kind.lower()}_{operation}.png"
-        fig.savefig(outfile, dpi=200)
-        captions.add(outfile, f"Latency ECDF for {kind} {operation} ({pass_name})")
-        plt.close(fig)
+        caption = f"Latency ECDF for {kind} {operation} ({pass_name})"
+        _save_with_caption(fig, outfile, caption, captions)
 
 
 def plot_throughput_vs_category(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str, captions: CaptionLog) -> None:
@@ -428,7 +435,6 @@ def plot_throughput_vs_category(records: Sequence[Record], output_dir: pathlib.P
             if all(v is None for v in y_vals):
                 continue
             ax.plot(x_positions, y_vals, marker="o", label=algo)
-        ax.set_title(f"Throughput ({pass_name}) — {kind} / {operation}")
         ax.set_ylabel("Ops per second")
         ax.set_xlabel("Security category")
         ax.set_xticks(list(x_positions))
@@ -436,11 +442,9 @@ def plot_throughput_vs_category(records: Sequence[Record], output_dir: pathlib.P
         ax.grid(True, linestyle="--", alpha=0.3)
         if ax.lines:
             ax.legend()
-        fig.tight_layout()
         outfile = output_dir / f"throughput_{pass_name}_{kind.lower()}_{operation}.png"
-        fig.savefig(outfile, dpi=200)
-        captions.add(outfile, f"Throughput across categories for {kind} {operation} ({pass_name})")
-        plt.close(fig)
+        caption = f"Throughput across categories for {kind} {operation} ({pass_name})"
+        _save_with_caption(fig, outfile, caption, captions)
 
 
 def _collect_unique_meta(records: Sequence[Record]) -> Dict[Tuple[str, str, int], Record]:
@@ -495,14 +499,12 @@ def plot_size_stacked_bars(records: Sequence[Record], output_dir: pathlib.Path, 
             ax.bar(labels, values, bottom=bottoms, label=label)
             bottoms = [b + v for b, v in zip(bottoms, values)]
         ax.set_ylabel("Bytes")
-        ax.set_title(f"Key material sizes — {kind_label}")
+        title = f"Key material sizes — {kind_label}"
         ax.legend()
         ax.grid(True, axis="y", linestyle="--", alpha=0.3)
-        fig.tight_layout()
         outfile = output_dir / f"sizes_{kind_label.lower()}.png"
-        fig.savefig(outfile, dpi=200)
-        captions.add(outfile, f"Key material sizes ({kind_label})")
-        plt.close(fig)
+        caption = f"Key material sizes ({kind_label})"
+        _save_with_caption(fig, outfile, caption, captions)
 
     _plot(kem_entries, "KEM")
     _plot(sig_entries, "SIG")
@@ -537,20 +539,121 @@ def plot_expansion_scatter(records: Sequence[Record], output_dir: pathlib.Path, 
             return
         fig, ax = plt.subplots(figsize=(6, 4.5))
         for ratio, category, algo in sorted(points, key=lambda x: (x[1], x[2])):
-            ax.scatter(category, ratio, label=algo)
-            ax.annotate(algo, (category, ratio), textcoords="offset points", xytext=(4, 4), fontsize=7)
-        ax.set_title(f"Expansion ratio vs category — {label}")
+            algo_label = f"{algo} (Cat-{category})"
+            ax.scatter(category, ratio, label=algo_label)
+            ax.annotate(algo_label, (category, ratio), textcoords="offset points", xytext=(4, 4), fontsize=7)
         ax.set_xlabel("Security category")
         ax.set_ylabel("Expansion ratio")
         ax.grid(True, linestyle="--", alpha=0.3)
-        fig.tight_layout()
         outfile = output_dir / f"expansion_{label.lower()}.png"
-        fig.savefig(outfile, dpi=200)
-        captions.add(outfile, f"Expansion ratio vs category ({label})")
-        plt.close(fig)
+        caption = f"Expansion ratio vs category ({label})"
+        _save_with_caption(fig, outfile, caption, captions)
 
     _plot(kem_points, "KEM")
     _plot(sig_points, "SIG")
+
+
+def _render_bar_chart(
+    items: List[Tuple[str, float, float]],
+    outfile: pathlib.Path,
+    ylabel: str,
+    title: str,
+    captions: CaptionLog,
+) -> None:
+    if not items:
+        return
+    labels = [label for label, _, _ in items]
+    values = [val for _, val, _ in items]
+    errors = [err for _, _, err in items]
+    fig, ax = plt.subplots(figsize=(max(6, len(items) * 0.75), 4.5))
+    ax.bar(labels, values, yerr=errors, capsize=4)
+    ax.set_ylabel(ylabel)
+    ax.grid(True, axis="y", linestyle="--", alpha=0.3)
+    ax.tick_params(axis="x", rotation=45)
+    for tick in ax.get_xticklabels():
+        tick.set_horizontalalignment("right")
+    _save_with_caption(fig, outfile, title, captions)
+
+
+def plot_hamming_metrics(records: Sequence[Record], output_dir: pathlib.Path, captions: CaptionLog) -> None:
+    unique = _collect_unique_meta(records)
+    entries: List[Dict[str, Any]] = []
+    for (kind, algo, category), rec in unique.items():
+        analysis = rec.meta.get("secret_key_analysis")
+        if not isinstance(analysis, dict):
+            continue
+        hw = analysis.get("hw") or {}
+        hd = analysis.get("hd") or {}
+        hw_mean = hw.get("mean_fraction")
+        hd_mean = hd.get("mean_fraction")
+        if hw_mean is None and hd_mean is None:
+            continue
+        entry = {
+            "algo": algo,
+            "kind": kind,
+            "category": category,
+            "hw_mean": hw_mean,
+            "hw_std": hw.get("std_fraction") or 0.0,
+            "hd_mean": hd_mean,
+            "hd_std": hd.get("std_fraction") or 0.0,
+        }
+        entries.append(entry)
+    if not entries:
+        return
+
+    by_category: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
+    for entry in entries:
+        by_category[entry["category"]].append(entry)
+
+    # Overall charts using algo + category label
+    overall_hw_items: List[Tuple[str, float, float]] = []
+    overall_hd_items: List[Tuple[str, float, float]] = []
+    for entry in sorted(entries, key=lambda e: (e["category"], e["algo"])):
+        label = f"{entry['algo']} (Cat-{entry['category']})"
+        if entry["hw_mean"] is not None:
+            overall_hw_items.append((label, entry["hw_mean"] * 100.0, entry["hw_std"] * 100.0))
+        if entry["hd_mean"] is not None:
+            overall_hd_items.append((label, entry["hd_mean"] * 100.0, entry["hd_std"] * 100.0))
+
+    _render_bar_chart(
+        overall_hw_items,
+        output_dir / "hamming_weight_all.png",
+        "Mean HW fraction (%)",
+        "Hamming weight per algorithm/category",
+        captions,
+    )
+    _render_bar_chart(
+        overall_hd_items,
+        output_dir / "hamming_distance_all.png",
+        "Mean HD fraction (%)",
+        "Hamming distance per algorithm/category",
+        captions,
+    )
+
+    # Per-category charts
+    for category, items in sorted(by_category.items()):
+        hw_items: List[Tuple[str, float, float]] = []
+        hd_items: List[Tuple[str, float, float]] = []
+        for entry in sorted(items, key=lambda e: e["algo"]):
+            label = entry["algo"]
+            if entry["hw_mean"] is not None:
+                hw_items.append((label, entry["hw_mean"] * 100.0, entry["hw_std"] * 100.0))
+            if entry["hd_mean"] is not None:
+                hd_items.append((label, entry["hd_mean"] * 100.0, entry["hd_std"] * 100.0))
+        _render_bar_chart(
+            hw_items,
+            output_dir / f"hamming_weight_cat-{category}.png",
+            "Mean HW fraction (%)",
+            f"Hamming weight — Category {category}",
+            captions,
+        )
+        _render_bar_chart(
+            hd_items,
+            output_dir / f"hamming_distance_cat-{category}.png",
+            "Mean HD fraction (%)",
+            f"Hamming distance — Category {category}",
+            captions,
+        )
 
 
 def plot_memory_error_bars(records: Sequence[Record], output_dir: pathlib.Path, pass_name: str, captions: CaptionLog) -> None:
@@ -565,7 +668,8 @@ def plot_memory_error_bars(records: Sequence[Record], output_dir: pathlib.Path, 
         ):
             continue
         key = f"{rec.kind} / {rec.operation}"
-        grouped[key][rec.algo] = (
+        label_name = f"{rec.algo} (Cat-{rec.category_number})"
+        grouped[key][label_name] = (
             rec.mem_mean_kb,
             max(0.0, rec.mem_mean_kb - rec.mem_ci95_low_kb),
             max(0.0, rec.mem_ci95_high_kb - rec.mem_mean_kb),
@@ -574,23 +678,21 @@ def plot_memory_error_bars(records: Sequence[Record], output_dir: pathlib.Path, 
     for label, data in grouped.items():
         if not data:
             continue
-        algorithms = sorted(data.keys())
-        means = [data[a][0] for a in algorithms]
-        yerr = [[data[a][1] for a in algorithms], [data[a][2] for a in algorithms]]
-        fig, ax = plt.subplots(figsize=(max(6, len(algorithms) * 0.75), 4.5))
-        ax.bar(algorithms, means, yerr=yerr, capsize=4)
+        entries = sorted(data.items(), key=lambda item: item[0])
+        labels = [name for name, _ in entries]
+        means = [vals[0] for _, vals in entries]
+        yerr = [[vals[1] for _, vals in entries], [vals[2] for _, vals in entries]]
+        fig, ax = plt.subplots(figsize=(max(6, len(entries) * 0.75), 4.5))
+        ax.bar(labels, means, yerr=yerr, capsize=4)
         ax.set_ylabel("Peak memory (KB)")
-        ax.set_title(f"Peak RSS with 95% CI — {label} ({pass_name})")
         ax.grid(True, axis="y", linestyle="--", alpha=0.3)
         ax.tick_params(axis="x", rotation=45)
-        for label_tick in ax.get_xticklabels():
-            label_tick.set_horizontalalignment("right")
-        fig.tight_layout()
+        for tick in ax.get_xticklabels():
+            tick.set_horizontalalignment("right")
         safe_label = label.replace(" / ", "_").replace(" ", "_").lower()
         outfile = output_dir / f"memory_errorbars_{pass_name}_{safe_label}.png"
-        fig.savefig(outfile, dpi=200)
-        captions.add(outfile, f"Peak memory with 95% CI — {label} ({pass_name})")
-        plt.close(fig)
+        caption = f"Peak memory with 95% CI — {label} ({pass_name})"
+        _save_with_caption(fig, outfile, caption, captions)
 
 
 def plot_security_cost_bars(records: Sequence[Record], output_dir: pathlib.Path, captions: CaptionLog) -> None:
@@ -603,7 +705,7 @@ def plot_security_cost_bars(records: Sequence[Record], output_dir: pathlib.Path,
         entries.append((label, rec.security_classical_bits or 0.0, rec.security_quantum_bits or 0.0))
     if not entries:
         return
-    entries.sort()
+    entries.sort(key=lambda item: (item[0].split("\n")[-1], item[0]))
     labels = [item[0] for item in entries]
     classical = [item[1] for item in entries]
     quantum = [item[2] for item in entries]
@@ -612,16 +714,15 @@ def plot_security_cost_bars(records: Sequence[Record], output_dir: pathlib.Path,
     ax.bar(x, classical, width=0.4, label="Classical bits")
     ax.bar([i + 0.4 for i in x], quantum, width=0.4, label="Quantum bits")
     ax.set_xticks([i + 0.2 for i in x])
-    ax.set_xticklabels(labels, rotation=45, ha="right")
+    ax.set_xticklabels(labels, rotation=45)
+    for tick in ax.get_xticklabels():
+        tick.set_horizontalalignment("right")
     ax.set_ylabel("Bits of security")
-    ax.set_title("Classical vs quantum cost estimates")
     ax.legend()
     ax.grid(True, axis="y", linestyle="--", alpha=0.3)
-    fig.tight_layout()
     outfile = output_dir / "security_bits_comparison.png"
-    fig.savefig(outfile, dpi=200)
-    captions.add(outfile, "Classical vs quantum security estimates")
-    plt.close(fig)
+    caption = "Classical vs quantum security estimates"
+    _save_with_caption(fig, outfile, caption, captions)
 
 
 def plot_tradeoff_frontier(records: Sequence[Record], output_dir: pathlib.Path, preferred_passes: Sequence[str], captions: CaptionLog) -> None:
@@ -665,17 +766,13 @@ def plot_tradeoff_frontier(records: Sequence[Record], output_dir: pathlib.Path, 
         ax.annotate(f"{algo}\nCat-{category}", (latency, sec_bits), textcoords="offset points", xytext=(4, 4), fontsize=7)
     ax.set_xlabel(f"Latency (ms) — {pass_name}")
     ax.set_ylabel("Security bits (classical)")
-    ax.set_title("Performance vs security trade-off")
     ax.grid(True, linestyle="--", alpha=0.3)
     handles, labels = ax.get_legend_handles_labels()
     unique_pairs = dict(zip(labels, handles))
     ax.legend(unique_pairs.values(), unique_pairs.keys(), fontsize=8)
-    fig.tight_layout()
     outfile = output_dir / f"tradeoff_{pass_name}.png"
-    fig.savefig(outfile, dpi=200)
-    captions.add(outfile, "Performance vs security trade-off")
-    plt.close(fig)
-
+    caption = "Performance vs security trade-off"
+    _save_with_caption(fig, outfile, caption, captions)
 def generate_graphs(records: Sequence[Record], output_dir: pathlib.Path, passes: Sequence[str], captions: CaptionLog) -> None:
     if not records:
         return
@@ -700,6 +797,7 @@ def generate_graphs(records: Sequence[Record], output_dir: pathlib.Path, passes:
     plot_expansion_scatter(records, output_dir, captions)
     plot_security_cost_bars(records, output_dir, captions)
     plot_tradeoff_frontier(records, output_dir, preferred_passes=[p for p in passes if "timing" in p] + list(passes), captions=captions)
+    plot_hamming_metrics(records, output_dir, captions)
 
 
 def plot_session_comparisons(
@@ -741,15 +839,16 @@ def plot_session_comparisons(
                 values = [values_by_session.get(sid) for sid in sessions]
                 if all(v is None for v in values):
                     continue
-                ax.plot(x_positions, values, marker="o", label=algo)
-            ax.set_title(f"{pass_name.title()} latency trend — {kind} / {operation}")
-            ax.set_ylabel("Mean latency (ms)")
+                ax.plot(x_positions, values, marker="o", label=algo)            
+                ax.set_ylabel("Mean latency (ms)")
             ax.set_xlabel("Session")
             ax.grid(True, linestyle="--", alpha=0.3)
             if ax.lines:
                 ax.legend()
             ax.set_xticks(x_positions)
-            ax.set_xticklabels(sessions, rotation=45, ha="right")
+            ax.set_xticklabels(sessions, rotation=45)
+            for tick in ax.get_xticklabels():
+                tick.set_horizontalalignment("right")
             fig.tight_layout()
             outfile = output_dir / f"trend_latency_{pass_name}_{kind.lower()}_{operation}.png"
             fig.savefig(outfile, dpi=200)
@@ -763,15 +862,16 @@ def plot_session_comparisons(
                     values = [values_by_session.get(sid) for sid in sessions]
                     if all(v is None for v in values):
                         continue
-                    ax.plot(x_positions, values, marker="o", label=algo)
-                ax.set_title(f"{pass_name.title()} peak RSS trend — {kind} / {operation}")
-                ax.set_ylabel("Peak memory (KB)")
+                    ax.plot(x_positions, values, marker="o", label=algo)                
+                    ax.set_ylabel("Peak memory (KB)")
                 ax.set_xlabel("Session")
                 ax.grid(True, linestyle="--", alpha=0.3)
                 if ax.lines:
                     ax.legend()
                 ax.set_xticks(x_positions)
-                ax.set_xticklabels(sessions, rotation=45, ha="right")
+                ax.set_xticklabels(sessions, rotation=45)
+            for tick in ax.get_xticklabels():
+                tick.set_horizontalalignment("right")
                 fig.tight_layout()
                 outfile = output_dir / f"trend_memory_{pass_name}_{kind.lower()}_{operation}.png"
                 fig.savefig(outfile, dpi=200)
