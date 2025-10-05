@@ -273,6 +273,17 @@ Notes:
 - Enabling `--sec-adv` attempts to use an external lattice estimator if present; otherwise the result clearly states that the floor model was used.
 
 ## Security analysis docs
+Entropy analytics (GUI)
+------------------------
+- Global entropy averages R/G/B (or RGBA) channel Shannon entropy in bits per byte (0–8).
+- Bits-per-pixel sums channel entropies; ciphertext and random pads should approach 24 in RGB.
+- Per-channel readouts expose color bias; enable the alpha toggle to include transparency.
+- The 16×16 heatmap averages RGB entropy per tile and clamps brightness to 5.0–8.0 b/B.
+- Bright blocks indicate locally random structure; darker cells highlight residual patterns.
+- Wrong-key decrypts usually mirror ciphertext globally yet dip over objects (“ghost leakage”).
+- Random pads serve as the ideal baseline, typically flat at ~8.0 b/B per channel.
+- 256-bin histograms (Original vs Ciphertext) show how encryption flattens distributions.
+
 
 For background on how pqcbench computes and reports security measures (classical bits, quantum considerations, and algorithmâ€‘specific resource models), see `docs/security/README.md`. This document explains the RSA estimator in detail and outlines the models used for PQC families; additional sections will be populated as advanced estimators are integrated.
 
@@ -304,3 +315,4 @@ produce leakage t-scores and merge them into your results.
 
 
 To enable tests in cmake, rebuild with the following: `cmake -S native -B native/build -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON` and then `cmake --build native/build --target vectors_kem vectors_sig` or `cmake --build native/build` if you don't mind rebuilding everything.
+

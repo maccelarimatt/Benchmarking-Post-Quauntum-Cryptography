@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -76,6 +76,16 @@
       box-shadow: 0 6px 18px rgba(31, 182, 184, 0.32);
     }
     button:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; filter: none; }
+    .btn-soft {
+      background: rgba(31, 182, 184, 0.12);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0.45rem 0.9rem;
+      border-radius: 0.65rem;
+      box-shadow: none;
+    }
+    .btn-soft:hover { background: rgba(31, 182, 184, 0.2); }
+    .btn-soft.active { background: var(--accent); }
     .layout {
       display: grid;
       grid-template-columns: minmax(340px, 0.55fr) minmax(0, 1fr);
@@ -126,91 +136,152 @@
       background: rgba(15, 23, 42, 0.35);
     }
     .toggle-row div { font-size: 0.85rem; color: var(--muted); }
-    .toggle-row strong { display: block; color: var(--text); font-size: 0.95rem; margin-bottom: 0.15rem; }
-    .button-row { display: flex; flex-wrap: wrap; gap: 0.75rem; }
-    .btn-accent { background: var(--accent); color: #0b0f14; }
-    .btn-sky { background: var(--sky); color: #0b0f14; box-shadow: 0 4px 12px var(--sky-soft); }
-    .btn-gold { background: var(--gold); color: #0b0f14; box-shadow: 0 4px 12px var(--gold-soft); }
-    .status { color: var(--accent); font-size: 0.9rem; }
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .status {
+      min-height: 1.2rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
     .error {
+      background: rgba(248, 113, 113, 0.12);
+      border: 1px solid rgba(248, 113, 113, 0.4);
       color: var(--danger);
-      background: rgba(248, 113, 113, 0.14);
-      border-radius: 0.85rem;
-      border: 1px solid rgba(248, 113, 113, 0.24);
+      border-radius: 0.6rem;
       padding: 0.75rem 1rem;
       font-size: 0.9rem;
     }
     .metrics dl {
-      margin: 0;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.65rem 1.25rem;
+      margin: 0;
     }
     .metrics dt {
-      font-size: 0.75rem;
-      letter-spacing: 0.06em;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
-      color: var(--muted);
+      color: rgba(226, 232, 240, 0.65);
     }
     .metrics dd {
-      margin: 0.35rem 0 0;
-      font-family: "Fira Code", "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+      margin: 0;
       font-size: 0.95rem;
+      color: var(--text);
+      font-weight: 600;
     }
     .badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.38rem 0.85rem;
+      padding: 0.35rem 0.75rem;
       border-radius: 999px;
-      font-size: 0.8rem;
+      background: rgba(94, 234, 212, 0.18);
+      color: var(--sky);
+      font-size: 0.85rem;
       font-weight: 600;
-      background: rgba(148, 163, 184, 0.22);
-      color: rgba(226, 232, 240, 0.92);
     }
-    .badge.ok { background: rgba(52, 211, 153, 0.22); color: var(--success); }
-    .badge.fail { background: rgba(248, 113, 113, 0.22); color: var(--danger); }
+    .badge.ok { background: rgba(52, 211, 153, 0.18); color: var(--success); }
+    .badge.fail { background: rgba(248, 113, 113, 0.18); color: var(--danger); }
+    .badge.pending { background: rgba(250, 204, 21, 0.18); color: var(--gold); }
     .panel-grid {
       display: grid;
-      gap: 1.1rem;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
     }
     figure {
       margin: 0;
-      display: grid;
-      gap: 0.75rem;
       padding: 1rem;
+      background: var(--panel-bg);
       border-radius: 1rem;
       border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(15, 23, 42, 0.45);
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
     }
     figure header {
       display: flex;
-      justify-content: space-between;
-      font-size: 0.85rem;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
+      align-items: center;
+      gap: 0.35rem;
       color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 600;
     }
-    figure strong { font-size: 0.95rem; color: var(--text); text-transform: none; letter-spacing: normal; }
-    canvas {
+    figure header strong { color: var(--text); font-size: 1rem; }
+    figure canvas {
       width: 100%;
-      aspect-ratio: 1 / 1;
-      background: rgba(7, 12, 19, 0.7);
-      border-radius: 0.85rem;
+      height: auto;
+      border-radius: 0.75rem;
       border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(15, 23, 42, 0.55);
     }
-    figcaption { font-size: 0.8rem; color: var(--muted); }
-    footer.note { text-align: center; font-size: 0.82rem; color: var(--muted); margin-top: 1rem; }
+    .canvas-wrapper {
+      position: relative;
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+    .canvas-wrapper canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .entropy-heatmap {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.18s ease;
+      mix-blend-mode: screen;
+      image-rendering: pixelated;
+    }
+    .entropy-heatmap.visible { opacity: 0.65; }
+    figcaption { color: var(--muted); font-size: 0.82rem; line-height: 1.45; }
+    .panel-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .panel-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .entropy-readout {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.5;
+      background: rgba(15, 23, 42, 0.38);
+      border-radius: 0.75rem;
+      padding: 0.65rem 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .entropy-readout strong { color: var(--text); }
+    .entropy-legend {
+      margin-top: 1.1rem;
+      font-size: 0.84rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .heatmap-scale {
+      display: flex;
+      gap: 0.85rem;
+      flex-wrap: wrap;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 0.45rem;
+    }
+    .heatmap-scale span strong { color: var(--text); }
+    .note {
+      margin-top: 1.25rem;
+      font-size: 0.85rem;
+      color: rgba(226, 232, 240, 0.7);
+    }
     .modal {
       position: fixed;
       inset: 0;
       display: none;
       align-items: center;
       justify-content: center;
+      background: rgba(2, 6, 12, 0.72);
       padding: 2rem;
-      background: rgba(12, 19, 27, 0.76);
-      backdrop-filter: blur(6px);
-      z-index: 40;
+      z-index: 50;
     }
     .modal.active { display: flex; }
     .modal-card {
@@ -218,7 +289,9 @@
       border-radius: 1.2rem;
       padding: 1.5rem;
       border: 1px solid rgba(255, 255, 255, 0.12);
-      width: min(700px, 94vw);
+      width: min(720px, 94vw);
+      max-height: 92vh;
+      overflow: auto;
       display: grid;
       gap: 1rem;
     }
@@ -226,15 +299,42 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 0.5rem;
     }
     .modal-card h3 { margin: 0; font-size: 1.25rem; }
+    .modal-card button {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: none;
+    }
+    .histogram-grid {
+      display: grid;
+      gap: 0.75rem;
+    }
+    .histogram-grid canvas {
+      width: 100%;
+      height: 160px;
+      background: rgba(15, 23, 42, 0.55);
+      border-radius: 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .histogram-toggle {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .histogram-toggle button { font-size: 0.85rem; }
+    .histogram-toggle button.active {
+      background: var(--accent);
+      color: #fff;
+    }
   </style>
 </head>
 <body>
   <div class="island header-island">
     <div>
       <h1 class="header-title">PQC Image Encryption Visualizer</h1>
-      <p class="header-sub">Panels (a)–(d) mirror the reference visualization: original pixels, permuted ciphertext, a wrong-key ghost, and a random pad baseline.</p>
+      <p class="header-sub">Panels (a)-(d) mirror the reference visualization: original pixels, permuted ciphertext, a wrong-key ghost, and a random pad baseline. Entropy analytics expose how structure dissolves as PQC primitives kick in.</p>
     </div>
     <a class="btn" href="/">Back to home</a>
   </div>
@@ -272,6 +372,13 @@
             </div>
             <input id="demo-seed" type="checkbox" />
           </div>
+          <div class="toggle-row">
+            <div>
+              <strong>Include alpha channel</strong>
+              Adds the alpha histogram to global entropy (defaults to RGB only).
+            </div>
+            <input id="include-alpha" type="checkbox" />
+          </div>
           <div class="button-row">
             <button id="btn-encrypt" class="btn btn-accent">Encrypt</button>
             <button id="btn-decrypt" class="btn btn-sky" disabled>Decrypt (correct key)</button>
@@ -289,27 +396,27 @@
           <dl>
             <div>
               <dt>KEM</dt>
-              <dd id="info-kem">—</dd>
+              <dd id="info-kem">-</dd>
             </div>
             <div>
               <dt>Signature</dt>
-              <dd id="info-sig">—</dd>
+              <dd id="info-sig">-</dd>
             </div>
             <div>
               <dt>Nonce (hex)</dt>
-              <dd id="info-nonce">—</dd>
+              <dd id="info-nonce">-</dd>
             </div>
             <div>
               <dt>Ciphertext length</dt>
-              <dd id="info-ctlen">—</dd>
+              <dd id="info-ctlen">-</dd>
             </div>
             <div>
               <dt>KEM time</dt>
-              <dd id="info-kemtime">—</dd>
+              <dd id="info-kemtime">-</dd>
             </div>
             <div>
               <dt>ChaCha20 time</dt>
-              <dd id="info-symtime">—</dd>
+              <dd id="info-symtime">-</dd>
             </div>
             <div>
               <dt>Demo seed</dt>
@@ -321,30 +428,78 @@
 
       <div class="right-column">
         <div class="panel-grid">
-          <figure>
+          <figure data-panel="original">
             <header><span>(a)</span><strong>Original</strong></header>
-            <canvas id="canvas-original" width="320" height="240"></canvas>
+            <div class="canvas-wrapper">
+              <canvas id="canvas-original" width="320" height="240"></canvas>
+              <canvas id="heatmap-original" class="entropy-heatmap" aria-hidden="true"></canvas>
+            </div>
             <figcaption>Uploaded pixels rendered as RGBA.</figcaption>
+            <div class="panel-meta">
+              <div class="panel-controls">
+                <button type="button" class="btn-soft" data-heatmap="original">Show heatmap</button>
+                <button type="button" class="btn-soft" data-hist="original">Histograms</button>
+              </div>
+            </div>
+            <div class="entropy-readout" id="entropy-original">Entropy pending.</div>
           </figure>
-          <figure>
+
+          <figure data-panel="ciphertext">
             <header><span>(b)</span><strong>Ciphertext</strong></header>
-            <canvas id="canvas-cipher" width="320" height="240"></canvas>
+            <div class="canvas-wrapper">
+              <canvas id="canvas-cipher" width="320" height="240"></canvas>
+              <canvas id="heatmap-ciphertext" class="entropy-heatmap" aria-hidden="true"></canvas>
+            </div>
             <figcaption>Row permutation plus ChaCha20 XOR keystream.</figcaption>
+            <div class="panel-meta">
+              <div class="panel-controls">
+                <button type="button" class="btn-soft" data-heatmap="ciphertext">Show heatmap</button>
+                <button type="button" class="btn-soft" data-hist="ciphertext">Histograms</button>
+              </div>
+            </div>
+            <div class="entropy-readout" id="entropy-ciphertext">Entropy pending.</div>
           </figure>
-          <figure>
+
+          <figure data-panel="wrongKey">
             <header><span>(c)</span><strong>Wrong key preview</strong></header>
-            <canvas id="canvas-wrong" width="320" height="240"></canvas>
+            <div class="canvas-wrapper">
+              <canvas id="canvas-wrong" width="320" height="240"></canvas>
+              <canvas id="heatmap-wrongKey" class="entropy-heatmap" aria-hidden="true"></canvas>
+            </div>
             <figcaption>Permutation undone with a flipped shared secret bit.</figcaption>
+            <div class="panel-meta">
+              <div class="panel-controls">
+                <button type="button" class="btn-soft" data-heatmap="wrongKey">Show heatmap</button>
+              </div>
+            </div>
+            <div class="entropy-readout" id="entropy-wrongKey">Entropy pending.</div>
           </figure>
-          <figure>
+
+          <figure data-panel="randomPad">
             <header><span>(d)</span><strong>Random pad</strong></header>
-            <canvas id="canvas-random" width="320" height="240"></canvas>
-            <figcaption>Reference canvas filled with cryptographic random RGB.</figcaption>
+            <div class="canvas-wrapper">
+              <canvas id="canvas-random" width="320" height="240"></canvas>
+              <canvas id="heatmap-randomPad" class="entropy-heatmap" aria-hidden="true"></canvas>
+            </div>
+            <figcaption>Reference canvas filled with cryptographic random RGBA.</figcaption>
+            <div class="panel-meta">
+              <div class="panel-controls">
+                <button type="button" class="btn-soft" data-heatmap="randomPad">Show heatmap</button>
+              </div>
+            </div>
+            <div class="entropy-readout" id="entropy-randomPad">Entropy pending.</div>
           </figure>
+        </div>
+        <div class="entropy-legend">
+          <strong>Entropy (bits/byte):</strong> 0-8; higher means the histogram is closer to uniform noise. Ciphertext and the random pad should cluster near 8.0 bits/byte. Original imagery often sits between 5-7 bits/byte. Wrong-key decrypts usually shadow ciphertext globally yet dip locally where residual structure leaks ("ghosting").
+          <div class="heatmap-scale">
+            <span>Heatmap scale caps at <strong>5.0 ? 8.0 b/B</strong> for stability.</span>
+            <span>RGB per-channel curves highlight color bias; enable alpha to include transparency.</span>
+          </div>
         </div>
       </div>
     </div>
-    <footer class="note">ChaCha20 keystream runs over permuted rows; the wrong-key panel shows how little signal leaks when the shared secret is perturbed.</footer>
+    <footer class="note">ChaCha20 keystream runs over permuted rows; the wrong-key panel shows how little signal leaks when the shared secret is perturbed. Entropy overlays emphasize this visually: flat photos spike toward 8.0, while structured scenes brighten only after encryption.</footer>
   </div>
 
   <div id="recovered-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -354,9 +509,29 @@
         <button id="modal-close" type="button">Close</button>
       </header>
       <canvas id="canvas-recovered" width="320" height="240"></canvas>
+      <div class="entropy-readout" id="entropy-recovered">Entropy pending.</div>
+    </div>
+  </div>
+
+  <div id="histogram-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="histogram-title">
+    <div class="modal-card">
+      <header>
+        <h3 id="histogram-title">Channel histograms</h3>
+        <button id="histogram-close" type="button">Close</button>
+      </header>
+      <div style="font-size:0.85rem; color:var(--muted);">Toggle between original and ciphertext to compare 256-bin RGB histograms. Uniform bars signal high entropy.</div>
+      <div class="histogram-toggle">
+        <button type="button" class="btn-soft" data-hist-mode="original">Original</button>
+        <button type="button" class="btn-soft" data-hist-mode="ciphertext">Ciphertext</button>
+      </div>
+      <div class="histogram-grid">
+        <canvas id="histogram-r" width="512" height="160" aria-label="Red channel histogram"></canvas>
+        <canvas id="histogram-g" width="512" height="160" aria-label="Green channel histogram"></canvas>
+        <canvas id="histogram-b" width="512" height="160" aria-label="Blue channel histogram"></canvas>
+      </div>
     </div>
   </div>
 
   <script src="/static/js/pqc-image-app.js" defer></script>
 </body>
-</html>
+</html>

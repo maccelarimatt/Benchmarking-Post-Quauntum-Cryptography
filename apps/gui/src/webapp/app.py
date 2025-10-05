@@ -27,6 +27,7 @@ import hashlib
 import io
 import math
 import pqc_visual
+import entropy_tools
 
 
 _HERE = Path(__file__).resolve()
@@ -1385,6 +1386,44 @@ def api_sig_verify():
         log.exception("SIG verify error: %s", exc)
         return jsonify({"error": "Internal server error"}), 500
 
+
+@app.post("/api/pqc/entropy")
+def api_pqc_entropy():
+    data = request.get_json(force=True) or {}
+    image_b64 = data.get("imageBytesBase64")
+    if not isinstance(image_b64, str) or not image_b64.strip():
+        return jsonify({"error": "imageBytesBase64 is required"}), 400
+    include_alpha = bool(data.get("includeAlpha", False))
+    block_size = data.get("blockSize", 16)
+    try:
+        block_int = int(block_size)
+    except Exception:
+        block_int = 16
+    if block_int <= 0:
+        block_int = 16
+    width_val = data.get("width")
+    height_val = data.get("height")
+    rgba = None
+    use_raw = False
+    try:
+        width_int = int(width_val)
+        height_int = int(height_val)
+        if width_int > 0 and height_int > 0:
+            use_raw = True
+    except Exception:
+        use_raw = False
+    try:
+        if use_raw:
+            raw_bytes = entropy_tools.decode_base64_buffer(image_b64)
+            rgba = entropy_tools.rgba_bytes_to_array(raw_bytes, width_int, height_int)
+        else:
+            rgba = entropy_tools.rgba_from_base64(image_b64)
+        summary = entropy_tools.image_entropy_rgba(rgba, include_alpha=include_alpha, block=block_int)
+        payload = entropy_tools.summary_to_dict(summary)
+    except Exception as exc:  # pragma: no cover - defensive
+        log.exception("Entropy calc failed: %s", exc)
+        return jsonify({"error": str(exc)}), 400
+    return jsonify(payload)
 
 @app.post("/api/pqc/encrypt-image")
 def api_encrypt_image():

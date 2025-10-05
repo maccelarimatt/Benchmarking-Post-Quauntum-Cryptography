@@ -9,6 +9,8 @@ import secrets
 import sys
 import time
 import importlib
+
+import entropy_tools
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
@@ -294,6 +296,11 @@ def encrypt_image_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     image_bytes = _b64decode("imageBytesBase64", image_b64)
     use_demo_seed = bool(payload.get("useDemoSeed", False))
     rgba_bytes, width, height = _load_image_rgba(image_bytes)
+    include_alpha = bool(payload.get("includeAlpha", False))
+    original_arr = entropy_tools.rgba_bytes_to_array(rgba_bytes, width, height)
+    entropy_original = entropy_tools.summary_to_dict(
+        entropy_tools.image_entropy_rgba(original_arr, include_alpha=include_alpha, block=16)
+    )
 
     kem_name = _resolve_kem_name(payload.get("kem"))
     sig_name = _resolve_sig_name(payload.get("sig"))
@@ -327,7 +334,7 @@ def encrypt_image_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         sig_public = signer.generate_keypair()
         signature = signer.sign(message_digest)
 
-    return {
+    response = {
         "kem": payload.get("kem"),
         "sig": payload.get("sig"),
         "kemPublicKey": _b64encode(kem_public),
@@ -347,6 +354,16 @@ def encrypt_image_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         "demoSeedUsed": use_demo_seed,
         "messageDigest": _b64encode(message_digest),
     }
+
+    cipher_arr = entropy_tools.rgba_bytes_to_array(image_ciphertext, width, height)
+    entropy_cipher = entropy_tools.summary_to_dict(
+        entropy_tools.image_entropy_rgba(cipher_arr, include_alpha=include_alpha, block=16)
+    )
+    response["entropy"] = {
+        "original": entropy_original,
+        "ciphertext": entropy_cipher,
+    }
+    return response
 
 
 def _parse_perm_meta(meta: Any, expected_rows: int) -> PermMeta:
@@ -369,6 +386,7 @@ def decrypt_image_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     if width <= 0 or height <= 0:
         raise PQCError("Width and height must be positive integers.")
 
+    include_alpha = bool(payload.get("includeAlpha", False))
     cipher_bytes = _b64decode("ciphertext", payload.get("ciphertext"))
     nonce = _b64decode("nonce", payload.get("nonce"))
     if len(nonce) != 12:
@@ -394,9 +412,19 @@ def decrypt_image_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     stream = _keystream_chacha20(enc_key, nonce, len(cipher_bytes))
     permuted_plain = _xor_bytes(cipher_bytes, stream)
     recovered = _undo_row_permutation(permuted_plain, width, height, perm_meta)
+    summary_recovered = entropy_tools.summary_to_dict(
+        entropy_tools.image_entropy_rgba(
+            entropy_tools.rgba_bytes_to_array(recovered, width, height),
+            include_alpha=include_alpha,
+            block=16,
+        )
+    )
 
     if wrong_key:
-        return {"wrongKeyPreviewBytes": _b64encode(recovered)}
+        return {
+            "wrongKeyPreviewBytes": _b64encode(recovered),
+            "entropy": {"wrongKey": summary_recovered},
+        }
 
     sig_name = payload.get("sig")
     signature_b64 = payload.get("signature")
@@ -413,6 +441,7 @@ def decrypt_image_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
     if verify_ok is not None:
         response["verifyOk"] = bool(verify_ok)
+    response["entropy"] = {"recovered": summary_recovered}
     return response
 
 
