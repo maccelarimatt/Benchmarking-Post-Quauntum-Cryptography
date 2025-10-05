@@ -1,4 +1,4 @@
-
+﻿
 from __future__ import annotations
 """Flask web app wrapping CLI benchmarking utilities.
 
@@ -26,6 +26,7 @@ import secrets
 import hashlib
 import io
 import math
+import pqc_visual
 
 
 _HERE = Path(__file__).resolve()
@@ -296,9 +297,9 @@ QUANTUM_ARCH_CHOICES = [
 RSA_MODEL_CHOICES = ["ge2019", "ge2025", "fast2025"]
 SECURITY_CATEGORY_CHOICES = [
     ("", "Adapter default"),
-    ("1", "Category 1 (≈ AES-128)"),
-    ("3", "Category 3 (≈ AES-192)"),
-    ("5", "Category 5 (≈ AES-256)"),
+    ("1", "Category 1 (â‰ˆ AES-128)"),
+    ("3", "Category 3 (â‰ˆ AES-192)"),
+    ("5", "Category 5 (â‰ˆ AES-256)"),
 ]
 DEFAULT_SECURITY_FORM = {
     "sec_adv": False,
@@ -431,9 +432,9 @@ def _attach_security_meta(summary, requested_category: Optional[int], override: 
     if override.applied_category != override.requested_category:
         display += f" (requested {override.requested_category})"
     if isinstance(override.value, int):
-        display += f" — {int(override.value)}-bit"
+        display += f" â€” {int(override.value)}-bit"
     elif override.value:
-        display += f" — {override.value}"
+        display += f" â€” {override.value}"
     if override.note:
         display += f". {override.note}"
     meta["security_level_display"] = display
@@ -912,7 +913,7 @@ def execute_async():
                         "sign": "Sign",
                         "verify": "Verify",
                     }.get(stage, stage.title())
-                    _update_job(jid, stage=f"{label} — Trial {ii}/{runs}", detail=algo, percent=pct)
+                    _update_job(jid, stage=f"{label} â€” Trial {ii}/{runs}", detail=algo, percent=pct)
                 try:
                     override = resolve_security_override(algo_name, requested_category)
                     if kind == "KEM":
@@ -1039,7 +1040,7 @@ def execute_async():
                     ii = runs
                 global_done = so * runs + ii
                 pct = int((global_done / float(total_tasks)) * 100)
-                _update_job(jid, stage=f"{label} — Trial {ii}/{runs}", detail=name, percent=pct)
+                _update_job(jid, stage=f"{label} â€” Trial {ii}/{runs}", detail=name, percent=pct)
 
             kind = kinds.get(name) or ""
             raw_cold = form.get("cold")
@@ -1270,153 +1271,145 @@ def favicon_redirect():
         return ("", 204)
 
 
-# Optional imaging support
-try:
-    from PIL import Image  # type: ignore
-    _PIL_AVAILABLE = True
-except Exception:
-    Image = None  # type: ignore
-    _PIL_AVAILABLE = False
 
-
-@app.route("/image-encryption", methods=["GET", "POST"])
+@app.route("/image-encryption")
 def image_encryption():
-    """Simple image encryption demo using a PQC KEM-derived keystream.
+    return render_template("image_encryption.html")
 
-    Flow (Encrypt):
-      - Choose a KEM (e.g., Kyber)
-      - Generate ephemeral keypair (pk, sk)
-      - Encapsulate to pk -> (ct, ss)
-      - Derive keystream via SHAKE-256 keyed by (ss || nonce)
-      - XOR keystream with image bytes
+def _decode_request_b64(field: str, value: Any) -> bytes:
+    if not isinstance(value, str):
+        raise pqc_visual.PQCError(f"{field} must be base64-encoded.")
+    try:
+        return base64.b64decode(value, validate=True)
+    except Exception as exc:
+        raise pqc_visual.PQCError(f"{field} is not valid base64.") from exc
 
-    Outputs:
-      - Encrypted image written to results/<id>.bin
-      - Metadata (without secret key) written to results/<id>.json
-      - Secret key is shown inline as base64 so the user can copy/store it
-    """
-    _ensure_adapters_loaded()
-    kinds = _algo_kinds()
-    kem_algos = [n for n, k in kinds.items() if k == "KEM"]
-    error = None
-    result: dict[str, Any] | None = None
 
-    if request.method == "POST":
-        algo_name = (request.form.get("algo") or "").strip()
-        file = request.files.get("image")
-        if not algo_name or algo_name not in kinds or kinds.get(algo_name) != "KEM":
-            error = "Please select a valid KEM algorithm."
-        elif not file or not getattr(file, "filename", ""):
-            error = "Please choose an image file to encrypt."
-        else:
-            try:
-                algo_cls = registry.get(algo_name)
-                algo = algo_cls()
-                pk, sk = algo.keygen()
-                ct, ss = algo.encapsulate(pk)
+@app.post("/api/pqc/kem/keypair")
+def api_kem_keypair():
+    payload = request.get_json(force=True) or {}
+    try:
+        public_key, secret_key = pqc_visual.generate_kem_keypair(payload.get("kem"))
+        return jsonify(
+            {
+                "publicKey": base64.b64encode(public_key).decode("ascii"),
+                "secretKey": base64.b64encode(secret_key).decode("ascii"),
+            }
+        )
+    except pqc_visual.PQCError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:  # pragma: no cover - defensive
+        log.exception("KEM keypair error: %s", exc)
+        return jsonify({"error": "Internal server error"}), 500
 
-                file_bytes = file.read()
-                if not file_bytes:
-                    raise ValueError("Uploaded file is empty")
 
-                # Derive a nonce and keystream via SHAKE-256
-                nonce = secrets.token_bytes(16)
-                shake = hashlib.shake_256(ss + nonce)
-                keystream = shake.digest(len(file_bytes))
-                enc = bytes(b ^ k for b, k in zip(file_bytes, keystream))
+@app.post("/api/pqc/kem/encapsulate")
+def api_kem_encapsulate():
+    payload = request.get_json(force=True) or {}
+    try:
+        public_key = _decode_request_b64("publicKey", payload.get("publicKey"))
+        ciphertext, shared_secret = pqc_visual.kem_encapsulate(payload.get("kem"), public_key)
+        return jsonify(
+            {
+                "ciphertext": base64.b64encode(ciphertext).decode("ascii"),
+                "sharedSecret": base64.b64encode(shared_secret).decode("ascii"),
+            }
+        )
+    except pqc_visual.PQCError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:  # pragma: no cover - defensive
+        log.exception("KEM encapsulate error: %s", exc)
+        return jsonify({"error": "Internal server error"}), 500
 
-                # Persist encrypted blob + metadata under results/
-                out_dir = _PROJECT_ROOT / "results"
-                out_dir.mkdir(parents=True, exist_ok=True)
-                rid = uuid.uuid4().hex
-                enc_name = f"image_enc_{rid}.bin"
-                meta_name = f"image_enc_{rid}.json"
-                (out_dir / enc_name).write_bytes(enc)
-                meta = {
-                    "algorithm": algo_name,
-                    "nonce_b64": base64.b64encode(nonce).decode("ascii"),
-                    "ciphertext_b64": base64.b64encode(ct).decode("ascii"),
-                    "public_key_b64": base64.b64encode(pk).decode("ascii"),
-                    # Do not persist secret key to disk by default; show inline only
-                }
-                import json as _json
-                (out_dir / meta_name).write_text(_json.dumps(meta, indent=2))
 
-                # Optional: visualization images derived from the uploaded image's shape
-                pk_img_path = sk_img_path = ct_img_path = enc_visual_path = None
-                vis_error = None
-                if _PIL_AVAILABLE:
-                    try:
-                        img = Image.open(io.BytesIO(file_bytes)).convert("RGB")  # type: ignore[name-defined]
-                        w, h = img.size
-                        pixels = img.tobytes()
-                        # Keystream for pixel domain (separate label to avoid reuse)
-                        ks_img = hashlib.shake_256(ss + nonce + b"/img").digest(len(pixels))
-                        enc_pixels = bytes(a ^ b for a, b in zip(pixels, ks_img))
-                        enc_img = Image.frombytes("RGB", (w, h), enc_pixels)  # type: ignore[name-defined]
-                        enc_visual_name = f"image_enc_visual_{rid}.png"
-                        enc_img.save(out_dir / enc_visual_name, format="PNG")
-                        enc_visual_path = f"results/{enc_visual_name}"
+@app.post("/api/pqc/kem/decapsulate")
+def api_kem_decapsulate():
+    payload = request.get_json(force=True) or {}
+    try:
+        secret_key = _decode_request_b64("secretKey", payload.get("secretKey"))
+        ciphertext = _decode_request_b64("ciphertext", payload.get("ciphertext"))
+        shared_secret = pqc_visual.kem_decapsulate(payload.get("kem"), secret_key, ciphertext)
+        return jsonify({"sharedSecret": base64.b64encode(shared_secret).decode("ascii")})
+    except pqc_visual.PQCError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:  # pragma: no cover - defensive
+        log.exception("KEM decapsulate error: %s", exc)
+        return jsonify({"error": "Internal server error"}), 500
 
-                        def _entropy(data: bytes) -> float:
-                            # Shannon entropy (bits per byte)
-                            if not data:
-                                return 0.0
-                            # Frequency of byte values 0..255
-                            counts = [0] * 256
-                            for b in data:
-                                counts[b] += 1
-                            n = float(len(data))
-                            ent = 0.0
-                            for c in counts:
-                                if c:
-                                    p = c / n
-                                    ent -= p * math.log2(p)
-                            return ent
 
-                        # Visualize pk/sk/ct as pseudo-images by expanding with SHAKE to pixel length
-                        def _as_image(seed: bytes, label: bytes, fname: str) -> tuple[str, float]:
-                            stream = hashlib.shake_256(seed + nonce + label).digest(len(pixels))
-                            raw = stream[: w * h * 3]
-                            im = Image.frombytes("RGB", (w, h), raw)  # type: ignore[name-defined]
-                            im.save(out_dir / fname, format="PNG")
-                            return f"results/{fname}", _entropy(raw)
+@app.post("/api/pqc/sig/keypair")
+def api_sig_keypair():
+    payload = request.get_json(force=True) or {}
+    try:
+        public_key, secret_key = pqc_visual.generate_sig_keypair(payload.get("sig"))
+        return jsonify(
+            {
+                "publicKey": base64.b64encode(public_key).decode("ascii"),
+                "secretKey": base64.b64encode(secret_key).decode("ascii"),
+            }
+        )
+    except pqc_visual.PQCError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:  # pragma: no cover - defensive
+        log.exception("SIG keypair error: %s", exc)
+        return jsonify({"error": "Internal server error"}), 500
 
-                        pk_img_path, pk_entropy = _as_image(pk, b"/pk", f"image_pk_visual_{rid}.png")
-                        sk_img_path, sk_entropy = _as_image(sk, b"/sk", f"image_sk_visual_{rid}.png")
-                        ct_img_path, ct_entropy = _as_image(ct, b"/ct", f"image_ct_visual_{rid}.png")
-                        enc_entropy = _entropy(enc_pixels)
-                    except Exception as _exc:
-                        vis_error = str(_exc)
-                else:
-                    vis_error = "Pillow not installed; install 'Pillow' to enable image visualizations."
 
-                result = {
-                    "algo": algo_name,
-                    "enc_path": f"results/{enc_name}",
-                    "meta_path": f"results/{meta_name}",
-                    "secret_key_b64": base64.b64encode(sk).decode("ascii"),
-                    "pk_img_path": pk_img_path,
-                    "sk_img_path": sk_img_path,
-                    "ct_img_path": ct_img_path,
-                    "enc_visual_path": enc_visual_path,
-                    "vis_error": vis_error,
-                    "pk_entropy": float(pk_entropy) if 'pk_entropy' in locals() else None,
-                    "sk_entropy": float(sk_entropy) if 'sk_entropy' in locals() else None,
-                    "ct_entropy": float(ct_entropy) if 'ct_entropy' in locals() else None,
-                    "enc_entropy": float(enc_entropy) if 'enc_entropy' in locals() else None,
-                }
-            except Exception as exc:
-                error = str(exc)
+@app.post("/api/pqc/sig/sign")
+def api_sig_sign():
+    payload = request.get_json(force=True) or {}
+    try:
+        secret_key = _decode_request_b64("secretKey", payload.get("secretKey"))
+        message = _decode_request_b64("message", payload.get("message"))
+        signature = pqc_visual.sig_sign(payload.get("sig"), secret_key, message)
+        return jsonify({"signature": base64.b64encode(signature).decode("ascii")})
+    except pqc_visual.PQCError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:  # pragma: no cover - defensive
+        log.exception("SIG sign error: %s", exc)
+        return jsonify({"error": "Internal server error"}), 500
 
-    return render_template(
-        "image_encryption.html",
-        kem_algos=kem_algos,
-        selected_algo=(request.form.get("algo") if request.method == "POST" else None),
-        error=error,
-        result=result,
-    )
 
+@app.post("/api/pqc/sig/verify")
+def api_sig_verify():
+    payload = request.get_json(force=True) or {}
+    try:
+        public_key = _decode_request_b64("publicKey", payload.get("publicKey"))
+        message = _decode_request_b64("message", payload.get("message"))
+        signature = _decode_request_b64("signature", payload.get("signature"))
+        ok = pqc_visual.sig_verify(payload.get("sig"), public_key, message, signature)
+        return jsonify({"ok": bool(ok)})
+    except pqc_visual.PQCError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:  # pragma: no cover - defensive
+        log.exception("SIG verify error: %s", exc)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@app.post("/api/pqc/encrypt-image")
+def api_encrypt_image():
+    payload = request.get_json(force=True) or {}
+    try:
+        result = pqc_visual.encrypt_image_payload(payload)
+        return jsonify(result)
+    except pqc_visual.PQCError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:  # pragma: no cover - defensive
+        log.exception("Image encrypt error: %s", exc)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@app.post("/api/pqc/decrypt-image")
+def api_decrypt_image():
+    payload = request.get_json(force=True) or {}
+    try:
+        result = pqc_visual.decrypt_image_payload(payload)
+        return jsonify(result)
+    except pqc_visual.PQCError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:  # pragma: no cover - defensive
+        log.exception("Image decrypt error: %s", exc)
+        return jsonify({"error": "Internal server error"}), 500
 
 @app.route("/api/analysis", methods=["POST"])
 def api_analysis():
@@ -1558,7 +1551,7 @@ def analysis_html():
       const out = document.getElementById('content');
       const hint = document.getElementById('hint');
       if (hint) {{
-        hint.textContent = 'Provider: ' + (PROVIDER || 'auto') + (MODEL ? (' · ' + MODEL) : '') + (USED_FB ? ' (fallback)' : '');
+        hint.textContent = 'Provider: ' + (PROVIDER || 'auto') + (MODEL ? (' Â· ' + MODEL) : '') + (USED_FB ? ' (fallback)' : '');
       }}
       try {{
         out.innerHTML = RAW; // as requested: no sanitization
@@ -1632,7 +1625,7 @@ def _heuristic_analysis(compare: dict) -> str:
     for op in ops:
         b = best_for(op)
         if b:
-            lines.append(f"- Fastest {op}: {b[0]} (≈{b[1]:.3f} ms mean)")
+            lines.append(f"- Fastest {op}: {b[0]} (â‰ˆ{b[1]:.3f} ms mean)")
     for op in ops:
         best_mem = None
         for a in compare.get("algos", []):
@@ -1641,7 +1634,7 @@ def _heuristic_analysis(compare: dict) -> str:
             if isinstance(mm, (int, float)):
                 best_mem = (a.get("label") or a.get("name") or "?", float(mm)) if best_mem is None or mm < best_mem[1] else best_mem
         if best_mem:
-            lines.append(f"- Lowest memory {op}: {best_mem[0]} (≈{best_mem[1]:.2f} KB)")
+            lines.append(f"- Lowest memory {op}: {best_mem[0]} (â‰ˆ{best_mem[1]:.2f} KB)")
     for a in compare.get("algos", []):
         md = a.get("meta") or {}
         sizes = []
@@ -1657,3 +1650,8 @@ def _heuristic_analysis(compare: dict) -> str:
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+
+
+

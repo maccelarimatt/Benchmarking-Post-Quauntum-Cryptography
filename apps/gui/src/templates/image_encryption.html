@@ -1,142 +1,362 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Image Encryption (PQC)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PQC Image Encryption Visualizer</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" sizes="any" />
   <link rel="mask-icon" href="/static/favicon.svg" color="#1fb6b8" />
   <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
   <meta name="theme-color" content="#0b0f14" />
   <style>
-    :root { --island-bg: rgba(38,41,45,.92); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
-    body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
-    .island { background:var(--island-bg); border-radius:var(--island-radius); padding:1.25rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 1.6vh auto; box-shadow: 0 4px 12px rgba(0,0,0,.3); }
-    .btn, button, input[type="submit"], a.btn { display:inline-block; padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; text-decoration:none; box-shadow: 0 4px 14px rgba(31,182,184,.25); transition: background-color .2s ease, filter .15s ease, box-shadow .2s ease; }
-    .btn:hover, button:hover, input[type="submit"]:hover, a.btn:hover { filter: brightness(0.92); box-shadow: 0 6px 18px rgba(31,182,184,.32); }
-    label { display:block; margin:.4rem 0 .25rem 0; }
-    input[type="file"], select { width:100%; padding:.6rem .7rem; border-radius:.6rem; border:1px solid rgba(255,255,255,.35); background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.94)); color:#111; }
-    .row { display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    @media (max-width: 820px) { .row { grid-template-columns: 1fr; } }
-    .muted { opacity:.92; }
-    textarea { width:100%; min-height: 120px; border-radius:.6rem; padding:.6rem .7rem; resize: vertical; border:1px solid rgba(255,255,255,.35); background: rgba(0,0,0,.25); color:#fff; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-    code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
-  </style>
-  <script>
-    function copySecret() {
-      try {
-        const el = document.getElementById('sk-b64');
-        el.select();
-        document.execCommand('copy');
-      } catch (e) {}
+    * { box-sizing: border-box; }
+    :root {
+      --island-bg: rgba(38, 41, 45, 0.92);
+      --island-radius: 1.5rem;
+      --island-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      --panel-bg: rgba(22, 26, 32, 0.65);
+      --accent: #1fb6b8;
+      --accent-soft: rgba(31, 182, 184, 0.2);
+      --gold: #facc15;
+      --gold-soft: rgba(250, 204, 21, 0.2);
+      --sky: #5eead4;
+      --sky-soft: rgba(94, 234, 212, 0.2);
+      --text: #ffffff;
+      --muted: rgba(226, 232, 240, 0.75);
+      --danger: #f87171;
+      --success: #34d399;
     }
-  </script>
+    body {
+      margin: 0;
+      padding: 5vh 5vw;
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-image: url('/static/Images/background.gif');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      background-color: #0b0f14;
+      min-height: 100vh;
+    }
+    .island {
+      background: var(--island-bg);
+      border-radius: var(--island-radius);
+      box-shadow: var(--island-shadow);
+      backdrop-filter: blur(4px);
+      padding: 1.5rem;
+      max-width: 1200px;
+      margin: 0 auto 1.75rem auto;
+    }
+    .header-island {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .header-title { font-size: 1.8rem; font-weight: 700; margin: 0; }
+    .header-sub { margin: 0; color: var(--muted); font-size: 0.95rem; max-width: 640px; }
+    .btn, button, input[type="submit"], input[type="button"], a.btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.65rem 1.4rem;
+      border: none;
+      border-radius: 0.7rem;
+      background: var(--accent);
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(31, 182, 184, 0.25);
+      transition: filter 0.18s ease, box-shadow 0.2s ease;
+    }
+    .btn:hover, button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover {
+      filter: brightness(0.92);
+      box-shadow: 0 6px 18px rgba(31, 182, 184, 0.32);
+    }
+    button:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; filter: none; }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(340px, 0.55fr) minmax(0, 1fr);
+      gap: 1.5rem;
+    }
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--panel-bg);
+      border-radius: 1.1rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 1.25rem;
+      display: grid;
+      gap: 1rem;
+    }
+    .card h2 {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+    label {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 0.45rem;
+    }
+    input[type="file"], select {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(15, 23, 42, 0.55);
+      color: var(--text);
+      font-size: 0.95rem;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.85rem 1rem;
+      border-radius: 0.9rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(15, 23, 42, 0.35);
+    }
+    .toggle-row div { font-size: 0.85rem; color: var(--muted); }
+    .toggle-row strong { display: block; color: var(--text); font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .button-row { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .btn-accent { background: var(--accent); color: #0b0f14; }
+    .btn-sky { background: var(--sky); color: #0b0f14; box-shadow: 0 4px 12px var(--sky-soft); }
+    .btn-gold { background: var(--gold); color: #0b0f14; box-shadow: 0 4px 12px var(--gold-soft); }
+    .status { color: var(--accent); font-size: 0.9rem; }
+    .error {
+      color: var(--danger);
+      background: rgba(248, 113, 113, 0.14);
+      border-radius: 0.85rem;
+      border: 1px solid rgba(248, 113, 113, 0.24);
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+    }
+    .metrics dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+    }
+    .metrics dt {
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .metrics dd {
+      margin: 0.35rem 0 0;
+      font-family: "Fira Code", "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+      font-size: 0.95rem;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.38rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: rgba(148, 163, 184, 0.22);
+      color: rgba(226, 232, 240, 0.92);
+    }
+    .badge.ok { background: rgba(52, 211, 153, 0.22); color: var(--success); }
+    .badge.fail { background: rgba(248, 113, 113, 0.22); color: var(--danger); }
+    .panel-grid {
+      display: grid;
+      gap: 1.1rem;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    figure {
+      margin: 0;
+      display: grid;
+      gap: 0.75rem;
+      padding: 1rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(15, 23, 42, 0.45);
+    }
+    figure header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    figure strong { font-size: 0.95rem; color: var(--text); text-transform: none; letter-spacing: normal; }
+    canvas {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: rgba(7, 12, 19, 0.7);
+      border-radius: 0.85rem;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    figcaption { font-size: 0.8rem; color: var(--muted); }
+    footer.note { text-align: center; font-size: 0.82rem; color: var(--muted); margin-top: 1rem; }
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      background: rgba(12, 19, 27, 0.76);
+      backdrop-filter: blur(6px);
+      z-index: 40;
+    }
+    .modal.active { display: flex; }
+    .modal-card {
+      background: var(--island-bg);
+      border-radius: 1.2rem;
+      padding: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      width: min(700px, 94vw);
+      display: grid;
+      gap: 1rem;
+    }
+    .modal-card header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-card h3 { margin: 0; font-size: 1.25rem; }
+  </style>
 </head>
 <body>
-  <div class="island" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+  <div class="island header-island">
     <div>
-      <div style="font-size:1.6rem; font-weight:800;">Image Encryption (PQC)</div>
-      <div class="muted">Encrypt an image using a PQC KEM-derived keystream.</div>
+      <h1 class="header-title">PQC Image Encryption Visualizer</h1>
+      <p class="header-sub">Panels (a)–(d) mirror the reference visualization: original pixels, permuted ciphertext, a wrong-key ghost, and a random pad baseline.</p>
     </div>
-    <div>
-      <a href="/" class="btn">Back to home</a>
-    </div>
+    <a class="btn" href="/">Back to home</a>
   </div>
 
   <div class="island">
-    <form method="post" enctype="multipart/form-data">
-      <div class="row">
-        <div>
-          <label for="algo">Algorithm (KEM)</label>
-          <select id="algo" name="algo" required>
-            <option value="" disabled {% if not selected_algo %}selected{% endif %}>Select algorithm</option>
-            {% for n in kem_algos %}
-              <option value="{{ n }}" {% if selected_algo==n %}selected{% endif %}>{{ n }}</option>
-            {% endfor %}
-          </select>
+    <div class="layout">
+      <div class="left-column" style="display:grid; gap:1.25rem;">
+        <div class="card">
+          <h2>Workflow</h2>
+          <div>
+            <label for="image-input">Image</label>
+            <input id="image-input" type="file" accept="image/*" />
+          </div>
+          <div>
+            <label for="kem-select">KEM</label>
+            <select id="kem-select">
+              <option value="Kyber512">Kyber512 (ML-KEM-512)</option>
+              <option value="Kyber768">Kyber768 (ML-KEM-768)</option>
+              <option value="HQC-128">HQC-128</option>
+              <option value="HQC-192">HQC-192</option>
+            </select>
+          </div>
+          <div>
+            <label for="sig-select">Signature</label>
+            <select id="sig-select">
+              <option value="Dilithium2">Dilithium2 (ML-DSA-44)</option>
+              <option value="Falcon-512">Falcon-512</option>
+              <option value="SPHINCS+-SHA2-128s">SPHINCS+-SHA2-128s</option>
+            </select>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <strong>Deterministic demo seed</strong>
+              Keeps nonce and row permutation stable for the same image.
+            </div>
+            <input id="demo-seed" type="checkbox" />
+          </div>
+          <div class="button-row">
+            <button id="btn-encrypt" class="btn btn-accent">Encrypt</button>
+            <button id="btn-decrypt" class="btn btn-sky" disabled>Decrypt (correct key)</button>
+            <button id="btn-wrong" class="btn btn-gold" disabled>Decrypt with wrong key</button>
+          </div>
+          <div id="status" class="status" role="status"></div>
+          <div id="error" class="error" style="display:none;"></div>
         </div>
-        <div>
-          <label for="image">Image file</label>
-          <input type="file" id="image" name="image" accept="image/*" required />
+
+        <div class="card metrics">
+          <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+            <span id="badge-verify" class="badge">Signature pending</span>
+            <span style="font-size:0.8rem; color:var(--muted);">Visualization is for intuition only; security relies on KEM + ChaCha20.</span>
+          </div>
+          <dl>
+            <div>
+              <dt>KEM</dt>
+              <dd id="info-kem">—</dd>
+            </div>
+            <div>
+              <dt>Signature</dt>
+              <dd id="info-sig">—</dd>
+            </div>
+            <div>
+              <dt>Nonce (hex)</dt>
+              <dd id="info-nonce">—</dd>
+            </div>
+            <div>
+              <dt>Ciphertext length</dt>
+              <dd id="info-ctlen">—</dd>
+            </div>
+            <div>
+              <dt>KEM time</dt>
+              <dd id="info-kemtime">—</dd>
+            </div>
+            <div>
+              <dt>ChaCha20 time</dt>
+              <dd id="info-symtime">—</dd>
+            </div>
+            <div>
+              <dt>Demo seed</dt>
+              <dd id="info-demoseed">disabled</dd>
+            </div>
+          </dl>
         </div>
       </div>
-      <div style="display:flex; justify-content:flex-end; gap:.6rem; margin-top:1rem;">
-        <input type="submit" class="btn" value="Encrypt Image" />
+
+      <div class="right-column">
+        <div class="panel-grid">
+          <figure>
+            <header><span>(a)</span><strong>Original</strong></header>
+            <canvas id="canvas-original" width="320" height="240"></canvas>
+            <figcaption>Uploaded pixels rendered as RGBA.</figcaption>
+          </figure>
+          <figure>
+            <header><span>(b)</span><strong>Ciphertext</strong></header>
+            <canvas id="canvas-cipher" width="320" height="240"></canvas>
+            <figcaption>Row permutation plus ChaCha20 XOR keystream.</figcaption>
+          </figure>
+          <figure>
+            <header><span>(c)</span><strong>Wrong key preview</strong></header>
+            <canvas id="canvas-wrong" width="320" height="240"></canvas>
+            <figcaption>Permutation undone with a flipped shared secret bit.</figcaption>
+          </figure>
+          <figure>
+            <header><span>(d)</span><strong>Random pad</strong></header>
+            <canvas id="canvas-random" width="320" height="240"></canvas>
+            <figcaption>Reference canvas filled with cryptographic random RGB.</figcaption>
+          </figure>
+        </div>
       </div>
-    </form>
+    </div>
+    <footer class="note">ChaCha20 keystream runs over permuted rows; the wrong-key panel shows how little signal leaks when the shared secret is perturbed.</footer>
   </div>
 
-  {% if error %}
-    <div class="island" style="background: rgba(128, 0, 32, .65); border: 1px solid rgba(255,255,255,.18);">
-      <div><strong>Error:</strong> {{ error }}</div>
-    </div>
-  {% endif %}
-
-  {% if result %}
-  <div class="island">
-    <div style="font-weight:700; margin-bottom:.35rem;">Encrypted Output</div>
-    <div class="muted">Algorithm: <code>{{ result.algo }}</code></div>
-    <div style="margin-top:.6rem; display:flex; gap:.75rem; flex-wrap:wrap;">
-      <a class="btn" href="/{{ result.enc_path }}" download>Download encrypted file</a>
-      <a class="btn" href="/{{ result.meta_path }}" target="_blank">View metadata (JSON)</a>
-    </div>
-    <div style="margin-top:1rem;">
-      <div style="font-weight:600; margin-bottom:.35rem;">Secret key (base64)</div>
-      <textarea id="sk-b64" readonly>{{ result.secret_key_b64 }}</textarea>
-      <div style="display:flex; justify-content:flex-end; gap:.5rem; margin-top:.5rem;">
-        <button type="button" class="btn" onclick="copySecret()">Copy</button>
-      </div>
-      <div class="muted" style="margin-top:.6rem;">Keep this secret key safe; it is needed to decapsulate and decrypt.</div>
+  <div id="recovered-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+      <header>
+        <h3 id="modal-title">Recovered image</h3>
+        <button id="modal-close" type="button">Close</button>
+      </header>
+      <canvas id="canvas-recovered" width="320" height="240"></canvas>
     </div>
   </div>
-  {% endif %}
 
-  {% if result and (result.pk_img_path or result.sk_img_path or result.ct_img_path or result.enc_visual_path) %}
-  <div class="island">
-    <div style="font-weight:700; margin-bottom:.6rem;">Visualizations</div>
-    {% if result.vis_error %}
-      <div class="muted" style="margin-bottom:.6rem; color:#ffd1d1;">{{ result.vis_error }}</div>
-    {% endif %}
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; align-items:start;">
-      {% if result.pk_img_path %}
-      <div>
-        <div style="font-weight:600; margin-bottom:.35rem;">Public Key Visualization</div>
-        <img src="/{{ result.pk_img_path }}" alt="Public key visualization" style="width:100%; height:auto; border-radius:.5rem; border:1px solid rgba(255,255,255,.2);" />
-        {% if result.pk_entropy is not none %}
-          <div class="muted" style="margin-top:.35rem;">Entropy: {{ '%.3f'|format(result.pk_entropy) }} bits/byte</div>
-        {% endif %}
-      </div>
-      {% endif %}
-      {% if result.sk_img_path %}
-      <div>
-        <div style="font-weight:600; margin-bottom:.35rem;">Secret Key Visualization</div>
-        <img src="/{{ result.sk_img_path }}" alt="Secret key visualization" style="width:100%; height:auto; border-radius:.5rem; border:1px solid rgba(255,255,255,.2);" />
-        {% if result.sk_entropy is not none %}
-          <div class="muted" style="margin-top:.35rem;">Entropy: {{ '%.3f'|format(result.sk_entropy) }} bits/byte</div>
-        {% endif %}
-      </div>
-      {% endif %}
-      {% if result.ct_img_path %}
-      <div>
-        <div style="font-weight:600; margin-bottom:.35rem;">Ciphertext Visualization</div>
-        <img src="/{{ result.ct_img_path }}" alt="Ciphertext visualization" style="width:100%; height:auto; border-radius:.5rem; border:1px solid rgba(255,255,255,.2);" />
-        {% if result.ct_entropy is not none %}
-          <div class="muted" style="margin-top:.35rem;">Entropy: {{ '%.3f'|format(result.ct_entropy) }} bits/byte</div>
-        {% endif %}
-      </div>
-      {% endif %}
-      {% if result.enc_visual_path %}
-      <div>
-        <div style="font-weight:600; margin-bottom:.35rem;">Encrypted Image (Pixel XOR)</div>
-        <img src="/{{ result.enc_visual_path }}" alt="Encrypted image visualization" style="width:100%; height:auto; border-radius:.5rem; border:1px solid rgba(255,255,255,.2);" />
-        {% if result.enc_entropy is not none %}
-          <div class="muted" style="margin-top:.35rem;">Entropy: {{ '%.3f'|format(result.enc_entropy) }} bits/byte</div>
-        {% endif %}
-      </div>
-      {% endif %}
-    </div>
-  </div>
-  {% endif %}
-
+  <script src="/static/js/pqc-image-app.js" defer></script>
 </body>
 </html>
