@@ -566,15 +566,18 @@ def _render_bar_chart(
     if not items:
         return
     labels = [label for label, _, _ in items]
-    values = [val for _, val, _ in items]
-    errors = [err for _, _, err in items]
+    values = [max(0.0, val) for _, val, _ in items]
+    errors = [max(0.0, err) for _, _, err in items]
     fig, ax = plt.subplots(figsize=(max(6, len(items) * 0.75), 4.5))
-    ax.bar(labels, values, yerr=errors, capsize=4)
+    lower = [min(err, val) for err, val in zip(errors, values)]
+    yerr = [lower, errors]
+    ax.bar(labels, values, yerr=yerr, capsize=4)
     ax.set_ylabel(ylabel)
     ax.grid(True, axis="y", linestyle="--", alpha=0.3)
     ax.tick_params(axis="x", rotation=45)
     for tick in ax.get_xticklabels():
         tick.set_horizontalalignment("right")
+    ax.set_ylim(bottom=0)
     _save_with_caption(fig, outfile, title, captions)
 
 
@@ -692,6 +695,7 @@ def plot_memory_error_bars(records: Sequence[Record], output_dir: pathlib.Path, 
         ax.tick_params(axis="x", rotation=45)
         for tick in ax.get_xticklabels():
             tick.set_horizontalalignment("right")
+        ax.set_ylim(bottom=0)
         safe_label = label.replace(" / ", "_").replace(" ", "_").lower()
         outfile = output_dir / f"memory_errorbars_{pass_name}_{safe_label}.png"
         caption = f"Peak memory with 95% CI — {label} ({pass_name})"
