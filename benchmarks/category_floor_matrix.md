@@ -107,6 +107,7 @@ Graphs are written to `results/graphs/<session_id>/` (the `results/` tree is alr
 - `tradeoff_<pass>.png`: latency vs security scatter with marker size proportional to key/signature footprint.
 - `security_vs_latency_<pass>.png`: scatter plot of classical security bits vs keygen latency.
 - `trend_latency_<pass>_<kind>_<op>.png` / `trend_memory_<pass>_<kind>_<op>.png`: multi-session overlays showing how means evolve across sessions (emitted when you pass multiple session IDs).
+- `runtime_scaling_*.png`: baseline-vs-target device latency projections per algorithm, per category, and overall.
 
 The script requires `matplotlib` (`pip install matplotlib`). It defaults to the latest session in the CSV; use `--session` for a single run or `--sessions S1 S2 ...` to render multiple runs and emit comparison plots.
 

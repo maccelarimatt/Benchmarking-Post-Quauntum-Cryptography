@@ -7,6 +7,7 @@ import math
 import pathlib
 from collections import defaultdict
 from dataclasses import dataclass, field
+import statistics
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 try:
@@ -67,6 +68,7 @@ class Record:
     meta: Dict[str, Any]
     series: Sequence[float]
     mem_series: Sequence[float]
+    runtime_scaling: Dict[str, Any] | None
 
 
 @dataclass
@@ -169,6 +171,7 @@ def load_records(csv_path: pathlib.Path) -> List[Record]:
                 meta=meta,
                 series=_parse_series(row.get("series_json")),
                 mem_series=_parse_series(row.get("mem_series_json")),
+                runtime_scaling=json.loads(row.get("runtime_scaling_json")) if row.get("runtime_scaling_json") else None,
             )
             records.append(record)
     if not records:
@@ -773,6 +776,85 @@ def plot_tradeoff_frontier(records: Sequence[Record], output_dir: pathlib.Path, 
     outfile = output_dir / f"tradeoff_{pass_name}.png"
     caption = "Performance vs security trade-off"
     _save_with_caption(fig, outfile, caption, captions)
+
+def _aggregate_scaling(values: Dict[str, Dict[str, Any]]) -> List[Tuple[str, float, float]]:
+    items: List[Tuple[str, float, float]] = []
+    for label, info in values.items():
+        samples = info.get('values', [])
+        if not samples:
+            continue
+        mean_val = sum(samples) / len(samples)
+        std_val = statistics.pstdev(samples) if len(samples) > 1 else 0.0
+        display_label = label + (' (baseline)' if info.get('baseline') else '')
+        items.append((display_label, mean_val, std_val))
+    items.sort(key=lambda item: (0 if item[0].endswith('(baseline)') else 1, item[0]))
+    return items
+
+
+def plot_runtime_scaling(records: Sequence[Record], output_dir: pathlib.Path, captions: CaptionLog) -> None:
+    per_algo_cat: Dict[Tuple[str, int], Dict[str, Dict[str, Any]]] = defaultdict(dict)
+    per_algo: Dict[str, Dict[str, Dict[str, Any]]] = defaultdict(dict)
+    per_category: Dict[int, Dict[str, Dict[str, Any]]] = defaultdict(dict)
+    overall: Dict[str, Dict[str, Any]] = {}
+
+    for rec in records:
+        scaling = rec.runtime_scaling
+        if not scaling or rec.mean_ms is None:
+            continue
+        preds = scaling.get('predictions') or {}
+        baseline_device = scaling.get('baseline_device') or 'baseline'
+
+        key = (rec.algo, rec.category_number)
+        target = per_algo_cat.setdefault(key, {})
+        algo_target = per_algo.setdefault(rec.algo, {})
+        cat_target = per_category.setdefault(rec.category_number, {})
+
+        for container in (target, algo_target, cat_target, overall):
+            entry = container.setdefault(baseline_device, {'values': [], 'baseline': True})
+            entry['values'].append(rec.mean_ms)
+
+        for device, info in preds.items():
+            predicted = info.get('predicted_ms')
+            if predicted is None:
+                continue
+            for container in (target, algo_target, cat_target, overall):
+                entry = container.setdefault(device, {'values': [], 'baseline': False})
+                entry['values'].append(float(predicted))
+
+    def _plot_group(container: Dict[str, Dict[str, Any]], title: str, filename: pathlib.Path) -> None:
+        items = _aggregate_scaling(container)
+        _render_bar_chart(items, filename, 'Predicted latency (ms)', title, captions)
+
+    for (algo, category), container in per_algo_cat.items():
+        if not container:
+            continue
+        safe_algo = algo.replace('/', '_').replace(' ', '_')
+        outfile = output_dir / f'runtime_scaling_{safe_algo}_cat-{category}.png'
+        title = f'Runtime scaling — {algo} (Cat-{category})'
+        _plot_group(container, title, outfile)
+
+    for algo, container in per_algo.items():
+        if not container:
+            continue
+        safe_algo = algo.replace('/', '_').replace(' ', '_')
+        outfile = output_dir / f'runtime_scaling_{safe_algo}_overall.png'
+        title = f'Runtime scaling — {algo} (all categories)'
+        _plot_group(container, title, outfile)
+
+    for category, container in per_category.items():
+        if not container:
+            continue
+        outfile = output_dir / f'runtime_scaling_category_cat-{category}.png'
+        title = f'Runtime scaling — Category {category}'
+        _plot_group(container, title, outfile)
+
+    if overall:
+        outfile = output_dir / 'runtime_scaling_overall.png'
+        title = 'Runtime scaling — overall'
+        _plot_group(overall, title, outfile)
+
+
+
 def generate_graphs(records: Sequence[Record], output_dir: pathlib.Path, passes: Sequence[str], captions: CaptionLog) -> None:
     if not records:
         return
@@ -798,6 +880,7 @@ def generate_graphs(records: Sequence[Record], output_dir: pathlib.Path, passes:
     plot_security_cost_bars(records, output_dir, captions)
     plot_tradeoff_frontier(records, output_dir, preferred_passes=[p for p in passes if "timing" in p] + list(passes), captions=captions)
     plot_hamming_metrics(records, output_dir, captions)
+    plot_runtime_scaling(records, output_dir, captions)
 
 
 def plot_session_comparisons(
