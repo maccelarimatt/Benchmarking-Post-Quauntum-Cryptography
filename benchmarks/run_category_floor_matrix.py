@@ -418,12 +418,28 @@ def main() -> None:
         )
 
     security_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
+    category_spec_map: Dict[int, List[AlgorithmSpec]] = {}
+    total_steps = 0
+    for category in sorted(selected_categories):
+        overrides = _variant_env_for_category(category)
+        with _temporary_env(overrides):
+            reset_adapter_cache()
+            specs_for_cat = discover_algorithms({category})
+        category_spec_map[category] = specs_for_cat
+        total_steps += len(specs_for_cat) * len(passes)
+    reset_adapter_cache()
+    print(
+        f"[progress] Prepared {total_steps} measurement tasks "
+        f"across {len(selected_categories)} categories and {len(passes)} passes.",
+        flush=True,
+    )
+    progress_done = 0
 
     for category in sorted(selected_categories):
         overrides = _variant_env_for_category(category)
         with _temporary_env(overrides):
             reset_adapter_cache()
-            category_specs = discover_algorithms({category})
+            category_specs = category_spec_map.get(category, [])
             if not category_specs:
                 failures.append(
                     {
@@ -438,6 +454,12 @@ def main() -> None:
             for spec in category_specs:
                 collected_specs.append(spec)
                 for pass_name, capture_memory, cold in passes:
+                    progress_done += 1
+                    print(
+                        f"[{progress_done}/{max(total_steps, 1)}] "
+                        f"Cat-{category} :: {spec.name} ({spec.kind}) :: {pass_name}",
+                        flush=True,
+                    )
                     try:
                         summary = _run_summary(
                             spec,
