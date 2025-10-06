@@ -2719,6 +2719,10 @@ def _sample_secret_key_analysis(name: str, adapter, mechanism: str | None, kind:
             prepared.keys,
             model=model,
             pair_sample_limit=DEFAULT_PAIR_SAMPLE_LIMIT,
+            coefficients=prepared.coefficients,
+            coefficient_meta=prepared.context.get("ternary_coefficients")
+            if prepared.context
+            else None,
         )
         context: Dict[str, Any] = {
             "algo": name,

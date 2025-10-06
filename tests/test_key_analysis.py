@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from pathlib import Path
 import sys
+import pytest
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -17,6 +18,12 @@ from pqcbench.key_analysis import (
     prepare_keys_for_analysis,
     summarize_secret_keys,
 )
+from pqcbench.lattice_secret_parser import (
+    _dilithium_polyeta_pack,
+    _mlkem_ntt,
+    _mlkem_poly_tobytes,
+)
+from pqcbench import params
 
 
 def _uniform_keys(count: int, length: int) -> list[bytes]:
@@ -121,3 +128,149 @@ def test_prepare_keys_for_analysis_rsa_normalises_length():
     prepared = prepare_keys_for_analysis(keys, family="RSA", mechanism="rsa-pss")
     assert len(prepared.keys) == 2
     assert len(prepared.keys[0]) == len(prepared.keys[1])
+
+
+def _make_mlkem_secret_bytes(mechanism: str, coeffs: list[list[int]]) -> bytes:
+    hint = params.find(mechanism)
+    assert hint is not None and hint.extras is not None
+    extras = hint.extras
+    k = extras["k"]
+    secret_len = extras["sizes_bytes"]["secret_key"]
+    poly_bytes = 384
+    packed = bytearray()
+    for poly in coeffs:
+        assert len(poly) == 256
+        ntt = _mlkem_ntt(poly)
+        packed.extend(_mlkem_poly_tobytes(ntt))
+    packed.extend(b"\0" * (secret_len - len(packed)))
+    return bytes(packed)
+
+
+def _make_mldsa_secret_bytes(mechanism: str, s1: list[list[int]], s2: list[list[int]]) -> bytes:
+    hint = params.find(mechanism)
+    assert hint is not None and hint.extras is not None
+    extras = hint.extras
+    k = extras["k"]
+    l = extras["l"]
+    eta = extras["eta"]
+    secret_len = extras["sizes_bytes"]["secret_key"]
+    prefix = 32 + 32 + 64
+    expected_poly_count = l + k
+    assert len(s1) == l and len(s2) == k
+    body = bytearray()
+    for vec in (s1, s2):
+        for poly in vec:
+            assert len(poly) == 256
+            body.extend(_dilithium_polyeta_pack(poly, eta))
+    total = bytearray(prefix)
+    total.extend(body)
+    if len(total) < secret_len:
+        total.extend(b"\0" * (secret_len - len(total)))
+    assert len(total) == secret_len
+    assert len(s1) + len(s2) == expected_poly_count
+    return bytes(total)
+
+
+def test_coefficient_expectations_uniform_eta():
+    keys = _uniform_keys(2, 8)
+    coeffs = [
+        [[-4, -3, -2, -1]],
+        [[0, 1, 2, 3]],
+    ]
+    meta = {
+        "eta": 4,
+        "segments": [{"name": "s", "count": 1}],
+        "keys_parsed": len(coeffs),
+        "distribution": "uniform_eta",
+    }
+    model = derive_model("ML-DSA", SimpleNamespace(extras={}, category_floor=1, notes="test"))
+    summary = summarize_secret_keys(
+        keys,
+        model=model,
+        pair_sample_limit=1,
+        coefficients=coeffs,
+        coefficient_meta=meta,
+    )
+    coeff_section = summary["coefficients"]
+    assert coeff_section["eta"] == 4
+    expected = (2 * 4 + 1 - 1) / float(2 * 4 + 1)
+    assert coeff_section["non_zero"]["expected_fraction"] == pytest.approx(expected)
+    assert coeff_section["pairwise_difference"]["expected_fraction"] == pytest.approx(expected)
+    assert summary["bits_per_sample"] == 4
+    assert summary["model"]["name"] == "uniform_eta_coefficients"
+    assert summary["hw"]["mean_fraction"] == pytest.approx(coeff_section["non_zero"]["mean_fraction"])
+
+
+def test_prepare_keys_for_analysis_mlkem_coefficients():
+    coeffs = [[0] * 256 for _ in range(3)]
+    coeffs[0][0] = 1
+    coeffs[1][1] = -1
+    coeffs[2][2] = 2
+    key_bytes = _make_mlkem_secret_bytes("ML-KEM-768", coeffs)
+    bundle = prepare_keys_for_analysis(
+        [key_bytes], family="ML-KEM", mechanism="ML-KEM-768"
+    )
+    assert bundle.coefficients is not None
+    assert len(bundle.coefficients) == 1
+    parsed_polys = bundle.coefficients[0]
+    assert len(parsed_polys) == 3
+    assert parsed_polys[0][0] == 1
+    assert parsed_polys[1][1] == -1
+    assert parsed_polys[2][2] == 2
+    meta = bundle.context.get("ternary_coefficients")
+    assert meta and meta.get("eta") == 2
+
+
+def test_prepare_keys_for_analysis_mldsa_coefficients():
+    s1 = [[0] * 256 for _ in range(5)]
+    s2 = [[0] * 256 for _ in range(6)]
+    s1[0][0] = -4
+    s2[1][1] = 3
+    key_bytes = _make_mldsa_secret_bytes("ML-DSA-65", s1, s2)
+    bundle = prepare_keys_for_analysis(
+        [key_bytes], family="ML-DSA", mechanism="ML-DSA-65"
+    )
+    assert bundle.coefficients is not None
+    assert len(bundle.coefficients[0]) == 11
+    assert bundle.coefficients[0][0][0] == -4
+    assert bundle.coefficients[0][5 + 1][1] == 3
+    meta = bundle.context.get("ternary_coefficients")
+    assert meta and meta.get("eta") == 4
+
+
+def test_summarize_secret_keys_reports_coefficient_stats():
+    keys = _uniform_keys(4, 8)
+    coeffs = [
+        [[0, 1, 0, -1]],
+        [[0, 0, 0, 0]],
+        [[1, 0, 0, 0]],
+        [[-1, 1, 0, 0]],
+    ]
+    meta = {
+        "eta": 2,
+        "segments": [{"name": "s", "count": 1}],
+        "keys_parsed": len(coeffs),
+        "distribution": "centered_binomial",
+    }
+    model = derive_model("ML-KEM", SimpleNamespace(extras={}, category_floor=1, notes="test"))
+    summary = summarize_secret_keys(
+        keys,
+        model=model,
+        pair_sample_limit=6,
+        coefficients=coeffs,
+        coefficient_meta=meta,
+    )
+    coeff_section = summary.get("coefficients")
+    assert coeff_section is not None
+    assert coeff_section["polynomials_per_sample"] == 1
+    assert coeff_section["coefficients_per_polynomial"] == 4
+    assert coeff_section["non_zero"]["mean_fraction"] == pytest.approx(0.3125)
+    assert coeff_section["eta"] == 2
+    assert coeff_section["non_zero"]["expected_fraction"] == pytest.approx(0.625)
+    assert coeff_section["pairwise_difference"]["expected_fraction"] == pytest.approx(93 / 128)
+    assert summary["bits_per_sample"] == 4
+    assert summary["model"]["name"] == "centered_binomial_coefficients"
+    assert summary["model"]["expected_hw_fraction"] == pytest.approx(0.625)
+    assert summary["hw"]["mean_fraction"] == pytest.approx(0.3125)
+    assert "bitstring" in summary
+    assert summary["bitstring"]["bits_per_sample"] == 64

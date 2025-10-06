@@ -25,6 +25,17 @@ except Exception:  # pragma: no cover - cryptography optional at runtime
     serialization = None  # type: ignore
     rsa = None  # type: ignore
 
+try:
+    from .lattice_secret_parser import (
+        LatticeSecretParseResult,
+        parse_ml_dsa_secret_keys,
+        parse_ml_kem_secret_keys,
+    )
+except Exception:  # pragma: no cover - optional parser helpers
+    LatticeSecretParseResult = None  # type: ignore
+    parse_ml_dsa_secret_keys = None  # type: ignore
+    parse_ml_kem_secret_keys = None  # type: ignore
+
 _BYTE_POPCOUNT = tuple(bin(i).count("1") for i in range(256))
 
 # Keep sampling modest so CLI runs stay responsive.
@@ -62,6 +73,7 @@ class PreparedKeyBundle:
     keys: Sequence[bytes]
     context: Dict[str, object] = field(default_factory=dict)
     warnings: List[str] = field(default_factory=list)
+    coefficients: Optional[List[List[List[int]]]] = None
 
 
 def prepare_keys_for_analysis(
@@ -127,6 +139,38 @@ def prepare_keys_for_analysis(
             bundle.context.setdefault("parser", "rsa_private_exponent_v1")
             bundle.context.setdefault("parsed_components", "private_exponent")
 
+    elif fam in {"ML-KEM", "ML-DSA"}:
+        from . import params
+
+        hint = params.find(mechanism) if mechanism else None
+        extras = hint.extras if hint else {}
+        parse_result: Optional["LatticeSecretParseResult"] = None
+
+        if fam == "ML-KEM" and parse_ml_kem_secret_keys is not None:
+            parse_result = parse_ml_kem_secret_keys(
+                keys,
+                k=extras.get("k"),
+                eta1=extras.get("eta1"),
+                n=extras.get("n", 256),
+            )
+        elif fam == "ML-DSA" and parse_ml_dsa_secret_keys is not None:
+            parse_result = parse_ml_dsa_secret_keys(
+                keys,
+                k=extras.get("k"),
+                l=extras.get("l"),
+                eta=extras.get("eta"),
+            )
+
+        if parse_result is not None:
+            if parse_result.coefficients:
+                bundle.coefficients = parse_result.coefficients
+                meta = dict(parse_result.context)
+                meta.setdefault("keys_parsed", len(parse_result.coefficients))
+                bundle.context["ternary_coefficients"] = meta
+                bundle.context["parsed_components"] = "ternary_coefficients"
+                bundle.context.setdefault("parser", parse_result.parser)
+            bundle.warnings.extend(parse_result.warnings)
+
     return bundle
 
 
@@ -185,11 +229,27 @@ def derive_model(family: Optional[str], hint: Optional["ParamHint"]) -> KeyAnaly
     )
 
 
+def _centered_binomial_distribution(eta: int) -> Dict[int, float]:
+    """Return probability mass function for centered binomial with parameter eta."""
+    if eta < 0:
+        raise ValueError("eta must be non-negative")
+    dist: Dict[int, float] = {}
+    denom = float(1 << (2 * eta))
+    for a in range(eta + 1):
+        for b in range(eta + 1):
+            value = a - b
+            weight = math.comb(eta, a) * math.comb(eta, b)
+            dist[value] = dist.get(value, 0.0) + weight / denom
+    return dist
+
+
 def summarize_secret_keys(
     keys: Sequence[bytes],
     *,
     model: KeyAnalysisModel,
     pair_sample_limit: int = DEFAULT_PAIR_SAMPLE_LIMIT,
+    coefficients: Optional[Sequence[Sequence[Sequence[int]]]] = None,
+    coefficient_meta: Optional[Dict[str, object]] = None,
 ) -> Dict[str, object]:
     """Compute aggregate Hamming statistics for a collection of secret keys."""
     if not keys:
@@ -325,7 +385,209 @@ def summarize_secret_keys(
                 f"mean HW (bits) {observed:.2f} deviates from expected weight {expected_w:.0f}"
             )
 
+    if coefficients is not None:
+        if len(coefficients) != sample_count:
+            raise ValueError("coefficient samples must align with secret key samples")
+        flat_samples: List[List[int]] = []
+        non_zero_fracs: List[float] = []
+        value_min: Optional[int] = None
+        value_max: Optional[int] = None
+
+        polynomials_per_sample: Optional[int] = None
+        coeffs_per_polynomial: Optional[int] = None
+
+        for coeff_sample in coefficients:
+            if polynomials_per_sample is None:
+                polynomials_per_sample = len(coeff_sample)
+            elif polynomials_per_sample != len(coeff_sample):
+                raise ValueError("inconsistent polynomial counts across coefficient samples")
+            if coeff_sample:
+                coeff_len = len(coeff_sample[0])
+                if coeffs_per_polynomial is None:
+                    coeffs_per_polynomial = coeff_len
+                elif coeffs_per_polynomial != coeff_len:
+                    raise ValueError("inconsistent coefficient lengths across samples")
+            flat = _flatten_coefficients(coeff_sample)
+            if not flat:
+                raise ValueError("coefficient sample contains empty polynomial")
+            flat_samples.append(flat)
+            total = len(flat)
+            nz = sum(1 for c in flat if c != 0)
+            non_zero_fracs.append(nz / float(total))
+            sample_min = min(flat)
+            sample_max = max(flat)
+            value_min = sample_min if value_min is None else min(value_min, sample_min)
+            value_max = sample_max if value_max is None else max(value_max, sample_max)
+
+        polynomials_per_sample = polynomials_per_sample or 0
+        coeffs_per_polynomial = coeffs_per_polynomial or 0
+        coeffs_per_sample = polynomials_per_sample * coeffs_per_polynomial
+
+        nz_mean = statistics.mean(non_zero_fracs)
+        nz_std = statistics.pstdev(non_zero_fracs) if sample_count > 1 else 0.0
+        nz_min = min(non_zero_fracs)
+        nz_max = max(non_zero_fracs)
+
+        coeff_pair_fracs: List[float] = []
+        if sample_count > 1 and pair_sample_limit > 0:
+            combos = combinations(range(sample_count), 2)
+            for i, j in islice(combos, pair_sample_limit):
+                a = flat_samples[i]
+                b = flat_samples[j]
+                if len(a) != len(b):
+                    raise ValueError("coefficient samples must have equal length per key")
+                diff = sum(1 for x, y in zip(a, b) if x != y)
+                coeff_pair_fracs.append(diff / float(len(a)))
+
+        if coeff_pair_fracs:
+            coeff_pair_mean = statistics.mean(coeff_pair_fracs)
+            coeff_pair_std = statistics.pstdev(coeff_pair_fracs) if len(coeff_pair_fracs) > 1 else 0.0
+            coeff_pair_min = min(coeff_pair_fracs)
+            coeff_pair_max = max(coeff_pair_fracs)
+        else:
+            coeff_pair_mean = coeff_pair_std = coeff_pair_min = coeff_pair_max = None
+
+        expected_non_zero = None
+        expected_pair_diff = None
+        eta_value = None
+        distribution = None
+        if coefficient_meta:
+            eta_raw = coefficient_meta.get("eta")
+            if isinstance(eta_raw, int) and eta_raw >= 0:
+                eta_value = eta_raw
+            distribution_raw = coefficient_meta.get("distribution")
+            if isinstance(distribution_raw, str):
+                distribution = distribution_raw
+
+        if eta_value is not None:
+            if distribution == "uniform_eta":
+                support = 2 * eta_value + 1
+                if support > 0:
+                    expected_non_zero = (support - 1) / float(support)
+                    expected_pair_diff = (support - 1) / float(support)
+            else:
+                dist = _centered_binomial_distribution(eta_value)
+                expected_non_zero = 1.0 - dist.get(0, 0.0)
+                expected_pair_diff = 1.0 - sum(p * p for p in dist.values())
+
+        coeff_section: Dict[str, object] = {
+            "polynomials_per_sample": polynomials_per_sample,
+            "coefficients_per_polynomial": coeffs_per_polynomial,
+            "coefficients_per_sample": coeffs_per_sample,
+            "value_range": {
+                "min": value_min,
+                "max": value_max,
+            },
+            "non_zero": {
+                "mean_fraction": nz_mean,
+                "std_fraction": nz_std,
+                "min_fraction": nz_min,
+                "max_fraction": nz_max,
+                "expected_fraction": expected_non_zero,
+            },
+            "pairwise_difference": {
+                "samples": len(coeff_pair_fracs),
+                "mean_fraction": coeff_pair_mean,
+                "std_fraction": coeff_pair_std,
+                "min_fraction": coeff_pair_min,
+                "max_fraction": coeff_pair_max,
+                "expected_fraction": expected_pair_diff,
+            },
+        }
+
+        if coefficient_meta:
+            coeff_section.update(
+                {
+                    "segments": coefficient_meta.get("segments"),
+                    "eta": eta_value,
+                    "keys_parsed": coefficient_meta.get("keys_parsed"),
+                    "distribution": distribution,
+                }
+            )
+
+        result["coefficients"] = coeff_section
+
+        # Preserve original bitstring stats for reference before overriding.
+        result["bitstring"] = {
+            "bits_per_sample": bit_len,
+            "hw": dict(result["hw"]),
+            "hd": dict(result["hd"]),
+            "byte_bias": dict(result["byte_bias"]),
+        }
+
+        # Derive a model name reflecting coefficient domain when expectations are available.
+        if distribution == "uniform_eta":
+            model_name = "uniform_eta_coefficients"
+            model_notes = [
+                "Coefficient domain treated as uniform over [-eta, eta].",
+                "Secret stats derived from packed ML-DSA ternary coefficients.",
+            ]
+        else:
+            model_name = "centered_binomial_coefficients"
+            model_notes = [
+                "Coefficient domain sampled via centered binomial distribution.",
+                "Secret stats derived from packed ML-KEM ternary coefficients.",
+            ]
+
+        result["model"].update(
+            {
+                "name": model_name,
+                "expected_hw_fraction": expected_non_zero,
+                "expected_hd_fraction": expected_pair_diff,
+                "notes": model_notes,
+                "extras": {
+                    **model.extras,
+                    "eta": eta_value,
+                    "distribution": distribution,
+                    "coefficients_per_sample": coeffs_per_sample,
+                },
+            }
+        )
+
+        expected_bits_coeff = (
+            expected_non_zero * coeffs_per_sample if expected_non_zero is not None else None
+        )
+        result["bits_per_sample"] = coeffs_per_sample
+        result["hw"].update(
+            {
+                "mean_fraction": nz_mean,
+                "std_fraction": nz_std,
+                "min_fraction": nz_min,
+                "max_fraction": nz_max,
+                "mean_bits": nz_mean * coeffs_per_sample,
+                "std_bits": nz_std * coeffs_per_sample,
+                "expected_fraction": expected_non_zero,
+                "expected_bits": expected_bits_coeff,
+            }
+        )
+
+        result["hd"].update(
+            {
+                "samples": len(coeff_pair_fracs),
+                "mean_fraction": coeff_pair_mean,
+                "std_fraction": coeff_pair_std,
+                "min_fraction": coeff_pair_min,
+                "max_fraction": coeff_pair_max,
+                "expected_fraction": expected_pair_diff,
+            }
+        )
+
+        result["byte_bias"] = {
+            "reference_fraction": expected_non_zero,
+            "max_abs_deviation": None,
+            "mean_abs_deviation": None,
+        }
+
     return result
+
+    # pragma: no cover - dead code guard
+
+
+def _flatten_coefficients(sample: Sequence[Sequence[int]]) -> List[int]:
+    flat: List[int] = []
+    for poly in sample:
+        flat.extend(poly)
+    return flat
 
 
 __all__ = [
