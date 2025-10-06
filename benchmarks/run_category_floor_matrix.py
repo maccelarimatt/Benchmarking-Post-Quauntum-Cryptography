@@ -5,6 +5,8 @@ import csv
 import datetime as _dt
 import json
 import pathlib
+import shlex
+import subprocess
 import sys
 from dataclasses import asdict, dataclass, is_dataclass
 import contextlib
@@ -26,6 +28,8 @@ from pqcbench.security_levels import resolve_security_override, available_catego
 
 HERE = pathlib.Path(__file__).resolve().parent
 RESULTS_DIR = HERE.parent / "results"
+GRAPH_SCRIPT = HERE / "render_category_floor_graphs.py"
+SIDE_CHANNEL_SCRIPT = HERE.parent / "tools" / "forensic_probe.py"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 _UTC = _dt.UTC
 
@@ -325,6 +329,47 @@ def _run_summary(
     )
 
 
+def _normalize_graph_args(extra_args: Optional[List[str]]) -> List[str]:
+    extra = list(extra_args) if extra_args else []
+    if extra[:1] == ["--"]:
+        extra = extra[1:]
+    return extra
+
+
+def _run_graph_renderer(script_path: pathlib.Path, extra_args: Optional[List[str]], csv_path: pathlib.Path) -> None:
+    if not script_path.exists():
+        print(f"Graph renderer not found at {script_path}. Skipping graph generation.")
+        return
+
+    extra = _normalize_graph_args(extra_args)
+    includes_csv = any(arg == "--csv" or arg.startswith("--csv=") for arg in extra)
+    cmd = [sys.executable, str(script_path)]
+    if not includes_csv:
+        cmd.extend(["--csv", str(csv_path)])
+    cmd.extend(extra)
+
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as exc:
+        print(f"Graph renderer exited with status {exc.returncode}. Command: {' '.join(cmd)}")
+
+
+def _run_side_channel(script_path: pathlib.Path, options: str) -> None:
+    if not script_path.exists():
+        print(f"Side-channel probe not found at {script_path}. Skipping side-channel run.")
+        return
+
+    cmd = [sys.executable, str(script_path)]
+    if options:
+        cmd.extend(shlex.split(options))
+
+    print(f"Running side-channel probe: {' '.join(cmd)}")
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as exc:
+        print(f"Side-channel probe exited with status {exc.returncode}. Command: {' '.join(cmd)}")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run category-floor benchmarks with split timing/memory passes.",
@@ -393,6 +438,34 @@ def parse_args() -> argparse.Namespace:
         type=pathlib.Path,
         default=None,
         help="Optional Parquet export path (requires pandas + pyarrow/fastparquet).",
+    )
+    parser.add_argument(
+        "--render-graphs",
+        action="store_true",
+        help="Invoke the category floor graph renderer after benchmarks finish.",
+    )
+    parser.add_argument(
+        "--graph-script",
+        type=pathlib.Path,
+        default=GRAPH_SCRIPT,
+        help="Override the category floor graph renderer script (default: render_category_floor_graphs.py)",
+    )
+    parser.add_argument(
+        "--graph-args",
+        nargs=argparse.REMAINDER,
+        default=None,
+        help="Extra arguments forwarded to the graph renderer (must follow '--').",
+    )
+    parser.add_argument(
+        "--run-side-channel",
+        action="store_true",
+        help="Run the forensic side-channel probe after benchmarks (and any graphs).",
+    )
+    parser.add_argument(
+        "--side-channel-options",
+        type=str,
+        default="",
+        help="Extra options appended to the side-channel probe command (e.g. '--all-categories --render-plots').",
     )
     return parser.parse_args()
 
@@ -605,6 +678,12 @@ def main() -> None:
                 df.to_parquet(args.parquet_output, index=False)
             except Exception as exc:
                 print(f"Failed to write Parquet file: {exc}", file=sys.stderr)
+
+    if args.render_graphs:
+        _run_graph_renderer(args.graph_script, args.graph_args, output_path)
+
+    if args.run_side_channel:
+        _run_side_channel(SIDE_CHANNEL_SCRIPT, args.side_channel_options)
 
     print(f"Wrote {len(rows)} rows to {output_path}")
     if failures:

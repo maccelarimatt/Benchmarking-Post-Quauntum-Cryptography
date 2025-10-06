@@ -147,7 +147,7 @@ The JSON artefact contains three top-level blocks:
 - `analysis`: statistical summaries with leakage flags.
 - `report_artifacts` *(optional)*: emitted when `--render-plots` is used; records the CSV path, generated plot paths, and any notes (e.g., missing matplotlib).
 
-When `--render-plots` is enabled, the script writes an `analysis_summary.csv` containing the key statistics for each scenario pair and produces bar charts of `|t|` statistics (time/cpu/rss) with the TVLA threshold overlaid. These artifacts are saved in the directory supplied via `--plot-dir` or, by default, alongside the JSON output under `<stem>_report/`.
+When `--render-plots` is enabled, the script writes an `analysis_summary.csv` containing the key statistics for each scenario pair and produces grouped `|t|` charts (time/cpu/rss) across the probed security categories, styled to match the category-floor benchmark graphs. A `captions.md` file is emitted alongside the PNGs. Artifacts live under the directory supplied via `--plot-dir` or, by default, alongside the JSON output under `<stem>_report/`.
 
 ### Example command
 

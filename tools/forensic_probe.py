@@ -1480,33 +1480,117 @@ def generate_visual_report(analysis_results: List[AnalysisResult], report_dir: p
         )
         return artifacts
 
+    class CaptionCollector:
+        def __init__(self) -> None:
+            self.entries: List[Tuple[pathlib.Path, str]] = []
+
+        def add(self, path: pathlib.Path, caption: str) -> None:
+            self.entries.append((path, caption))
+
+        def write(self, root: pathlib.Path) -> Optional[pathlib.Path]:
+            if not self.entries:
+                return None
+            root.mkdir(parents=True, exist_ok=True)
+            lines = ["# Side-Channel Plots", ""]
+            for path, caption in sorted(self.entries, key=lambda item: str(item[0])):
+                rel = path.relative_to(root)
+                lines.append(f"![{rel}]({rel})")
+                lines.append("")
+                lines.append(caption)
+                lines.append("")
+            output = root / "captions.md"
+            output.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
+            return output
+
+    captions = CaptionCollector()
+    palette = {"time": "#1f77b4", "cpu": "#ff7f0e", "rss": "#2ca02c"}
+    metric_labels = {"time": "Wall-clock", "cpu": "CPU", "rss": "RSS Δ"}
+
+    grouped: Dict[Tuple[str, str], Dict[int, Dict[str, float]]] = defaultdict(lambda: defaultdict(dict))
+    params_by_category: Dict[Tuple[str, str, int], Optional[str]] = {}
     for entry in non_sanity:
+        if entry.security_category is None:
+            continue
         metrics = entry.metrics
-        values = [
-            abs(metrics.get("t_stat_time", 0.0)),
-            abs(metrics.get("t_stat_cpu", 0.0)),
-            abs(metrics.get("t_stat_rss", 0.0)),
-        ]
-        labels = ["time", "cpu", "rss"]
-        fig, ax = plt.subplots(figsize=(6, 4))
-        bars = ax.bar(labels, values, color=["#2a9d8f", "#264653", "#e9c46a"])
-        ax.axhline(TVLA_T_THRESHOLD, color="#e76f51", linestyle="--", linewidth=1, label="TVLA threshold (|t|=4.5)")
-        ax.set_ylabel("|t| statistic")
-        category_tag = f" (cat-{entry.security_category})" if entry.security_category is not None else ""
-        title = f"{entry.algorithm}{category_tag}\n{entry.scenario_name}"
-        ax.set_title(title)
-        ax.set_ylim(0, max(max(values) * 1.1, TVLA_T_THRESHOLD * 1.1 if values else TVLA_T_THRESHOLD + 1))
+        grouped[(entry.algorithm, entry.scenario_name)][entry.security_category] = {
+            "time": abs(metrics.get("t_stat_time", 0.0) or 0.0),
+            "cpu": abs(metrics.get("t_stat_cpu", 0.0) or 0.0),
+            "rss": abs(metrics.get("t_stat_rss", 0.0) or 0.0),
+        }
+        params_by_category[(entry.algorithm, entry.scenario_name, entry.security_category)] = entry.parameter_name
+
+    if not grouped:
+        artifacts["notes"].append("No category-tagged scenarios available for plotting.")
+        return artifacts
+
+    for (algorithm, scenario_name), category_map in sorted(grouped.items()):
+        categories = sorted(category_map.keys())
+        if not categories:
+            continue
+        fig_width = max(6.0, len(categories) * 1.2)
+        fig, ax = plt.subplots(figsize=(fig_width, 4.8))
+        metrics_order = ["time", "cpu", "rss"]
+        width = 0.75 / len(metrics_order)
+        x_positions = list(range(len(categories)))
+
+        for idx, metric in enumerate(metrics_order):
+            offsets = [pos + idx * width for pos in x_positions]
+            values = [category_map.get(cat, {}).get(metric, 0.0) for cat in categories]
+            ax.bar(
+                offsets,
+                values,
+                width=width,
+                label=metric_labels[metric],
+                color=palette.get(metric, "#555555"),
+            )
+            for offset, value in zip(offsets, values):
+                ax.text(offset, value + 0.08, f"{value:.2f}", ha="center", va="bottom", fontsize=8)
+
+        ax.set_xticks([pos + (len(metrics_order) - 1) * width / 2 for pos in x_positions])
+        ax.set_xticklabels([f"Cat-{cat}" for cat in categories])
+        ax.set_ylabel("Absolute t-statistic")
+        friendly_name = scenario_name.replace(":", " — ")
+        ax.set_title(f"{algorithm} — {friendly_name}")
+        ax.grid(True, axis="y", linestyle="--", alpha=0.3)
+        ymax = max(
+            [max(category_map.get(cat, {}).values(), default=0.0) for cat in categories] + [TVLA_T_THRESHOLD]
+        )
+        ax.set_ylim(0, max(ymax * 1.15, TVLA_T_THRESHOLD * 1.1))
+        ax.axhline(
+            TVLA_T_THRESHOLD,
+            color="#d62728",
+            linestyle="--",
+            linewidth=1,
+            label="TVLA |t|=4.5",
+        )
         ax.legend(loc="upper right")
-        for bar, value in zip(bars, values):
-            ax.text(bar.get_x() + bar.get_width() / 2.0, value + 0.1, f"{value:.2f}", ha="center", va="bottom", fontsize=8)
-        slug = slugify(f"{entry.algorithm}-{entry.scenario_name}")
-        if entry.security_category is not None:
-            slug = f"{slug}-cat{entry.security_category}"
-        plot_path = report_dir / f"{slug}_tstats.png"
-        fig.tight_layout()
-        fig.savefig(plot_path, dpi=150)
+
+        param_notes = [
+            params_by_category.get((algorithm, scenario_name, cat))
+            for cat in categories
+            if params_by_category.get((algorithm, scenario_name, cat))
+        ]
+        caption_parts = [
+            "|t|-statistics for wall-clock (time), CPU, and RSS deltas across security categories.",
+            f"Scenario: {friendly_name}",
+        ]
+        if param_notes:
+            caption_parts.append(f"Parameters: {', '.join(sorted(set(param_notes)))}")
+        caption_parts.append("Dashed line marks the TVLA threshold (|t|=4.5).")
+        caption = " ".join(caption_parts)
+
+        slug = slugify(f"{algorithm}-{scenario_name}")
+        plot_path = report_dir / f"sidechannel_{slug}.png"
+        fig.tight_layout(rect=(0, 0.09, 1, 1))
+        fig.text(0.5, 0.02, caption, ha="center", va="center", fontsize=9)
+        fig.savefig(plot_path, dpi=200)
         plt.close(fig)
         artifacts["plots"].append(str(plot_path))
+        captions.add(plot_path, caption)
+
+    captions_path = captions.write(report_dir)
+    if captions_path is not None:
+        artifacts["captions"] = str(captions_path)
 
     return artifacts
 
@@ -1595,6 +1679,8 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             print(f"[forensic_probe] Generated plots in {report_dir}")
         if report_artifacts.get("csv"):
             print(f"[forensic_probe] Wrote analysis summary CSV to {report_artifacts['csv']}")
+        if report_artifacts.get("captions"):
+            print(f"[forensic_probe] Wrote plot captions to {report_artifacts['captions']}")
         for note in report_artifacts.get("notes", []):
             print(f"[forensic_probe] {note}")
     output_path.parent.mkdir(parents=True, exist_ok=True)

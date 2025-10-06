@@ -1,6 +1,8 @@
 
 # Benchmarks
 
+This script is jut a test one, use run_category_floor_matrix.py for the proper benchmarks
+
 - Define repeatable scenarios in JSON/YAML.
 - Scripts write machine-readable CSV/JSON into `results/`.
 
@@ -23,8 +25,31 @@ This benchmarks each registered adapter, renders category-floor graphs, then inv
 `tools/forensic_probe.py --all-categories --render-plots --iterations 500` so timing
 and leakage statistics (with plots/CSV) are captured alongside the benchmark results.
 
+## Category floor harness
+
+`run_category_floor_matrix.py` runs the full timing/memory passes across Cat-1/3/5 and
+produces CSV/JSONL/Parquet summaries. New helper flags mirror the lightweight runner:
+
+- `--render-graphs` triggers `render_category_floor_graphs.py` once data is written
+  (override with `--graph-script`, pass extra arguments via `--graph-args -- ...`).
+- `--run-side-channel` launches the forensic probe after graphing; forward specific
+  probe options with `--side-channel-options "<flags>"`.
+
+Example:
+
+```bash
+python benchmarks/run_category_floor_matrix.py --runs 50 --warm --render-graphs \
+  --graph-args -- --output-dir results/graphs/cat_floor --passes timing timing-warm \
+  --run-side-channel --side-channel-options "--all-categories --render-plots --iterations 600"
+
+python benchmarks/run_category_floor_matrix.py --runs 1  --rsa-max-category 3 --render-graphs \ 
+  --run-side-channel --side-channel-options "--all-categories --render-plots --iterations 10 --alg kyber"
+```
+
+This captures timing/memory statistics (including warm passes), renders grouped graphs
+for each session/category, and then executes the side-channel probe with matching
+category coverage and graphical/CSV output.
+
 Output
 - Default summary path: `results/bench_summary.json`
 - Per-algorithm CLI summaries can be produced with `run-<algo> --export results/<algo>.json`
-
-python benchmarks/run_category_floor_matrix.py --runs 1 --rsa-max-category 3 --render-graphs

@@ -120,7 +120,7 @@ messages, metadata logging). Remaining validation steps require manual runs:
   constant-time sampler) and re-run the probe. Compare against previous runs via
   `tools/forensic_report.py --baseline old.json`.
    - To sweep NIST security floors, pass `--categories 1 3 5` (or `--all-categories`) so each adapter is instantiated with the appropriate mechanism before probing.
-   - Enable `--render-plots` to capture ready-made bar charts and a CSV summary for reports; override the output location with `--plot-dir` if desired.
+   - Enable `--render-plots` to capture grouped |t|-stat charts (styled like the category-floor graphs) plus a CSV summary for reports; override the output location with `--plot-dir` if desired.
 2. **Collect hardware counters.** For local/co-resident attackers, gather PMU
    metrics using the platform’s tooling:
    - **Linux:** `perf stat -x, -e cycles,instructions,branch-misses,cache-misses \
