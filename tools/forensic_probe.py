@@ -13,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import csv
 import dataclasses
 import gc
 import hashlib
@@ -28,6 +29,7 @@ import pathlib
 import platform
 import importlib
 import random
+import re
 import shutil
 import statistics
 import subprocess
@@ -35,6 +37,7 @@ import sys
 import tempfile
 import time
 from collections import defaultdict
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
@@ -83,6 +86,7 @@ for module_name in (
 
 from pqcbench import registry  # noqa: E402
 from pqcbench.params import find as find_param_hint  # noqa: E402
+from pqcbench.security_levels import available_categories, resolve_security_override  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -109,6 +113,9 @@ class ProbeConfig:
     include_scenarios: Optional[List[str]] = None
     exclude_algorithms: Optional[List[str]] = None
     enable_sanity_checks: bool = True
+    categories: Optional[List[int]] = None
+    render_plots: bool = False
+    plot_dir: Optional[pathlib.Path] = None
 
 
 @dataclass
@@ -118,6 +125,9 @@ class AlgorithmDescriptor:
     kind: str
     parameter_name: Optional[str]
     param_hint: Optional[Any]
+    security_category: Optional[int] = None
+    override_note: Optional[str] = None
+    override_env: Dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -178,11 +188,60 @@ class AnalysisResult:
     parameter_name: Optional[str]
     scenario_name: str
     metrics: Dict[str, Any]
+    security_category: Optional[int] = None
 
 
 # ---------------------------------------------------------------------------
 # Helper utilities
 # ---------------------------------------------------------------------------
+
+
+@contextmanager
+def temporary_env(overrides: Dict[str, str]):
+    if not overrides:
+        yield
+        return
+    original: Dict[str, Optional[str]] = {}
+    try:
+        for key, value in overrides.items():
+            original[key] = os.environ.get(key)
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+        yield
+    finally:
+        for key, value in original.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+
+def wrap_factory(factory: Callable[[], Any], overrides: Dict[str, str]) -> Callable[[], Any]:
+    if not overrides:
+        return factory
+
+    def _wrapped() -> Any:
+        with temporary_env(overrides):
+            return factory()
+
+    return _wrapped
+
+
+def resolve_mechanism_name(candidate: Any, fallback: Optional[str] = None) -> Optional[str]:
+    for attr in ("mechanism", "mech", "alg", "algorithm"):
+        value = getattr(candidate, attr, None)
+        if value:
+            return str(value)
+    return fallback
+
+
+def slugify(value: str) -> str:
+    value = value.lower()
+    value = re.sub(r"[^a-z0-9]+", "-", value)
+    value = re.sub(r"-+", "-", value).strip("-")
+    return value or "entry"
 
 
 def _read_git_commit(repo_path: pathlib.Path) -> Optional[str]:
@@ -699,6 +758,11 @@ def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
     include_set = set(config.include_algorithms or [])
     explicit_include = bool(config.include_algorithms)
     exclude_set = {key.lower() for key in (config.exclude_algorithms or [])}
+    if config.categories:
+        categories = sorted({cat for cat in config.categories if cat in (1, 3, 5)})
+    else:
+        categories = []
+
     for key, candidate in sorted(available.items()):
         key_lower = key.lower()
         if config.include_algorithms and key not in include_set:
@@ -710,29 +774,64 @@ def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
             print(f"[forensic_probe] Skipping {key}: excluded by default (unstable)", file=sys.stderr)
             continue
         if inspect.isclass(candidate):
-            factory: Callable[[], Any] = candidate
+            base_factory: Callable[[], Any] = candidate
         elif callable(candidate):
-            factory = candidate
+            base_factory = candidate
         else:
-            factory = lambda candidate=candidate: candidate
-        try:
-            probe_obj = factory()
-        except Exception as exc:
-            print(f"[forensic_probe] Skipping {key}: instantiation failed ({exc!r})", file=sys.stderr)
-            continue
-        kind = classify_algorithm(key, probe_obj)
-        if kind is None:
-            continue
-        parameter_name = getattr(probe_obj, "alg", None)
-        param_hint = find_param_hint(parameter_name or key)
-        descriptor = AlgorithmDescriptor(
-            key=key,
-            factory=factory,
-            kind=kind,
-            parameter_name=parameter_name,
-            param_hint=param_hint,
+            base_factory = lambda candidate=candidate: candidate
+
+        variant_specs: List[Tuple[Dict[str, str], Optional[int], Optional[str]]] = [({}, None, None)]
+        if categories:
+            variant_specs = []
+            available_for_algo = set(available_categories(key))
+            for category in categories:
+                if available_for_algo and category not in available_for_algo:
+                    continue
+                override = resolve_security_override(key, category)
+                overrides: Dict[str, str] = {}
+                note = None
+                if override:
+                    overrides[override.env_var] = str(override.value)
+                    note = override.note
+                variant_specs.append((overrides, category, note))
+            if not variant_specs:
+                continue
+
+        for overrides, category, note in variant_specs:
+            factory = wrap_factory(base_factory, overrides)
+            try:
+                probe_obj = factory()
+            except Exception as exc:
+                label = f"{key} cat-{category}" if category is not None else key
+                print(f"[forensic_probe] Skipping {label}: instantiation failed ({exc!r})", file=sys.stderr)
+                continue
+            kind = classify_algorithm(key, probe_obj)
+            if kind is None:
+                continue
+            parameter_name = resolve_mechanism_name(probe_obj)
+            if parameter_name is None:
+                parameter_name = getattr(probe_obj, "alg", None)
+            param_hint = find_param_hint(parameter_name or key)
+            descriptor = AlgorithmDescriptor(
+                key=key,
+                factory=factory,
+                kind=kind,
+                parameter_name=parameter_name,
+                param_hint=param_hint,
+                security_category=category,
+                override_note=note,
+                override_env=dict(overrides),
+            )
+            discovered.append(descriptor)
+            del probe_obj
+
+    discovered.sort(
+        key=lambda desc: (
+            desc.key.lower(),
+            -1 if desc.security_category is None else int(desc.security_category),
+            (desc.parameter_name or "")
         )
-        discovered.append(descriptor)
+    )
     return discovered
 
 
@@ -848,7 +947,13 @@ def collect_results(config: ProbeConfig, descriptors: List[AlgorithmDescriptor])
     rng = random.Random(config.seed)
     scenario_results: List[ScenarioResult] = []
     for descriptor in descriptors:
-        print(f"[forensic_probe] Running scenarios for {descriptor.key} ({descriptor.kind})")
+        variant_tokens: List[str] = []
+        if descriptor.parameter_name and descriptor.parameter_name.lower() != descriptor.key.lower():
+            variant_tokens.append(str(descriptor.parameter_name))
+        if descriptor.security_category is not None:
+            variant_tokens.append(f"cat-{descriptor.security_category}")
+        variant_text = f" [{' | '.join(variant_tokens)}]" if variant_tokens else ""
+        print(f"[forensic_probe] Running scenarios for {descriptor.key}{variant_text} ({descriptor.kind})")
         scenarios = build_kem_scenarios(config) if descriptor.kind == "kem" else build_signature_scenarios(config)
         for definition in scenarios:
             if config.include_scenarios and definition.name not in config.include_scenarios:
@@ -864,18 +969,24 @@ def collect_results(config: ProbeConfig, descriptors: List[AlgorithmDescriptor])
 # ---------------------------------------------------------------------------
 
 def analyse_pairs(results: List[ScenarioResult], config: ProbeConfig) -> List[AnalysisResult]:
-    grouped: Dict[Tuple[str, str, str, str], Dict[str, List[Observation]]] = defaultdict(lambda: defaultdict(list))
+    grouped: Dict[Tuple[str, str, str, Optional[int], str], Dict[str, List[Observation]]] = defaultdict(lambda: defaultdict(list))
     for result in results:
         descriptor = result.descriptor
         definition = result.definition
         if not definition.group or not definition.label:
             continue
-        key = (descriptor.key, descriptor.kind, descriptor.parameter_name or descriptor.key, definition.group)
+        key = (
+            descriptor.key,
+            descriptor.kind,
+            descriptor.parameter_name or descriptor.key,
+            descriptor.security_category,
+            definition.group,
+        )
         grouped[key][definition.label].extend(result.observations)
 
     analysis_results: List[AnalysisResult] = []
     sanity_rng = random.Random(config.seed ^ 0xDADBEEF)
-    for (alg_key, alg_kind, param_name, group), label_map in grouped.items():
+    for (alg_key, alg_kind, param_name, category, group), label_map in grouped.items():
         labels = list(label_map)
         if len(labels) < 2:
             continue
@@ -891,6 +1002,7 @@ def analyse_pairs(results: List[ScenarioResult], config: ProbeConfig) -> List[An
                     parameter_name=param_name,
                     scenario_name=f"{group}:{labels[0]} vs {label}",
                     metrics=metrics,
+                    security_category=category,
                 )
             )
             if config.enable_sanity_checks:
@@ -898,6 +1010,7 @@ def analyse_pairs(results: List[ScenarioResult], config: ProbeConfig) -> List[An
                     alg_key=alg_key,
                     alg_kind=alg_kind,
                     param_name=param_name,
+                    category=category,
                     group=group,
                     reference=reference,
                     variant=observations,
@@ -912,6 +1025,7 @@ def generate_sanity_results(
     alg_key: str,
     alg_kind: str,
     param_name: Optional[str],
+    category: Optional[int],
     group: str,
     reference: List[Observation],
     variant: List[Observation],
@@ -928,6 +1042,7 @@ def generate_sanity_results(
                 parameter_name=param_name,
                 scenario_name=f"{group}:sanity_shuffle",
                 metrics=metrics,
+                security_category=category,
             )
         )
     split_pair = generate_split_control(reference, rng)
@@ -940,6 +1055,7 @@ def generate_sanity_results(
                 parameter_name=param_name,
                 scenario_name=f"{group}:sanity_fixed_split",
                 metrics=metrics,
+                security_category=category,
             )
         )
     variant_split = generate_split_control(variant, rng)
@@ -952,6 +1068,7 @@ def generate_sanity_results(
                 parameter_name=param_name,
                 scenario_name=f"{group}:sanity_toggle_split",
                 metrics=metrics,
+                security_category=category,
             )
         )
     return outputs
@@ -1226,6 +1343,9 @@ def summarise_results(scenario_results: List[ScenarioResult], analysis_results: 
             "algorithm": result.descriptor.key,
             "algorithm_kind": result.descriptor.kind,
             "parameter_name": result.descriptor.parameter_name,
+            "security_category": result.descriptor.security_category,
+            "security_override_note": result.descriptor.override_note,
+            "security_override_env": result.descriptor.override_env,
             "scenario": result.definition.name,
             "description": result.definition.description,
             "group": result.definition.group,
@@ -1256,8 +1376,10 @@ def emit_summary(summary: Dict[str, Any], analysis_results: List[AnalysisResult]
             metrics.get("mi_cpu", 0.0),
             metrics.get("mi_rss", 0.0),
         )
+        category_tag = f" cat-{entry.security_category}" if entry.security_category is not None else ""
+        param_label = entry.parameter_name or "-"
         print(
-            f"{entry.algorithm} [{entry.parameter_name or '-'}] {entry.scenario_name}: "
+            f"{entry.algorithm}{category_tag} [{param_label}] {entry.scenario_name}: "
             f"|t_time|={abs(metrics['t_stat_time']):.2f}, "
             f"|t_cpu|={abs(metrics['t_stat_cpu']):.2f}, "
             f"|t_rss|={abs(metrics['t_stat_rss']):.2f}, "
@@ -1267,6 +1389,126 @@ def emit_summary(summary: Dict[str, Any], analysis_results: List[AnalysisResult]
         )
     if not analysis_results:
         print("No paired scenarios available for statistical analysis.")
+
+
+def generate_visual_report(analysis_results: List[AnalysisResult], report_dir: pathlib.Path) -> Dict[str, Any]:
+    artifacts: Dict[str, Any] = {"plots": [], "csv": None, "notes": []}
+    report_dir.mkdir(parents=True, exist_ok=True)
+
+    csv_path = report_dir / "analysis_summary.csv"
+    fieldnames = [
+        "algorithm",
+        "scenario",
+        "security_category",
+        "parameter",
+        "is_sanity",
+        "t_stat_time",
+        "t_stat_cpu",
+        "t_stat_rss",
+        "t2_stat_time",
+        "t2_stat_cpu",
+        "t2_stat_rss",
+        "mannu_pvalue_time",
+        "mannu_pvalue_cpu",
+        "mannu_pvalue_rss",
+        "ks_pvalue_time",
+        "ks_pvalue_cpu",
+        "ks_pvalue_rss",
+        "mi_time",
+        "mi_pvalue_time",
+        "mi_cpu",
+        "mi_pvalue_cpu",
+        "mi_rss",
+        "mi_pvalue_rss",
+        "cliffs_delta_time",
+        "cliffs_delta_cpu",
+        "cliffs_delta_rss",
+        "time_leak_flag",
+        "cpu_leak_flag",
+        "rss_leak_flag",
+    ]
+    with csv_path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+        for entry in analysis_results:
+            metrics = entry.metrics
+            writer.writerow(
+                {
+                    "algorithm": entry.algorithm,
+                    "scenario": entry.scenario_name,
+                    "security_category": entry.security_category,
+                    "parameter": entry.parameter_name,
+                    "is_sanity": "sanity" in entry.scenario_name,
+                    "t_stat_time": metrics.get("t_stat_time"),
+                    "t_stat_cpu": metrics.get("t_stat_cpu"),
+                    "t_stat_rss": metrics.get("t_stat_rss"),
+                    "t2_stat_time": metrics.get("t2_stat_time"),
+                    "t2_stat_cpu": metrics.get("t2_stat_cpu"),
+                    "t2_stat_rss": metrics.get("t2_stat_rss"),
+                    "mannu_pvalue_time": metrics.get("mannu_pvalue_time"),
+                    "mannu_pvalue_cpu": metrics.get("mannu_pvalue_cpu"),
+                    "mannu_pvalue_rss": metrics.get("mannu_pvalue_rss"),
+                    "ks_pvalue_time": metrics.get("ks_pvalue_time"),
+                    "ks_pvalue_cpu": metrics.get("ks_pvalue_cpu"),
+                    "ks_pvalue_rss": metrics.get("ks_pvalue_rss"),
+                    "mi_time": metrics.get("mi_time"),
+                    "mi_pvalue_time": metrics.get("mi_pvalue_time"),
+                    "mi_cpu": metrics.get("mi_cpu"),
+                    "mi_pvalue_cpu": metrics.get("mi_pvalue_cpu"),
+                    "mi_rss": metrics.get("mi_rss"),
+                    "mi_pvalue_rss": metrics.get("mi_pvalue_rss"),
+                    "cliffs_delta_time": metrics.get("cliffs_delta_time"),
+                    "cliffs_delta_cpu": metrics.get("cliffs_delta_cpu"),
+                    "cliffs_delta_rss": metrics.get("cliffs_delta_rss"),
+                    "time_leak_flag": metrics.get("time_leak_flag"),
+                    "cpu_leak_flag": metrics.get("cpu_leak_flag"),
+                    "rss_leak_flag": metrics.get("rss_leak_flag"),
+                }
+            )
+    artifacts["csv"] = str(csv_path)
+
+    non_sanity = [entry for entry in analysis_results if "sanity" not in entry.scenario_name]
+    if not non_sanity:
+        artifacts["notes"].append("No primary scenario pairs available for plotting.")
+        return artifacts
+
+    try:
+        import matplotlib.pyplot as plt  # type: ignore
+    except ImportError:
+        artifacts["notes"].append(
+            "matplotlib not installed; skipped plot generation. Install matplotlib to enable --render-plots."
+        )
+        return artifacts
+
+    for entry in non_sanity:
+        metrics = entry.metrics
+        values = [
+            abs(metrics.get("t_stat_time", 0.0)),
+            abs(metrics.get("t_stat_cpu", 0.0)),
+            abs(metrics.get("t_stat_rss", 0.0)),
+        ]
+        labels = ["time", "cpu", "rss"]
+        fig, ax = plt.subplots(figsize=(6, 4))
+        bars = ax.bar(labels, values, color=["#2a9d8f", "#264653", "#e9c46a"])
+        ax.axhline(TVLA_T_THRESHOLD, color="#e76f51", linestyle="--", linewidth=1, label="TVLA threshold (|t|=4.5)")
+        ax.set_ylabel("|t| statistic")
+        category_tag = f" (cat-{entry.security_category})" if entry.security_category is not None else ""
+        title = f"{entry.algorithm}{category_tag}\n{entry.scenario_name}"
+        ax.set_title(title)
+        ax.set_ylim(0, max(max(values) * 1.1, TVLA_T_THRESHOLD * 1.1 if values else TVLA_T_THRESHOLD + 1))
+        ax.legend(loc="upper right")
+        for bar, value in zip(bars, values):
+            ax.text(bar.get_x() + bar.get_width() / 2.0, value + 0.1, f"{value:.2f}", ha="center", va="bottom", fontsize=8)
+        slug = slugify(f"{entry.algorithm}-{entry.scenario_name}")
+        if entry.security_category is not None:
+            slug = f"{slug}-cat{entry.security_category}"
+        plot_path = report_dir / f"{slug}_tstats.png"
+        fig.tight_layout()
+        fig.savefig(plot_path, dpi=150)
+        plt.close(fig)
+        artifacts["plots"].append(str(plot_path))
+
+    return artifacts
 
 
 # ---------------------------------------------------------------------------
@@ -1284,7 +1526,40 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> ProbeConfig:
     parser.add_argument("--scenario", nargs="*", help="Limit to specific scenario names")
     parser.add_argument("--exclude", nargs="*", help="Explicitly exclude registry keys")
     parser.add_argument("--no-sanity-checks", action="store_true", help="Disable shuffle/split sanity controls")
+    parser.add_argument(
+        "--categories",
+        type=int,
+        nargs="*",
+        help="Security categories (subset of 1,3,5) to probe via parameter overrides",
+    )
+    parser.add_argument(
+        "--all-categories",
+        action="store_true",
+        help="Shortcut for probing categories 1, 3, and 5",
+    )
+    parser.add_argument(
+        "--render-plots",
+        action="store_true",
+        help="Generate simple plots and a CSV summary for analysis results (requires matplotlib)",
+    )
+    parser.add_argument(
+        "--plot-dir",
+        type=pathlib.Path,
+        help="Directory for report artifacts (plots/CSV). Defaults to alongside the JSON output.",
+    )
     args = parser.parse_args(argv)
+    categories: Optional[List[int]] = None
+    if args.all_categories:
+        categories = [1, 3, 5]
+    elif args.categories:
+        filtered = sorted({cat for cat in args.categories if cat in (1, 3, 5)})
+        if filtered:
+            categories = filtered
+        else:
+            print("[forensic_probe] Ignoring --categories with no valid values (choose from 1,3,5)", file=sys.stderr)
+
+    render_plots = args.render_plots or bool(args.plot_dir)
+
     return ProbeConfig(
         iterations=args.iterations,
         seed=args.seed,
@@ -1294,6 +1569,9 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> ProbeConfig:
         include_scenarios=args.scenario,
         exclude_algorithms=args.exclude,
         enable_sanity_checks=not args.no_sanity_checks,
+        categories=categories,
+        render_plots=render_plots,
+        plot_dir=args.plot_dir,
     )
 
 
@@ -1308,6 +1586,17 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     summary = summarise_results(scenario_results, analysis_results, host_metadata, config)
     emit_summary(summary, analysis_results)
     output_path = config.output_path or (PROJECT_ROOT / "results" / f"forensic_probe_{int(time.time())}.json")
+    report_artifacts: Optional[Dict[str, Any]] = None
+    if config.render_plots:
+        report_dir = config.plot_dir or (output_path.parent / f"{output_path.stem}_report")
+        report_artifacts = generate_visual_report(analysis_results, report_dir)
+        summary["report_artifacts"] = report_artifacts
+        if report_artifacts.get("plots"):
+            print(f"[forensic_probe] Generated plots in {report_dir}")
+        if report_artifacts.get("csv"):
+            print(f"[forensic_probe] Wrote analysis summary CSV to {report_artifacts['csv']}")
+        for note in report_artifacts.get("notes", []):
+            print(f"[forensic_probe] {note}")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as fh:
         json.dump(to_jsonable(summary), fh, indent=2)

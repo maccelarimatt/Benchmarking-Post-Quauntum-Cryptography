@@ -129,6 +129,10 @@ The CLI options:
 | `--alg` | Filter registry keys (e.g., `kyber`, `dilithium`). |
 | `--scenario` | Run a subset of scenarios by name. |
 | `--exclude` | Exclude specific registry keys (adds to the default skip list). |
+| `--categories` | Probe specific security categories (subset of 1,3,5) by applying the relevant mechanism overrides before instantiation. |
+| `--all-categories` | Convenience flag equal to `--categories 1 3 5`. |
+| `--render-plots` | Produce simple plots and a CSV summary of analysis results (requires `matplotlib`). |
+| `--plot-dir` | Custom directory for plot/CSV artifacts (defaults to alongside the JSON output). |
 | `--no-sanity-checks` | Skip shuffle/split controls (not recommended except for debugging). |
 | `--keep-artifacts` | Leave per-scenario temp directories in place. |
 | `--output` | Custom output path (defaults to `results/forensic_probe_<epoch>.json`). |
@@ -141,6 +145,18 @@ The JSON artefact contains three top-level blocks:
 - `host`: environment metadata.
 - `scenarios`: per-scenario records with observations and temp file hashes.
 - `analysis`: statistical summaries with leakage flags.
+- `report_artifacts` *(optional)*: emitted when `--render-plots` is used; records the CSV path, generated plot paths, and any notes (e.g., missing matplotlib).
+
+When `--render-plots` is enabled, the script writes an `analysis_summary.csv` containing the key statistics for each scenario pair and produces bar charts of `|t|` statistics (time/cpu/rss) with the TVLA threshold overlaid. These artifacts are saved in the directory supplied via `--plot-dir` or, by default, alongside the JSON output under `<stem>_report/`.
+
+### Example command
+
+Collect Cat-1/3/5 data for Kyber and Dilithium, preserving plots/CSV in `results/forensic_latest_report/`:
+
+```bash
+python tools/forensic_probe.py --iterations 800 --alg kyber dilithium \
+  --all-categories --render-plots --plot-dir results/forensic_latest_report
+```
 
 Each `observation` entry stores metrics for a single iteration:
 

@@ -105,7 +105,7 @@ secondary tests.
 - Pin CPU cores and stabilise frequency (performance governor, disable turbo/SMT if possible).
 - Randomise class order within runs (already done via helper RNG) to mitigate drift, as popularised by **dudect**.
 - Discard warm-up iterations, or run small inner loops per measurement if the
-  platform is noisy.
+ platform is noisy.
 - Collect **two independent datasets** (different seeds or sessions) and require
   both to fail before declaring leakage. Record all `host` metadata (CPU, kernel,
   governor, git commit).
@@ -116,9 +116,11 @@ Automated harness tweaks close the obvious gaps (uniform error paths, fixed-leng
 messages, metadata logging). Remaining validation steps require manual runs:
 
 1. **Test patched or alternate implementations.** Rebuild the adapters against
-   constant-time upstream releases (e.g., Kyber/HQC with division fixes, Falcon
-   constant-time sampler) and re-run the probe. Compare against previous runs via
-   `tools/forensic_report.py --baseline old.json`.
+ constant-time upstream releases (e.g., Kyber/HQC with division fixes, Falcon
+  constant-time sampler) and re-run the probe. Compare against previous runs via
+  `tools/forensic_report.py --baseline old.json`.
+   - To sweep NIST security floors, pass `--categories 1 3 5` (or `--all-categories`) so each adapter is instantiated with the appropriate mechanism before probing.
+   - Enable `--render-plots` to capture ready-made bar charts and a CSV summary for reports; override the output location with `--plot-dir` if desired.
 2. **Collect hardware counters.** For local/co-resident attackers, gather PMU
    metrics using the platform’s tooling:
    - **Linux:** `perf stat -x, -e cycles,instructions,branch-misses,cache-misses \

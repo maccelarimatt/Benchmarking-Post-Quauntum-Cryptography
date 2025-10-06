@@ -124,8 +124,10 @@ Conclusion: the methodology, scenarios, thresholds, and corrections align with e
   - Consider adding third‑order TVLA for masked implementations (already listed in roadmap).
 
 - Coverage and counters
-  - Integrate `perf stat` collection (cycles, instructions, cache misses) directly into the payload for optional local/co‑resident analysis.
-  - Add a TVLA pair for KEM encapsulation if there’s concern about encapsulate‑side variability.
+  - Integrate `perf stat` collection (cycles, instructions, cache misses) directly into the payload for optional local/co-resident analysis.
+  - Add a TVLA pair for KEM encapsulation if there’s concern about encapsulate-side variability.
+  - Use the new `--categories`/`--all-categories` flags to sweep Cat-1/3/5 variants without manual environment overrides.
+  - Generate publication-ready visuals via `--render-plots`; bar charts of |t| statistics and the CSV export plug neatly into reports.
 
 - CI and native harness
   - Complement with `dudect` runs using a C harness for critical operations (especially KEM decapsulation) to obtain high‑fidelity timing with minimal runtime noise. tools/sidechannel/README.md:1
@@ -168,4 +170,3 @@ Conclusion: the methodology, scenarios, thresholds, and corrections align with e
 ## Final Assessment
 
 The probe’s design, scenarios, statistics, and thresholds correspond well to the literature for non‑invasive, software‑level side‑channel leakage assessments. Treat results as evidence of dependence, not key‑recovery per se, and use them to guide deeper, implementation‑specific hardening and investigation. For high‑confidence findings on critical paths (e.g., KEM decapsulation), complement with native dudect harnesses and, where appropriate, hardware counter collection or physical measurements.
-

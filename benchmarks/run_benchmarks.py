@@ -5,6 +5,7 @@ import argparse
 import json
 import math
 import pathlib
+import shlex
 import statistics
 import subprocess
 import sys
@@ -21,6 +22,7 @@ batch collection. Results are written to `results/bench_summary.json`.
 
 HERE = pathlib.Path(__file__).parent
 GRAPH_SCRIPT = HERE / "render_category_floor_graphs.py"
+SIDE_CHANNEL_SCRIPT = HERE.parent / "tools" / "forensic_probe.py"
 RESULTS = HERE.parent / "results"
 RESULTS.mkdir(exist_ok=True)
 
@@ -74,6 +76,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Additional arguments forwarded to the graph renderer (must follow '--').",
     )
+    parser.add_argument(
+        "--run-side-channel",
+        action="store_true",
+        help="Run the forensic side-channel probe after benchmarks (and any rendered graphs).",
+    )
+    parser.add_argument(
+        "--side-channel-options",
+        type=str,
+        default="",
+        help="Extra options appended to the side-channel probe command (e.g. \"--all-categories --render-plots\").",
+    )
     return parser.parse_args(argv)
 
 
@@ -90,6 +103,22 @@ def _run_graph_renderer(script_path: pathlib.Path, extra_args: list[str] | None)
         subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as exc:
         print(f"Graph renderer exited with status {exc.returncode}. Command: {' '.join(cmd)}")
+
+
+def _run_side_channel(script_path: pathlib.Path, options: str) -> None:
+    if not script_path.exists():
+        print(f"Side-channel probe not found at {script_path}. Skipping side-channel run.")
+        return
+
+    cmd = [sys.executable, str(script_path)]
+    if options:
+        cmd.extend(shlex.split(options))
+
+    print(f"Running side-channel probe: {' '.join(cmd)}")
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as exc:
+        print(f"Side-channel probe exited with status {exc.returncode}. Command: {' '.join(cmd)}")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -121,6 +150,9 @@ def main(argv: list[str] | None = None) -> None:
         if extra[:1] == ["--"]:
             extra = extra[1:]
         _run_graph_renderer(args.graph_script, extra)
+
+    if args.run_side_channel:
+        _run_side_channel(SIDE_CHANNEL_SCRIPT, args.side_channel_options)
 
 if __name__ == "__main__":
     main()
