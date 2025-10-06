@@ -1,8 +1,17 @@
 
 from __future__ import annotations
-import time, statistics, json, pathlib, math
+
+import argparse
+import json
+import math
+import pathlib
+import statistics
+import subprocess
+import sys
+import time
+
 from pqcbench import registry
-from pqcbench.metrics import MetricRecord, BenchmarkResult
+from pqcbench.metrics import BenchmarkResult, MetricRecord
 
 """Simple batch benchmark driver.
 
@@ -11,6 +20,7 @@ batch collection. Results are written to `results/bench_summary.json`.
 """
 
 HERE = pathlib.Path(__file__).parent
+GRAPH_SCRIPT = HERE / "render_category_floor_graphs.py"
 RESULTS = HERE.parent / "results"
 RESULTS.mkdir(exist_ok=True)
 
@@ -38,17 +48,62 @@ def tictoc(fn, runs=5):
         ci_high = mean
     return mean, std, ci_low, ci_high
 
-def main():
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run simple PQC benchmark suite.")
+    parser.add_argument(
+        "--runs",
+        type=int,
+        default=5,
+        help="Number of repetitions per algorithm (default: 5).",
+    )
+    parser.add_argument(
+        "--render-graphs",
+        action="store_true",
+        help="Invoke the category floor graph renderer after benchmarks finish.",
+    )
+    parser.add_argument(
+        "--graph-script",
+        type=pathlib.Path,
+        default=GRAPH_SCRIPT,
+        help="Override the graph renderer script location.",
+    )
+    parser.add_argument(
+        "--graph-args",
+        nargs=argparse.REMAINDER,
+        default=None,
+        help="Additional arguments forwarded to the graph renderer (must follow '--').",
+    )
+    return parser.parse_args(argv)
+
+
+def _run_graph_renderer(script_path: pathlib.Path, extra_args: list[str] | None) -> None:
+    if not script_path.exists():
+        print(f"Graph renderer not found at {script_path}. Skipping graph generation.")
+        return
+
+    cmd = [sys.executable, str(script_path)]
+    if extra_args:
+        cmd.extend(extra_args)
+
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as exc:
+        print(f"Graph renderer exited with status {exc.returncode}. Command: {' '.join(cmd)}")
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
     records = []
     for name, cls in registry.list().items():
         obj = cls()
         if hasattr(obj, "keygen"):
-            mean, std, ci_low, ci_high = tictoc(lambda: obj.keygen(), runs=5)
+            mean, std, ci_low, ci_high = tictoc(lambda: obj.keygen(), runs=args.runs)
             records.append(
                 MetricRecord(
                     algo=name,
                     op="keygen",
-                    runs=5,
+                    runs=args.runs,
                     mean_ms=mean,
                     stddev_ms=std,
                     ci95_low_ms=ci_low,
@@ -59,6 +114,13 @@ def main():
     out = RESULTS / "bench_summary.json"
     out.write_text(json.dumps([r.__dict__ for r in result.records], indent=2))
     print(f"Wrote {out}")
+
+    if args.render_graphs:
+        extra = args.graph_args or []
+        # argparse.REMAINDER keeps the leading '--' when provided; drop it for readability.
+        if extra[:1] == ["--"]:
+            extra = extra[1:]
+        _run_graph_renderer(args.graph_script, extra)
 
 if __name__ == "__main__":
     main()

@@ -20,6 +20,7 @@ Common options:
 - `--jsonl-output PATH`: optional newline-delimited JSON export (one row per line) to simplify notebook ingestion.
 - `--parquet-output PATH`: optional Parquet export (requires `pandas` plus a compatible engine such as `pyarrow`).
 - `--metadata PATH` (default `results/category_floor_benchmarks.meta.json`): JSON metadata snapshot describing the run.
+- Add `--render-graphs` to call the graph renderer once benchmarking completes (pass extra flags to the renderer after `--graph-args --`).
 
 Example (quick smoke test):
 ```
