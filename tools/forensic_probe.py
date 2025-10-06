@@ -36,6 +36,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import shlex
 from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -58,6 +59,7 @@ except ImportError as exc:  # pragma: no cover - dependency resolution
 # ---------------------------------------------------------------------------
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent
+FORENSIC_REPORT_SCRIPT = PROJECT_ROOT / "tools" / "forensic_report.py"
 
 for rel in (
     pathlib.Path("libs/core/src"),
@@ -116,6 +118,10 @@ class ProbeConfig:
     categories: Optional[List[int]] = None
     render_plots: bool = False
     plot_dir: Optional[pathlib.Path] = None
+    render_report: bool = False
+    report_format: str = "markdown"
+    report_output: Optional[pathlib.Path] = None
+    report_options: str = ""
 
 
 @dataclass
@@ -242,6 +248,59 @@ def slugify(value: str) -> str:
     value = re.sub(r"[^a-z0-9]+", "-", value)
     value = re.sub(r"-+", "-", value).strip("-")
     return value or "entry"
+
+
+def _default_report_suffix(fmt: str) -> str:
+    fmt_lower = (fmt or "").lower()
+    return {
+        "markdown": ".md",
+        "md": ".md",
+        "html": ".html",
+        "json": ".json",
+        "rst": ".rst",
+    }.get(fmt_lower, f".{fmt_lower or 'report'}")
+
+
+def run_forensic_report(json_path: pathlib.Path, config: ProbeConfig) -> Optional[Dict[str, Any]]:
+    script_path = FORENSIC_REPORT_SCRIPT
+    if not script_path.exists():
+        print(f"[forensic_probe] Report script not found at {script_path}; skipping report generation.")
+        return {"status": "missing_script", "script": str(script_path)}
+
+    report_path = config.report_output
+    if report_path is None:
+        suffix = _default_report_suffix(config.report_format)
+        report_path = json_path.with_suffix(suffix)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+
+    cmd = [sys.executable, str(script_path), str(json_path)]
+    if config.report_format:
+        cmd.extend(["--format", config.report_format])
+    cmd.extend(["--output", str(report_path)])
+    extra_opts = config.report_options.strip()
+    if extra_opts:
+        cmd.extend(shlex.split(extra_opts))
+
+    print(f"[forensic_probe] Running report generator: {' '.join(cmd)}")
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as exc:
+        print(
+            f"[forensic_probe] Report generation failed with status {exc.returncode}. Command: {' '.join(cmd)}"
+        )
+        return {
+            "status": "error",
+            "exit_code": exc.returncode,
+            "command": cmd,
+            "output": str(report_path),
+        }
+
+    return {
+        "status": "ok",
+        "format": config.report_format,
+        "output": str(report_path),
+        "command": cmd,
+    }
 
 
 def _read_git_commit(repo_path: pathlib.Path) -> Optional[str]:
@@ -1631,6 +1690,27 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> ProbeConfig:
         type=pathlib.Path,
         help="Directory for report artifacts (plots/CSV). Defaults to alongside the JSON output.",
     )
+    parser.add_argument(
+        "--render-report",
+        action="store_true",
+        help="Run tools/forensic_report.py after the probe completes.",
+    )
+    parser.add_argument(
+        "--report-format",
+        default="markdown",
+        help="Output format for the generated report (default: markdown).",
+    )
+    parser.add_argument(
+        "--report-output",
+        type=pathlib.Path,
+        help="Explicit path for the generated forensic report.",
+    )
+    parser.add_argument(
+        "--report-options",
+        type=str,
+        default="",
+        help="Additional options forwarded to tools/forensic_report.py.",
+    )
     args = parser.parse_args(argv)
     categories: Optional[List[int]] = None
     if args.all_categories:
@@ -1656,6 +1736,10 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> ProbeConfig:
         categories=categories,
         render_plots=render_plots,
         plot_dir=args.plot_dir,
+        render_report=args.render_report,
+        report_format=args.report_format,
+        report_output=args.report_output,
+        report_options=args.report_options,
     )
 
 
@@ -1684,9 +1768,24 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
         for note in report_artifacts.get("notes", []):
             print(f"[forensic_probe] {note}")
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with output_path.open("w", encoding="utf-8") as fh:
-        json.dump(to_jsonable(summary), fh, indent=2)
+    def _write_summary() -> None:
+        with output_path.open("w", encoding="utf-8") as fh:
+            json.dump(to_jsonable(summary), fh, indent=2)
+
+    _write_summary()
     print(f"\n[forensic_probe] Written detailed results to {output_path}")
+
+    if config.render_report:
+        report_info = run_forensic_report(output_path, config)
+        if report_info:
+            summary["forensic_report"] = report_info
+            _write_summary()
+            if report_info.get("status") == "ok" and report_info.get("output"):
+                print(f"[forensic_probe] Forensic report generated at {report_info['output']}")
+            elif report_info.get("status") == "missing_script":
+                print("[forensic_probe] Forensic report skipped: report script not found.")
+            else:
+                print("[forensic_probe] Forensic report generation completed with warnings; see JSON for details.")
     return 0
 
 

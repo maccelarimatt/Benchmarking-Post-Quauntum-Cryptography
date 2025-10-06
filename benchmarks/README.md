@@ -44,7 +44,10 @@ python benchmarks/run_category_floor_matrix.py --runs 50 --warm --render-graphs 
 
 python benchmarks/run_category_floor_matrix.py --runs 1  --rsa-max-category 3 --render-graphs \ 
   --run-side-channel --side-channel-options "--all-categories --render-plots --iterations 10 --alg kyber"
-```
+
+python benchmarks/run_category_floor_matrix.py --runs 1  --rsa-max-category 3 --render-graphs \ 
+  --run-side-channel --side-channel-options "--all-categories --render-plots --iterations 10 --alg kyber --render-report --report-format markdown --report-output results/forensic_latest_report/summary.md"
+```  
 
 This captures timing/memory statistics (including warm passes), renders grouped graphs
 for each session/category, and then executes the side-channel probe with matching

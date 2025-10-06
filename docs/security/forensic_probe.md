@@ -133,6 +133,10 @@ The CLI options:
 | `--all-categories` | Convenience flag equal to `--categories 1 3 5`. |
 | `--render-plots` | Produce simple plots and a CSV summary of analysis results (requires `matplotlib`). |
 | `--plot-dir` | Custom directory for plot/CSV artifacts (defaults to alongside the JSON output). |
+| `--render-report` | Invoke `tools/forensic_report.py` after the probe completes. |
+| `--report-format` | Report format passed to `forensic_report` (default `markdown`). |
+| `--report-output` | Explicit output path for the generated report (default derived from the JSON path/format). |
+| `--report-options` | Additional arguments forwarded to `tools/forensic_report.py`. |
 | `--no-sanity-checks` | Skip shuffle/split controls (not recommended except for debugging). |
 | `--keep-artifacts` | Leave per-scenario temp directories in place. |
 | `--output` | Custom output path (defaults to `results/forensic_probe_<epoch>.json`). |
@@ -146,8 +150,11 @@ The JSON artefact contains three top-level blocks:
 - `scenarios`: per-scenario records with observations and temp file hashes.
 - `analysis`: statistical summaries with leakage flags.
 - `report_artifacts` *(optional)*: emitted when `--render-plots` is used; records the CSV path, generated plot paths, and any notes (e.g., missing matplotlib).
+- `forensic_report` *(optional)*: emitted when `--render-report` runs successfully (or fails); captures the downstream report status, output path, and command.
 
 When `--render-plots` is enabled, the script writes an `analysis_summary.csv` containing the key statistics for each scenario pair and produces grouped `|t|` charts (time/cpu/rss) across the probed security categories, styled to match the category-floor benchmark graphs. A `captions.md` file is emitted alongside the PNGs. Artifacts live under the directory supplied via `--plot-dir` or, by default, alongside the JSON output under `<stem>_report/`.
+
+If `--render-report` is supplied, the probe automatically runs `tools/forensic_report.py` against the generated JSON (after writing it) and records the resulting status/path back into the JSON under `forensic_report`. Adjust the downstream behaviour with `--report-format`, `--report-output`, and `--report-options`.
 
 ### Example command
 
@@ -155,7 +162,8 @@ Collect Cat-1/3/5 data for Kyber and Dilithium, preserving plots/CSV in `results
 
 ```bash
 python tools/forensic_probe.py --iterations 800 --alg kyber dilithium \
-  --all-categories --render-plots --plot-dir results/forensic_latest_report
+  --all-categories --render-plots --plot-dir results/forensic_latest_report \
+  --render-report --report-format markdown --report-output results/forensic_latest_report/summary.md
 ```
 
 Each `observation` entry stores metrics for a single iteration:
