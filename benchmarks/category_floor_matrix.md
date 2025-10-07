@@ -1,6 +1,6 @@
 # Category Floor Benchmark Matrix
 
-This document describes how to run `run_category_floor_matrix.py` and how to interpret the CSV and metadata it produces.
+This document describes how to run `run_category_floor_matrix.py` and how to interpret the CSV and metadata it produces. If you only need a smoke test, `run_benchmarks.py` offers a minimal keygen-only loop, but it omits most of the instrumentation discussed below.
 
 ## Running the script
 
