@@ -116,6 +116,7 @@ class ProbeConfig:
     exclude_algorithms: Optional[List[str]] = None
     enable_sanity_checks: bool = True
     categories: Optional[List[int]] = None
+    rsa_max_category: int = 5
     render_plots: bool = False
     plot_dir: Optional[pathlib.Path] = None
     render_report: bool = False
@@ -844,6 +845,12 @@ def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
             variant_specs = []
             available_for_algo = set(available_categories(key))
             for category in categories:
+                if key_lower in {"rsa-oaep", "rsa-pss"} and category > config.rsa_max_category:
+                    print(
+                        f"[forensic_probe] Skipping {key} Cat-{category}: limited by --rsa-max-category={config.rsa_max_category}",
+                        file=sys.stderr,
+                    )
+                    continue
                 if available_for_algo and category not in available_for_algo:
                     continue
                 override = resolve_security_override(key, category)
@@ -1676,6 +1683,12 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> ProbeConfig:
         help="Security categories (subset of 1,3,5) to probe via parameter overrides",
     )
     parser.add_argument(
+        "--rsa-max-category",
+        type=int,
+        default=5,
+        help="Highest RSA category to include when probing categories (default: 5; set to 3 to skip Cat-5 RSA).",
+    )
+    parser.add_argument(
         "--all-categories",
         action="store_true",
         help="Shortcut for probing categories 1, 3, and 5",
@@ -1740,6 +1753,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> ProbeConfig:
         report_format=args.report_format,
         report_output=args.report_output,
         report_options=args.report_options,
+        rsa_max_category=max(1, min(args.rsa_max_category, 5)),
     )
 
 

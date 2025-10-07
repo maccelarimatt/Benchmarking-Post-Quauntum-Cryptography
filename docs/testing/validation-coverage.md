@@ -24,6 +24,14 @@ git lfs pull liboqs/tests/ACVP_Vectors
 
 The RSA checks are self-contained and do not require liboqs.
 
+> **Dilithium note.** Recent liboqs snapshots (e.g., commit `f629296e`) ship a
+> deterministic `vectors_sig` binary that diverges from the ACVP fixtures tracked
+> in this repo, producing `signature doesn't match` errors even when the adapter
+> succeeds. See `docs/issues/dilithium-validation-known-issue.md` for mitigation
+> options (pin to a matching liboqs tag, rebuild with
+> `-DOQS_USE_OPENSSL_SHA3=OFF`, or skip Dilithium validation until the upstream
+> fix lands).
+
 ## 2. Running a runner with validation
 
 Every runner accepts a `--tests` flag. Example:

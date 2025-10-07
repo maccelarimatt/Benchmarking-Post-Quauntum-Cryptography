@@ -1,6 +1,6 @@
 # Side-Channel Probe: Methods Review and Literature Mapping
 
-Scope: thorough review of `tools/forensic_probe.py`, with cross-references to `docs/security/side_channel.md` and `docs/security/forensic_probe.md`, to assess whether the implemented methodology aligns with established side‑channel leakage assessment practices in the literature.
+Scope: thorough review of `tools/forensic_probe.py`, with cross-references to `docs/security/side-channel-playbook.md` and `docs/security/forensic-probe-reference.md`, to assess whether the implemented methodology aligns with established side‑channel leakage assessment practices in the literature.
 
 Summary verdict:
 
@@ -66,8 +66,8 @@ The following is a concrete description of what the tool captures, how scenarios
 ## Alignment With Literature
 
 - TVLA methodology (non‑specific test)
-  - Two classes that should be indistinguishable under leak‑free implementations (fixed vs random/invalid), assessed with Welch’s t and conventional pass/fail thresholds. This mirrors Goodwill et al. and ISO/IEC 17825 guidance. docs/security/side_channel.md:1
-  - Second‑order t‑tests are included for masked/variance leakage, which is a common TVLA extension. docs/security/side_channel.md:1
+  - Two classes that should be indistinguishable under leak‑free implementations (fixed vs random/invalid), assessed with Welch’s t and conventional pass/fail thresholds. This mirrors Goodwill et al. and ISO/IEC 17825 guidance. docs/security/side-channel-playbook.md:1
+  - Second‑order t‑tests are included for masked/variance leakage, which is a common TVLA extension. docs/security/side-channel-playbook.md:1
 
 - Scenario choices
   - KEM decapsulation: valid vs corrupted ciphertext under a fixed secret key directly exercises acceptance vs rejection paths known to differ in cost when not constant‑time. This is consistent with timing‑leak case studies such as KyberSlash.
@@ -75,13 +75,13 @@ The following is a concrete description of what the tool captures, how scenarios
   - Verification and fault scenarios provide additional negative‑path coverage, aligning with implementation‑level hardening guidance even if not part of strict TVLA pairs.
 
 - Information‑theoretic tests
-  - Mutual Information Analysis (MIA) is a standard leakage dependence metric; the script uses a histogram estimator and permutation test to control Type‑I error in a distribution‑agnostic way. docs/security/side_channel.md:1
+  - Mutual Information Analysis (MIA) is a standard leakage dependence metric; the script uses a histogram estimator and permutation test to control Type‑I error in a distribution‑agnostic way. docs/security/side-channel-playbook.md:1
 
 - Multiple testing and significance
   - Holm–Bonferroni correction across parametric and non‑parametric tests is a reasonable and conservative approach for combining evidence. The TVLA absolute |t| ≥ 4.5 threshold is widely adopted for pass/fail screening. tools/forensic_probe.py:94
 
 - Threat model and vantage points
-  - Distinguishes remote (wall‑clock) and local/co‑resident (CPU time, RSS deltas, optional hardware counters via external tooling). This follows common attacker models in timing/cache studies and is documented in the accompanying methodology. docs/security/side_channel.md:1
+  - Distinguishes remote (wall‑clock) and local/co‑resident (CPU time, RSS deltas, optional hardware counters via external tooling). This follows common attacker models in timing/cache studies and is documented in the accompanying methodology. docs/security/side-channel-playbook.md:1
 
 Conclusion: the methodology, scenarios, thresholds, and corrections align with established leakage assessment practices for software‑only screening.
 
@@ -155,8 +155,8 @@ Conclusion: the methodology, scenarios, thresholds, and corrections align with e
 - Pairing and analysis: tools/forensic_probe.py:989
 - Summary/emit and JSON layout: tools/forensic_probe.py:1208
 - CLI: tools/forensic_probe.py:1277
-- Methodology docs: docs/security/side_channel.md:1
-- Quick reference: docs/security/forensic_probe.md:1
+- Methodology docs: docs/security/side-channel-playbook.md:1
+- Quick reference: docs/security/forensic-probe-reference.md:1
 - Dudect skeleton: tools/sidechannel/README.md:1
 
 ## References (as cited in repo docs)

@@ -1,7 +1,7 @@
 # Forensic Probe Quick Reference
 
 For a narrative, reader-friendly explainer of the side-channel methodology,
-see `docs/security/side_channel.md`. This document serves as a concise quick
+see `docs/security/side-channel-playbook.md`. This document serves as a concise quick
 reference for the probe’s usage.
 
 ## Motivation and research baseline
@@ -130,6 +130,7 @@ The CLI options:
 | `--scenario` | Run a subset of scenarios by name. |
 | `--exclude` | Exclude specific registry keys (adds to the default skip list). |
 | `--categories` | Probe specific security categories (subset of 1,3,5) by applying the relevant mechanism overrides before instantiation. |
+| `--rsa-max-category` | Highest RSA category included when using `--categories`/`--all-categories` (default 5; set to 3 to omit Cat-5 RSA). |
 | `--all-categories` | Convenience flag equal to `--categories 1 3 5`. |
 | `--render-plots` | Produce simple plots and a CSV summary of analysis results (requires `matplotlib`). |
 | `--plot-dir` | Custom directory for plot/CSV artifacts (defaults to alongside the JSON output). |
@@ -162,7 +163,8 @@ Collect Cat-1/3/5 data for Kyber and Dilithium, preserving plots/CSV in `results
 
 ```bash
 python tools/forensic_probe.py --iterations 800 --alg kyber dilithium \
-  --all-categories --render-plots --plot-dir results/forensic_latest_report \
+  --all-categories --rsa-max-category 3 \
+  --render-plots --plot-dir results/forensic_latest_report \
   --render-report --report-format markdown --report-output results/forensic_latest_report/summary.md
 ```
 

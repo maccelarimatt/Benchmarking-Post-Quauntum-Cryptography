@@ -1,4 +1,4 @@
-﻿# LLM Integration Guide (GUI)
+# LLM Integration Guide (GUI)
 
 This guide explains how the PQC Benchmarks GUI integrates a Large Language Model (LLM) to generate concise, practical summaries of benchmark results, and how to configure it on Windows and macOS/Linux.
 

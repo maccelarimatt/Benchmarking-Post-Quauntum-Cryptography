@@ -1,7 +1,8 @@
 # Side-Channel Leakage Assessment Playbook
 
 This note expands on the forensic probe so non-specialists can follow how we screen
-for timing and forensic leakage across pqcbench algorithms.
+for timing and forensic leakage across pqcbench algorithms. Pair it with
+`forensic-probe-reference.md` for the CLI quick reference.
 
 ## What is the forensic probe?
 

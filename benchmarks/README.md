@@ -1,58 +1,75 @@
+# Benchmark Entrypoints
 
-# Benchmarks
+PQCbench ships two command-line drivers in `benchmarks/`.
 
-This script is jut a test one, use run_category_floor_matrix.py for the proper benchmarks
+- `run_benchmarks.py` – a **smoke test** that times each adapter’s `keygen`
+  operation a few times. No category overrides, no memory sampling, no security
+  estimator. Use this only to confirm that adapters import correctly.
+- `run_category_floor_matrix.py` – the **full benchmark suite**. It walks every
+  registered algorithm through the Cat‑1/3/5 parameter floors, records timing
+  *and* memory statistics (optionally warm passes), captures environment and
+  security metadata, and can fan out to graph rendering, side-channel probes,
+  and downstream reports. This is the script you almost always want.
 
-- Define repeatable scenarios in JSON/YAML.
-- Scripts write machine-readable CSV/JSON into `results/`.
-
-Usage
-- Run a simple batch over registered adapters: `python benchmarks/run_benchmarks.py`
-- Add `--render-graphs` to call the graph renderer once benchmarking completes (pass extra flags to the renderer after `--graph-args --`).
-- Pass `--run-side-channel` to launch the forensic leakage probe after benchmarks (forward additional probe flags via `--side-channel-options "<flags>"`).
-- Edit `benchmarks/scenarios.json` to track named experiment settings.
-- Build the native C backend (`native/`) and install `pqcbench_native` if you
-  want adapters to call directly into liboqs/OpenSSL during benchmarks.
-
-Example end-to-end run
+## Quick smoke test (`run_benchmarks.py`)
 
 ```bash
-python benchmarks/run_benchmarks.py --runs 10 --render-graphs \
-  --run-side-channel --side-channel-options "--all-categories --render-plots --iterations 500"
+python benchmarks/run_benchmarks.py --runs 5
 ```
 
-This benchmarks each registered adapter, renders category-floor graphs, then invokes
-`tools/forensic_probe.py --all-categories --render-plots --iterations 500` so timing
-and leakage statistics (with plots/CSV) are captured alongside the benchmark results.
+What you get
+- mean/CI timing for `keygen` only
+- JSON summary at `results/bench_summary.json`
+- Optional extras: `--render-graphs`, `--run-side-channel` (mirrors the flags
+  described below but with reduced scope)
 
-## Category floor harness
+Limitations
+- no memory data, no category selection, no warm passes
+- ignores security estimators and per-operation timings
+- unsuitable for publication-quality numbers
 
-`run_category_floor_matrix.py` runs the full timing/memory passes across Cat-1/3/5 and
-produces CSV/JSONL/Parquet summaries. New helper flags mirror the lightweight runner:
-
-- `--render-graphs` triggers `render_category_floor_graphs.py` once data is written
-  (override with `--graph-script`, pass extra arguments via `--graph-args -- ...`).
-- `--run-side-channel` launches the forensic probe after graphing; forward specific
-  probe options with `--side-channel-options "<flags>"`.
-
-Example:
+## Full suite (`run_category_floor_matrix.py`)
 
 ```bash
 python benchmarks/run_category_floor_matrix.py --runs 50 --warm --render-graphs \
-  --graph-args -- --output-dir results/graphs/cat_floor --passes timing timing-warm \
-  --run-side-channel --side-channel-options "--all-categories --render-plots --iterations 600"
+  --graph-args -- --output-dir results/graphs/latest --passes timing timing-warm memory \
+  --run-side-channel --side-channel-options "--all-categories --iterations 800 \
+    --render-plots --plot-dir results/forensic_latest_report \
+    --render-report --report-format markdown \
+    --report-output results/forensic_latest_report/summary.md"
+```
 
-python benchmarks/run_category_floor_matrix.py --runs 1  --rsa-max-category 3 --render-graphs \ 
-  --run-side-channel --side-channel-options "--all-categories --render-plots --iterations 10 --alg kyber"
+Highlights
+- sweeps Cat‑1/3/5 (per algorithm overrides handled automatically)
+- collects timing *and* memory passes; add `--warm` for in-process passes
+- optional CSV, JSONL, Parquet, and metadata artefacts
+- integrates with `render_category_floor_graphs.py` via `--render-graphs`
+- chains into the forensic side-channel probe (plots + Markdown report)
 
-python benchmarks/run_category_floor_matrix.py --runs 1  --rsa-max-category 3 --render-graphs \ 
-  --run-side-channel --side-channel-options "--all-categories --render-plots --iterations 10 --alg kyber --render-report --report-format markdown --report-output results/forensic_latest_report/summary.md"
-```  
+Key options
+- `--runs` – iterations per operation/pass (default 40)
+- `--categories 1 3 5` – pick NIST floors to benchmark
+- `--message-size` – signature message length
+- `--memory-interval` – sampling cadence for memory passes
+- `--rsa-max-category` – cap RSA baseline categories (e.g. `3` to skip 15 360‑bit)
+- `--jsonl-output`, `--parquet-output` – structured exports
+- `--render-graphs`, `--graph-args -- …` – post-run graph generation
+- `--run-side-channel`, `--side-channel-options "…"` – forensic probe hand-off
 
-This captures timing/memory statistics (including warm passes), renders grouped graphs
-for each session/category, and then executes the side-channel probe with matching
-category coverage and graphical/CSV output.
+Outputs
+- CSV: `results/category_floor_benchmarks.csv`
+- Metadata JSON: `results/category_floor_benchmarks.meta.json`
+- Optional JSONL / Parquet (if requested)
+- Graphs: under `results/graphs/<session>/`
+- Forensic artefacts: JSON + plots/captions + Markdown report in
+  `results/forensic_latest_report/`
 
-Output
-- Default summary path: `results/bench_summary.json`
-- Per-algorithm CLI summaries can be produced with `run-<algo> --export results/<algo>.json`
+## Recommendations
+
+1. Start with the full suite (`run_category_floor_matrix.py`) – it is the only
+   script designed for reproducible, publishable results.
+2. Use the smoke test only when you need a very fast “does this adapter load?”
+   check.
+3. Keep `--runs` ≥ 40 for timing consistency; stick to ≥ 800 iterations inside
+   the side-channel probe when you need statistical confidence.
+
