@@ -2,13 +2,22 @@
 
 This document summarizes the security models and estimators used by pqcbench. The goal is transparent, practical measurements aligned with standards and state‑of‑the‑art cryptanalysis. Outputs are expressed as “bits of security” (log2 of the best‑known attack cost), plus algorithm‑specific resource notes where appropriate.
 
+## Document Map
+- `side-channel-playbook.md` – methodology narrative for leakage assessments.
+- `forensic-probe-reference.md` – CLI quick reference with options and outputs.
+- `side-channel-methods-review.md` – literature alignment and audit notes.
+- `memory-isolation.md` – explanation of cold-run memory sampling.
+- `native-backend-checks.md` – checklist for validating the C backend.
+- `brute-force-baseline.md` – rationale behind the educational brute-force model.
+- `shor-estimator-playbook.md` – deep dive into the RSA/Shor estimator.
+
 ## Forensic side-channel study
-- Use the standalone probe described in `docs/security/forensic_probe.md` to collect timing/memory traces, artefact hashes, and TVLA-style leakage indicators for every registered algorithm. A full methodology write-up is available in `docs/security/side_channel.md`.
+- Use the standalone probe described in `docs/security/forensic-probe-reference.md` to collect timing/memory traces, artefact hashes, and TVLA-style leakage indicators for every registered algorithm. A full methodology write-up is available in `docs/security/side-channel-playbook.md`.
 
 ## Notes
 - Unless a stronger model is available, we report conservative floors based on NIST security categories (128/192/256) or standard mappings. When advanced estimators are unavailable in your environment, results clearly indicate floor usage.
 - Where quantum attacks fundamentally break the scheme (e.g., RSA), we report 0 bits for quantum security and include resource estimates to quantify feasibility.
-- Detailed Shor factoring documentation (logical model, surface-code assumptions, GNFS baseline, GE calibration) lives in [Shor Estimator Playbook](SHOR.md).
+- Detailed Shor factoring documentation (logical model, surface-code assumptions, GNFS baseline, GE calibration) lives in [Shor Estimator Playbook](shor-estimator-playbook.md).
 - Secret-key Hamming statistics accompany every benchmark (see [Secret-Key Hamming Analysis](#secret-key-hamming-analysis)) so obvious RNG or encoding regressions are surfaced alongside timing metrics.
 
 ## Timing Methodology
@@ -199,4 +208,4 @@ RSA is implemented as above and used by the CLI/JSON exports. Other families are
 
 ## Brute-force baseline
 
-We include an educational brute-force baseline in each security block, labeled by a simple model and a search space size 2^b. For RSA this is "trial_division_factorization" with b≈modulus_bits/2; for KEMs it is "guess_shared_secret" with b≈category floor; for signatures it is "random_forgery" with b≈category floor. Exports report expected time in years at 1e6/1e9/1e12 tries/s. See docs/security/BRUTEFORCE.md for details and assumptions.
+We include an educational brute-force baseline in each security block, labeled by a simple model and a search space size 2^b. For RSA this is "trial_division_factorization" with b≈modulus_bits/2; for KEMs it is "guess_shared_secret" with b≈category floor; for signatures it is "random_forgery" with b≈category floor. Exports report expected time in years at 1e6/1e9/1e12 tries/s. See docs/security/brute-force-baseline.md for details and assumptions.

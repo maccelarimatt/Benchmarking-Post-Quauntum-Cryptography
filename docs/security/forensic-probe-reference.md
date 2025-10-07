@@ -1,7 +1,7 @@
 # Forensic Probe Quick Reference
 
 For a narrative, reader-friendly explainer of the side-channel methodology,
-see `docs/security/side_channel.md`. This document serves as a concise quick
+see `docs/security/side-channel-playbook.md`. This document serves as a concise quick
 reference for the probe’s usage.
 
 ## Motivation and research baseline
