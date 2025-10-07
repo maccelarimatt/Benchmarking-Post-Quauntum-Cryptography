@@ -169,6 +169,8 @@
   </div>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="/static/js/llm-charts.js"></script>
   <script>
     (function(){
       const compareData = {{ compare|tojson }};
@@ -179,6 +181,7 @@
       const send = document.getElementById('llm-send');
       const hint = document.getElementById('llm-provider-hint');
       const downloadBtn = document.getElementById('llm-download');
+      const sanitizeOptions = window.DOMPurify ? { ADD_ATTR: ['data-chart'] } : undefined;
       if (downloadBtn) { downloadBtn.style.display = 'none'; downloadBtn.disabled = true; }
 
       function togglePanel(force) {
@@ -224,7 +227,6 @@
         try {
           send.disabled = true; input.disabled = true;
           if (downloadBtn) { downloadBtn.disabled = true; downloadBtn.style.display = 'none'; }
-          if (downloadBtn) { downloadBtn.disabled = true; downloadBtn.style.display = 'none'; }
           const req = (input && input.value && input.value.trim()) ? input.value.trim() : undefined;
           out.textContent = 'Generating analysis...';
           const res = await fetch('/api/analysis', {
@@ -240,12 +242,20 @@
             hint.textContent = 'Provider: ' + provider + (model ? (' · ' + model) : '') + (usedFallback ? ' (fallback)' : '');
           }
           const html = String(data.analysis || '').trim();
-          out.innerHTML = window.DOMPurify ? DOMPurify.sanitize(html) : html;
-          if (downloadBtn && html) { downloadBtn.style.display = 'inline-block'; downloadBtn.disabled = false; }
-          if (downloadBtn && html) { downloadBtn.style.display = 'inline-block'; downloadBtn.disabled = false; }
+          const sanitized = window.DOMPurify ? DOMPurify.sanitize(html, sanitizeOptions) : html;
+          out.innerHTML = sanitized;
+          if (window.renderLLMCharts && html) { window.renderLLMCharts(out); }
+          if (downloadBtn) {
+            if (html) {
+              downloadBtn.style.display = 'inline-block';
+              downloadBtn.disabled = false;
+            } else {
+              downloadBtn.style.display = 'none';
+              downloadBtn.disabled = true;
+            }
+          }
         } catch (e) {
           out.textContent = String(e);
-          if (downloadBtn) { downloadBtn.disabled = true; downloadBtn.style.display = 'none'; }
           if (downloadBtn) { downloadBtn.disabled = true; downloadBtn.style.display = 'none'; }
         } finally {
           send.disabled = false; input.disabled = false;
@@ -1514,6 +1524,7 @@
       const hint = document.getElementById('llm-provider-hint');
       const reqEl = document.getElementById('llm-user-request');
       let lastAnalysisHTML = '';
+      const sanitizeOptions = window.DOMPurify ? { ADD_ATTR: ['data-chart'] } : undefined;
       // Modal elements
       const modal = document.getElementById('llm-modal');
       const modalFrame = document.getElementById('llm-modal-frame');
@@ -1546,8 +1557,10 @@
           if (text) {
             try {
               const html = text; // server returns HTML only
-              lastAnalysisHTML = (window.DOMPurify ? DOMPurify.sanitize(html) : html);
-              out.innerHTML = lastAnalysisHTML;
+              const sanitized = window.DOMPurify ? DOMPurify.sanitize(html, sanitizeOptions) : html;
+              lastAnalysisHTML = sanitized;
+              out.innerHTML = sanitized;
+              if (window.renderLLMCharts) { window.renderLLMCharts(out); }
             } catch (e) {
               out.textContent = text; // fallback to plain text
               lastAnalysisHTML = out.textContent;
@@ -1572,6 +1585,7 @@
           btnOpen.style.display = (lastAnalysisHTML && lastAnalysisHTML.trim()) ? 'inline-block' : 'none';
         } catch (e) {
           out.innerHTML = prevHTML;
+          if (window.renderLLMCharts) { window.renderLLMCharts(out); }
           err.style.display = 'block';
           err.textContent = String(e);
         } finally {

@@ -86,6 +86,7 @@ SYSTEM_PROMPT = (
     "\n- Output clean HTML only (no scripts)." \
     "\n- Use semantic headings and short paragraphs." \
     "\n- Prefer small tables for comparisons." \
+    "\n- When it improves clarity, include a single <figure data-chart='...'> visualization (JSON keys: type, title, labels, datasets[{label,data}]) with a matching <figcaption>; use single quotes around the attribute and keep each dataset to five points or fewer." \
     "\n- Use consistent units: ms for time, KB for memory, B for sizes." \
     "\n- If a field is missing, write 'n/a' rather than inventing values." \
     "\n- Treat measured metrics as 'baseline desktop'; when projecting to other devices, mark projections as rough and state assumptions."
@@ -94,7 +95,7 @@ SYSTEM_PROMPT = (
 def _output_template(kind: Optional[str]) -> str:
     ops = "keygen, encapsulate, decapsulate" if (kind or "") == "KEM" else "keygen, sign, verify"
     return (
-        "You must follow this HTML structure exactly (omit any empty sections):\n"
+        "You must follow this HTML structure exactly (omit any empty sections). After the Relative Performance table, add a <figure data-chart='...'> visualization when at least two algorithms are present; omit that figure only if the data is insufficient:\n"
         "<section>\n"
         "  <h2>Summary</h2>\n"
         "  <p>1–2 sentences on overall trends.</p>\n"
@@ -169,6 +170,7 @@ def _build_user_prompt_v2(summary: Dict[str, Any], user_request: Optional[str] =
     lines.append("In the Summary section, add one sentence that explicitly references the user's request focus if provided.")
     lines.append("")
     lines.append("Task: Provide an expansive analysis with the sections below. Highlight:")
+    lines.append("After the Relative Performance table, include one compact chart using <figure data-chart='...'> with no more than five labels per dataset to visualize the key comparison; skip the chart only if fewer than two algorithms are available.")
     lines.append("- fastest algorithms per operation and approximate margins")
     lines.append("- memory trade-offs and key/ciphertext/signature size implications")
     lines.append("- rough device projections (desktop/server vs mobile/embedded)")

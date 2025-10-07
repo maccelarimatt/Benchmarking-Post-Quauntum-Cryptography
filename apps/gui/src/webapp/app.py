@@ -1581,6 +1581,8 @@ def analysis_html():
     .btn {{ display:inline-block; padding:.5rem .9rem; border:none; border-radius:.45rem; background: var(--accent); color:#fff; cursor:pointer; text-decoration:none; }}
   </style>
   <script src=\"https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js\"></script>
+  <script src=\"https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js\"></script>
+  <script src=\"/static/js/llm-charts.js\"></script>
   <script>
     const RAW = {raw_js};
     const PROVIDER = {provider_js};
@@ -1594,6 +1596,9 @@ def analysis_html():
       }}
       try {{
         out.innerHTML = RAW; // as requested: no sanitization
+        if (window.renderLLMCharts) {{
+          window.renderLLMCharts(out);
+        }}
       }} catch (e) {{
         out.textContent = RAW || 'No analysis returned.';
       }}
