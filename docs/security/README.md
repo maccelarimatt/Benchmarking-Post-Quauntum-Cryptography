@@ -10,6 +10,7 @@ This document summarizes the security models and estimators used by pqcbench. Th
 - `native-backend-checks.md` – checklist for validating the C backend.
 - `brute-force-baseline.md` – rationale behind the educational brute-force model.
 - `shor-estimator-playbook.md` – deep dive into the RSA/Shor estimator.
+- `../issues/dilithium-validation-known-issue.md` – why Dilithium validation tests fail until liboqs vectors are built.
 
 ## Forensic side-channel study
 - Use the standalone probe described in `docs/security/forensic-probe-reference.md` to collect timing/memory traces, artefact hashes, and TVLA-style leakage indicators for every registered algorithm. A full methodology write-up is available in `docs/security/side-channel-playbook.md`.

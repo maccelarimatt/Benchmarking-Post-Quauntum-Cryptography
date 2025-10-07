@@ -17,3 +17,4 @@ static-site generator once you are ready to publish a docs site.
 - `security/` – estimator models, side-channel methodology, and native backend
   checklists.
 - `testing/validation-coverage.md` – vector/KAT coverage for the runners.
+- `issues/` – known-problem notes (e.g., Dilithium validation prerequisites).
