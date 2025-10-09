@@ -1,6 +1,6 @@
 from __future__ import annotations
 import os
-from typing import Iterable, Optional, Sequence
+from typing import Optional, Sequence
 
 
 def try_import_oqs():
@@ -9,23 +9,6 @@ def try_import_oqs():
         return oqs
     except Exception:
         return None
-
-
-def resolve_algorithm(env_var: str, candidates: Sequence[str], enabled_syms: Iterable[str]) -> Optional[str]:
-    """
-    Choose an algorithm name for liboqs.
-    - If env_var is set and present in enabled_syms, use it.
-    - Otherwise, pick the first candidate contained in enabled_syms.
-    Returns None if no match is found.
-    """
-    enabled = set(enabled_syms)
-    val = os.getenv(env_var)
-    if val and val in enabled:
-        return val
-    for c in candidates:
-        if c in enabled:
-            return c
-    return None
 
 
 def pick_kem_algorithm(oqs_mod, env_var: str, candidates: Sequence[str]) -> Optional[str]:

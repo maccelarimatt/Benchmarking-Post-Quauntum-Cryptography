@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Tuple
 from pqcbench import registry
-from ._util import try_import_oqs, resolve_algorithm, pick_sig_algorithm, pick_stateful_sig_algorithm
+from ._util import try_import_oqs, pick_sig_algorithm, pick_stateful_sig_algorithm
 
 _oqs = try_import_oqs()
 
