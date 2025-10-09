@@ -1,0 +1,2523 @@
+{
+  "config": {
+    "iterations": 2,
+    "seed": 991239,
+    "output_path": null,
+    "keep_artifacts": false,
+    "include_algorithms": [
+      "rsa-oaep",
+      "rsa-pss"
+    ],
+    "include_scenarios": null,
+    "exclude_algorithms": null,
+    "enable_sanity_checks": true,
+    "categories": [
+      1,
+      3,
+      5
+    ],
+    "rsa_max_category": 3,
+    "render_plots": false,
+    "plot_dir": null,
+    "render_report": false,
+    "report_format": "markdown",
+    "report_output": null,
+    "report_options": ""
+  },
+  "host": {
+    "timestamp": "2025-10-07T21:19:34+0200",
+    "host": "Warwicks-16-MacBook-Pro-2.local",
+    "os": {
+      "system": "Darwin",
+      "release": "25.0.0",
+      "version": "Darwin Kernel Version 25.0.0: Wed Sep 17 21:39:53 PDT 2025; root:xnu-12377.1.9~141/RELEASE_X86_64",
+      "machine": "x86_64",
+      "python": "3.12.11 (main, Jun  3 2025, 15:41:47) [Clang 17.0.0 (clang-1700.0.13.3)]"
+    },
+    "cpu": {
+      "model": "i386",
+      "cores_logical": 16,
+      "cores_physical": 8,
+      "freq": {
+        "current": 2300,
+        "min": 2300,
+        "max": 2300
+      },
+      "load_avg": [
+        1.5849609375,
+        2.11865234375,
+        2.431640625
+      ]
+    },
+    "memory": {
+      "total": 17179869184,
+      "available": 5146984448,
+      "swap_total": 2147483648
+    },
+    "process": {
+      "pid": 53579,
+      "exe": "/usr/local/Cellar/python@3.12/3.12.11/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+      "cmdline": [
+        "/usr/local/Cellar/python@3.12/3.12.11/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+        "tools/forensic_probe.py",
+        "--alg",
+        "rsa-oaep",
+        "rsa-pss",
+        "--all-categories",
+        "--rsa-max-category",
+        "3",
+        "--iterations",
+        "2"
+      ],
+      "num_threads": 1
+    },
+    "git": {
+      "commit": "19e98d4e2d30e53a946dcbd8e4d6c7aa84714001",
+      "liboqs_commit": "f629296e28f1d1414630ea90d0f0e57bdec53c93",
+      "liboqs_python_commit": null
+    },
+    "environment": {},
+    "libraries": {
+      "numpy": "2.3.3",
+      "scipy": "1.16.2",
+      "psutil": "7.0.0",
+      "cryptography": "45.0.7"
+    }
+  },
+  "scenarios": [
+    {
+      "algorithm": "rsa-oaep",
+      "algorithm_kind": "kem",
+      "parameter_name": "RSA-3072-OAEP",
+      "security_category": 1,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "3072"
+      },
+      "scenario": "keygen",
+      "description": "Generate new key pairs",
+      "group": null,
+      "label": null,
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-oaep_keygen_tm8pxs2c",
+        "files": {}
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-oaep",
+          "algorithm_kind": "kem",
+          "parameter_name": "RSA-3072-OAEP",
+          "scenario": "keygen",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 315062711,
+          "cpu_time_ns": 305106000,
+          "rss_before": 87138304,
+          "rss_after": 88678400,
+          "rss_peak": 88678400,
+          "rss_delta": 1540096,
+          "alloc_current": 261563,
+          "alloc_peak": 267503,
+          "alloc_before": 940,
+          "alloc_peak_before": 1962,
+          "alloc_delta": 260623,
+          "alloc_peak_delta": 265541,
+          "gc_counts_before": [
+            466,
+            11,
+            2
+          ],
+          "gc_counts_after": [
+            637,
+            0,
+            3
+          ],
+          "payload": {
+            "public_key_length": 422,
+            "public_key_sha3": "e95fc0ce741d688d68ca671c64df134210868f23cf986131109d74d13bb4b840",
+            "public_key_blake2b": "88ab1784c47a1f8fe0859bd86679f334",
+            "secret_key_length": 1793,
+            "secret_key_sha3": "aa476b882004a42c5e2f344b5b99481cc39260d10b06631d133bf8b9c15bcb42",
+            "secret_key_blake2b": "d01530e8d46b0d5cc39775d0a3d9e23d"
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-oaep",
+          "algorithm_kind": "kem",
+          "parameter_name": "RSA-3072-OAEP",
+          "scenario": "keygen",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 49773618,
+          "cpu_time_ns": 49707000,
+          "rss_before": 88678400,
+          "rss_after": 88678400,
+          "rss_peak": 88678400,
+          "rss_delta": 0,
+          "alloc_current": 263425,
+          "alloc_peak": 267503,
+          "alloc_before": 262215,
+          "alloc_peak_before": 267503,
+          "alloc_delta": 1210,
+          "alloc_peak_delta": 0,
+          "gc_counts_before": [
+            638,
+            0,
+            3
+          ],
+          "gc_counts_after": [
+            638,
+            0,
+            3
+          ],
+          "payload": {
+            "public_key_length": 422,
+            "public_key_sha3": "d4b5867af30dc8c6be2887ceb30493850554ad42ce976488cbaedc37a3ea9bfc",
+            "public_key_blake2b": "b92640e902ec46c9fd275f8afc500446",
+            "secret_key_length": 1794,
+            "secret_key_sha3": "51fc161561cf35bfb56c666b711f5d98698432ee052870c1e6e2dcf912724b9d",
+            "secret_key_blake2b": "b28dae6a0dae1a11f83cf2ec14103321"
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-oaep",
+      "algorithm_kind": "kem",
+      "parameter_name": "RSA-3072-OAEP",
+      "security_category": 1,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "3072"
+      },
+      "scenario": "encapsulate_fixed_public",
+      "description": "Encapsulate to a fixed public key",
+      "group": null,
+      "label": null,
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-oaep_encapsulate_fixed_public_jzxhdwei",
+        "files": {},
+        "context": {
+          "base_secret_key_present": true,
+          "base_secret_key_length": 1795,
+          "base_secret_key_sha3": "741c464e60f76118693cd58e0268d71c921a4ba21ad72b4a0ea7187c10a006ac",
+          "base_secret_key_blake2b": "57545eda4964b48fea33b5ca1e0144b8",
+          "base_public_key_present": true,
+          "base_public_key_length": 422,
+          "base_public_key_sha3": "57b81b4444847f9e3aa5e1d06045957da46722107cb365cb03d916adbf30d6a7",
+          "base_public_key_blake2b": "685097d5ec641a7aab292ab3f5d5f716"
+        }
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-oaep",
+          "algorithm_kind": "kem",
+          "parameter_name": "RSA-3072-OAEP",
+          "scenario": "encapsulate_fixed_public",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 9525,
+          "cpu_time_ns": 9000,
+          "rss_before": 89034752,
+          "rss_after": 89034752,
+          "rss_peak": 89034752,
+          "rss_delta": 0,
+          "alloc_current": 1624,
+          "alloc_peak": 2610,
+          "alloc_before": 1044,
+          "alloc_peak_before": 2062,
+          "alloc_delta": 580,
+          "alloc_peak_delta": 548,
+          "gc_counts_before": [
+            662,
+            0,
+            3
+          ],
+          "gc_counts_after": [
+            664,
+            0,
+            3
+          ],
+          "payload": {
+            "ciphertext_length": 384,
+            "ciphertext_sha3": "21dd2d7735a41e6bd3336ab8e0bcfef84bed047317d1bb0e017850e94fc4667b",
+            "ciphertext_blake2b": "c6d378a0c82646a29a4e55fd7a66128a",
+            "shared_secret_length": 32,
+            "shared_secret_sha3": "32023861a453756d75d7e990750a4101173fc153c7c4d096c689ef4379c1fe55",
+            "shared_secret_blake2b": "713d31f62529a237f0166576d456fb39"
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-oaep",
+          "algorithm_kind": "kem",
+          "parameter_name": "RSA-3072-OAEP",
+          "scenario": "encapsulate_fixed_public",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 5887,
+          "cpu_time_ns": 6000,
+          "rss_before": 89034752,
+          "rss_after": 89034752,
+          "rss_peak": 89034752,
+          "rss_delta": 0,
+          "alloc_current": 2808,
+          "alloc_peak": 3794,
+          "alloc_before": 2356,
+          "alloc_peak_before": 3392,
+          "alloc_delta": 452,
+          "alloc_peak_delta": 402,
+          "gc_counts_before": [
+            667,
+            0,
+            3
+          ],
+          "gc_counts_after": [
+            667,
+            0,
+            3
+          ],
+          "payload": {
+            "ciphertext_length": 384,
+            "ciphertext_sha3": "526fecfb0e46e3a434e9e54decbafb369458bd5df4a5d86a61ae00ed26921ca0",
+            "ciphertext_blake2b": "c1c8c9c041a73078ed62484b91301681",
+            "shared_secret_length": 32,
+            "shared_secret_sha3": "ca9cc5236aed27e580b46628c8a8531318aff82ef9ce7e363c1f511d9f08c751",
+            "shared_secret_blake2b": "5d412fb34fe6cc2609618756d32b51ea"
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-oaep",
+      "algorithm_kind": "kem",
+      "parameter_name": "RSA-3072-OAEP",
+      "security_category": 1,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "3072"
+      },
+      "scenario": "decapsulate_valid",
+      "description": "Decapsulate valid ciphertexts with a fixed secret key",
+      "group": "kem_tvla_decapsulation",
+      "label": "fixed",
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-oaep_decapsulate_valid__9rkn215",
+        "files": {},
+        "context": {
+          "base_secret_key_present": true,
+          "base_secret_key_length": 1794,
+          "base_secret_key_sha3": "ae7972679bd15f2c5da84853805d8d3d892ac39e229d43946b6ba61d1125696d",
+          "base_secret_key_blake2b": "c7545481ce8a162073ca1ca28d653acf"
+        }
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-oaep",
+          "algorithm_kind": "kem",
+          "parameter_name": "RSA-3072-OAEP",
+          "scenario": "decapsulate_valid",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 98647100,
+          "cpu_time_ns": 98629000,
+          "rss_before": 89055232,
+          "rss_after": 89112576,
+          "rss_peak": 89112576,
+          "rss_delta": 57344,
+          "alloc_current": 2041,
+          "alloc_peak": 3027,
+          "alloc_before": 1028,
+          "alloc_peak_before": 2046,
+          "alloc_delta": 1013,
+          "alloc_peak_delta": 981,
+          "gc_counts_before": [
+            675,
+            0,
+            3
+          ],
+          "gc_counts_after": [
+            676,
+            0,
+            3
+          ],
+          "payload": {
+            "ciphertext_length": 384,
+            "ciphertext_sha3": "43751c2528b6734de8c360132454b14a75840378d384a6ded4a8fabb3b93a87f",
+            "ciphertext_blake2b": "faedc89803409ebfc624422307401e72",
+            "shared_secret_length": 32,
+            "shared_secret_sha3": "964411179235c93e64a59dd9c6a64edcbf4aef215a127fb04b7e11982f336da5",
+            "shared_secret_blake2b": "acee850e63de502aad79782089c6398e",
+            "recovered_secret_length": 32,
+            "recovered_secret_sha3": "964411179235c93e64a59dd9c6a64edcbf4aef215a127fb04b7e11982f336da5",
+            "recovered_secret_blake2b": "acee850e63de502aad79782089c6398e",
+            "match_shared_secret": true
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-oaep",
+          "algorithm_kind": "kem",
+          "parameter_name": "RSA-3072-OAEP",
+          "scenario": "decapsulate_valid",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 95588775,
+          "cpu_time_ns": 95589000,
+          "rss_before": 89112576,
+          "rss_after": 89112576,
+          "rss_peak": 89112576,
+          "rss_delta": 0,
+          "alloc_current": 3770,
+          "alloc_peak": 4756,
+          "alloc_before": 2821,
+          "alloc_peak_before": 3839,
+          "alloc_delta": 949,
+          "alloc_peak_delta": 917,
+          "gc_counts_before": [
+            678,
+            0,
+            3
+          ],
+          "gc_counts_after": [
+            681,
+            0,
+            3
+          ],
+          "payload": {
+            "ciphertext_length": 384,
+            "ciphertext_sha3": "1cbb1517460a0df13f27f96563c6b614401c2ece9bf5e4b32a787c3e249270bc",
+            "ciphertext_blake2b": "82d9e0d8b7b76c9abb78cf9e67147117",
+            "shared_secret_length": 32,
+            "shared_secret_sha3": "6bab2ae48b3128bd4de464dab2e412cd11fdb325b837167f00cfa33c82a50b8e",
+            "shared_secret_blake2b": "e0318c1a60bf8e7ae9e402e5713be08e",
+            "recovered_secret_length": 32,
+            "recovered_secret_sha3": "6bab2ae48b3128bd4de464dab2e412cd11fdb325b837167f00cfa33c82a50b8e",
+            "recovered_secret_blake2b": "e0318c1a60bf8e7ae9e402e5713be08e",
+            "match_shared_secret": true
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-oaep",
+      "algorithm_kind": "kem",
+      "parameter_name": "RSA-3072-OAEP",
+      "security_category": 1,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "3072"
+      },
+      "scenario": "decapsulate_invalid",
+      "description": "Decapsulate intentionally corrupted ciphertexts with a fixed secret key",
+      "group": "kem_tvla_decapsulation",
+      "label": "invalid",
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-oaep_decapsulate_invalid_gybx5xo5",
+        "files": {},
+        "context": {
+          "base_secret_key_present": true,
+          "base_secret_key_length": 1794,
+          "base_secret_key_sha3": "fa1cf1a32579ed48aef29fff447e16c01d0b909fa0875fe8ec6dda53bad01bfd",
+          "base_secret_key_blake2b": "87591efdb945bb9f9aa23db55bda5aaa"
+        }
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-oaep",
+          "algorithm_kind": "kem",
+          "parameter_name": "RSA-3072-OAEP",
+          "scenario": "decapsulate_invalid",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 118364100,
+          "cpu_time_ns": 117889000,
+          "rss_before": 89116672,
+          "rss_after": 89141248,
+          "rss_peak": 89141248,
+          "rss_delta": 24576,
+          "alloc_current": 1889,
+          "alloc_peak": 2875,
+          "alloc_before": 932,
+          "alloc_peak_before": 1878,
+          "alloc_delta": 957,
+          "alloc_peak_delta": 997,
+          "gc_counts_before": [
+            685,
+            0,
+            3
+          ],
+          "gc_counts_after": [
+            688,
+            0,
+            3
+          ],
+          "payload": {
+            "recovered_secret_length": 32,
+            "recovered_secret_sha3": "9e6291970cb44dd94008c79bcaf9d86f18b4b49ba5b2a04781db7199ed3b9e4e",
+            "recovered_secret_blake2b": "ff0f22492f44bac4c4b30ae58d0e8daa",
+            "corrupted_ciphertext_length": 384,
+            "corrupted_ciphertext_sha3": "914b7136e07e8b6f040cf94224e5d7410b4a1f25eb2795231aa54e17c89d5807",
+            "corrupted_ciphertext_blake2b": "ed26ef22312330bca961a413933c31b5"
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-oaep",
+          "algorithm_kind": "kem",
+          "parameter_name": "RSA-3072-OAEP",
+          "scenario": "decapsulate_invalid",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 111588196,
+          "cpu_time_ns": 111414000,
+          "rss_before": 89141248,
+          "rss_after": 89145344,
+          "rss_peak": 89145344,
+          "rss_delta": 4096,
+          "alloc_current": 3394,
+          "alloc_peak": 4380,
+          "alloc_before": 2565,
+          "alloc_peak_before": 3601,
+          "alloc_delta": 829,
+          "alloc_peak_delta": 779,
+          "gc_counts_before": [
+            689,
+            0,
+            3
+          ],
+          "gc_counts_after": [
+            692,
+            0,
+            3
+          ],
+          "payload": {
+            "recovered_secret_length": 32,
+            "recovered_secret_sha3": "9e6291970cb44dd94008c79bcaf9d86f18b4b49ba5b2a04781db7199ed3b9e4e",
+            "recovered_secret_blake2b": "ff0f22492f44bac4c4b30ae58d0e8daa",
+            "corrupted_ciphertext_length": 384,
+            "corrupted_ciphertext_sha3": "f525c55c097e19fd27902949170616f5438726562e1587ab65d533f47c4898f7",
+            "corrupted_ciphertext_blake2b": "a40bf2cfd04e885c095ad9c00b53b4b8"
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-oaep",
+      "algorithm_kind": "kem",
+      "parameter_name": "RSA-7680-OAEP",
+      "security_category": 3,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "7680"
+      },
+      "scenario": "keygen",
+      "description": "Generate new key pairs",
+      "group": null,
+      "label": null,
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-oaep_keygen_4omzzi4_",
+        "files": {}
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-oaep",
+          "algorithm_kind": "kem",
+          "parameter_name": "RSA-7680-OAEP",
+          "scenario": "keygen",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 5439775965,
+          "cpu_time_ns": 5437772000,
+          "rss_before": 89149440,
+          "rss_after": 89157632,
+          "rss_peak": 89157632,
+          "rss_delta": 8192,
+          "alloc_current": 2182,
+          "alloc_peak": 7449,
+          "alloc_before": 780,
+          "alloc_peak_before": 1798,
+          "alloc_delta": 1402,
+          "alloc_peak_delta": 5651,
+          "gc_counts_before": [
+            1,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            2,
+            1,
+            3
+          ],
+          "payload": {
+            "public_key_length": 998,
+            "public_key_sha3": "5ddfcf0d8865fec8980f6c3ae00239b6b853d8a080addaebb4db6886104b5fad",
+            "public_key_blake2b": "0ffbb07e1fba6d6be83ed712b8c6d725",
+            "secret_key_length": 4391,
+            "secret_key_sha3": "953aa2183b32bb6bddd526624822f8f7635896e50e9fdb2657e0a71f2f0e7869",
+            "secret_key_blake2b": "0d2467883493340d4c7b014eef0df9b7"
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-oaep",
+          "algorithm_kind": "kem",
+          "parameter_name": "RSA-7680-OAEP",
+          "scenario": "keygen",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 4338118307,
+          "cpu_time_ns": 4335224000,
+          "rss_before": 89157632,
+          "rss_after": 89174016,
+          "rss_peak": 89174016,
+          "rss_delta": 16384,
+          "alloc_current": 4140,
+          "alloc_peak": 9469,
+          "alloc_before": 2866,
+          "alloc_peak_before": 7449,
+          "alloc_delta": 1274,
+          "alloc_peak_delta": 2020,
+          "gc_counts_before": [
+            4,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            6,
+            1,
+            3
+          ],
+          "payload": {
+            "public_key_length": 998,
+            "public_key_sha3": "7690d097b5afcc8327796a629256ae0ec867e9a1feaa318997ab94d592e2a0d8",
+            "public_key_blake2b": "fad876c78502622e2600fa90925cee57",
+            "secret_key_length": 4389,
+            "secret_key_sha3": "f772bcc6b071308d08740f955765a56bf10b3a3c2c97bfe572ee0445390d32f4",
+            "secret_key_blake2b": "5005ba879dbd0bb705113253b3108d53"
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-oaep",
+      "algorithm_kind": "kem",
+      "parameter_name": "RSA-7680-OAEP",
+      "security_category": 3,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "7680"
+      },
+      "scenario": "encapsulate_fixed_public",
+      "description": "Encapsulate to a fixed public key",
+      "group": null,
+      "label": null,
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-oaep_encapsulate_fixed_public_l1fu0tt4",
+        "files": {},
+        "context": {
+          "base_secret_key_present": true,
+          "base_secret_key_length": 4391,
+          "base_secret_key_sha3": "164db5c4eb3b248ba7baf115793a3a1a0cac58111d6a5c6c52d689de41f3af39",
+          "base_secret_key_blake2b": "63fcf1b4f1627c6e9960fe2f10944dfc",
+          "base_public_key_present": true,
+          "base_public_key_length": 998,
+          "base_public_key_sha3": "8484a6df74de1c67919bee41099503ede3eb035ab9006114aa0509447911449d",
+          "base_public_key_blake2b": "8168004b21e4e539840f7bfb4095e2dc"
+        }
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-oaep",
+          "algorithm_kind": "kem",
+          "parameter_name": "RSA-7680-OAEP",
+          "scenario": "encapsulate_fixed_public",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 9176,
+          "cpu_time_ns": 10000,
+          "rss_before": 89178112,
+          "rss_after": 89178112,
+          "rss_peak": 89178112,
+          "rss_delta": 0,
+          "alloc_current": 1712,
+          "alloc_peak": 2698,
+          "alloc_before": 1068,
+          "alloc_peak_before": 2086,
+          "alloc_delta": 644,
+          "alloc_peak_delta": 612,
+          "gc_counts_before": [
+            24,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            26,
+            1,
+            3
+          ],
+          "payload": {
+            "ciphertext_length": 960,
+            "ciphertext_sha3": "072bf71c3111bffa4b73b1295487f88f5a17a2dbf5f17a5c2d938d73763e637c",
+            "ciphertext_blake2b": "cc2548cc46ab275cb0af4a560c6a07d5",
+            "shared_secret_length": 32,
+            "shared_secret_sha3": "dd0c79919e768a5e17ee757c1327d3bb55abc430b8353b9f020efa58af6e94be",
+            "shared_secret_blake2b": "7ca0e0ebd6680e8b35b4cdccba022903"
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-oaep",
+          "algorithm_kind": "kem",
+          "parameter_name": "RSA-7680-OAEP",
+          "scenario": "encapsulate_fixed_public",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 5481,
+          "cpu_time_ns": 6000,
+          "rss_before": 89178112,
+          "rss_after": 89178112,
+          "rss_peak": 89178112,
+          "rss_delta": 0,
+          "alloc_current": 2872,
+          "alloc_peak": 3858,
+          "alloc_before": 2356,
+          "alloc_peak_before": 3424,
+          "alloc_delta": 516,
+          "alloc_peak_delta": 434,
+          "gc_counts_before": [
+            29,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            30,
+            1,
+            3
+          ],
+          "payload": {
+            "ciphertext_length": 960,
+            "ciphertext_sha3": "766c9a8735d277bf97682bf3543f6251d8dc1f37c4b8b3c928815533d6f5cc4e",
+            "ciphertext_blake2b": "fc575627b789ad570f128270ac19d3e5",
+            "shared_secret_length": 32,
+            "shared_secret_sha3": "08a58115adb9bc18dbd08f074b6730cb73eb60449bc5449881b34a6c391c2d24",
+            "shared_secret_blake2b": "5bee5964d610997425ab299c1af82d20"
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-oaep",
+      "algorithm_kind": "kem",
+      "parameter_name": "RSA-7680-OAEP",
+      "security_category": 3,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "7680"
+      },
+      "scenario": "decapsulate_valid",
+      "description": "Decapsulate valid ciphertexts with a fixed secret key",
+      "group": "kem_tvla_decapsulation",
+      "label": "fixed",
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-oaep_decapsulate_valid_iddkjbqf",
+        "files": {},
+        "context": {
+          "base_secret_key_present": true,
+          "base_secret_key_length": 4390,
+          "base_secret_key_sha3": "d42fe4a61c2bf70ed70f89460001a4e300c4101f7100b4afba758649b5ca76e0",
+          "base_secret_key_blake2b": "aa06d69ef35125962e1740b1897187fc"
+        }
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-oaep",
+          "algorithm_kind": "kem",
+          "parameter_name": "RSA-7680-OAEP",
+          "scenario": "decapsulate_valid",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 4242407314,
+          "cpu_time_ns": 4237049000,
+          "rss_before": 89251840,
+          "rss_after": 89276416,
+          "rss_peak": 89276416,
+          "rss_delta": 24576,
+          "alloc_current": 1873,
+          "alloc_peak": 2859,
+          "alloc_before": 860,
+          "alloc_peak_before": 1878,
+          "alloc_delta": 1013,
+          "alloc_peak_delta": 981,
+          "gc_counts_before": [
+            38,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            39,
+            1,
+            3
+          ],
+          "payload": {
+            "ciphertext_length": 960,
+            "ciphertext_sha3": "b5d57887b017850d53f33b612ff07dbb257d64c172e40bffa78fad44b0611a0c",
+            "ciphertext_blake2b": "0247c13ca719171f0778a698f82424e8",
+            "shared_secret_length": 32,
+            "shared_secret_sha3": "816f6454213ac2a2592fd2b3c4321e2e5bff7d8be425b572fb0b27b381c2cd52",
+            "shared_secret_blake2b": "2e2394eb9fe53bcce6adb53688a1da1d",
+            "recovered_secret_length": 32,
+            "recovered_secret_sha3": "816f6454213ac2a2592fd2b3c4321e2e5bff7d8be425b572fb0b27b381c2cd52",
+            "recovered_secret_blake2b": "2e2394eb9fe53bcce6adb53688a1da1d",
+            "match_shared_secret": true
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-oaep",
+          "algorithm_kind": "kem",
+          "parameter_name": "RSA-7680-OAEP",
+          "scenario": "decapsulate_valid",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 4847667991,
+          "cpu_time_ns": 4792211000,
+          "rss_before": 89276416,
+          "rss_after": 89292800,
+          "rss_peak": 89292800,
+          "rss_delta": 16384,
+          "alloc_current": 3442,
+          "alloc_peak": 4428,
+          "alloc_before": 2493,
+          "alloc_peak_before": 3561,
+          "alloc_delta": 949,
+          "alloc_peak_delta": 867,
+          "gc_counts_before": [
+            40,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            43,
+            1,
+            3
+          ],
+          "payload": {
+            "ciphertext_length": 960,
+            "ciphertext_sha3": "732ea639c5ae747d5146cc9bf7b5a55e1a5402dde690740bf9b8b6104d5f6bf2",
+            "ciphertext_blake2b": "5306691a70650674b4079e7844973cef",
+            "shared_secret_length": 32,
+            "shared_secret_sha3": "13b18478fa84a8c466f7b738704a12ab6a1fed570b7aeaa18a73cf07820faa41",
+            "shared_secret_blake2b": "36ab1e06e98548818199a055d3277c72",
+            "recovered_secret_length": 32,
+            "recovered_secret_sha3": "13b18478fa84a8c466f7b738704a12ab6a1fed570b7aeaa18a73cf07820faa41",
+            "recovered_secret_blake2b": "36ab1e06e98548818199a055d3277c72",
+            "match_shared_secret": true
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-oaep",
+      "algorithm_kind": "kem",
+      "parameter_name": "RSA-7680-OAEP",
+      "security_category": 3,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "7680"
+      },
+      "scenario": "decapsulate_invalid",
+      "description": "Decapsulate intentionally corrupted ciphertexts with a fixed secret key",
+      "group": "kem_tvla_decapsulation",
+      "label": "invalid",
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-oaep_decapsulate_invalid_xmnnc0q_",
+        "files": {},
+        "context": {
+          "base_secret_key_present": true,
+          "base_secret_key_length": 4390,
+          "base_secret_key_sha3": "57bc58c321e09ba71870e198f1a3157d95ac0f9911c1ece039c9adf6db98bb89",
+          "base_secret_key_blake2b": "c70f8a4be7ab59d3618d7bd8f5362bcc"
+        }
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-oaep",
+          "algorithm_kind": "kem",
+          "parameter_name": "RSA-7680-OAEP",
+          "scenario": "decapsulate_invalid",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 4001747363,
+          "cpu_time_ns": 3935819000,
+          "rss_before": 89300992,
+          "rss_after": 89305088,
+          "rss_peak": 89305088,
+          "rss_delta": 4096,
+          "alloc_current": 1745,
+          "alloc_peak": 2731,
+          "alloc_before": 788,
+          "alloc_peak_before": 1806,
+          "alloc_delta": 957,
+          "alloc_peak_delta": 925,
+          "gc_counts_before": [
+            47,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            49,
+            1,
+            3
+          ],
+          "payload": {
+            "recovered_secret_length": 32,
+            "recovered_secret_sha3": "9e6291970cb44dd94008c79bcaf9d86f18b4b49ba5b2a04781db7199ed3b9e4e",
+            "recovered_secret_blake2b": "ff0f22492f44bac4c4b30ae58d0e8daa",
+            "corrupted_ciphertext_length": 960,
+            "corrupted_ciphertext_sha3": "8881fd3d40acfc6d56fb9b971f17667eac25f8b3f328dfd259523e2812150400",
+            "corrupted_ciphertext_blake2b": "153ddf38641edc9998542f0aed227bc9"
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-oaep",
+          "algorithm_kind": "kem",
+          "parameter_name": "RSA-7680-OAEP",
+          "scenario": "decapsulate_invalid",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 3806089235,
+          "cpu_time_ns": 3804881000,
+          "rss_before": 89305088,
+          "rss_after": 89305088,
+          "rss_peak": 89305088,
+          "rss_delta": 0,
+          "alloc_current": 3194,
+          "alloc_peak": 4180,
+          "alloc_before": 2365,
+          "alloc_peak_before": 3433,
+          "alloc_delta": 829,
+          "alloc_peak_delta": 747,
+          "gc_counts_before": [
+            50,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            53,
+            1,
+            3
+          ],
+          "payload": {
+            "recovered_secret_length": 32,
+            "recovered_secret_sha3": "9e6291970cb44dd94008c79bcaf9d86f18b4b49ba5b2a04781db7199ed3b9e4e",
+            "recovered_secret_blake2b": "ff0f22492f44bac4c4b30ae58d0e8daa",
+            "corrupted_ciphertext_length": 960,
+            "corrupted_ciphertext_sha3": "ad725d8164a8c713ed783975fd836e01b6eeb1ca1c0054ed66ba8ce18d6edddf",
+            "corrupted_ciphertext_blake2b": "ce7d4a0ba01d49946aa09d8d882bab03"
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-pss",
+      "algorithm_kind": "signature",
+      "parameter_name": "RSA-3072-PSS",
+      "security_category": 1,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "3072"
+      },
+      "scenario": "keygen",
+      "description": "Generate new signing key pairs",
+      "group": null,
+      "label": null,
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-pss_keygen_o4nslegl",
+        "files": {}
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-3072-PSS",
+          "scenario": "keygen",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 102542309,
+          "cpu_time_ns": 102544000,
+          "rss_before": 89309184,
+          "rss_after": 89317376,
+          "rss_peak": 89317376,
+          "rss_delta": 8192,
+          "alloc_current": 2142,
+          "alloc_peak": 4235,
+          "alloc_before": 740,
+          "alloc_peak_before": 1758,
+          "alloc_delta": 1402,
+          "alloc_peak_delta": 2477,
+          "gc_counts_before": [
+            63,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            64,
+            1,
+            3
+          ],
+          "payload": {
+            "public_key_length": 422,
+            "public_key_sha3": "00fe846bc68d499b6885ce45111d089d05d34c5b4511a6616c0760b427e7ac04",
+            "public_key_blake2b": "1238da95f1b6b9dea260c810222b6d06",
+            "secret_key_length": 1793,
+            "secret_key_sha3": "69676d897f4e7b7bb34323dcbf5bf94792d2c8117b75c7fd8dff35e7270120b5",
+            "secret_key_blake2b": "743e31c859bf9f17f0966ecb171ede41"
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-3072-PSS",
+          "scenario": "keygen",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 140887813,
+          "cpu_time_ns": 140841000,
+          "rss_before": 89317376,
+          "rss_after": 89317376,
+          "rss_peak": 89317376,
+          "rss_delta": 0,
+          "alloc_current": 4092,
+          "alloc_peak": 6250,
+          "alloc_before": 2818,
+          "alloc_peak_before": 4235,
+          "alloc_delta": 1274,
+          "alloc_peak_delta": 2015,
+          "gc_counts_before": [
+            66,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            68,
+            1,
+            3
+          ],
+          "payload": {
+            "public_key_length": 422,
+            "public_key_sha3": "60835d0667d955c9f068eee65aa78b017a4e75185b73c1080d72420b37a94b2f",
+            "public_key_blake2b": "e55442db29a8371b24dc64639d4eb13c",
+            "secret_key_length": 1794,
+            "secret_key_sha3": "d33ce3c5bc6a2e445a4b646149fd0d11ee89434503035d10c108eec414c6bf08",
+            "secret_key_blake2b": "18440850c7063c7511169094f6721660"
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-pss",
+      "algorithm_kind": "signature",
+      "parameter_name": "RSA-3072-PSS",
+      "security_category": 1,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "3072"
+      },
+      "scenario": "sign_fixed_message",
+      "description": "Sign a fixed message with a fixed secret key",
+      "group": "signature_tvla_sign",
+      "label": "fixed",
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-pss_sign_fixed_message_hsjm5hk_",
+        "files": {},
+        "context": {
+          "fixed_secret_key_present": true,
+          "fixed_secret_key_length": 1794,
+          "fixed_secret_key_sha3": "b3ea81379009c6cbf28bd095798de36f879a0b34d1b6538045119b77d85508ab",
+          "fixed_secret_key_blake2b": "9292da7022ddb29a2bf37f189d852afe"
+        }
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-3072-PSS",
+          "scenario": "sign_fixed_message",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 105348671,
+          "cpu_time_ns": 100835000,
+          "rss_before": 89317376,
+          "rss_after": 89460736,
+          "rss_peak": 89460736,
+          "rss_delta": 143360,
+          "alloc_current": 3843,
+          "alloc_peak": 4829,
+          "alloc_before": 860,
+          "alloc_peak_before": 1878,
+          "alloc_delta": 2983,
+          "alloc_peak_delta": 2951,
+          "gc_counts_before": [
+            80,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            98,
+            1,
+            3
+          ],
+          "payload": {
+            "signature_length": 384,
+            "signature_sha3": "c2d4cc62a3f9d53786792ad5f1bec376456a4a8ea03fa8ca6a1c16881b354a7d",
+            "signature_blake2b": "8e475f500a65f2176993e191c611df22",
+            "message_length": 22,
+            "message_digest": "aac58ba31ce29eacd0064e05f1df115f6b3937aa60ee87037e913507761bbec1"
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-3072-PSS",
+          "scenario": "sign_fixed_message",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 100031562,
+          "cpu_time_ns": 99989000,
+          "rss_before": 89460736,
+          "rss_after": 89464832,
+          "rss_peak": 89464832,
+          "rss_delta": 4096,
+          "alloc_current": 5194,
+          "alloc_peak": 6180,
+          "alloc_before": 4519,
+          "alloc_peak_before": 5587,
+          "alloc_delta": 675,
+          "alloc_peak_delta": 593,
+          "gc_counts_before": [
+            101,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            102,
+            1,
+            3
+          ],
+          "payload": {
+            "signature_length": 384,
+            "signature_sha3": "5c520ce60c718f4c64243053fc8ac3b1c7cd1bf8fe069ff1be24d0abec62a956",
+            "signature_blake2b": "0790f11089d51db303572808db7aabbb",
+            "message_length": 22,
+            "message_digest": "aac58ba31ce29eacd0064e05f1df115f6b3937aa60ee87037e913507761bbec1"
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-pss",
+      "algorithm_kind": "signature",
+      "parameter_name": "RSA-3072-PSS",
+      "security_category": 1,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "3072"
+      },
+      "scenario": "sign_random_message",
+      "description": "Sign random messages with a fixed secret key",
+      "group": "signature_tvla_sign",
+      "label": "random",
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-pss_sign_random_message_331laeo9",
+        "files": {},
+        "context": {
+          "fixed_secret_key_present": true,
+          "fixed_secret_key_length": 1795,
+          "fixed_secret_key_sha3": "c9b343b8045e998b913bb2044fe0cf9a1e07ef64b0997be40c4a9ed30150b962",
+          "fixed_secret_key_blake2b": "e2861c41ed36458ef37ce31a54652fee"
+        }
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-3072-PSS",
+          "scenario": "sign_random_message",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 95458415,
+          "cpu_time_ns": 95460000,
+          "rss_before": 89464832,
+          "rss_after": 89468928,
+          "rss_peak": 89468928,
+          "rss_delta": 4096,
+          "alloc_current": 1572,
+          "alloc_peak": 2558,
+          "alloc_before": 828,
+          "alloc_peak_before": 1846,
+          "alloc_delta": 744,
+          "alloc_peak_delta": 712,
+          "gc_counts_before": [
+            114,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            115,
+            1,
+            3
+          ],
+          "payload": {
+            "signature_length": 384,
+            "signature_sha3": "31069801bc4f61090e615dc5aa8d9f88d5894f30005d1e9e31f83745c70fd0b3",
+            "signature_blake2b": "a49c0346e4ac2d04f73330f491c61091",
+            "message_length": 22,
+            "message_digest": "8a38eae08c59eebbc97f52e2a9bbd9b4edef2d12ccf1819ca8433dc0fc3778cb"
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-3072-PSS",
+          "scenario": "sign_random_message",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 95958623,
+          "cpu_time_ns": 95959000,
+          "rss_before": 89468928,
+          "rss_after": 89473024,
+          "rss_peak": 89473024,
+          "rss_delta": 4096,
+          "alloc_current": 2736,
+          "alloc_peak": 3722,
+          "alloc_before": 2120,
+          "alloc_peak_before": 3252,
+          "alloc_delta": 616,
+          "alloc_peak_delta": 470,
+          "gc_counts_before": [
+            116,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            117,
+            1,
+            3
+          ],
+          "payload": {
+            "signature_length": 384,
+            "signature_sha3": "28c4e57094f30d2bab4f68641f917a949fbc4ca10f810f3ffd88e4156091b286",
+            "signature_blake2b": "e5122c66898edee2b72f5cc9e761fcd9",
+            "message_length": 22,
+            "message_digest": "66a78b9713304bf215d4380d27257495bc738b1ab93c1f1fc59d9bd19c2d6239"
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-pss",
+      "algorithm_kind": "signature",
+      "parameter_name": "RSA-3072-PSS",
+      "security_category": 1,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "3072"
+      },
+      "scenario": "sign_fault",
+      "description": "Attempt signing with a fault-injected secret key",
+      "group": null,
+      "label": null,
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-pss_sign_fault_c3mrfd0g",
+        "files": {},
+        "context": {
+          "fixed_secret_key_present": true,
+          "fixed_secret_key_length": 1793,
+          "fixed_secret_key_sha3": "23665b411cd4af01a060caea5b33c394e03f49b19f29abc065fe1c24d72cf747",
+          "fixed_secret_key_blake2b": "97651fec55a9b8031d86ec78a189c242"
+        }
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-3072-PSS",
+          "scenario": "sign_fault",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 96802306,
+          "cpu_time_ns": 96748000,
+          "rss_before": 89477120,
+          "rss_after": 89477120,
+          "rss_peak": 89477120,
+          "rss_delta": 0,
+          "alloc_current": 1267,
+          "alloc_peak": 5914,
+          "alloc_before": 877,
+          "alloc_peak_before": 1895,
+          "alloc_delta": 390,
+          "alloc_peak_delta": 4019,
+          "gc_counts_before": [
+            123,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            124,
+            1,
+            3
+          ],
+          "payload": {
+            "fault_status": "error",
+            "fault_error": "ValueError('Invalid private key')",
+            "message_length": 24
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-3072-PSS",
+          "scenario": "sign_fault",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 44592807,
+          "cpu_time_ns": 44597000,
+          "rss_before": 89477120,
+          "rss_after": 89477120,
+          "rss_peak": 89477120,
+          "rss_delta": 0,
+          "alloc_current": 2177,
+          "alloc_peak": 6888,
+          "alloc_before": 1915,
+          "alloc_peak_before": 5914,
+          "alloc_delta": 262,
+          "alloc_peak_delta": 974,
+          "gc_counts_before": [
+            126,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            128,
+            1,
+            3
+          ],
+          "payload": {
+            "fault_status": "error",
+            "fault_error": "ValueError('Invalid private key')",
+            "message_length": 24
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-pss",
+      "algorithm_kind": "signature",
+      "parameter_name": "RSA-3072-PSS",
+      "security_category": 1,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "3072"
+      },
+      "scenario": "verify_invalid_signature",
+      "description": "Verify corrupted signatures to observe error handling",
+      "group": null,
+      "label": null,
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-pss_verify_invalid_signature_2iakpi3x",
+        "files": {},
+        "context": {
+          "fixed_secret_key_present": true,
+          "fixed_secret_key_length": 1794,
+          "fixed_secret_key_sha3": "a017cb142f2a3c058b35e6ef9f51d98ccdf640ef5a10d3c50665053eb001b2e5",
+          "fixed_secret_key_blake2b": "a389906346cc0f7d7b629490442f0301"
+        }
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-3072-PSS",
+          "scenario": "verify_invalid_signature",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 93993425,
+          "cpu_time_ns": 93995000,
+          "rss_before": 89485312,
+          "rss_after": 89489408,
+          "rss_peak": 89489408,
+          "rss_delta": 4096,
+          "alloc_current": 1557,
+          "alloc_peak": 3078,
+          "alloc_before": 870,
+          "alloc_peak_before": 1888,
+          "alloc_delta": 687,
+          "alloc_peak_delta": 1190,
+          "gc_counts_before": [
+            136,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            137,
+            1,
+            3
+          ],
+          "payload": {
+            "verification_result": false,
+            "original_signature_digest": "2ed587b803a9de05b50714ae4c23d55cfc390d3886e8e0edcba0a880c4aa7bee",
+            "corrupted_signature_digest": "992207d8084ee9a51053f9e0dbee613ad68659544b79583e232f69ad5001a7b6",
+            "message_length": 25
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-3072-PSS",
+          "scenario": "verify_invalid_signature",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 92567496,
+          "cpu_time_ns": 92564000,
+          "rss_before": 89489408,
+          "rss_after": 89489408,
+          "rss_peak": 89489408,
+          "rss_delta": 0,
+          "alloc_current": 2671,
+          "alloc_peak": 4213,
+          "alloc_before": 2169,
+          "alloc_peak_before": 3237,
+          "alloc_delta": 502,
+          "alloc_peak_delta": 976,
+          "gc_counts_before": [
+            138,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            140,
+            1,
+            3
+          ],
+          "payload": {
+            "verification_result": false,
+            "original_signature_digest": "166f3770f524bb3177feb3ad593f08c3a145d1f0f22d6fa1a8bd97c79ae86588",
+            "corrupted_signature_digest": "9b6372e5a6bae12554186f00648e6b14483a8a6156b0af5ebcbaf3a63c93c044",
+            "message_length": 25
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-pss",
+      "algorithm_kind": "signature",
+      "parameter_name": "RSA-7680-PSS",
+      "security_category": 3,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "7680"
+      },
+      "scenario": "keygen",
+      "description": "Generate new signing key pairs",
+      "group": null,
+      "label": null,
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-pss_keygen_biybhdxt",
+        "files": {}
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-7680-PSS",
+          "scenario": "keygen",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 7900603893,
+          "cpu_time_ns": 7578069000,
+          "rss_before": 89489408,
+          "rss_after": 89509888,
+          "rss_peak": 89509888,
+          "rss_delta": 20480,
+          "alloc_current": 2166,
+          "alloc_peak": 7432,
+          "alloc_before": 764,
+          "alloc_peak_before": 1782,
+          "alloc_delta": 1402,
+          "alloc_peak_delta": 5650,
+          "gc_counts_before": [
+            155,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            156,
+            1,
+            3
+          ],
+          "payload": {
+            "public_key_length": 998,
+            "public_key_sha3": "156ec5e6a915552c67af0d638431f4700293c55229663547becac3e48aa51336",
+            "public_key_blake2b": "9d5bba45e763898ab7b5e275c6fb2696",
+            "secret_key_length": 4390,
+            "secret_key_sha3": "832e6558e601b508d76d742506832fb2527808250eb0afb1523c8ed79a17b0b8",
+            "secret_key_blake2b": "8dc331bdb8a31bc38190f333acc92980"
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-7680-PSS",
+          "scenario": "keygen",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 2836620193,
+          "cpu_time_ns": 2805337000,
+          "rss_before": 89509888,
+          "rss_after": 89509888,
+          "rss_peak": 89509888,
+          "rss_delta": 0,
+          "alloc_current": 4060,
+          "alloc_peak": 9389,
+          "alloc_before": 2786,
+          "alloc_peak_before": 7432,
+          "alloc_delta": 1274,
+          "alloc_peak_delta": 1957,
+          "gc_counts_before": [
+            157,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            159,
+            1,
+            3
+          ],
+          "payload": {
+            "public_key_length": 998,
+            "public_key_sha3": "409702b297a54a4bc54a17c14bc306a90ae1bc2c3a1d75ed3e228d703a3b9326",
+            "public_key_blake2b": "954973c90b866f966d080a5a600c896a",
+            "secret_key_length": 4389,
+            "secret_key_sha3": "9d98021a116319c0af9fa71dac3d0481ec105490b2c2f7fbf1338a54edc78319",
+            "secret_key_blake2b": "192a1adb5d8c33e9c8c7ecfbbb221a2c"
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-pss",
+      "algorithm_kind": "signature",
+      "parameter_name": "RSA-7680-PSS",
+      "security_category": 3,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "7680"
+      },
+      "scenario": "sign_fixed_message",
+      "description": "Sign a fixed message with a fixed secret key",
+      "group": "signature_tvla_sign",
+      "label": "fixed",
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-pss_sign_fixed_message_cu5o98tj",
+        "files": {},
+        "context": {
+          "fixed_secret_key_present": true,
+          "fixed_secret_key_length": 4391,
+          "fixed_secret_key_sha3": "d820659fced2bc0260e1437c6005d05181a861153cbacc99edf093c096233144",
+          "fixed_secret_key_blake2b": "dbfa5e347c39796f572e90cceae786d0"
+        }
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-7680-PSS",
+          "scenario": "sign_fixed_message",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 3935342402,
+          "cpu_time_ns": 3927974000,
+          "rss_before": 89509888,
+          "rss_after": 89526272,
+          "rss_peak": 89526272,
+          "rss_delta": 16384,
+          "alloc_current": 1677,
+          "alloc_peak": 2663,
+          "alloc_before": 828,
+          "alloc_peak_before": 1846,
+          "alloc_delta": 849,
+          "alloc_peak_delta": 817,
+          "gc_counts_before": [
+            171,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            173,
+            1,
+            3
+          ],
+          "payload": {
+            "signature_length": 960,
+            "signature_sha3": "711db749c0fe86fceafc60c0a2d4e0d3a416e6f7594028698bdab9aaf497627a",
+            "signature_blake2b": "4dcfc46023928b1fdf24fcc7edef6388",
+            "message_length": 22,
+            "message_digest": "aac58ba31ce29eacd0064e05f1df115f6b3937aa60ee87037e913507761bbec1"
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-7680-PSS",
+          "scenario": "sign_fixed_message",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 4252164895,
+          "cpu_time_ns": 4202255000,
+          "rss_before": 89526272,
+          "rss_after": 89530368,
+          "rss_peak": 89530368,
+          "rss_delta": 4096,
+          "alloc_current": 3082,
+          "alloc_peak": 4068,
+          "alloc_before": 2361,
+          "alloc_peak_before": 3429,
+          "alloc_delta": 721,
+          "alloc_peak_delta": 639,
+          "gc_counts_before": [
+            176,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            177,
+            1,
+            3
+          ],
+          "payload": {
+            "signature_length": 960,
+            "signature_sha3": "39eab52015e65c5a3cbfa195681a9c28e89ba1f428cf354fb7949ea949092813",
+            "signature_blake2b": "45331319793104167ad163e4f193e4d0",
+            "message_length": 22,
+            "message_digest": "aac58ba31ce29eacd0064e05f1df115f6b3937aa60ee87037e913507761bbec1"
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-pss",
+      "algorithm_kind": "signature",
+      "parameter_name": "RSA-7680-PSS",
+      "security_category": 3,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "7680"
+      },
+      "scenario": "sign_random_message",
+      "description": "Sign random messages with a fixed secret key",
+      "group": "signature_tvla_sign",
+      "label": "random",
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-pss_sign_random_message_qw6ntbww",
+        "files": {},
+        "context": {
+          "fixed_secret_key_present": true,
+          "fixed_secret_key_length": 4391,
+          "fixed_secret_key_sha3": "74db316ae3488e97a559ac5f368062c0534979886dffd94a355a993b59b98a56",
+          "fixed_secret_key_blake2b": "1d625c308488436c1d80a37ead1eca3e"
+        }
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-7680-PSS",
+          "scenario": "sign_random_message",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 4246711029,
+          "cpu_time_ns": 4223786000,
+          "rss_before": 89530368,
+          "rss_after": 89542656,
+          "rss_peak": 89542656,
+          "rss_delta": 12288,
+          "alloc_current": 1548,
+          "alloc_peak": 2534,
+          "alloc_before": 804,
+          "alloc_peak_before": 1822,
+          "alloc_delta": 744,
+          "alloc_peak_delta": 712,
+          "gc_counts_before": [
+            189,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            190,
+            1,
+            3
+          ],
+          "payload": {
+            "signature_length": 960,
+            "signature_sha3": "83ecaa2e63108145a1e29a2554cd29549f782ca6e266c41ab7694d53ed033c70",
+            "signature_blake2b": "f899846ee5bbb7a81bf5bcefde1846ee",
+            "message_length": 22,
+            "message_digest": "bf25d8416ce0c9b26813b4e8abdea162edfded27429cb608d0b7340b434222f9"
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-7680-PSS",
+          "scenario": "sign_random_message",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 4344843834,
+          "cpu_time_ns": 4317658000,
+          "rss_before": 89542656,
+          "rss_after": 89567232,
+          "rss_peak": 89567232,
+          "rss_delta": 24576,
+          "alloc_current": 2720,
+          "alloc_peak": 3734,
+          "alloc_before": 2104,
+          "alloc_peak_before": 3236,
+          "alloc_delta": 616,
+          "alloc_peak_delta": 498,
+          "gc_counts_before": [
+            191,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            192,
+            1,
+            3
+          ],
+          "payload": {
+            "signature_length": 960,
+            "signature_sha3": "20257e6dcee6afe662cc6bb4f855ff91c71caf0ed4cbcd667a0f5315f09cba3e",
+            "signature_blake2b": "2bc587c87ab0012e78bc7d04725261e6",
+            "message_length": 22,
+            "message_digest": "ad09d96114e7d9a341af6b1008e27539cfc40d79f345b7f87814ef6fe69b7dc1"
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-pss",
+      "algorithm_kind": "signature",
+      "parameter_name": "RSA-7680-PSS",
+      "security_category": 3,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "7680"
+      },
+      "scenario": "sign_fault",
+      "description": "Attempt signing with a fault-injected secret key",
+      "group": null,
+      "label": null,
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-pss_sign_fault_gehtxq82",
+        "files": {},
+        "context": {
+          "fixed_secret_key_present": true,
+          "fixed_secret_key_length": 4391,
+          "fixed_secret_key_sha3": "e108bb2c8ae09320287e10ce05a267b6ed35c42dfa1091edcd691e1673a67f6a",
+          "fixed_secret_key_blake2b": "93214c333d8617b68dd7a22cae3a81bf"
+        }
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-7680-PSS",
+          "scenario": "sign_fault",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 4410599102,
+          "cpu_time_ns": 4393233000,
+          "rss_before": 89575424,
+          "rss_after": 89575424,
+          "rss_peak": 89575424,
+          "rss_delta": 0,
+          "alloc_current": 1251,
+          "alloc_peak": 11094,
+          "alloc_before": 861,
+          "alloc_peak_before": 1879,
+          "alloc_delta": 390,
+          "alloc_peak_delta": 9215,
+          "gc_counts_before": [
+            198,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            199,
+            1,
+            3
+          ],
+          "payload": {
+            "fault_status": "error",
+            "fault_error": "ValueError('Invalid private key')",
+            "message_length": 24
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-7680-PSS",
+          "scenario": "sign_fault",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 2147386136,
+          "cpu_time_ns": 2140916000,
+          "rss_before": 89575424,
+          "rss_after": 89579520,
+          "rss_peak": 89579520,
+          "rss_delta": 4096,
+          "alloc_current": 2165,
+          "alloc_peak": 12072,
+          "alloc_before": 1903,
+          "alloc_peak_before": 11094,
+          "alloc_delta": 262,
+          "alloc_peak_delta": 978,
+          "gc_counts_before": [
+            201,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            203,
+            1,
+            3
+          ],
+          "payload": {
+            "fault_status": "error",
+            "fault_error": "ValueError('Invalid private key')",
+            "message_length": 24
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "algorithm": "rsa-pss",
+      "algorithm_kind": "signature",
+      "parameter_name": "RSA-7680-PSS",
+      "security_category": 3,
+      "security_override_note": null,
+      "security_override_env": {
+        "PQCBENCH_RSA_BITS": "7680"
+      },
+      "scenario": "verify_invalid_signature",
+      "description": "Verify corrupted signatures to observe error handling",
+      "group": null,
+      "label": null,
+      "artifact": {
+        "artifact_path": "/var/folders/pl/8x_22tn166q55c5tx6_zbb4c0000gn/T/forensic_rsa-pss_verify_invalid_signature_f68atu4x",
+        "files": {},
+        "context": {
+          "fixed_secret_key_present": true,
+          "fixed_secret_key_length": 4390,
+          "fixed_secret_key_sha3": "0d2e48267a01bca61646a174b6d84ff2d78fa586a55f27b487d2703a01303618",
+          "fixed_secret_key_blake2b": "6db23fe395567836c4a7d974aaebbd0a"
+        }
+      },
+      "observations": [
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-7680-PSS",
+          "scenario": "verify_invalid_signature",
+          "iteration": 0,
+          "success": true,
+          "wall_time_ns": 4785383568,
+          "cpu_time_ns": 4720651000,
+          "rss_before": 89587712,
+          "rss_after": 89587712,
+          "rss_peak": 89587712,
+          "rss_delta": 0,
+          "alloc_current": 1492,
+          "alloc_peak": 4650,
+          "alloc_before": 862,
+          "alloc_peak_before": 1880,
+          "alloc_delta": 630,
+          "alloc_peak_delta": 2770,
+          "gc_counts_before": [
+            211,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            212,
+            1,
+            3
+          ],
+          "payload": {
+            "verification_result": false,
+            "original_signature_digest": "1693151005f3ace836f1f1ad196304fdd22ddebc299a0bf446e59a611fd98cdb",
+            "corrupted_signature_digest": "29f3ae55ac4a6438c68d6cbed81ae85258b5e4da4e74e50e754b1ee9515c25cd",
+            "message_length": 25
+          },
+          "error": null,
+          "notes": []
+        },
+        {
+          "algorithm": "rsa-pss",
+          "algorithm_kind": "signature",
+          "parameter_name": "RSA-7680-PSS",
+          "scenario": "verify_invalid_signature",
+          "iteration": 1,
+          "success": true,
+          "wall_time_ns": 4122546125,
+          "cpu_time_ns": 4098915000,
+          "rss_before": 89587712,
+          "rss_after": 89587712,
+          "rss_peak": 89587712,
+          "rss_delta": 0,
+          "alloc_current": 2582,
+          "alloc_peak": 5780,
+          "alloc_before": 2080,
+          "alloc_peak_before": 4650,
+          "alloc_delta": 502,
+          "alloc_peak_delta": 1130,
+          "gc_counts_before": [
+            213,
+            1,
+            3
+          ],
+          "gc_counts_after": [
+            215,
+            1,
+            3
+          ],
+          "payload": {
+            "verification_result": false,
+            "original_signature_digest": "81819eabae595e5d8da10b7dc19538a1a228e7c57c24fbc71313b371ab270030",
+            "corrupted_signature_digest": "86891cda965799c140db8b591a0e96cafd170374d333987980e76968635e79f8",
+            "message_length": 25
+          },
+          "error": null,
+          "notes": []
+        }
+      ]
+    }
+  ],
+  "analysis": [
+    {
+      "algorithm": "rsa-oaep",
+      "algorithm_kind": "kem",
+      "parameter_name": "RSA-3072-OAEP",
+      "scenario_name": "kem_tvla_decapsulation:fixed vs invalid",
+      "metrics": {
+        "t_stat_time": -4.804387473059891,
+        "t_pvalue_time": 0.07867699188563514,
+        "t2_stat_time": -Infinity,
+        "t2_pvalue_time": 0.0,
+        "t_stat_cpu": -4.90484794986352,
+        "t_pvalue_cpu": 0.0738696571093909,
+        "t2_stat_cpu": -Infinity,
+        "t2_pvalue_cpu": 0.0,
+        "t_stat_rss": 0.4708709557974187,
+        "t_pvalue_rss": 0.7066504352952969,
+        "t2_stat_rss": Infinity,
+        "t2_pvalue_rss": 0.0,
+        "mannu_time": 0.0,
+        "mannu_pvalue_time": 0.3333333333333333,
+        "mannu_cpu": 0.0,
+        "mannu_pvalue_cpu": 0.3333333333333333,
+        "mannu_rss": 2.0,
+        "mannu_pvalue_rss": 1.0,
+        "ks_stat_time": 1.0,
+        "ks_pvalue_time": 0.3333333333333333,
+        "ks_stat_cpu": 1.0,
+        "ks_pvalue_cpu": 0.3333333333333333,
+        "ks_stat_rss": 0.5,
+        "ks_pvalue_rss": 1.0,
+        "mi_time": 0.6931471498257666,
+        "mi_pvalue_time": 1.0,
+        "mi_cpu": 0.6931471498257666,
+        "mi_pvalue_cpu": 1.0,
+        "mi_rss": 0.6931471498257669,
+        "mi_pvalue_rss": 0.3344665533446655,
+        "cliffs_delta_time": -1.0,
+        "cliffs_delta_cpu": -1.0,
+        "cliffs_delta_rss": 0.0,
+        "holm_hits_time": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_time": false,
+        "mi_significant_time": false,
+        "holm_hits_cpu": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_cpu": false,
+        "mi_significant_cpu": false,
+        "holm_hits_rss": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_rss": false,
+        "mi_significant_rss": false,
+        "time_leak_flag": true,
+        "cpu_leak_flag": true,
+        "rss_leak_flag": true
+      },
+      "security_category": 1
+    },
+    {
+      "algorithm": "rsa-oaep",
+      "algorithm_kind": "kem",
+      "parameter_name": "RSA-3072-OAEP",
+      "scenario_name": "kem_tvla_decapsulation:sanity_shuffle",
+      "metrics": {
+        "t_stat_time": -0.14191844317985655,
+        "t_pvalue_time": 0.9030647207503903,
+        "t2_stat_time": -Infinity,
+        "t2_pvalue_time": 0.0,
+        "t_stat_cpu": -0.13363167008233479,
+        "t_pvalue_cpu": 0.9086005780727324,
+        "t2_stat_cpu": -Infinity,
+        "t2_pvalue_cpu": 0.0,
+        "t_stat_rss": 0.6285872661926204,
+        "t_pvalue_rss": 0.6161119171881784,
+        "t2_stat_rss": Infinity,
+        "t2_pvalue_rss": 0.0,
+        "mannu_time": 2.0,
+        "mannu_pvalue_time": 1.0,
+        "mannu_cpu": 2.0,
+        "mannu_pvalue_cpu": 1.0,
+        "mannu_rss": 3.0,
+        "mannu_pvalue_rss": 0.6666666666666666,
+        "ks_stat_time": 0.5,
+        "ks_pvalue_time": 1.0,
+        "ks_stat_cpu": 0.5,
+        "ks_pvalue_cpu": 1.0,
+        "ks_stat_rss": 0.5,
+        "ks_pvalue_rss": 1.0,
+        "mi_time": 0.6931471498257666,
+        "mi_pvalue_time": 1.0,
+        "mi_cpu": 0.6931471498257666,
+        "mi_pvalue_cpu": 1.0,
+        "mi_rss": 0.6931471498257666,
+        "mi_pvalue_rss": 0.8348165183481652,
+        "cliffs_delta_time": 0.0,
+        "cliffs_delta_cpu": 0.0,
+        "cliffs_delta_rss": 0.5,
+        "holm_hits_time": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_time": false,
+        "mi_significant_time": false,
+        "holm_hits_cpu": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_cpu": false,
+        "mi_significant_cpu": false,
+        "holm_hits_rss": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_rss": false,
+        "mi_significant_rss": false,
+        "time_leak_flag": true,
+        "cpu_leak_flag": true,
+        "rss_leak_flag": true
+      },
+      "security_category": 1
+    },
+    {
+      "algorithm": "rsa-oaep",
+      "algorithm_kind": "kem",
+      "parameter_name": "RSA-7680-OAEP",
+      "scenario_name": "kem_tvla_decapsulation:fixed vs invalid",
+      "metrics": {
+        "t_stat_time": 2.015783193058514,
+        "t_pvalue_time": 0.258285915287316,
+        "t2_stat_time": Infinity,
+        "t2_pvalue_time": 0.0,
+        "t_stat_cpu": 2.259069036550944,
+        "t_pvalue_cpu": 0.24496691571719922,
+        "t2_stat_cpu": Infinity,
+        "t2_pvalue_cpu": 0.0,
+        "t_stat_rss": 4.024922359499621,
+        "t_pvalue_rss": 0.09171033896595437,
+        "t2_stat_rss": Infinity,
+        "t2_pvalue_rss": 0.0,
+        "mannu_time": 4.0,
+        "mannu_pvalue_time": 0.3333333333333333,
+        "mannu_cpu": 4.0,
+        "mannu_pvalue_cpu": 0.3333333333333333,
+        "mannu_rss": 4.0,
+        "mannu_pvalue_rss": 0.3333333333333333,
+        "ks_stat_time": 1.0,
+        "ks_pvalue_time": 0.3333333333333333,
+        "ks_stat_cpu": 1.0,
+        "ks_pvalue_cpu": 0.3333333333333333,
+        "ks_stat_rss": 1.0,
+        "ks_pvalue_rss": 0.3333333333333333,
+        "mi_time": 0.6931471498257669,
+        "mi_pvalue_time": 0.3327667233276672,
+        "mi_cpu": 0.6931471498257669,
+        "mi_pvalue_cpu": 0.3341665833416658,
+        "mi_rss": 0.6931471498257669,
+        "mi_pvalue_rss": 0.33226677332266774,
+        "cliffs_delta_time": 1.0,
+        "cliffs_delta_cpu": 1.0,
+        "cliffs_delta_rss": 1.0,
+        "holm_hits_time": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_time": false,
+        "mi_significant_time": false,
+        "holm_hits_cpu": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_cpu": false,
+        "mi_significant_cpu": false,
+        "holm_hits_rss": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_rss": false,
+        "mi_significant_rss": false,
+        "time_leak_flag": true,
+        "cpu_leak_flag": true,
+        "rss_leak_flag": true
+      },
+      "security_category": 3
+    },
+    {
+      "algorithm": "rsa-oaep",
+      "algorithm_kind": "kem",
+      "parameter_name": "RSA-7680-OAEP",
+      "scenario_name": "kem_tvla_decapsulation:sanity_shuffle",
+      "metrics": {
+        "t_stat_time": 0.3831570902562342,
+        "t_pvalue_time": 0.7621398940967428,
+        "t2_stat_time": Infinity,
+        "t2_pvalue_time": 0.0,
+        "t_stat_cpu": 0.4109663578314943,
+        "t_pvalue_cpu": 0.74303638192847,
+        "t2_stat_cpu": Infinity,
+        "t2_pvalue_cpu": 0.0,
+        "t_stat_rss": -0.4685212856658182,
+        "t_pvalue_rss": 0.6874590797378408,
+        "t2_stat_rss": -Infinity,
+        "t2_pvalue_rss": 0.0,
+        "mannu_time": 2.0,
+        "mannu_pvalue_time": 1.0,
+        "mannu_cpu": 2.0,
+        "mannu_pvalue_cpu": 1.0,
+        "mannu_rss": 1.0,
+        "mannu_pvalue_rss": 0.6666666666666666,
+        "ks_stat_time": 0.5,
+        "ks_pvalue_time": 1.0,
+        "ks_stat_cpu": 0.5,
+        "ks_pvalue_cpu": 1.0,
+        "ks_stat_rss": 0.5,
+        "ks_pvalue_rss": 1.0,
+        "mi_time": 0.6931471498257666,
+        "mi_pvalue_time": 0.8302169783021698,
+        "mi_cpu": 0.6931471498257669,
+        "mi_pvalue_cpu": 0.3294670532946705,
+        "mi_rss": 0.6931471498257666,
+        "mi_pvalue_rss": 1.0,
+        "cliffs_delta_time": 0.0,
+        "cliffs_delta_cpu": 0.0,
+        "cliffs_delta_rss": -0.5,
+        "holm_hits_time": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_time": false,
+        "mi_significant_time": false,
+        "holm_hits_cpu": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_cpu": false,
+        "mi_significant_cpu": false,
+        "holm_hits_rss": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_rss": false,
+        "mi_significant_rss": false,
+        "time_leak_flag": true,
+        "cpu_leak_flag": true,
+        "rss_leak_flag": true
+      },
+      "security_category": 3
+    },
+    {
+      "algorithm": "rsa-pss",
+      "algorithm_kind": "signature",
+      "parameter_name": "RSA-3072-PSS",
+      "scenario_name": "signature_tvla_sign:fixed vs random",
+      "metrics": {
+        "t_stat_time": 2.614543732030047,
+        "t_pvalue_time": 0.22905140944367097,
+        "t2_stat_time": Infinity,
+        "t2_pvalue_time": 0.0,
+        "t_stat_cpu": 9.575442089271153,
+        "t_pvalue_cpu": 0.02035158577217771,
+        "t2_stat_cpu": Infinity,
+        "t2_pvalue_cpu": 0.0,
+        "t_stat_rss": 1.0,
+        "t_pvalue_rss": 0.49999999999999956,
+        "t2_stat_rss": Infinity,
+        "t2_pvalue_rss": 0.0,
+        "mannu_time": 4.0,
+        "mannu_pvalue_time": 0.3333333333333333,
+        "mannu_cpu": 4.0,
+        "mannu_pvalue_cpu": 0.3333333333333333,
+        "mannu_rss": 3.0,
+        "mannu_pvalue_rss": 0.6170750774519738,
+        "ks_stat_time": 1.0,
+        "ks_pvalue_time": 0.3333333333333333,
+        "ks_stat_cpu": 1.0,
+        "ks_pvalue_cpu": 0.3333333333333333,
+        "ks_stat_rss": 0.5,
+        "ks_pvalue_rss": 1.0,
+        "mi_time": 0.6931471498257666,
+        "mi_pvalue_time": 0.82991700829917,
+        "mi_cpu": 0.6931471498257666,
+        "mi_pvalue_cpu": 1.0,
+        "mi_rss": 0.2157615459887241,
+        "mi_pvalue_rss": 0.5035496450354965,
+        "cliffs_delta_time": 1.0,
+        "cliffs_delta_cpu": 1.0,
+        "cliffs_delta_rss": 0.5,
+        "holm_hits_time": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_time": false,
+        "mi_significant_time": false,
+        "holm_hits_cpu": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_cpu": false,
+        "mi_significant_cpu": false,
+        "holm_hits_rss": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_rss": false,
+        "mi_significant_rss": false,
+        "time_leak_flag": true,
+        "cpu_leak_flag": true,
+        "rss_leak_flag": true
+      },
+      "security_category": 1
+    },
+    {
+      "algorithm": "rsa-pss",
+      "algorithm_kind": "signature",
+      "parameter_name": "RSA-3072-PSS",
+      "scenario_name": "signature_tvla_sign:sanity_shuffle",
+      "metrics": {
+        "t_stat_time": -2.614543732030047,
+        "t_pvalue_time": 0.22905140944367097,
+        "t2_stat_time": -Infinity,
+        "t2_pvalue_time": 0.0,
+        "t_stat_cpu": -9.575442089271153,
+        "t_pvalue_cpu": 0.02035158577217771,
+        "t2_stat_cpu": -Infinity,
+        "t2_pvalue_cpu": 0.0,
+        "t_stat_rss": -1.0,
+        "t_pvalue_rss": 0.49999999999999956,
+        "t2_stat_rss": -Infinity,
+        "t2_pvalue_rss": 0.0,
+        "mannu_time": 0.0,
+        "mannu_pvalue_time": 0.3333333333333333,
+        "mannu_cpu": 0.0,
+        "mannu_pvalue_cpu": 0.3333333333333333,
+        "mannu_rss": 1.0,
+        "mannu_pvalue_rss": 0.6170750774519738,
+        "ks_stat_time": 1.0,
+        "ks_pvalue_time": 0.3333333333333333,
+        "ks_stat_cpu": 1.0,
+        "ks_pvalue_cpu": 0.3333333333333333,
+        "ks_stat_rss": 0.5,
+        "ks_pvalue_rss": 1.0,
+        "mi_time": 0.6931471498257664,
+        "mi_pvalue_time": 1.0,
+        "mi_cpu": 0.6931471498257666,
+        "mi_pvalue_cpu": 1.0,
+        "mi_rss": 0.21576154598872366,
+        "mi_pvalue_rss": 1.0,
+        "cliffs_delta_time": -1.0,
+        "cliffs_delta_cpu": -1.0,
+        "cliffs_delta_rss": -0.5,
+        "holm_hits_time": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_time": false,
+        "mi_significant_time": false,
+        "holm_hits_cpu": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_cpu": false,
+        "mi_significant_cpu": false,
+        "holm_hits_rss": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_rss": false,
+        "mi_significant_rss": false,
+        "time_leak_flag": true,
+        "cpu_leak_flag": true,
+        "rss_leak_flag": true
+      },
+      "security_category": 1
+    },
+    {
+      "algorithm": "rsa-pss",
+      "algorithm_kind": "signature",
+      "parameter_name": "RSA-7680-PSS",
+      "scenario_name": "signature_tvla_sign:fixed vs random",
+      "metrics": {
+        "t_stat_time": -1.2182130382029246,
+        "t_pvalue_time": 0.41176934545705995,
+        "t2_stat_time": Infinity,
+        "t2_pvalue_time": 0.0,
+        "t_stat_cpu": -1.418471807994486,
+        "t_pvalue_cpu": 0.35732558346883725,
+        "t2_stat_cpu": Infinity,
+        "t2_pvalue_cpu": 0.0,
+        "t_stat_rss": -0.9428090415820635,
+        "t_pvalue_rss": 0.44529980377477085,
+        "t2_stat_rss": NaN,
+        "t2_pvalue_rss": NaN,
+        "mannu_time": 1.0,
+        "mannu_pvalue_time": 0.6666666666666666,
+        "mannu_cpu": 0.0,
+        "mannu_pvalue_cpu": 0.3333333333333333,
+        "mannu_rss": 1.0,
+        "mannu_pvalue_rss": 0.6666666666666666,
+        "ks_stat_time": 0.5,
+        "ks_pvalue_time": 1.0,
+        "ks_stat_cpu": 1.0,
+        "ks_pvalue_cpu": 0.3333333333333333,
+        "ks_stat_rss": 0.5,
+        "ks_pvalue_rss": 1.0,
+        "mi_time": 0.6931471498257666,
+        "mi_pvalue_time": 1.0,
+        "mi_cpu": 0.6931471498257666,
+        "mi_pvalue_cpu": 1.0,
+        "mi_rss": 0.6931471498257666,
+        "mi_pvalue_rss": 1.0,
+        "cliffs_delta_time": -0.5,
+        "cliffs_delta_cpu": -1.0,
+        "cliffs_delta_rss": -0.5,
+        "holm_hits_time": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_time": false,
+        "mi_significant_time": false,
+        "holm_hits_cpu": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_cpu": false,
+        "mi_significant_cpu": false,
+        "holm_hits_rss": {
+          "t": false,
+          "t2": false,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_rss": false,
+        "mi_significant_rss": false,
+        "time_leak_flag": true,
+        "cpu_leak_flag": true,
+        "rss_leak_flag": false
+      },
+      "security_category": 3
+    },
+    {
+      "algorithm": "rsa-pss",
+      "algorithm_kind": "signature",
+      "parameter_name": "RSA-7680-PSS",
+      "scenario_name": "signature_tvla_sign:sanity_shuffle",
+      "metrics": {
+        "t_stat_time": -0.5339915277389853,
+        "t_pvalue_time": 0.6877320416928354,
+        "t2_stat_time": Infinity,
+        "t2_pvalue_time": 0.0,
+        "t_stat_cpu": -0.46225723794536566,
+        "t_pvalue_cpu": 0.7239724320746699,
+        "t2_stat_cpu": Infinity,
+        "t2_pvalue_cpu": 0.0,
+        "t_stat_rss": 2.1213203435596424,
+        "t_pvalue_rss": 0.1679497056621563,
+        "t2_stat_rss": NaN,
+        "t2_pvalue_rss": NaN,
+        "mannu_time": 2.0,
+        "mannu_pvalue_time": 1.0,
+        "mannu_cpu": 2.0,
+        "mannu_pvalue_cpu": 1.0,
+        "mannu_rss": 4.0,
+        "mannu_pvalue_rss": 0.3333333333333333,
+        "ks_stat_time": 0.5,
+        "ks_pvalue_time": 1.0,
+        "ks_stat_cpu": 0.5,
+        "ks_pvalue_cpu": 1.0,
+        "ks_stat_rss": 1.0,
+        "ks_pvalue_rss": 0.3333333333333333,
+        "mi_time": 0.6931471498257666,
+        "mi_pvalue_time": 1.0,
+        "mi_cpu": 0.6931471498257666,
+        "mi_pvalue_cpu": 1.0,
+        "mi_rss": 0.6931471498257666,
+        "mi_pvalue_rss": 1.0,
+        "cliffs_delta_time": 0.0,
+        "cliffs_delta_cpu": 0.0,
+        "cliffs_delta_rss": 1.0,
+        "holm_hits_time": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_time": false,
+        "mi_significant_time": false,
+        "holm_hits_cpu": {
+          "t": false,
+          "t2": true,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_cpu": false,
+        "mi_significant_cpu": false,
+        "holm_hits_rss": {
+          "t": false,
+          "t2": false,
+          "mann": false,
+          "ks": false
+        },
+        "tvla_hit_rss": false,
+        "mi_significant_rss": false,
+        "time_leak_flag": true,
+        "cpu_leak_flag": true,
+        "rss_leak_flag": false
+      },
+      "security_category": 3
+    }
+  ]
+}

@@ -1,0 +1,649 @@
+{
+  "algo": "kyber",
+  "kind": "KEM",
+  "ops": {
+    "keygen": {
+      "runs": 2,
+      "mean_ms": 17.745940989698283,
+      "min_ms": 3.22878199222032,
+      "max_ms": 32.26309998717625,
+      "median_ms": 17.745940989698283,
+      "stddev_ms": 14.517158997477964,
+      "ci95_low_ms": -10.707167803200111,
+      "ci95_high_ms": 46.199049782596674,
+      "range_ms": 29.034317994955927,
+      "series": [
+        32.26309998717625,
+        3.22878199222032
+      ],
+      "mem_mean_kb": 380.0,
+      "mem_min_kb": 372.0,
+      "mem_max_kb": 388.0,
+      "mem_median_kb": 380.0,
+      "mem_stddev_kb": 8.0,
+      "mem_ci95_low_kb": 364.3202881236796,
+      "mem_ci95_high_kb": 395.6797118763204,
+      "mem_range_kb": 16.0,
+      "mem_series_kb": [
+        372.0,
+        388.0
+      ],
+      "runtime_scaling": {
+        "baseline_device": "macbookpro16_i9_9880h",
+        "baseline_metric": "geekbench6_single",
+        "baseline_score": 1329.0,
+        "alpha": 0.85,
+        "model": "two_term",
+        "predictions": {
+          "intel_i9_14900k": {
+            "device": "intel_i9_14900k",
+            "predicted_ms": 6.274752824005239,
+            "factor": 0.35358805868044996,
+            "compute_ratio": 0.4040741866828823,
+            "bandwidth_ratio": 0.06749999999999999,
+            "model": "two_term"
+          },
+          "amd_ryzen_9_7950x": {
+            "device": "amd_ryzen_9_7950x",
+            "predicted_ms": 6.936665057537992,
+            "factor": 0.39088741823072687,
+            "compute_ratio": 0.4468728984532616,
+            "bandwidth_ratio": 0.07363636363636364,
+            "model": "two_term"
+          },
+          "esp32_s3": {
+            "device": "esp32_s3",
+            "predicted_ms": 57.097064778875186,
+            "factor": 3.217471804511278,
+            "compute_ratio": 1.9984962406015037,
+            "bandwidth_ratio": 10.124999999999998,
+            "model": "two_term"
+          },
+          "nrf52840": {
+            "device": "nrf52840",
+            "predicted_ms": 180.8051894316915,
+            "factor": 10.188537735849057,
+            "compute_ratio": 6.268867924528302,
+            "bandwidth_ratio": 32.4,
+            "model": "two_term"
+          },
+          "amd_ryzen_7_5700x": {
+            "device": "amd_ryzen_7_5700x",
+            "predicted_ms": 10.497666431558713,
+            "factor": 0.5915531015037594,
+            "compute_ratio": 0.6661654135338346,
+            "bandwidth_ratio": 0.16874999999999998,
+            "model": "two_term"
+          }
+        },
+        "notes": "MacBook Pro 16-inch (2019) median Geekbench 6 single-core \u22481329 (n\u224819); Python memcpy probe (~32 MB) \u22488.1 GB/s"
+      }
+    },
+    "encapsulate": {
+      "runs": 2,
+      "mean_ms": 0.8739605036680587,
+      "min_ms": 0.8234460110543296,
+      "max_ms": 0.9244749962817878,
+      "median_ms": 0.8739605036680587,
+      "stddev_ms": 0.05051449261372909,
+      "ci95_low_ms": 0.774953917447835,
+      "ci95_high_ms": 0.9729670898882823,
+      "range_ms": 0.10102898522745818,
+      "series": [
+        0.9244749962817878,
+        0.8234460110543296
+      ],
+      "mem_mean_kb": 120.0,
+      "mem_min_kb": 92.0,
+      "mem_max_kb": 148.0,
+      "mem_median_kb": 120.0,
+      "mem_stddev_kb": 28.0,
+      "mem_ci95_low_kb": 65.12100843287851,
+      "mem_ci95_high_kb": 174.8789915671215,
+      "mem_range_kb": 56.0,
+      "mem_series_kb": [
+        92.0,
+        148.0
+      ],
+      "runtime_scaling": {
+        "baseline_device": "macbookpro16_i9_9880h",
+        "baseline_metric": "geekbench6_single",
+        "baseline_score": 1329.0,
+        "alpha": 0.85,
+        "model": "two_term",
+        "predictions": {
+          "intel_i9_14900k": {
+            "device": "intel_i9_14900k",
+            "predicted_ms": 0.30902199785537715,
+            "factor": 0.35358805868044996,
+            "compute_ratio": 0.4040741866828823,
+            "bandwidth_ratio": 0.06749999999999999,
+            "model": "two_term"
+          },
+          "amd_ryzen_9_7950x": {
+            "device": "amd_ryzen_9_7950x",
+            "predicted_ms": 0.34162016491443314,
+            "factor": 0.39088741823072687,
+            "compute_ratio": 0.4468728984532616,
+            "bandwidth_ratio": 0.07363636363636364,
+            "model": "two_term"
+          },
+          "esp32_s3": {
+            "device": "esp32_s3",
+            "predicted_ms": 2.811943278808454,
+            "factor": 3.217471804511278,
+            "compute_ratio": 1.9984962406015037,
+            "bandwidth_ratio": 10.124999999999998,
+            "model": "two_term"
+          },
+          "nrf52840": {
+            "device": "nrf52840",
+            "predicted_ms": 8.904379571263663,
+            "factor": 10.188537735849055,
+            "compute_ratio": 6.268867924528302,
+            "bandwidth_ratio": 32.4,
+            "model": "two_term"
+          },
+          "amd_ryzen_7_5700x": {
+            "device": "amd_ryzen_7_5700x",
+            "predicted_ms": 0.5169940465366278,
+            "factor": 0.5915531015037594,
+            "compute_ratio": 0.6661654135338346,
+            "bandwidth_ratio": 0.16874999999999998,
+            "model": "two_term"
+          }
+        },
+        "notes": "MacBook Pro 16-inch (2019) median Geekbench 6 single-core \u22481329 (n\u224819); Python memcpy probe (~32 MB) \u22488.1 GB/s"
+      }
+    },
+    "decapsulate": {
+      "runs": 2,
+      "mean_ms": 0.8111335046123713,
+      "min_ms": 0.8102209976641461,
+      "max_ms": 0.8120460115605965,
+      "median_ms": 0.8111335046123713,
+      "stddev_ms": 0.0009125069482252002,
+      "ci95_low_ms": 0.8093450238582074,
+      "ci95_high_ms": 0.8129219853665353,
+      "range_ms": 0.0018250138964504004,
+      "series": [
+        0.8120460115605965,
+        0.8102209976641461
+      ],
+      "mem_mean_kb": 118.0,
+      "mem_min_kb": 116.0,
+      "mem_max_kb": 120.0,
+      "mem_median_kb": 118.0,
+      "mem_stddev_kb": 2.0,
+      "mem_ci95_low_kb": 114.0800720309199,
+      "mem_ci95_high_kb": 121.9199279690801,
+      "mem_range_kb": 4.0,
+      "mem_series_kb": [
+        120.0,
+        116.0
+      ],
+      "runtime_scaling": {
+        "baseline_device": "macbookpro16_i9_9880h",
+        "baseline_metric": "geekbench6_single",
+        "baseline_score": 1329.0,
+        "alpha": 0.85,
+        "model": "two_term",
+        "predictions": {
+          "intel_i9_14900k": {
+            "device": "intel_i9_14900k",
+            "predicted_ms": 0.28680712122655816,
+            "factor": 0.35358805868044996,
+            "compute_ratio": 0.4040741866828823,
+            "bandwidth_ratio": 0.06749999999999999,
+            "model": "two_term"
+          },
+          "amd_ryzen_9_7950x": {
+            "device": "amd_ryzen_9_7950x",
+            "predicted_ms": 0.3170618814583712,
+            "factor": 0.39088741823072687,
+            "compute_ratio": 0.4468728984532616,
+            "bandwidth_ratio": 0.07363636363636364,
+            "model": "two_term"
+          },
+          "esp32_s3": {
+            "device": "esp32_s3",
+            "predicted_ms": 2.6097991807847234,
+            "factor": 3.217471804511278,
+            "compute_ratio": 1.9984962406015037,
+            "bandwidth_ratio": 10.124999999999998,
+            "model": "two_term"
+          },
+          "nrf52840": {
+            "device": "nrf52840",
+            "predicted_ms": 8.26426432055464,
+            "factor": 10.188537735849057,
+            "compute_ratio": 6.268867924528302,
+            "bandwidth_ratio": 32.4,
+            "model": "two_term"
+          },
+          "amd_ryzen_7_5700x": {
+            "device": "amd_ryzen_7_5700x",
+            "predicted_ms": 0.4798285403870622,
+            "factor": 0.5915531015037594,
+            "compute_ratio": 0.6661654135338346,
+            "bandwidth_ratio": 0.16874999999999998,
+            "model": "two_term"
+          }
+        },
+        "notes": "MacBook Pro 16-inch (2019) median Geekbench 6 single-core \u22481329 (n\u224819); Python memcpy probe (~32 MB) \u22488.1 GB/s"
+      }
+    }
+  },
+  "meta": {
+    "public_key_len": 1184,
+    "secret_key_len": 2400,
+    "ciphertext_len": 1088,
+    "shared_secret_len": 32,
+    "ciphertext_expansion_ratio": 34.0,
+    "mechanism": "ML-KEM-768",
+    "run_mode": "cold",
+    "backend": "native",
+    "secret_key_analysis": {
+      "method": "bitstring_hw_hd_v1",
+      "model": {
+        "name": "centered_binomial_coefficients",
+        "expected_hw_fraction": 0.625,
+        "expected_hd_fraction": 0.7265625,
+        "notes": [
+          "Coefficient domain sampled via centered binomial distribution.",
+          "Secret stats derived from packed ML-KEM ternary coefficients."
+        ],
+        "extras": {
+          "eta": 2,
+          "distribution": "centered_binomial",
+          "coefficients_per_sample": 768
+        }
+      },
+      "samples": 32,
+      "bits_per_sample": 768,
+      "hw": {
+        "mean_fraction": 0.6256917317708334,
+        "std_fraction": 0.01868269638248479,
+        "min_fraction": 0.5859375,
+        "max_fraction": 0.6627604166666666,
+        "mean_bits": 480.53125,
+        "std_bits": 14.348310821748317,
+        "expected_fraction": 0.625,
+        "expected_bits": 480.0
+      },
+      "hd": {
+        "samples": 128,
+        "mean_fraction": 0.7231648763020834,
+        "std_fraction": 0.016977272454599988,
+        "min_fraction": 0.68359375,
+        "max_fraction": 0.7799479166666666,
+        "expected_fraction": 0.7265625
+      },
+      "byte_bias": {
+        "reference_fraction": 0.625,
+        "max_abs_deviation": null,
+        "mean_abs_deviation": null
+      },
+      "pair_sample_limit": 128,
+      "warnings": [],
+      "coefficients": {
+        "polynomials_per_sample": 3,
+        "coefficients_per_polynomial": 256,
+        "coefficients_per_sample": 768,
+        "value_range": {
+          "min": -2,
+          "max": 2
+        },
+        "non_zero": {
+          "mean_fraction": 0.6256917317708334,
+          "std_fraction": 0.01868269638248479,
+          "min_fraction": 0.5859375,
+          "max_fraction": 0.6627604166666666,
+          "expected_fraction": 0.625
+        },
+        "pairwise_difference": {
+          "samples": 128,
+          "mean_fraction": 0.7231648763020834,
+          "std_fraction": 0.016977272454599988,
+          "min_fraction": 0.68359375,
+          "max_fraction": 0.7799479166666666,
+          "expected_fraction": 0.7265625
+        },
+        "segments": [
+          {
+            "name": "secret_vector",
+            "count": 3
+          }
+        ],
+        "eta": 2,
+        "keys_parsed": 32,
+        "distribution": "centered_binomial"
+      },
+      "bitstring": {
+        "bits_per_sample": 19200,
+        "hw": {
+          "mean_fraction": 0.47566569010416665,
+          "std_fraction": 0.003654211318215556,
+          "min_fraction": 0.4669270833333333,
+          "max_fraction": 0.4841666666666667,
+          "mean_bits": 9132.78125,
+          "std_bits": 70.16085730973867,
+          "expected_fraction": 0.5,
+          "expected_bits": 9600.0
+        },
+        "hd": {
+          "samples": 128,
+          "mean_fraction": 0.495323486328125,
+          "std_fraction": 0.003691599446690044,
+          "min_fraction": 0.48484375,
+          "max_fraction": 0.50375,
+          "expected_fraction": 0.5
+        },
+        "byte_bias": {
+          "reference_fraction": 0.5,
+          "max_abs_deviation": 0.15234375,
+          "mean_abs_deviation": 0.03510579427083333
+        }
+      },
+      "context": {
+        "algo": "kyber",
+        "kind": "KEM",
+        "family": "ML-KEM",
+        "mechanism": "ML-KEM-768",
+        "sampled_keys": 32,
+        "category_floor": 192,
+        "param_notes": "k=3; ring n=256; q=3329; eta1=2, eta2=2",
+        "ternary_coefficients": {
+          "eta": 2,
+          "polynomials_per_key": 3,
+          "coefficients_per_polynomial": 256,
+          "segments": [
+            {
+              "name": "secret_vector",
+              "count": 3
+            }
+          ],
+          "distribution": "centered_binomial",
+          "keys_parsed": 32
+        },
+        "parsed_components": "ternary_coefficients",
+        "parser": "mlkem_eta_coefficients_v1"
+      }
+    },
+    "environment": {
+      "cpu_model": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
+      "os": "macOS-26.0.1-x86_64-i386-64bit",
+      "python": "3.12.11",
+      "dependencies": {
+        "liboqs_commit": "f629296e28f1d1414630ea90d0f0e57bdec53c93",
+        "pqclean_commit": "1eacfdafc15ddc5d5759d0b85b4cef26627df181"
+      },
+      "build_flags": {
+        "native": {
+          "CMAKE_ASM_FLAGS_DEBUG": "-g",
+          "CMAKE_ASM_FLAGS_MINSIZEREL": "-Os -DNDEBUG",
+          "CMAKE_ASM_FLAGS_RELEASE": "-O3 -DNDEBUG",
+          "CMAKE_ASM_FLAGS_RELWITHDEBINFO": "-O2 -g -DNDEBUG",
+          "CMAKE_BUILD_TYPE": "Release",
+          "CMAKE_C_FLAGS_DEBUG": "-g",
+          "CMAKE_C_FLAGS_MINSIZEREL": "-Os -DNDEBUG",
+          "CMAKE_C_FLAGS_RELEASE": "-O3 -DNDEBUG",
+          "CMAKE_C_FLAGS_RELWITHDEBINFO": "-O2 -g -DNDEBUG",
+          "CMAKE_ASM_FLAGS-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_C_FLAGS-ADVANCED": "1",
+          "CMAKE_C_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_C_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_C_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_C_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "_OPENSSL_CFLAGS": "-I/opt/local/libexec/openssl3/include",
+          "_OPENSSL_LDFLAGS": "-L/opt/local/libexec/openssl3/lib;-lssl;-lcrypto",
+          "_OPENSSL_STATIC_CFLAGS": "-I/opt/local/libexec/openssl3/include",
+          "_OPENSSL_STATIC_LDFLAGS": "-L/opt/local/libexec/openssl3/lib;-lssl;-lcrypto;-lz"
+        }
+      }
+    }
+  },
+  "security": {
+    "mechanism": "ML-KEM-768",
+    "family": "ML-KEM",
+    "category_floor": 192,
+    "nist_category": 3,
+    "classical_bits": 192.0,
+    "quantum_bits": 192.0,
+    "shor_breakable": false,
+    "notes": "ML-KEM module-LWE cost model: BKZ (primal/dual) core-SVP estimates. Category floor retained in extras.category_floor.",
+    "estimator": {
+      "name": "core-svp-table",
+      "profile": "floor",
+      "available": false,
+      "reference": "CRYSTALS-Kyber Round 4 specification, Table 4"
+    },
+    "parameters": {
+      "mechanism": "ML-KEM-768",
+      "n": 256,
+      "k": 3,
+      "q": 3329,
+      "eta1": 2,
+      "eta2": 2,
+      "n_lwe": 768,
+      "sizes_bytes": {
+        "public_key": 1184,
+        "secret_key": 2400,
+        "ciphertext": 1088,
+        "shared_secret": 32
+      }
+    },
+    "assumptions": {
+      "core_svp_constants": {
+        "classical": 0.292,
+        "quantum": 0.265
+      },
+      "module_lwe_model": {
+        "model": "core-svp-table",
+        "source": "core-svp-spec-table",
+        "params": {
+          "n": 256,
+          "k": 3,
+          "q": 3329
+        },
+        "sigma_error": 1.0,
+        "sigma_secret": 1.0
+      },
+      "module_lwe_reference": "CRYSTALS-Kyber Round 4 specification, Table 4"
+    },
+    "details": {
+      "module_lwe_core_svp": {
+        "primal": {
+          "dimension": 1537.0,
+          "beta": 630.0,
+          "samples": 640.0,
+          "classical_bits": 184.0,
+          "quantum_bits": 167.0,
+          "sieving_dimension": 600.0,
+          "log2_memory": 130.7,
+          "attack": "primal-usvp"
+        },
+        "headline": {
+          "dimension": 1537.0,
+          "beta": 630.0,
+          "samples": 640.0,
+          "classical_bits": 184.0,
+          "quantum_bits": 167.0,
+          "sieving_dimension": 600.0,
+          "log2_memory": 130.7,
+          "attack": "primal-usvp"
+        }
+      }
+    },
+    "estimates": {
+      "curated": {
+        "classical_bits_mid": 182.0,
+        "classical_bits_range": [
+          175.0,
+          190.0
+        ],
+        "quantum_bits_mid": 165.0,
+        "quantum_bits_range": [
+          160.0,
+          170.0
+        ],
+        "source": "core-svp calibrated",
+        "assumptions": {
+          "core_svp_constants": {
+            "classical": 0.292,
+            "quantum": 0.265
+          },
+          "notes": "Kyber-768 calibrated to core-SVP (\u03b2\u2248630) with target ranges 175\u2013190 / 160\u2013170."
+        }
+      },
+      "calculated": {
+        "profile": "core-svp",
+        "attack": "primal-usvp",
+        "classical_bits": 184.0,
+        "quantum_bits": 167.0,
+        "classical_bits_range": [
+          175.0,
+          190.0
+        ],
+        "quantum_bits_range": [
+          160.0,
+          170.0
+        ]
+      }
+    },
+    "bruteforce": {
+      "model": "guess_shared_secret",
+      "space_bits": 192.0,
+      "rates": [
+        1000000.0,
+        1000000000.0,
+        1000000000000.0
+      ],
+      "rate_unit": "tries_per_second",
+      "time_years": {
+        "1000000.0": {
+          "value": 1.9904559029003933e+44,
+          "sci": "1.990e+44",
+          "log10": 44.29895256054902
+        },
+        "1000000000.0": {
+          "value": 1.9904559029003935e+41,
+          "sci": "1.990e+41",
+          "log10": 41.29895256054902
+        },
+        "1000000000000.0": {
+          "value": 1.9904559029003934e+38,
+          "sci": "1.990e+38",
+          "log10": 38.29895256054902
+        }
+      },
+      "assumptions": {
+        "rationale": "search space ~ 2^floor bits",
+        "notes": "Educational baseline only. Use reduced parameters for lab demos; real parameters are astronomically out of reach."
+      },
+      "guidance": {
+        "lab_mode_max_bits": 32,
+        "warning": "Refuse or simulate >32-bit spaces when running any brute loop."
+      }
+    },
+    "headline": {
+      "nist_category": 3,
+      "category_floor": 192,
+      "classical_bits": 184.0,
+      "quantum_bits": 167.0,
+      "classical_bits_range": [
+        175.0,
+        190.0
+      ],
+      "quantum_bits_range": [
+        160.0,
+        170.0
+      ],
+      "estimator": "core-svp",
+      "model": "module-LWE",
+      "attack": "primal-usvp",
+      "notes": [
+        "Headline attack: primal-usvp (\u03b2=630.0, dim=1537.0, samples=640.0).",
+        "Primal attack available in details; headline shows lower-cost path.",
+        "Curated range: core-svp calibrated",
+        "Reference: CRYSTALS-Kyber Round 4 specification, Table 4",
+        "Module parameters: k=3, n=256, q=3329."
+      ]
+    },
+    "detail_rows": [
+      [
+        "Headline attack",
+        "primal-usvp"
+      ],
+      [
+        "Headline \u03b2",
+        "630.00"
+      ],
+      [
+        "Headline samples",
+        "640.00"
+      ],
+      [
+        "Headline dimension",
+        "1537.00"
+      ],
+      [
+        "BKZ \u03b2",
+        "630.00"
+      ],
+      [
+        "Samples",
+        "640.00"
+      ],
+      [
+        "Dimension",
+        "1537.00"
+      ],
+      [
+        "Sieving dimension",
+        "600.00"
+      ],
+      [
+        "log\u2082 memory",
+        "130.70"
+      ],
+      [
+        "Parameters",
+        "k=3, n=256, q=3329"
+      ]
+    ]
+  },
+  "validation": {
+    "vectorset": "ML-KEM:FIPS203",
+    "mechanism": "ML-KEM-768",
+    "cases": 60,
+    "passes": 60,
+    "fails": 0,
+    "status": "ok",
+    "git_sha": "f629296e28f1d1414630ea90d0f0e57bdec53c93"
+  }
+}
