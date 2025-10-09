@@ -1,6 +1,12 @@
 
 from __future__ import annotations
+from pathlib import Path
+import subprocess
+import sys
+from typing import List, Optional
+
 import typer
+
 from pqcbench import registry
 from .runners.common import _load_adapters
 
@@ -31,6 +37,50 @@ def demo(name: str):
             typer.echo(f"[SIG] {name}: verify={ok} (placeholder)")
     else:
         typer.echo("Algorithm missing keygen")
+
+@app.command("run-tests")
+def run_tests(
+    include_liboqs: bool = typer.Option(
+        True,
+        "--with-liboqs/--skip-liboqs",
+        help="Include liboqs-python tests when available.",
+        show_default=True,
+    ),
+    pytest_args: Optional[List[str]] = typer.Argument(
+        None,
+        metavar="PYTEST_ARGS...",
+        help="Extra arguments forwarded to pytest (after default targets).",
+    ),
+) -> None:
+    """Execute the repository test suites via pytest."""
+    repo_root = Path.cwd()
+    command = [sys.executable, "-m", "pytest"]
+    targets: list[str] = []
+
+    root_tests = repo_root / "tests"
+    if root_tests.exists():
+        targets.append(str(root_tests))
+    else:
+        typer.echo("Warning: `tests/` directory not found relative to current working directory.", err=True)
+
+    liboqs_tests = repo_root / "liboqs-python" / "tests"
+    if include_liboqs and liboqs_tests.exists():
+        try:
+            import oqs  # type: ignore
+        except Exception:
+            typer.echo("Skipping liboqs-python tests because the `oqs` package is unavailable.", err=True)
+        else:
+            targets.append(str(liboqs_tests))
+    elif include_liboqs and not liboqs_tests.exists():
+        typer.echo("Skipping liboqs-python tests because the directory is missing.", err=True)
+
+    command.extend(targets)
+    if pytest_args:
+        command.extend(pytest_args)
+
+    typer.echo(f"Running pytest via: {' '.join(command)}")
+    outcome = subprocess.run(command, cwd=repo_root)
+    raise typer.Exit(outcome.returncode)
 
 def app_main():
     app()

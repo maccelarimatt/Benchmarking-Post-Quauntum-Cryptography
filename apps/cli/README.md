@@ -11,6 +11,7 @@ Quick start
 - Activate the repo virtualenv and install dev deps: `python -m venv .venv && source .venv/bin/activate && pip install -r requirements-dev.txt`
 - List available algorithms: `pqcbench list-algos`
 - Probe liboqs mechanisms: `pqcbench probe-oqs`
+- Run every test suite: `pqcbench run-tests` (add `--skip-liboqs` if liboqs bindings are not set up)
 
 One-command runners
 - `run-kyber`, `run-hqc`, `run-rsa-oaep`
