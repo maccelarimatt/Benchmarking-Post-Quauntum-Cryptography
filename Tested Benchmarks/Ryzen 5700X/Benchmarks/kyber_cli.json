@@ -1,0 +1,30 @@
+{
+  "algo": "kyber",
+  "kind": "KEM",
+  "ops": {
+    "keygen": {
+      "runs": 1,
+      "mean_ms": 1.6574000001128297,
+      "min_ms": 1.6574000001128297,
+      "max_ms": 1.6574000001128297
+    },
+    "encapsulate": {
+      "runs": 1,
+      "mean_ms": 0.37929999962216243,
+      "min_ms": 0.37929999962216243,
+      "max_ms": 0.37929999962216243
+    },
+    "decapsulate": {
+      "runs": 1,
+      "mean_ms": 0.40840000019670697,
+      "min_ms": 0.40840000019670697,
+      "max_ms": 0.40840000019670697
+    }
+  },
+  "meta": {
+    "public_key_len": 1184,
+    "secret_key_len": 2400,
+    "ciphertext_len": 1088,
+    "shared_secret_len": 32
+  }
+}

@@ -1,0 +1,644 @@
+{
+  "algo": "kyber",
+  "kind": "KEM",
+  "ops": {
+    "keygen": {
+      "runs": 2,
+      "mean_ms": 0.7157500076573342,
+      "min_ms": 0.707099970895797,
+      "max_ms": 0.7244000444188714,
+      "median_ms": 0.7157500076573342,
+      "stddev_ms": 0.008650036761537194,
+      "ci95_low_ms": 0.6987962471397738,
+      "ci95_high_ms": 0.7327037681748946,
+      "range_ms": 0.01730007352307439,
+      "series": [
+        0.707099970895797,
+        0.7244000444188714
+      ],
+      "mem_mean_kb": 114.0,
+      "mem_min_kb": 108.0,
+      "mem_max_kb": 120.0,
+      "mem_median_kb": 114.0,
+      "mem_stddev_kb": 6.0,
+      "mem_ci95_low_kb": 102.24021609275968,
+      "mem_ci95_high_kb": 125.75978390724032,
+      "mem_range_kb": 12.0,
+      "mem_series_kb": [
+        120.0,
+        108.0
+      ],
+      "runtime_scaling": {
+        "baseline_device": "amd_ryzen_7_5700x",
+        "baseline_metric": "geekbench6_single",
+        "baseline_score": 1995.0,
+        "alpha": 0.85,
+        "model": "two_term",
+        "predictions": {
+          "intel_i9_14900k": {
+            "device": "intel_i9_14900k",
+            "predicted_ms": 0.41197299543813404,
+            "factor": 0.5755822438431134,
+            "compute_ratio": 0.6065673456977805,
+            "bandwidth_ratio": 0.4,
+            "model": "two_term"
+          },
+          "amd_ryzen_9_7950x": {
+            "device": "amd_ryzen_9_7950x",
+            "predicted_ms": 0.4549637771819608,
+            "factor": 0.6356462065170875,
+            "compute_ratio": 0.6708137188971083,
+            "bandwidth_ratio": 0.43636363636363634,
+            "model": "two_term"
+          },
+          "esp32_s3": {
+            "device": "esp32_s3",
+            "predicted_ms": 8.26691258844221,
+            "factor": 11.55,
+            "compute_ratio": 3.0,
+            "bandwidth_ratio": 60.0,
+            "model": "two_term"
+          },
+          "nrf52840": {
+            "device": "nrf52840",
+            "predicted_ms": 26.33875623696955,
+            "factor": 36.798820754716985,
+            "compute_ratio": 9.410377358490566,
+            "bandwidth_ratio": 192.0,
+            "model": "two_term"
+          },
+          "macbookpro16_i9_9880h": {
+            "device": "macbookpro16_i9_9880h",
+            "predicted_ms": 1.5494901564064123,
+            "factor": 2.1648482568347127,
+            "compute_ratio": 1.5011286681715577,
+            "bandwidth_ratio": 5.9259259259259265,
+            "model": "two_term"
+          }
+        },
+        "notes": "Geekbench 6 single-core \u22481995; STREAM copy \u224848 GB/s (DDR4-3200)"
+      }
+    },
+    "encapsulate": {
+      "runs": 2,
+      "mean_ms": 0.7334499678108841,
+      "min_ms": 0.7326999912038445,
+      "max_ms": 0.7341999444179237,
+      "median_ms": 0.7334499678108841,
+      "stddev_ms": 0.0007499766070395708,
+      "ci95_low_ms": 0.731980040671839,
+      "ci95_high_ms": 0.7349198949499293,
+      "range_ms": 0.0014999532140791416,
+      "series": [
+        0.7326999912038445,
+        0.7341999444179237
+      ],
+      "mem_mean_kb": 120.0,
+      "mem_min_kb": 108.0,
+      "mem_max_kb": 132.0,
+      "mem_median_kb": 120.0,
+      "mem_stddev_kb": 12.0,
+      "mem_ci95_low_kb": 96.48043218551936,
+      "mem_ci95_high_kb": 143.51956781448064,
+      "mem_range_kb": 24.0,
+      "mem_series_kb": [
+        132.0,
+        108.0
+      ],
+      "runtime_scaling": {
+        "baseline_device": "amd_ryzen_7_5700x",
+        "baseline_metric": "geekbench6_single",
+        "baseline_score": 1995.0,
+        "alpha": 0.85,
+        "model": "two_term",
+        "predictions": {
+          "intel_i9_14900k": {
+            "device": "intel_i9_14900k",
+            "predicted_ms": 0.42216077821924797,
+            "factor": 0.5755822438431134,
+            "compute_ratio": 0.6065673456977805,
+            "bandwidth_ratio": 0.4,
+            "model": "two_term"
+          },
+          "amd_ryzen_9_7950x": {
+            "device": "amd_ryzen_9_7950x",
+            "predicted_ms": 0.46621468970906843,
+            "factor": 0.6356462065170875,
+            "compute_ratio": 0.6708137188971083,
+            "bandwidth_ratio": 0.43636363636363634,
+            "model": "two_term"
+          },
+          "esp32_s3": {
+            "device": "esp32_s3",
+            "predicted_ms": 8.471347128215712,
+            "factor": 11.55,
+            "compute_ratio": 3.0,
+            "bandwidth_ratio": 60.0,
+            "model": "two_term"
+          },
+          "nrf52840": {
+            "device": "nrf52840",
+            "predicted_ms": 26.990093898025666,
+            "factor": 36.798820754716985,
+            "compute_ratio": 9.410377358490566,
+            "bandwidth_ratio": 192.0,
+            "model": "two_term"
+          },
+          "macbookpro16_i9_9880h": {
+            "device": "macbookpro16_i9_9880h",
+            "predicted_ms": 1.5878078842908687,
+            "factor": 2.1648482568347127,
+            "compute_ratio": 1.5011286681715577,
+            "bandwidth_ratio": 5.9259259259259265,
+            "model": "two_term"
+          }
+        },
+        "notes": "Geekbench 6 single-core \u22481995; STREAM copy \u224848 GB/s (DDR4-3200)"
+      }
+    },
+    "decapsulate": {
+      "runs": 2,
+      "mean_ms": 0.6927000067662448,
+      "min_ms": 0.6900000153109431,
+      "max_ms": 0.6953999982215464,
+      "median_ms": 0.6927000067662448,
+      "stddev_ms": 0.0026999914553016424,
+      "ci95_low_ms": 0.6874081207552877,
+      "ci95_high_ms": 0.6979918927772019,
+      "range_ms": 0.005399982910603285,
+      "series": [
+        0.6953999982215464,
+        0.6900000153109431
+      ],
+      "mem_mean_kb": 116.0,
+      "mem_min_kb": 116.0,
+      "mem_max_kb": 116.0,
+      "mem_median_kb": 116.0,
+      "mem_stddev_kb": 0.0,
+      "mem_ci95_low_kb": 116.0,
+      "mem_ci95_high_kb": 116.0,
+      "mem_range_kb": 0.0,
+      "mem_series_kb": [
+        116.0,
+        116.0
+      ],
+      "runtime_scaling": {
+        "baseline_device": "amd_ryzen_7_5700x",
+        "baseline_metric": "geekbench6_single",
+        "baseline_score": 1995.0,
+        "alpha": 0.85,
+        "model": "two_term",
+        "predictions": {
+          "intel_i9_14900k": {
+            "device": "intel_i9_14900k",
+            "predicted_ms": 0.398705824204655,
+            "factor": 0.5755822438431134,
+            "compute_ratio": 0.6065673456977805,
+            "bandwidth_ratio": 0.4,
+            "model": "two_term"
+          },
+          "amd_ryzen_9_7950x": {
+            "device": "amd_ryzen_9_7950x",
+            "predicted_ms": 0.44031213155532434,
+            "factor": 0.6356462065170875,
+            "compute_ratio": 0.6708137188971083,
+            "bandwidth_ratio": 0.43636363636363634,
+            "model": "two_term"
+          },
+          "esp32_s3": {
+            "device": "esp32_s3",
+            "predicted_ms": 8.000685078150127,
+            "factor": 11.55,
+            "compute_ratio": 3.0,
+            "bandwidth_ratio": 60.0,
+            "model": "two_term"
+          },
+          "nrf52840": {
+            "device": "nrf52840",
+            "predicted_ms": 25.490543385782285,
+            "factor": 36.798820754716985,
+            "compute_ratio": 9.410377358490566,
+            "bandwidth_ratio": 192.0,
+            "model": "two_term"
+          },
+          "macbookpro16_i9_9880h": {
+            "device": "macbookpro16_i9_9880h",
+            "predicted_ms": 1.4995904021572988,
+            "factor": 2.1648482568347127,
+            "compute_ratio": 1.5011286681715577,
+            "bandwidth_ratio": 5.9259259259259265,
+            "model": "two_term"
+          }
+        },
+        "notes": "Geekbench 6 single-core \u22481995; STREAM copy \u224848 GB/s (DDR4-3200)"
+      }
+    }
+  },
+  "meta": {
+    "public_key_len": 1184,
+    "secret_key_len": 2400,
+    "ciphertext_len": 1088,
+    "shared_secret_len": 32,
+    "ciphertext_expansion_ratio": 34.0,
+    "mechanism": "ML-KEM-768",
+    "run_mode": "cold",
+    "backend": "native",
+    "secret_key_analysis": {
+      "method": "bitstring_hw_hd_v1",
+      "model": {
+        "name": "structured_lattice_blob",
+        "expected_hw_fraction": 0.5,
+        "expected_hd_fraction": 0.5,
+        "notes": [
+          "Structured lattice secret; blob mixes seeds/compressed state.",
+          "Treat bit-level HW/HD as coarse RNG sanity only."
+        ],
+        "extras": {}
+      },
+      "samples": 32,
+      "bits_per_sample": 19200,
+      "hw": {
+        "mean_fraction": 0.4756396484375,
+        "std_fraction": 0.0028598811541794104,
+        "min_fraction": 0.47010416666666666,
+        "max_fraction": 0.4816666666666667,
+        "mean_bits": 9132.28125,
+        "std_bits": 54.90971816024468,
+        "expected_fraction": 0.5,
+        "expected_bits": 9600.0
+      },
+      "hd": {
+        "samples": 128,
+        "mean_fraction": 0.49540568033854165,
+        "std_fraction": 0.0038296507262386434,
+        "min_fraction": 0.4831770833333333,
+        "max_fraction": 0.5069791666666666,
+        "expected_fraction": 0.5
+      },
+      "byte_bias": {
+        "reference_fraction": 0.5,
+        "max_abs_deviation": 0.1328125,
+        "mean_abs_deviation": 0.03447428385416667
+      },
+      "pair_sample_limit": 128,
+      "warnings": [],
+      "context": {
+        "algo": "kyber",
+        "kind": "KEM",
+        "family": "ML-KEM",
+        "mechanism": "ML-KEM-768",
+        "sampled_keys": 32,
+        "category_floor": 192,
+        "param_notes": "k=3; ring n=256; q=3329; eta1=2, eta2=2"
+      }
+    },
+    "environment": {
+      "cpu_model": "AMD Ryzen 7 5700X 8-Core Processor",
+      "os": "Windows-10-10.0.19045-SP0",
+      "python": "3.11.9",
+      "dependencies": {
+        "liboqs_commit": "dd942d434463872193ba282250532ac0be15f1e3",
+        "pqclean_commit": "1eacfdafc15ddc5d5759d0b85b4cef26627df181"
+      },
+      "build_flags": {
+        "native": {
+          "CMAKE_BUILD_TYPE": "Release",
+          "CMAKE_C_FLAGS": "/DWIN32 /D_WINDOWS",
+          "CMAKE_C_FLAGS_DEBUG": "/Zi /Ob0 /Od /RTC1",
+          "CMAKE_C_FLAGS_MINSIZEREL": "/O1 /Ob1 /DNDEBUG",
+          "CMAKE_C_FLAGS_RELEASE": "/O2 /Ob2 /DNDEBUG",
+          "CMAKE_C_FLAGS_RELWITHDEBINFO": "/Zi /O2 /Ob1 /DNDEBUG",
+          "CMAKE_EXE_LINKER_FLAGS": "/machine:x64",
+          "CMAKE_EXE_LINKER_FLAGS_DEBUG": "/debug /INCREMENTAL",
+          "CMAKE_EXE_LINKER_FLAGS_MINSIZEREL": "/INCREMENTAL:NO",
+          "CMAKE_EXE_LINKER_FLAGS_RELEASE": "/INCREMENTAL:NO",
+          "CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO": "/debug /INCREMENTAL",
+          "CMAKE_MODULE_LINKER_FLAGS": "/machine:x64",
+          "CMAKE_MODULE_LINKER_FLAGS_DEBUG": "/debug /INCREMENTAL",
+          "CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL": "/INCREMENTAL:NO",
+          "CMAKE_MODULE_LINKER_FLAGS_RELEASE": "/INCREMENTAL:NO",
+          "CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO": "/debug /INCREMENTAL",
+          "CMAKE_RC_FLAGS": "-DWIN32",
+          "CMAKE_RC_FLAGS_DEBUG": "-D_DEBUG",
+          "CMAKE_SHARED_LINKER_FLAGS": "/machine:x64",
+          "CMAKE_SHARED_LINKER_FLAGS_DEBUG": "/debug /INCREMENTAL",
+          "CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL": "/INCREMENTAL:NO",
+          "CMAKE_SHARED_LINKER_FLAGS_RELEASE": "/INCREMENTAL:NO",
+          "CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO": "/debug /INCREMENTAL",
+          "CMAKE_STATIC_LINKER_FLAGS": "/machine:x64",
+          "CMAKE_ASM_FLAGS-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_C_FLAGS-ADVANCED": "1",
+          "CMAKE_C_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_C_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_C_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_C_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_RC_FLAGS-ADVANCED": "1",
+          "CMAKE_RC_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_RC_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_RC_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_RC_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1"
+        }
+      }
+    }
+  },
+  "security": {
+    "mechanism": "ML-KEM-768",
+    "family": "ML-KEM",
+    "category_floor": 192,
+    "nist_category": 3,
+    "classical_bits": 173.677,
+    "quantum_bits": 153.51,
+    "shor_breakable": false,
+    "notes": "ML-KEM module-LWE cost model: BKZ (primal/dual/hybrid) with Core-SVP constants. Category floor retained in extras.category_floor.",
+    "estimator": {
+      "name": "unavailable (fallback to NIST floor)",
+      "profile": "floor",
+      "available": false
+    },
+    "parameters": {
+      "mechanism": "ML-KEM-768",
+      "n": 256,
+      "k": 3,
+      "q": 3329,
+      "eta1": 2,
+      "eta2": 2,
+      "n_lwe": 768
+    },
+    "assumptions": {
+      "module_lwe_model": {
+        "dimension": 768,
+        "n": 256,
+        "k": 3,
+        "alpha": 0.0007529673399312107,
+        "sigma_e": 1.0,
+        "classical_bits_range": [
+          171.57,
+          180.6
+        ],
+        "quantum_bits_range": [
+          150.5,
+          162.54000000000002
+        ]
+      },
+      "module_lwe_profile_constants": {
+        "aggressive": {
+          "classical_consts": [
+            0.285,
+            0.292
+          ],
+          "quantum_consts": [
+            0.25,
+            0.26
+          ]
+        },
+        "conservative": {
+          "classical_consts": [
+            0.292,
+            0.3
+          ],
+          "quantum_consts": [
+            0.26,
+            0.27
+          ]
+        }
+      }
+    },
+    "details": {
+      "module_lwe_attacks": [
+        {
+          "attack": "primal-usvp",
+          "guess_modules": 0,
+          "beta": 617,
+          "delta0": 1.0090867524255098,
+          "profiles": [
+            {
+              "profile": "aggressive",
+              "classical_bits_range": [
+                175.845,
+                180.164
+              ],
+              "quantum_bits_range": [
+                154.25,
+                160.42000000000002
+              ]
+            },
+            {
+              "profile": "conservative",
+              "classical_bits_range": [
+                180.164,
+                185.1
+              ],
+              "quantum_bits_range": [
+                160.42000000000002,
+                166.59
+              ]
+            }
+          ]
+        },
+        {
+          "attack": "dual",
+          "guess_modules": 0,
+          "beta": 602,
+          "delta0": 1.0092730422683502,
+          "profiles": [
+            {
+              "profile": "aggressive",
+              "classical_bits_range": [
+                171.57,
+                175.784
+              ],
+              "quantum_bits_range": [
+                150.5,
+                156.52
+              ]
+            },
+            {
+              "profile": "conservative",
+              "classical_bits_range": [
+                175.784,
+                180.6
+              ],
+              "quantum_bits_range": [
+                156.52,
+                162.54000000000002
+              ]
+            }
+          ]
+        },
+        {
+          "attack": "hybrid-1",
+          "guess_modules": 1,
+          "beta": 445,
+          "delta0": 1.0118793814509812,
+          "profiles": [
+            {
+              "profile": "aggressive",
+              "classical_bits_range": [
+                721.2385922911647,
+                724.3535922911647
+              ],
+              "quantum_bits_range": [
+                408.45679614558236,
+                412.90679614558235
+              ]
+            },
+            {
+              "profile": "conservative",
+              "classical_bits_range": [
+                724.3535922911647,
+                727.9135922911647
+              ],
+              "quantum_bits_range": [
+                412.90679614558235,
+                417.3567961455824
+              ]
+            }
+          ]
+        },
+        {
+          "attack": "hybrid-2",
+          "guess_modules": 2,
+          "beta": 330,
+          "delta0": 1.015134657197923,
+          "profiles": [
+            {
+              "profile": "aggressive",
+              "classical_bits_range": [
+                1282.8771845823294,
+                1285.1871845823293
+              ],
+              "quantum_bits_range": [
+                676.9135922911647,
+                680.2135922911647
+              ]
+            },
+            {
+              "profile": "conservative",
+              "classical_bits_range": [
+                1285.1871845823293,
+                1287.8271845823294
+              ],
+              "quantum_bits_range": [
+                680.2135922911647,
+                683.5135922911647
+              ]
+            }
+          ]
+        }
+      ],
+      "module_lwe_profiles": {
+        "aggressive": {
+          "attack": "dual",
+          "classical_bits_range": [
+            171.57,
+            175.784
+          ],
+          "quantum_bits_range": [
+            150.5,
+            156.52
+          ],
+          "headline_mid_classical": 173.677,
+          "headline_mid_quantum": 153.51
+        },
+        "conservative": {
+          "attack": "dual",
+          "classical_bits_range": [
+            175.784,
+            180.6
+          ],
+          "quantum_bits_range": [
+            156.52,
+            162.54000000000002
+          ],
+          "headline_mid_classical": 178.192,
+          "headline_mid_quantum": 159.53000000000003
+        }
+      }
+    },
+    "estimates": {
+      "calculated": {
+        "profile": "aggressive",
+        "attack": "dual",
+        "classical_bits": 173.677,
+        "quantum_bits": 153.51,
+        "classical_bits_range": [
+          171.57,
+          175.784
+        ],
+        "quantum_bits_range": [
+          150.5,
+          156.52
+        ]
+      }
+    },
+    "bruteforce": {
+      "model": "guess_shared_secret",
+      "space_bits": 173.677,
+      "rates": [
+        1000000.0,
+        1000000000.0,
+        1000000000000.0
+      ],
+      "time_years": {
+        "1000000.0": {
+          "value": 6.069877829887622e+38,
+          "sci": "6.070e+38",
+          "log10": 38.783179949997894
+        },
+        "1000000000.0": {
+          "value": 6.0698778298876215e+35,
+          "sci": "6.070e+35",
+          "log10": 35.783179949997894
+        },
+        "1000000000000.0": {
+          "value": 6.069877829887622e+32,
+          "sci": "6.070e+32",
+          "log10": 32.783179949997894
+        }
+      },
+      "assumptions": {
+        "rationale": "search space ~ 2^floor bits",
+        "notes": "Educational baseline only. Use reduced parameters for lab demos; real parameters are astronomically out of reach."
+      },
+      "guidance": {
+        "lab_mode_max_bits": 32,
+        "warning": "Refuse or simulate >32-bit spaces when running any brute loop."
+      }
+    }
+  },
+  "validation": {
+    "vectorset": null,
+    "mechanism": "ML-KEM-768",
+    "cases": 0,
+    "passes": 0,
+    "fails": 0,
+    "status": "missing_binary",
+    "reason": "liboqs vectors_kem binary not available (configure native/ with -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON)",
+    "source": "acvp",
+    "git_sha": "dd942d434463872193ba282250532ac0be15f1e3"
+  }
+}

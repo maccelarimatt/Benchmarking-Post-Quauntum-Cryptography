@@ -1,0 +1,571 @@
+{
+  "algo": "hqc",
+  "kind": "KEM",
+  "ops": {
+    "keygen": {
+      "runs": 5,
+      "mean_ms": 4.523259960114956,
+      "min_ms": 2.6335001457482576,
+      "max_ms": 11.426299810409546,
+      "median_ms": 2.896500052884221,
+      "stddev_ms": 3.4546390013903108,
+      "ci95_low_ms": 1.1377759489587431,
+      "ci95_high_ms": 7.908743971271169,
+      "range_ms": 8.792799664661288,
+      "series": [
+        11.426299810409546,
+        2.896500052884221,
+        2.6335001457482576,
+        3.015599912032485,
+        2.64439987950027
+      ],
+      "mem_mean_kb": 90.4,
+      "mem_min_kb": 84.0,
+      "mem_max_kb": 96.0,
+      "mem_median_kb": 92.0,
+      "mem_stddev_kb": 4.079215610874228,
+      "mem_ci95_low_kb": 86.40244215875649,
+      "mem_ci95_high_kb": 94.39755784124353,
+      "mem_range_kb": 12.0,
+      "mem_series_kb": [
+        92.0,
+        88.0,
+        96.0,
+        92.0,
+        84.0
+      ],
+      "runtime_scaling": {
+        "baseline_device": "amd_ryzen_7_5700x",
+        "baseline_metric": "geekbench6_single",
+        "baseline_score": 1995.0,
+        "alpha": 0.65,
+        "model": "two_term",
+        "predictions": {
+          "intel_i9_14900k": {
+            "device": "intel_i9_14900k",
+            "predicted_ms": 2.416636556556279,
+            "factor": 0.5342687747035573,
+            "compute_ratio": 0.6065673456977805,
+            "bandwidth_ratio": 0.4,
+            "model": "two_term"
+          },
+          "amd_ryzen_9_7950x": {
+            "device": "amd_ryzen_9_7950x",
+            "predicted_ms": 2.6630973005438436,
+            "factor": 0.588756190010393,
+            "compute_ratio": 0.6708137188971083,
+            "bandwidth_ratio": 0.43636363636363634,
+            "model": "two_term"
+          },
+          "esp32_s3": {
+            "device": "esp32_s3",
+            "predicted_ms": 103.80881608463824,
+            "factor": 22.95,
+            "compute_ratio": 3.0,
+            "bandwidth_ratio": 60.0,
+            "model": "two_term"
+          },
+          "nrf52840": {
+            "device": "nrf52840",
+            "predicted_ms": 331.6306983446263,
+            "factor": 73.31674528301886,
+            "compute_ratio": 9.410377358490566,
+            "bandwidth_ratio": 192.0,
+            "model": "two_term"
+          },
+          "macbookpro16_i9_9880h": {
+            "device": "macbookpro16_i9_9880h",
+            "predicted_ms": 13.795073093390473,
+            "factor": 3.0498077083855866,
+            "compute_ratio": 1.5011286681715577,
+            "bandwidth_ratio": 5.9259259259259265,
+            "model": "two_term"
+          }
+        },
+        "notes": "Geekbench 6 single-core \u22481995; STREAM copy \u224848 GB/s (DDR4-3200)"
+      }
+    },
+    "encapsulate": {
+      "runs": 5,
+      "mean_ms": 4.816980008035898,
+      "min_ms": 3.7659001536667347,
+      "max_ms": 6.326999980956316,
+      "median_ms": 4.803800024092197,
+      "stddev_ms": 0.8518209700258336,
+      "ci95_low_ms": 3.982210796772595,
+      "ci95_high_ms": 5.651749219299202,
+      "range_ms": 2.5610998272895813,
+      "series": [
+        6.326999980956316,
+        4.326199879869819,
+        4.803800024092197,
+        3.7659001536667347,
+        4.862000001594424
+      ],
+      "mem_mean_kb": 105.6,
+      "mem_min_kb": 84.0,
+      "mem_max_kb": 160.0,
+      "mem_median_kb": 92.0,
+      "mem_stddev_kb": 28.011426240018555,
+      "mem_ci95_low_kb": 78.1493067069817,
+      "mem_ci95_high_kb": 133.05069329301827,
+      "mem_range_kb": 76.0,
+      "mem_series_kb": [
+        84.0,
+        88.0,
+        160.0,
+        104.0,
+        92.0
+      ],
+      "runtime_scaling": {
+        "baseline_device": "amd_ryzen_7_5700x",
+        "baseline_metric": "geekbench6_single",
+        "baseline_score": 1995.0,
+        "alpha": 0.65,
+        "model": "two_term",
+        "predictions": {
+          "intel_i9_14900k": {
+            "device": "intel_i9_14900k",
+            "predicted_ms": 2.573562006664871,
+            "factor": 0.5342687747035573,
+            "compute_ratio": 0.6065673456977805,
+            "bandwidth_ratio": 0.4,
+            "model": "two_term"
+          },
+          "amd_ryzen_9_7950x": {
+            "device": "amd_ryzen_9_7950x",
+            "predicted_ms": 2.836026796887448,
+            "factor": 0.588756190010393,
+            "compute_ratio": 0.6708137188971083,
+            "bandwidth_ratio": 0.43636363636363634,
+            "model": "two_term"
+          },
+          "esp32_s3": {
+            "device": "esp32_s3",
+            "predicted_ms": 110.54969118442386,
+            "factor": 22.95,
+            "compute_ratio": 3.0,
+            "bandwidth_ratio": 60.0,
+            "model": "two_term"
+          },
+          "nrf52840": {
+            "device": "nrf52840",
+            "predicted_ms": 353.1652962825621,
+            "factor": 73.31674528301886,
+            "compute_ratio": 9.410377358490566,
+            "bandwidth_ratio": 192.0,
+            "model": "two_term"
+          },
+          "macbookpro16_i9_9880h": {
+            "device": "macbookpro16_i9_9880h",
+            "predicted_ms": 14.690862759647148,
+            "factor": 3.0498077083855866,
+            "compute_ratio": 1.5011286681715577,
+            "bandwidth_ratio": 5.9259259259259265,
+            "model": "two_term"
+          }
+        },
+        "notes": "Geekbench 6 single-core \u22481995; STREAM copy \u224848 GB/s (DDR4-3200)"
+      }
+    },
+    "decapsulate": {
+      "runs": 5,
+      "mean_ms": 8.915240038186312,
+      "min_ms": 5.650100065395236,
+      "max_ms": 15.834900084882975,
+      "median_ms": 6.719900062307715,
+      "stddev_ms": 3.716390521933798,
+      "ci95_low_ms": 5.273244250448183,
+      "ci95_high_ms": 12.55723582592444,
+      "range_ms": 10.184800019487739,
+      "series": [
+        15.834900084882975,
+        5.650100065395236,
+        6.719900062307715,
+        6.6639999859035015,
+        9.707299992442131
+      ],
+      "mem_mean_kb": 87.2,
+      "mem_min_kb": 80.0,
+      "mem_max_kb": 96.0,
+      "mem_median_kb": 88.0,
+      "mem_stddev_kb": 5.3065996645686395,
+      "mem_ci95_low_kb": 81.99962788853657,
+      "mem_ci95_high_kb": 92.40037211146344,
+      "mem_range_kb": 16.0,
+      "mem_series_kb": [
+        88.0,
+        80.0,
+        88.0,
+        96.0,
+        84.0
+      ],
+      "runtime_scaling": {
+        "baseline_device": "amd_ryzen_7_5700x",
+        "baseline_metric": "geekbench6_single",
+        "baseline_score": 1995.0,
+        "alpha": 0.65,
+        "model": "two_term",
+        "predictions": {
+          "intel_i9_14900k": {
+            "device": "intel_i9_14900k",
+            "predicted_ms": 4.763134371389896,
+            "factor": 0.5342687747035573,
+            "compute_ratio": 0.6065673456977805,
+            "bandwidth_ratio": 0.4,
+            "model": "two_term"
+          },
+          "amd_ryzen_9_7950x": {
+            "device": "amd_ryzen_9_7950x",
+            "predicted_ms": 5.248902757910684,
+            "factor": 0.588756190010393,
+            "compute_ratio": 0.6708137188971083,
+            "bandwidth_ratio": 0.43636363636363634,
+            "model": "two_term"
+          },
+          "esp32_s3": {
+            "device": "esp32_s3",
+            "predicted_ms": 204.60475887637585,
+            "factor": 22.95,
+            "compute_ratio": 3.0,
+            "bandwidth_ratio": 60.0,
+            "model": "two_term"
+          },
+          "nrf52840": {
+            "device": "nrf52840",
+            "predicted_ms": 653.6363830166772,
+            "factor": 73.31674528301886,
+            "compute_ratio": 9.410377358490566,
+            "bandwidth_ratio": 192.0,
+            "model": "two_term"
+          },
+          "macbookpro16_i9_9880h": {
+            "device": "macbookpro16_i9_9880h",
+            "predicted_ms": 27.189767790568425,
+            "factor": 3.0498077083855866,
+            "compute_ratio": 1.5011286681715577,
+            "bandwidth_ratio": 5.9259259259259265,
+            "model": "two_term"
+          }
+        },
+        "notes": "Geekbench 6 single-core \u22481995; STREAM copy \u224848 GB/s (DDR4-3200)"
+      }
+    }
+  },
+  "meta": {
+    "public_key_len": 2249,
+    "secret_key_len": 2305,
+    "ciphertext_len": 4433,
+    "shared_secret_len": 64,
+    "ciphertext_expansion_ratio": 69.265625,
+    "mechanism": "HQC-128",
+    "run_mode": "cold",
+    "backend": "native",
+    "secret_key_analysis": {
+      "method": "bitstring_hw_hd_v1",
+      "model": {
+        "name": "constant_weight",
+        "expected_hw_fraction": 0.003735355707736714,
+        "expected_hd_fraction": 0.0074428056509467854,
+        "notes": [
+          "Constant-weight secret (binary vector of weight w).",
+          "Expect exact Hamming weight w; deviations flag encoding bugs."
+        ],
+        "extras": {
+          "n": 17669,
+          "w": 66
+        }
+      },
+      "samples": 32,
+      "bits_per_sample": 17672,
+      "hw": {
+        "mean_fraction": 0.0037347215934812133,
+        "std_fraction": 0.0,
+        "min_fraction": 0.0037347215934812133,
+        "max_fraction": 0.0037347215934812133,
+        "mean_bits": 66.0,
+        "std_bits": 0.0,
+        "expected_fraction": 0.0037347215934812133,
+        "expected_bits": 66.0
+      },
+      "hd": {
+        "samples": 128,
+        "mean_fraction": 0.007439381507469443,
+        "std_fraction": 5.743684136243691e-05,
+        "min_fraction": 0.007243096423721141,
+        "max_fraction": 0.0074694431869624265,
+        "expected_fraction": 0.0074428056509467854
+      },
+      "byte_bias": {
+        "reference_fraction": 0.003735355707736714,
+        "max_abs_deviation": 0.023608394292263288,
+        "mean_abs_deviation": 0.0029112185470041504
+      },
+      "pair_sample_limit": 128,
+      "warnings": [],
+      "context": {
+        "algo": "hqc",
+        "kind": "KEM",
+        "family": "HQC",
+        "mechanism": "HQC-128",
+        "sampled_keys": 32,
+        "category_floor": 128,
+        "param_notes": "n=17669; RS n1=46,k=16,delta=15; RM n2=384; omega=66; omega_e=75; omega_r=75",
+        "bit_component": "HQC secret vector x",
+        "vectors_per_key": 1,
+        "variant": "HQC-128",
+        "parser": "hqc_seed_constant_weight_v1",
+        "parsed_components": "constant_weight_vectors"
+      }
+    },
+    "environment": {
+      "cpu_model": "AMD Ryzen 7 5700X 8-Core Processor",
+      "os": "Windows-10-10.0.19045-SP0",
+      "python": "3.11.9",
+      "dependencies": {
+        "liboqs_commit": "71a65ef11024bac2d936627201ee62d2009919e5",
+        "pqclean_commit": "1eacfdafc15ddc5d5759d0b85b4cef26627df181"
+      },
+      "build_flags": {
+        "native": {
+          "CMAKE_BUILD_TYPE": "Release",
+          "CMAKE_C_FLAGS": "/DWIN32 /D_WINDOWS",
+          "CMAKE_C_FLAGS_DEBUG": "/Zi /Ob0 /Od /RTC1",
+          "CMAKE_C_FLAGS_MINSIZEREL": "/O1 /Ob1 /DNDEBUG",
+          "CMAKE_C_FLAGS_RELEASE": "/O2 /Ob2 /DNDEBUG",
+          "CMAKE_C_FLAGS_RELWITHDEBINFO": "/Zi /O2 /Ob1 /DNDEBUG",
+          "CMAKE_EXE_LINKER_FLAGS": "/machine:x64",
+          "CMAKE_EXE_LINKER_FLAGS_DEBUG": "/debug /INCREMENTAL",
+          "CMAKE_EXE_LINKER_FLAGS_MINSIZEREL": "/INCREMENTAL:NO",
+          "CMAKE_EXE_LINKER_FLAGS_RELEASE": "/INCREMENTAL:NO",
+          "CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO": "/debug /INCREMENTAL",
+          "CMAKE_MODULE_LINKER_FLAGS": "/machine:x64",
+          "CMAKE_MODULE_LINKER_FLAGS_DEBUG": "/debug /INCREMENTAL",
+          "CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL": "/INCREMENTAL:NO",
+          "CMAKE_MODULE_LINKER_FLAGS_RELEASE": "/INCREMENTAL:NO",
+          "CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO": "/debug /INCREMENTAL",
+          "CMAKE_RC_FLAGS": "-DWIN32",
+          "CMAKE_RC_FLAGS_DEBUG": "-D_DEBUG",
+          "CMAKE_SHARED_LINKER_FLAGS": "/machine:x64",
+          "CMAKE_SHARED_LINKER_FLAGS_DEBUG": "/debug /INCREMENTAL",
+          "CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL": "/INCREMENTAL:NO",
+          "CMAKE_SHARED_LINKER_FLAGS_RELEASE": "/INCREMENTAL:NO",
+          "CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO": "/debug /INCREMENTAL",
+          "CMAKE_STATIC_LINKER_FLAGS": "/machine:x64",
+          "CMAKE_ASM_FLAGS-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_C_FLAGS-ADVANCED": "1",
+          "CMAKE_C_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_C_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_C_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_C_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_RC_FLAGS-ADVANCED": "1",
+          "CMAKE_RC_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_RC_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_RC_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_RC_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1"
+        }
+      }
+    }
+  },
+  "security": {
+    "mechanism": "HQC-128",
+    "family": "HQC",
+    "category_floor": 128,
+    "nist_category": 1,
+    "classical_bits": 128.0,
+    "quantum_bits": 128.0,
+    "shor_breakable": false,
+    "notes": "Code-based (HQC): NIST category floor; Stern/BJMM-style ISD heuristics attached when parameters available. No known polynomial-time quantum attack; Grover-limited speedups applied to dominant loops.",
+    "parameters": {
+      "mechanism": "HQC-128",
+      "notes": "n=17669; RS n1=46,k=16,delta=15; RM n2=384; omega=66; omega_e=75; omega_r=75",
+      "n": 17669,
+      "k": 16,
+      "w": 66,
+      "n1": 46,
+      "n2": 384,
+      "omega": 66,
+      "omega_e": 75,
+      "omega_r": 75,
+      "delta": 15,
+      "sizes_bytes": {
+        "public_key": 2249,
+        "secret_key": 2305,
+        "ciphertext": 4433,
+        "shared_secret": 64
+      }
+    },
+    "estimates": {
+      "hqc_isd": {
+        "stern_entropy": {
+          "time_bits_classical": 627.2993655234139,
+          "memory_bits_classical": 313.64968276170697,
+          "time_bits_quantum_grover": 313.64968276170697,
+          "time_bits_quantum_conservative": 564.5694289710725
+        },
+        "bjmm": {
+          "time_bits_classical": 973.9935905797537,
+          "memory_bits_classical": 292.1980771739261,
+          "time_bits_quantum_grover": 486.99679528987684,
+          "time_bits_quantum_conservative": 876.5942315217783
+        },
+        "grover_factor": 0.5,
+        "w_sensitivity": [
+          {
+            "stern": 611.1367560080548,
+            "bjmm": 964.9096248148614,
+            "w": 64
+          },
+          {
+            "stern": 619.2291998340555,
+            "bjmm": 964.9096248148614,
+            "w": 65
+          },
+          {
+            "stern": 627.2993655234139,
+            "bjmm": 973.9935905797537,
+            "w": 66
+          },
+          {
+            "stern": 635.3475894032258,
+            "bjmm": 973.9935905797537,
+            "w": 67
+          },
+          {
+            "stern": 643.3741977597057,
+            "bjmm": 983.0337498158121,
+            "w": 68
+          }
+        ]
+      },
+      "curated": {
+        "classical_bits_mid": 128.0,
+        "classical_bits_range": [
+          126.0,
+          132.0
+        ],
+        "quantum_bits_mid": 118.0,
+        "quantum_bits_range": [
+          114.0,
+          122.0
+        ],
+        "source": "hqc-round3-design",
+        "notes": "Design target per HQC submission; quantum via Grover-style square-root reduction."
+      },
+      "calculated": {
+        "profile": "design-target",
+        "attack": "design-target",
+        "classical_bits": 128.0,
+        "quantum_bits": 118.0,
+        "classical_bits_range": [
+          126.0,
+          132.0
+        ],
+        "quantum_bits_range": [
+          114.0,
+          122.0
+        ],
+        "source": "hqc-round3-design"
+      }
+    },
+    "bruteforce": {
+      "model": "guess_shared_secret",
+      "space_bits": 128.0,
+      "rates": [
+        1000000.0,
+        1000000000.0,
+        1000000000000.0
+      ],
+      "rate_unit": "tries_per_second",
+      "time_years": {
+        "1000000.0": {
+          "value": 1.0790283070806013e+25,
+          "sci": "1.079e+25",
+          "log10": 25.033032838054226
+        },
+        "1000000000.0": {
+          "value": 1.0790283070806015e+22,
+          "sci": "1.079e+22",
+          "log10": 22.033032838054226
+        },
+        "1000000000000.0": {
+          "value": 1.0790283070806014e+19,
+          "sci": "1.079e+19",
+          "log10": 19.033032838054226
+        }
+      },
+      "assumptions": {
+        "rationale": "search space ~ 2^floor bits",
+        "notes": "Educational baseline only. Use reduced parameters for lab demos; real parameters are astronomically out of reach."
+      },
+      "guidance": {
+        "lab_mode_max_bits": 32,
+        "warning": "Refuse or simulate >32-bit spaces when running any brute loop."
+      }
+    },
+    "headline": {
+      "nist_category": 1,
+      "category_floor": 128,
+      "classical_bits": 128.0,
+      "quantum_bits": 128.0,
+      "classical_bits_range": null,
+      "quantum_bits_range": null,
+      "estimator": "floor",
+      "model": null,
+      "attack": null,
+      "notes": [
+        "Showing NIST category floor for HQC headline cells.",
+        "Design targets (Stern/BJMM) available in details.",
+        "Design target (details): classical \u2248 128.0, quantum \u2248 118.0.",
+        "ISD heuristics (Stern/BJMM) recorded under details.",
+        "Source: hqc-round3-design"
+      ]
+    },
+    "detail_rows": [
+      [
+        "Stern time bits",
+        "627.30"
+      ],
+      [
+        "Stern memory bits",
+        "313.65"
+      ],
+      [
+        "BJMM time bits",
+        "973.99"
+      ],
+      [
+        "Grover factor",
+        "0.50"
+      ],
+      [
+        "Parameters",
+        "n=17669, k=16, w=66"
+      ]
+    ]
+  }
+}

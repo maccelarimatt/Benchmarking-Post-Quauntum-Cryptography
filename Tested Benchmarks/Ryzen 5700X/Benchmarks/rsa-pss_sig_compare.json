@@ -1,0 +1,1076 @@
+{
+  "algo": "rsa-pss",
+  "kind": "SIG",
+  "ops": {
+    "keygen": {
+      "runs": 10,
+      "mean_ms": 74.94591996073723,
+      "min_ms": 33.19430002011359,
+      "max_ms": 276.92139986902475,
+      "median_ms": 51.70244991313666,
+      "stddev_ms": 68.96405494807978,
+      "ci95_low_ms": 29.890231985378023,
+      "ci95_high_ms": 120.00160793609643,
+      "range_ms": 243.72709984891117,
+      "series": [
+        276.92139986902475,
+        34.40829995088279,
+        85.82339994609356,
+        51.124699879437685,
+        70.04690007306635,
+        52.28019994683564,
+        45.4774999525398,
+        55.21059990860522,
+        44.971900060772896,
+        33.19430002011359
+      ],
+      "mem_mean_kb": 120.8,
+      "mem_min_kb": 20.0,
+      "mem_max_kb": 992.0,
+      "mem_median_kb": 24.0,
+      "mem_stddev_kb": 290.41101907469005,
+      "mem_ci95_low_kb": -68.931712699989,
+      "mem_ci95_high_kb": 310.531712699989,
+      "mem_range_kb": 972.0,
+      "mem_series_kb": [
+        992.0,
+        24.0,
+        24.0,
+        28.0,
+        20.0,
+        20.0,
+        24.0,
+        24.0,
+        28.0,
+        24.0
+      ],
+      "runtime_scaling": {
+        "baseline_device": "amd_ryzen_7_5700x",
+        "baseline_metric": "geekbench6_single",
+        "baseline_score": 1995.0,
+        "alpha": 0.8,
+        "model": "two_term",
+        "predictions": {
+          "intel_i9_14900k": {
+            "device": "intel_i9_14900k",
+            "predicted_ms": 42.363471790029124,
+            "factor": 0.5652538765582243,
+            "compute_ratio": 0.6065673456977805,
+            "bandwidth_ratio": 0.4,
+            "model": "two_term"
+          },
+          "amd_ryzen_9_7950x": {
+            "device": "amd_ryzen_9_7950x",
+            "predicted_ms": 46.7605358609588,
+            "factor": 0.623923702390414,
+            "compute_ratio": 0.6708137188971083,
+            "bandwidth_ratio": 0.43636363636363634,
+            "model": "two_term"
+          },
+          "esp32_s3": {
+            "device": "esp32_s3",
+            "predicted_ms": 1079.2212474346159,
+            "factor": 14.399999999999997,
+            "compute_ratio": 3.0,
+            "bandwidth_ratio": 60.0,
+            "model": "two_term"
+          },
+          "nrf52840": {
+            "device": "nrf52840",
+            "predicted_ms": 3442.1388371401235,
+            "factor": 45.92830188679245,
+            "compute_ratio": 9.410377358490566,
+            "bandwidth_ratio": 192.0,
+            "model": "two_term"
+          },
+          "macbookpro16_i9_9880h": {
+            "device": "macbookpro16_i9_9880h",
+            "predicted_ms": 178.82756923998332,
+            "factor": 2.386088119722431,
+            "compute_ratio": 1.5011286681715577,
+            "bandwidth_ratio": 5.9259259259259265,
+            "model": "two_term"
+          }
+        },
+        "notes": "Geekbench 6 single-core \u22481995; STREAM copy \u224848 GB/s (DDR4-3200)"
+      }
+    },
+    "sign": {
+      "runs": 10,
+      "mean_ms": 40.22385003045201,
+      "min_ms": 32.247900031507015,
+      "max_ms": 98.98620005697012,
+      "median_ms": 33.827850013040006,
+      "stddev_ms": 19.597820427406916,
+      "ci95_low_ms": 27.42017595938504,
+      "ci95_high_ms": 53.027524101518985,
+      "range_ms": 66.7383000254631,
+      "series": [
+        98.98620005697012,
+        33.552000066265464,
+        32.247900031507015,
+        33.636300126090646,
+        34.260000102221966,
+        34.38199986703694,
+        33.071700017899275,
+        34.50009995140135,
+        33.58290018513799,
+        34.01939989998937
+      ],
+      "mem_mean_kb": 36.0,
+      "mem_min_kb": 20.0,
+      "mem_max_kb": 160.0,
+      "mem_median_kb": 24.0,
+      "mem_stddev_kb": 41.376321731154405,
+      "mem_ci95_low_kb": 8.96796653139847,
+      "mem_ci95_high_kb": 63.032033468601526,
+      "mem_range_kb": 140.0,
+      "mem_series_kb": [
+        160.0,
+        20.0,
+        24.0,
+        20.0,
+        24.0,
+        20.0,
+        24.0,
+        24.0,
+        24.0,
+        20.0
+      ],
+      "runtime_scaling": {
+        "baseline_device": "amd_ryzen_7_5700x",
+        "baseline_metric": "geekbench6_single",
+        "baseline_score": 1995.0,
+        "alpha": 0.8,
+        "model": "two_term",
+        "predictions": {
+          "intel_i9_14900k": {
+            "device": "intel_i9_14900k",
+            "predicted_ms": 22.73668715980965,
+            "factor": 0.5652538765582243,
+            "compute_ratio": 0.6065673456977805,
+            "bandwidth_ratio": 0.4,
+            "model": "two_term"
+          },
+          "amd_ryzen_9_7950x": {
+            "device": "amd_ryzen_9_7950x",
+            "predicted_ms": 25.096613435396385,
+            "factor": 0.623923702390414,
+            "compute_ratio": 0.6708137188971083,
+            "bandwidth_ratio": 0.43636363636363634,
+            "model": "two_term"
+          },
+          "esp32_s3": {
+            "device": "esp32_s3",
+            "predicted_ms": 579.2234404385089,
+            "factor": 14.399999999999997,
+            "compute_ratio": 3.0,
+            "bandwidth_ratio": 60.0,
+            "model": "two_term"
+          },
+          "nrf52840": {
+            "device": "nrf52840",
+            "predicted_ms": 1847.4131272476657,
+            "factor": 45.92830188679245,
+            "compute_ratio": 9.410377358490566,
+            "bandwidth_ratio": 192.0,
+            "model": "two_term"
+          },
+          "macbookpro16_i9_9880h": {
+            "device": "macbookpro16_i9_9880h",
+            "predicted_ms": 95.9776506871583,
+            "factor": 2.386088119722431,
+            "compute_ratio": 1.5011286681715577,
+            "bandwidth_ratio": 5.9259259259259265,
+            "model": "two_term"
+          }
+        },
+        "notes": "Geekbench 6 single-core \u22481995; STREAM copy \u224848 GB/s (DDR4-3200)"
+      }
+    },
+    "verify": {
+      "runs": 10,
+      "mean_ms": 1.9128899788483977,
+      "min_ms": 1.0655999649316072,
+      "max_ms": 4.844499984756112,
+      "median_ms": 1.616650028154254,
+      "stddev_ms": 1.0430217363215095,
+      "ci95_low_ms": 1.231461632754201,
+      "ci95_high_ms": 2.5943183249425945,
+      "range_ms": 3.778900019824505,
+      "series": [
+        4.844499984756112,
+        2.5022998452186584,
+        1.683299895375967,
+        1.3208999298512936,
+        1.737500075250864,
+        1.550000160932541,
+        1.702300040051341,
+        1.3421999756246805,
+        1.0655999649316072,
+        1.3802999164909124
+      ],
+      "mem_mean_kb": 22.8,
+      "mem_min_kb": 20.0,
+      "mem_max_kb": 28.0,
+      "mem_median_kb": 24.0,
+      "mem_stddev_kb": 2.5612496949731396,
+      "mem_ci95_low_kb": 21.126680947479485,
+      "mem_ci95_high_kb": 24.473319052520516,
+      "mem_range_kb": 8.0,
+      "mem_series_kb": [
+        20.0,
+        24.0,
+        20.0,
+        24.0,
+        28.0,
+        20.0,
+        24.0,
+        24.0,
+        24.0,
+        20.0
+      ],
+      "runtime_scaling": {
+        "baseline_device": "amd_ryzen_7_5700x",
+        "baseline_metric": "geekbench6_single",
+        "baseline_score": 1995.0,
+        "alpha": 0.8,
+        "model": "two_term",
+        "predictions": {
+          "intel_i9_14900k": {
+            "device": "intel_i9_14900k",
+            "predicted_ms": 1.0812684759734366,
+            "factor": 0.5652538765582243,
+            "compute_ratio": 0.6065673456977805,
+            "bandwidth_ratio": 0.4,
+            "model": "two_term"
+          },
+          "amd_ryzen_9_7950x": {
+            "device": "amd_ryzen_9_7950x",
+            "predicted_ms": 1.193497397868613,
+            "factor": 0.623923702390414,
+            "compute_ratio": 0.6708137188971083,
+            "bandwidth_ratio": 0.43636363636363634,
+            "model": "two_term"
+          },
+          "esp32_s3": {
+            "device": "esp32_s3",
+            "predicted_ms": 27.54561569541692,
+            "factor": 14.399999999999997,
+            "compute_ratio": 3.0,
+            "bandwidth_ratio": 60.0,
+            "model": "two_term"
+          },
+          "nrf52840": {
+            "device": "nrf52840",
+            "predicted_ms": 87.85578842476923,
+            "factor": 45.92830188679245,
+            "compute_ratio": 9.410377358490566,
+            "bandwidth_ratio": 192.0,
+            "model": "two_term"
+          },
+          "macbookpro16_i9_9880h": {
+            "device": "macbookpro16_i9_9880h",
+            "predicted_ms": 4.5643240528662545,
+            "factor": 2.386088119722431,
+            "compute_ratio": 1.5011286681715577,
+            "bandwidth_ratio": 5.9259259259259265,
+            "model": "two_term"
+          }
+        },
+        "notes": "Geekbench 6 single-core \u22481995; STREAM copy \u224848 GB/s (DDR4-3200)"
+      }
+    }
+  },
+  "meta": {
+    "public_key_len": 294,
+    "secret_key_len": 1218,
+    "signature_len": 256,
+    "message_size": 1024,
+    "signature_expansion_ratio": 0.25,
+    "mechanism": "RSA-2048-PSS",
+    "run_mode": "warm",
+    "backend": "rsa",
+    "signature_hash": "sha256",
+    "signature_hash_bytes": 32,
+    "pss_salt_length": 32,
+    "pss_mgf_hash": "sha256",
+    "secret_key_analysis": {
+      "method": "bitstring_hw_hd_v1",
+      "model": {
+        "name": "uniform_bitstring",
+        "expected_hw_fraction": 0.5,
+        "expected_hd_fraction": 0.5,
+        "notes": [],
+        "extras": {}
+      },
+      "samples": 32,
+      "bits_per_sample": 2048,
+      "hw": {
+        "mean_fraction": 0.50213623046875,
+        "std_fraction": 0.012632802978587529,
+        "min_fraction": 0.4775390625,
+        "max_fraction": 0.525390625,
+        "mean_bits": 1028.375,
+        "std_bits": 25.87198050014726,
+        "expected_fraction": 0.5,
+        "expected_bits": 1024.0,
+        "three_sigma_band": [
+          0.4668543696318806,
+          0.5331456303681195
+        ],
+        "z_score_vs_uniform": 0.1933495104806966
+      },
+      "hd": {
+        "samples": 128,
+        "mean_fraction": 0.500701904296875,
+        "std_fraction": 0.010600235844071212,
+        "min_fraction": 0.47021484375,
+        "max_fraction": 0.52490234375,
+        "expected_fraction": 0.5
+      },
+      "byte_bias": {
+        "reference_fraction": 0.5,
+        "max_abs_deviation": 0.11328125,
+        "mean_abs_deviation": 0.0257568359375
+      },
+      "pair_sample_limit": 128,
+      "warnings": [],
+      "context": {
+        "algo": "rsa-pss",
+        "kind": "SIG",
+        "family": "RSA",
+        "mechanism": "RSA-2048-PSS",
+        "sampled_keys": 32,
+        "category_floor": 112,
+        "param_notes": "RSA-2048 PSS signature baseline; salt length matches hash size",
+        "parser": "rsa_private_exponent_v1",
+        "parsed_components": "private_exponent"
+      }
+    },
+    "environment": {
+      "cpu_model": "AMD Ryzen 7 5700X 8-Core Processor",
+      "os": "Windows-10-10.0.19045-SP0",
+      "python": "3.11.9",
+      "dependencies": {
+        "liboqs_commit": "71a65ef11024bac2d936627201ee62d2009919e5",
+        "pqclean_commit": "1eacfdafc15ddc5d5759d0b85b4cef26627df181"
+      },
+      "build_flags": {
+        "native": {
+          "CMAKE_BUILD_TYPE": "Release",
+          "CMAKE_C_FLAGS": "/DWIN32 /D_WINDOWS",
+          "CMAKE_C_FLAGS_DEBUG": "/Zi /Ob0 /Od /RTC1",
+          "CMAKE_C_FLAGS_MINSIZEREL": "/O1 /Ob1 /DNDEBUG",
+          "CMAKE_C_FLAGS_RELEASE": "/O2 /Ob2 /DNDEBUG",
+          "CMAKE_C_FLAGS_RELWITHDEBINFO": "/Zi /O2 /Ob1 /DNDEBUG",
+          "CMAKE_EXE_LINKER_FLAGS": "/machine:x64",
+          "CMAKE_EXE_LINKER_FLAGS_DEBUG": "/debug /INCREMENTAL",
+          "CMAKE_EXE_LINKER_FLAGS_MINSIZEREL": "/INCREMENTAL:NO",
+          "CMAKE_EXE_LINKER_FLAGS_RELEASE": "/INCREMENTAL:NO",
+          "CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO": "/debug /INCREMENTAL",
+          "CMAKE_MODULE_LINKER_FLAGS": "/machine:x64",
+          "CMAKE_MODULE_LINKER_FLAGS_DEBUG": "/debug /INCREMENTAL",
+          "CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL": "/INCREMENTAL:NO",
+          "CMAKE_MODULE_LINKER_FLAGS_RELEASE": "/INCREMENTAL:NO",
+          "CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO": "/debug /INCREMENTAL",
+          "CMAKE_RC_FLAGS": "-DWIN32",
+          "CMAKE_RC_FLAGS_DEBUG": "-D_DEBUG",
+          "CMAKE_SHARED_LINKER_FLAGS": "/machine:x64",
+          "CMAKE_SHARED_LINKER_FLAGS_DEBUG": "/debug /INCREMENTAL",
+          "CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL": "/INCREMENTAL:NO",
+          "CMAKE_SHARED_LINKER_FLAGS_RELEASE": "/INCREMENTAL:NO",
+          "CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO": "/debug /INCREMENTAL",
+          "CMAKE_STATIC_LINKER_FLAGS": "/machine:x64",
+          "CMAKE_ASM_FLAGS-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_C_FLAGS-ADVANCED": "1",
+          "CMAKE_C_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_C_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_C_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_C_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_RC_FLAGS-ADVANCED": "1",
+          "CMAKE_RC_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_RC_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_RC_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_RC_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1"
+        }
+      }
+    }
+  },
+  "security": {
+    "mechanism": "RSA-2048-PSS",
+    "family": "RSA",
+    "category_floor": null,
+    "nist_category": null,
+    "classical_bits": 112.0,
+    "quantum_bits": 0.0,
+    "shor_breakable": true,
+    "notes": "RSA classical: NIST SP 800-57 strength mapping; quantum: Shor polynomial-time factoring. Logical costs follow Gidney\u2013Eker\u00e5 (2019); Toffoli counts are primary with T-count ranges.",
+    "parameters": {
+      "modulus_bits": 2048.0
+    },
+    "resources": {
+      "logical": {
+        "model": "ge2019",
+        "modulus_bits": 2048.0,
+        "logical_qubits": 6189.056,
+        "toffoli": 2624225017.856,
+        "meas_depth": 2143289344.0,
+        "log2_n": 11.0,
+        "formulas": {
+          "logical_qubits": "3n + 0.002 n log2 n",
+          "toffoli": "(0.3 + 0.0005 log2 n) n^3",
+          "meas_depth": "(500 + log2 n) n^2"
+        },
+        "notes": "Gidney\u2013Eker\u00e5 2019 factoring cost model: Q = 3n + 0.002 n log2 n, Toffoli = (0.3 + 0.0005 log2 n) n^3, depth = (500 + log2 n) n^2"
+      },
+      "t_counts": {
+        "catalyzed": 10496900071.424,
+        "textbook": 18369575124.992
+      },
+      "rsa_model": "ge2019",
+      "shor_model_notes": "Gidney\u2013Eker\u00e5 2019 factoring cost model: Q = 3n + 0.002 n log2 n, Toffoli = (0.3 + 0.0005 log2 n) n^3, depth = (500 + log2 n) n^2",
+      "log2_n_bits": 11.0,
+      "t_count_assumptions": {
+        "primary_unit": "Toffoli",
+        "t_mappings": {
+          "catalyzed": 4.0,
+          "textbook": 7.0
+        }
+      },
+      "shor_profiles": {
+        "model": "ge2019",
+        "scenarios": [
+          {
+            "modulus_bits": 2048.0,
+            "logical": {
+              "model": "ge2019",
+              "modulus_bits": 2048.0,
+              "logical_qubits": 6189.056,
+              "toffoli": 2624225017.856,
+              "meas_depth": 2143289344.0,
+              "log2_n": 11.0,
+              "formulas": {
+                "logical_qubits": "3n + 0.002 n log2 n",
+                "toffoli": "(0.3 + 0.0005 log2 n) n^3",
+                "meas_depth": "(500 + log2 n) n^2"
+              },
+              "notes": "Gidney\u2013Eker\u00e5 2019 factoring cost model: Q = 3n + 0.002 n log2 n, Toffoli = (0.3 + 0.0005 log2 n) n^3, depth = (500 + log2 n) n^2"
+            },
+            "scenarios": [
+              {
+                "label": "ge-baseline",
+                "phys_error_rate": 0.001,
+                "cycle_time_ns": 1000.0,
+                "target_total_fail_prob": 0.01,
+                "p_thresh": 0.01,
+                "code_distance": 21,
+                "factory_spec": "litinski-116-to-12",
+                "factory_description": "Two-stage |T\u27e9 distillation pipeline inspired by Litinski 2019; outputs 12 high-fidelity magic states after ~5\u00b7d code cycles per factory.",
+                "factory_count": 2,
+                "factory_cycles": 28799999999.999992,
+                "runtime_seconds_depth": 2143.2893440000003,
+                "runtime_seconds_factory": 28799.999999999996,
+                "runtime_seconds": 28799.999999999996,
+                "phys_qubits_total": 20000000.0,
+                "phys_qubits_data": 6805252.565058902,
+                "phys_qubits_factories": 13194747.4349411,
+                "factory_utilization_target": 1.3,
+                "factory_utilization_actual": 1.0,
+                "limit": "factory",
+                "failure_estimate": {
+                  "p_logical": 1.0000000000000006e-12,
+                  "ops_bound": 6079626870.784,
+                  "budget": 0.01,
+                  "expected_failures": 0.006079626870784004,
+                  "weights": {
+                    "depth_weight": 1.0,
+                    "toffoli_weight": 1.5
+                  },
+                  "formula": "depth_weight*meas_depth + toffoli_weight*toffoli"
+                },
+                "rate_details": {
+                  "rate_unit": "T",
+                  "toffoli_per_cycle": 1.2243913894324854,
+                  "factory_rate_peak_T_per_cycle": 0.48975655577299415,
+                  "factory_rate_target_T_per_cycle": 0.3767358121330724,
+                  "factory_rate_available_T_per_cycle": 0.36447569692444454,
+                  "factory_rate_single_T_per_cycle": 0.18223784846222227,
+                  "t_per_toffoli_assumed": 4.0,
+                  "rate_multiplier": 0.1,
+                  "factory_supply_scale": 1.5945811740444447,
+                  "factory_utilization_target": 1.3,
+                  "factory_utilization_actual": 1.0,
+                  "factory_backlog_ratio": 1.3437289781066533
+                },
+                "notes": "Matches Gidney\u2013Eker\u00e5 (2019) headline assumptions (1 \u00b5s cycle, p=1e-3).",
+                "logical_op_weight_tof": 1.5,
+                "logical_op_weight_depth": 1.0,
+                "calibrated_against": "GE-2019-2048"
+              },
+              {
+                "label": "optimistic",
+                "phys_error_rate": 0.0005,
+                "cycle_time_ns": 200.0,
+                "target_total_fail_prob": 0.001,
+                "p_thresh": 0.01,
+                "code_distance": 17,
+                "factory_spec": "litinski-116-to-12",
+                "factory_description": "Two-stage |T\u27e9 distillation pipeline inspired by Litinski 2019; outputs 12 high-fidelity magic states after ~5\u00b7d code cycles per factory.",
+                "factory_count": 5,
+                "factory_cycles": 9325714285.714285,
+                "runtime_seconds_depth": 428.6578688,
+                "runtime_seconds_factory": 1865.142857142857,
+                "runtime_seconds": 1865.142857142857,
+                "phys_qubits_total": 26076922.932079293,
+                "phys_qubits_data": 4459677.984811842,
+                "phys_qubits_factories": 21617244.94726745,
+                "factory_utilization_target": 0.85,
+                "factory_utilization_actual": 0.4351122405297735,
+                "limit": "factory",
+                "failure_estimate": {
+                  "p_logical": 1.953125000000001e-13,
+                  "ops_bound": 4767514361.856,
+                  "budget": 0.001,
+                  "expected_failures": 0.0009311551488000006,
+                  "weights": {
+                    "depth_weight": 1.0,
+                    "toffoli_weight": 1.0
+                  },
+                  "formula": "depth_weight*meas_depth + toffoli_weight*toffoli"
+                },
+                "rate_details": {
+                  "rate_unit": "T",
+                  "toffoli_per_cycle": 1.2243913894324854,
+                  "factory_rate_peak_T_per_cycle": 0.48975655577299415,
+                  "factory_rate_target_T_per_cycle": 0.5761841832623461,
+                  "factory_rate_available_T_per_cycle": 1.1255867110901963,
+                  "factory_rate_single_T_per_cycle": 0.22511734221803925,
+                  "t_per_toffoli_assumed": 4.0,
+                  "rate_multiplier": 0.1,
+                  "factory_supply_scale": 1.5945811740444447,
+                  "factory_utilization_target": 0.85,
+                  "factory_utilization_actual": 0.4351122405297735,
+                  "factory_backlog_ratio": 0.4351122405297735
+                },
+                "notes": "Improved error rates / faster cycles with proportional factory build-out.",
+                "logical_op_weight_tof": 1.0,
+                "logical_op_weight_depth": 1.0,
+                "calibrated_against": null
+              },
+              {
+                "label": "conservative",
+                "phys_error_rate": 0.002,
+                "cycle_time_ns": 5000.0,
+                "target_total_fail_prob": 0.1,
+                "p_thresh": 0.01,
+                "code_distance": 27,
+                "factory_spec": "factory-lite-15-to-1",
+                "factory_description": "Single-level 15-to-1 T distillation factory; slower throughput but smaller footprint.",
+                "factory_count": 173,
+                "factory_cycles": 17979190751.445084,
+                "runtime_seconds_depth": 10716.446720000002,
+                "runtime_seconds_factory": 89895.95375722542,
+                "runtime_seconds": 89895.95375722542,
+                "phys_qubits_total": 445193775.00898325,
+                "phys_qubits_data": 11249499.138158593,
+                "phys_qubits_factories": 433944275.87082464,
+                "factory_utilization_target": 0.85,
+                "factory_utilization_actual": 0.8388597088758301,
+                "limit": "factory",
+                "failure_estimate": {
+                  "p_logical": 1.6384000000000014e-11,
+                  "ops_bound": 6079626870.784,
+                  "budget": 0.1,
+                  "expected_failures": 0.09960860665092515,
+                  "weights": {
+                    "depth_weight": 1.0,
+                    "toffoli_weight": 1.5
+                  },
+                  "formula": "depth_weight*meas_depth + toffoli_weight*toffoli"
+                },
+                "rate_details": {
+                  "rate_unit": "T",
+                  "toffoli_per_cycle": 1.2243913894324854,
+                  "factory_rate_peak_T_per_cycle": 0.8570739726027399,
+                  "factory_rate_target_T_per_cycle": 1.0083223207091057,
+                  "factory_rate_available_T_per_cycle": 1.0217131226284775,
+                  "factory_rate_single_T_per_cycle": 0.00590585620016461,
+                  "t_per_toffoli_assumed": 7.0,
+                  "rate_multiplier": 0.1,
+                  "factory_supply_scale": 1.5945811740444447,
+                  "factory_utilization_target": 0.85,
+                  "factory_utilization_actual": 0.8388597088758301,
+                  "factory_backlog_ratio": 0.8388597088758301
+                },
+                "notes": "Slower ion-trap-style cadence with additional factories to compensate throughput.",
+                "logical_op_weight_tof": 1.5,
+                "logical_op_weight_depth": 1.0,
+                "calibrated_against": null
+              }
+            ]
+          },
+          {
+            "modulus_bits": 3072.0,
+            "logical": {
+              "model": "ge2019",
+              "modulus_bits": 3072.0,
+              "logical_qubits": 9287.178009604431,
+              "toffoli": 8865238767.747694,
+              "meas_depth": 4827921422.752405,
+              "log2_n": 11.584962500721156,
+              "formulas": {
+                "logical_qubits": "3n + 0.002 n log2 n",
+                "toffoli": "(0.3 + 0.0005 log2 n) n^3",
+                "meas_depth": "(500 + log2 n) n^2"
+              },
+              "notes": "Gidney\u2013Eker\u00e5 2019 factoring cost model: Q = 3n + 0.002 n log2 n, Toffoli = (0.3 + 0.0005 log2 n) n^3, depth = (500 + log2 n) n^2"
+            },
+            "scenarios": [
+              {
+                "label": "ge-baseline",
+                "phys_error_rate": 0.001,
+                "cycle_time_ns": 1000.0,
+                "target_total_fail_prob": 0.01,
+                "p_thresh": 0.01,
+                "code_distance": 23,
+                "factory_spec": "litinski-116-to-12",
+                "factory_description": "Two-stage |T\u27e9 distillation pipeline inspired by Litinski 2019; outputs 12 high-fidelity magic states after ~5\u00b7d code cycles per factory.",
+                "factory_count": 2,
+                "factory_cycles": 106559063375.15485,
+                "runtime_seconds_depth": 4827.921422752406,
+                "runtime_seconds_factory": 106559.06337515486,
+                "runtime_seconds": 106559.06337515486,
+                "phys_qubits_total": 28077278.515763953,
+                "phys_qubits_data": 12249565.606276784,
+                "phys_qubits_factories": 15827712.909487171,
+                "factory_utilization_target": 1.3,
+                "factory_utilization_actual": 1.0,
+                "limit": "factory",
+                "failure_estimate": {
+                  "p_logical": 1.0000000000000007e-13,
+                  "ops_bound": 18125779574.373947,
+                  "budget": 0.01,
+                  "expected_failures": 0.001812577957437396,
+                  "weights": {
+                    "depth_weight": 1.0,
+                    "toffoli_weight": 1.5
+                  },
+                  "formula": "depth_weight*meas_depth + toffoli_weight*toffoli"
+                },
+                "rate_details": {
+                  "rate_unit": "T",
+                  "toffoli_per_cycle": 1.8362433833261538,
+                  "factory_rate_peak_T_per_cycle": 0.7344973533304615,
+                  "factory_rate_target_T_per_cycle": 0.564997964100355,
+                  "factory_rate_available_T_per_cycle": 0.33278215806144934,
+                  "factory_rate_single_T_per_cycle": 0.16639107903072467,
+                  "t_per_toffoli_assumed": 4.0,
+                  "rate_multiplier": 0.1,
+                  "factory_supply_scale": 1.5945811740444447,
+                  "factory_utilization_target": 1.3,
+                  "factory_utilization_actual": 1.0,
+                  "factory_backlog_ratio": 2.2071416256481937
+                },
+                "notes": "Matches Gidney\u2013Eker\u00e5 (2019) headline assumptions (1 \u00b5s cycle, p=1e-3).",
+                "logical_op_weight_tof": 1.5,
+                "logical_op_weight_depth": 1.0,
+                "calibrated_against": "GE-2019-2048"
+              },
+              {
+                "label": "optimistic",
+                "phys_error_rate": 0.0005,
+                "cycle_time_ns": 200.0,
+                "target_total_fail_prob": 0.001,
+                "p_thresh": 0.01,
+                "code_distance": 19,
+                "factory_spec": "litinski-116-to-12",
+                "factory_description": "Two-stage |T\u27e9 distillation pipeline inspired by Litinski 2019; outputs 12 high-fidelity magic states after ~5\u00b7d code cycles per factory.",
+                "factory_count": 7,
+                "factory_cycles": 25150586386.682507,
+                "runtime_seconds_depth": 965.5842845504811,
+                "runtime_seconds_factory": 5030.1172773365015,
+                "runtime_seconds": 5030.1172773365015,
+                "phys_qubits_total": 46163342.99622487,
+                "phys_qubits_data": 8359344.392941246,
+                "phys_qubits_factories": 37803998.60328363,
+                "factory_utilization_target": 0.85,
+                "factory_utilization_actual": 0.52094025946976,
+                "limit": "factory",
+                "failure_estimate": {
+                  "p_logical": 9.765625000000006e-15,
+                  "ops_bound": 13693160190.5001,
+                  "budget": 0.001,
+                  "expected_failures": 0.0001337222674853526,
+                  "weights": {
+                    "depth_weight": 1.0,
+                    "toffoli_weight": 1.0
+                  },
+                  "formula": "depth_weight*meas_depth + toffoli_weight*toffoli"
+                },
+                "rate_details": {
+                  "rate_unit": "T",
+                  "toffoli_per_cycle": 1.8362433833261538,
+                  "factory_rate_peak_T_per_cycle": 0.7344973533304615,
+                  "factory_rate_target_T_per_cycle": 0.8641145333299547,
+                  "factory_rate_available_T_per_cycle": 1.4099454591550882,
+                  "factory_rate_single_T_per_cycle": 0.2014207798792983,
+                  "t_per_toffoli_assumed": 4.0,
+                  "rate_multiplier": 0.1,
+                  "factory_supply_scale": 1.5945811740444447,
+                  "factory_utilization_target": 0.85,
+                  "factory_utilization_actual": 0.52094025946976,
+                  "factory_backlog_ratio": 0.52094025946976
+                },
+                "notes": "Improved error rates / faster cycles with proportional factory build-out.",
+                "logical_op_weight_tof": 1.0,
+                "logical_op_weight_depth": 1.0,
+                "calibrated_against": null
+              },
+              {
+                "label": "conservative",
+                "phys_error_rate": 0.002,
+                "cycle_time_ns": 5000.0,
+                "target_total_fail_prob": 0.1,
+                "p_thresh": 0.01,
+                "code_distance": 29,
+                "factory_spec": "factory-lite-15-to-1",
+                "factory_description": "Single-level 15-to-1 T distillation factory; slower throughput but smaller footprint.",
+                "factory_count": 278,
+                "factory_cycles": 40597103281.49471,
+                "runtime_seconds_depth": 24139.607113762027,
+                "runtime_seconds_factory": 202985.5164074736,
+                "runtime_seconds": 202985.5164074736,
+                "phys_qubits_total": 823928093.1914766,
+                "phys_qubits_data": 19474262.1453285,
+                "phys_qubits_factories": 804453831.0461481,
+                "factory_utilization_target": 0.85,
+                "factory_utilization_actual": 0.840881607769628,
+                "limit": "factory",
+                "failure_estimate": {
+                  "p_logical": 3.276800000000003e-12,
+                  "ops_bound": 18125779574.373947,
+                  "budget": 0.1,
+                  "expected_failures": 0.059394554509308604,
+                  "weights": {
+                    "depth_weight": 1.0,
+                    "toffoli_weight": 1.5
+                  },
+                  "formula": "depth_weight*meas_depth + toffoli_weight*toffoli"
+                },
+                "rate_details": {
+                  "rate_unit": "T",
+                  "toffoli_per_cycle": 1.8362433833261538,
+                  "factory_rate_peak_T_per_cycle": 1.2853703683283078,
+                  "factory_rate_target_T_per_cycle": 1.5122004333274208,
+                  "factory_rate_available_T_per_cycle": 1.5285985047736401,
+                  "factory_rate_single_T_per_cycle": 0.005498555772567051,
+                  "t_per_toffoli_assumed": 7.0,
+                  "rate_multiplier": 0.1,
+                  "factory_supply_scale": 1.5945811740444447,
+                  "factory_utilization_target": 0.85,
+                  "factory_utilization_actual": 0.840881607769628,
+                  "factory_backlog_ratio": 0.840881607769628
+                },
+                "notes": "Slower ion-trap-style cadence with additional factories to compensate throughput.",
+                "logical_op_weight_tof": 1.5,
+                "logical_op_weight_depth": 1.0,
+                "calibrated_against": null
+              }
+            ]
+          },
+          {
+            "modulus_bits": 4096.0,
+            "logical": {
+              "model": "ge2019",
+              "modulus_bits": 4096.0,
+              "logical_qubits": 12386.304,
+              "toffoli": 21028159881.216,
+              "meas_depth": 8589934592.0,
+              "log2_n": 12.0,
+              "formulas": {
+                "logical_qubits": "3n + 0.002 n log2 n",
+                "toffoli": "(0.3 + 0.0005 log2 n) n^3",
+                "meas_depth": "(500 + log2 n) n^2"
+              },
+              "notes": "Gidney\u2013Eker\u00e5 2019 factoring cost model: Q = 3n + 0.002 n log2 n, Toffoli = (0.3 + 0.0005 log2 n) n^3, depth = (500 + log2 n) n^2"
+            },
+            "scenarios": [
+              {
+                "label": "ge-baseline",
+                "phys_error_rate": 0.001,
+                "cycle_time_ns": 1000.0,
+                "target_total_fail_prob": 0.01,
+                "p_thresh": 0.01,
+                "code_distance": 23,
+                "factory_spec": "litinski-116-to-12",
+                "factory_description": "Two-stage |T\u27e9 distillation pipeline inspired by Litinski 2019; outputs 12 high-fidelity magic states after ~5\u00b7d code cycles per factory.",
+                "factory_count": 2,
+                "factory_cycles": 252755856909.04834,
+                "runtime_seconds_depth": 8589.934592000001,
+                "runtime_seconds_factory": 252755.8569090484,
+                "runtime_seconds": 252755.8569090484,
+                "phys_qubits_total": 32164951.55295655,
+                "phys_qubits_data": 16337238.64346938,
+                "phys_qubits_factories": 15827712.909487171,
+                "factory_utilization_target": 1.3,
+                "factory_utilization_actual": 1.0,
+                "limit": "factory",
+                "failure_estimate": {
+                  "p_logical": 1.0000000000000007e-13,
+                  "ops_bound": 40132174413.824,
+                  "budget": 0.01,
+                  "expected_failures": 0.004013217441382402,
+                  "weights": {
+                    "depth_weight": 1.0,
+                    "toffoli_weight": 1.5
+                  },
+                  "formula": "depth_weight*meas_depth + toffoli_weight*toffoli"
+                },
+                "rate_details": {
+                  "rate_unit": "T",
+                  "toffoli_per_cycle": 2.448,
+                  "factory_rate_peak_T_per_cycle": 0.9792000000000001,
+                  "factory_rate_target_T_per_cycle": 0.7532307692307693,
+                  "factory_rate_available_T_per_cycle": 0.33278215806144934,
+                  "factory_rate_single_T_per_cycle": 0.16639107903072467,
+                  "t_per_toffoli_assumed": 4.0,
+                  "rate_multiplier": 0.1,
+                  "factory_supply_scale": 1.5945811740444447,
+                  "factory_utilization_target": 1.3,
+                  "factory_utilization_actual": 1.0,
+                  "factory_backlog_ratio": 2.9424654425709553
+                },
+                "notes": "Matches Gidney\u2013Eker\u00e5 (2019) headline assumptions (1 \u00b5s cycle, p=1e-3).",
+                "logical_op_weight_tof": 1.5,
+                "logical_op_weight_depth": 1.0,
+                "calibrated_against": "GE-2019-2048"
+              },
+              {
+                "label": "optimistic",
+                "phys_error_rate": 0.0005,
+                "cycle_time_ns": 200.0,
+                "target_total_fail_prob": 0.001,
+                "p_thresh": 0.01,
+                "code_distance": 19,
+                "factory_spec": "litinski-116-to-12",
+                "factory_description": "Two-stage |T\u27e9 distillation pipeline inspired by Litinski 2019; outputs 12 high-fidelity magic states after ~5\u00b7d code cycles per factory.",
+                "factory_count": 8,
+                "factory_cycles": 52199579144.25998,
+                "runtime_seconds_depth": 1717.9869184000001,
+                "runtime_seconds_factory": 10439.915828851998,
+                "runtime_seconds": 10439.915828851998,
+                "phys_qubits_total": 54353422.668415725,
+                "phys_qubits_data": 11148852.836091582,
+                "phys_qubits_factories": 43204569.83232415,
+                "factory_utilization_target": 0.85,
+                "factory_utilization_actual": 0.6076830805309581,
+                "limit": "factory",
+                "failure_estimate": {
+                  "p_logical": 9.765625000000006e-15,
+                  "ops_bound": 29618094473.216,
+                  "budget": 0.001,
+                  "expected_failures": 0.00028923920384000016,
+                  "weights": {
+                    "depth_weight": 1.0,
+                    "toffoli_weight": 1.0
+                  },
+                  "formula": "depth_weight*meas_depth + toffoli_weight*toffoli"
+                },
+                "rate_details": {
+                  "rate_unit": "T",
+                  "toffoli_per_cycle": 2.448,
+                  "factory_rate_peak_T_per_cycle": 0.9792000000000001,
+                  "factory_rate_target_T_per_cycle": 1.1520000000000001,
+                  "factory_rate_available_T_per_cycle": 1.6113662390343864,
+                  "factory_rate_single_T_per_cycle": 0.2014207798792983,
+                  "t_per_toffoli_assumed": 4.0,
+                  "rate_multiplier": 0.1,
+                  "factory_supply_scale": 1.5945811740444447,
+                  "factory_utilization_target": 0.85,
+                  "factory_utilization_actual": 0.6076830805309581,
+                  "factory_backlog_ratio": 0.6076830805309581
+                },
+                "notes": "Improved error rates / faster cycles with proportional factory build-out.",
+                "logical_op_weight_tof": 1.0,
+                "logical_op_weight_depth": 1.0,
+                "calibrated_against": null
+              },
+              {
+                "label": "conservative",
+                "phys_error_rate": 0.002,
+                "cycle_time_ns": 5000.0,
+                "target_total_fail_prob": 0.1,
+                "p_thresh": 0.01,
+                "code_distance": 31,
+                "factory_spec": "factory-lite-15-to-1",
+                "factory_description": "Single-level 15-to-1 T distillation factory; slower throughput but smaller footprint.",
+                "factory_count": 394,
+                "factory_cycles": 72630352172.93774,
+                "runtime_seconds_depth": 42949.67296,
+                "runtime_seconds_factory": 363151.7608646887,
+                "runtime_seconds": 363151.7608646887,
+                "phys_qubits_total": 1332485378.185278,
+                "phys_qubits_data": 29678802.148155153,
+                "phys_qubits_factories": 1302806576.0371227,
+                "factory_utilization_target": 0.85,
+                "factory_utilization_actual": 0.8455285822616163,
+                "limit": "factory",
+                "failure_estimate": {
+                  "p_logical": 6.553600000000006e-13,
+                  "ops_bound": 40132174413.824,
+                  "budget": 0.1,
+                  "expected_failures": 0.026301021823843716,
+                  "weights": {
+                    "depth_weight": 1.0,
+                    "toffoli_weight": 1.5
+                  },
+                  "formula": "depth_weight*meas_depth + toffoli_weight*toffoli"
+                },
+                "rate_details": {
+                  "rate_unit": "T",
+                  "toffoli_per_cycle": 2.448,
+                  "factory_rate_peak_T_per_cycle": 1.7136,
+                  "factory_rate_target_T_per_cycle": 2.016,
+                  "factory_rate_available_T_per_cycle": 2.0266612341081007,
+                  "factory_rate_single_T_per_cycle": 0.005143810238853047,
+                  "t_per_toffoli_assumed": 7.0,
+                  "rate_multiplier": 0.1,
+                  "factory_supply_scale": 1.5945811740444447,
+                  "factory_utilization_target": 0.85,
+                  "factory_utilization_actual": 0.8455285822616163,
+                  "factory_backlog_ratio": 0.8455285822616163
+                },
+                "notes": "Slower ion-trap-style cadence with additional factories to compensate throughput.",
+                "logical_op_weight_tof": 1.5,
+                "logical_op_weight_depth": 1.0,
+                "calibrated_against": null
+              }
+            ]
+          }
+        ],
+        "t_count_assumptions": {
+          "primary_unit": "Toffoli",
+          "t_mappings": {
+            "catalyzed": 4.0,
+            "textbook": 7.0
+          }
+        }
+      }
+    },
+    "bruteforce": {
+      "model": "gnfs_factorization",
+      "space_bits": 2048.0,
+      "rates": [
+        1.0,
+        1000.0,
+        1000000.0
+      ],
+      "rate_unit": "cores",
+      "core_years": 629121564986884.9,
+      "time_years": {
+        "1": {
+          "value": 629121564986884.9,
+          "sci": "6.291e+14",
+          "log10": 14.79873457215733
+        },
+        "1000": {
+          "value": 629121564986.8849,
+          "sci": "6.291e+11",
+          "log10": 11.79873457215733
+        },
+        "1000000": {
+          "value": 629121564.9868848,
+          "sci": "6.291e+08",
+          "log10": 8.79873457215733
+        }
+      },
+      "assumptions": {
+        "rationale": "GNFS L_N[1/3] work factor",
+        "notes": "General Number Field Sieve (L_N[1/3]) with constant calibrated to the RSA-250 factorization record (~2700 core-years)."
+      },
+      "guidance": {
+        "reference": "https://en.wikipedia.org/wiki/RSA_numbers",
+        "comment": "Scale core counts to explore wall-clock trade-offs."
+      }
+    },
+    "headline": {
+      "nist_category": null,
+      "category_floor": null,
+      "classical_bits": 112.0,
+      "quantum_bits": 0.0,
+      "classical_bits_range": null,
+      "quantum_bits_range": null,
+      "estimator": "SP 800-57 mapping",
+      "model": "NFS / Shor",
+      "attack": "NFS",
+      "notes": [
+        "Classical strength per NIST SP 800-57 mapping.",
+        "Quantum security broken by Shor (0 bits).",
+        "Surface-code resource estimates available in details.",
+        "ge-baseline@2048: runtime\u22488.0h, qubits\u224820.0M qubits, factories=2, d=21",
+        "optimistic@2048: runtime\u224831.1m, qubits\u224826.1M qubits, factories=5, d=17",
+        "conservative@2048: runtime\u224825.0h, qubits\u2248445.2M qubits, factories=173, d=27",
+        "Logical qubits \u2248 6.2k qubits; Toffoli count \u2248 2.6B Toffoli"
+      ]
+    },
+    "detail_rows": [
+      [
+        "Logical qubits",
+        "6189.06"
+      ],
+      [
+        "Toffoli count",
+        "2624225017.86"
+      ],
+      [
+        "Catalyzed T-count",
+        "10496900071.42"
+      ],
+      [
+        "Textbook T-count",
+        "18369575124.99"
+      ],
+      [
+        "ge-baseline @2048-bit",
+        "runtime\u22488.0h; qubits\u224820.0M qubits; factories=2; d=21; util\u22481.00"
+      ],
+      [
+        "optimistic @2048-bit",
+        "runtime\u224831.1m; qubits\u224826.1M qubits; factories=5; d=17; util\u22480.44"
+      ],
+      [
+        "conservative @2048-bit",
+        "runtime\u224825.0h; qubits\u2248445.2M qubits; factories=173; d=27; util\u22480.84"
+      ],
+      [
+        "Surface scenarios",
+        "3"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "algo": "rsa-pss",
+  "kind": "SIG",
+  "ops": {
+    "keygen": {
+      "runs": 10,
+      "mean_ms": 38.65442000014809,
+      "min_ms": 14.991500000178348,
+      "max_ms": 68.71550000050775
+    },
+    "sign": {
+      "runs": 10,
+      "mean_ms": 69.22251000005417,
+      "min_ms": 38.40140000011161,
+      "max_ms": 97.38300000026356
+    },
+    "verify": {
+      "runs": 10,
+      "mean_ms": 62.80216999975892,
+      "min_ms": 41.29319999992731,
+      "max_ms": 99.56070000043837
+    }
+  },
+  "meta": {
+    "public_key_len": 294,
+    "secret_key_len": 1216,
+    "signature_len": 256,
+    "message_size": 1024
+  }
+}

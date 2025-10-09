@@ -1,0 +1,667 @@
+{
+  "algo": "dilithium",
+  "kind": "SIG",
+  "ops": {
+    "keygen": {
+      "runs": 2,
+      "mean_ms": 0.7572000031359494,
+      "min_ms": 0.7282000151462853,
+      "max_ms": 0.7861999911256135,
+      "median_ms": 0.7572000031359494,
+      "stddev_ms": 0.028999987989664078,
+      "ci95_low_ms": 0.7003610711241137,
+      "ci95_high_ms": 0.814038935147785,
+      "range_ms": 0.057999975979328156,
+      "series": [
+        0.7282000151462853,
+        0.7861999911256135
+      ],
+      "mem_mean_kb": 154.0,
+      "mem_min_kb": 144.0,
+      "mem_max_kb": 164.0,
+      "mem_median_kb": 154.0,
+      "mem_stddev_kb": 10.0,
+      "mem_ci95_low_kb": 134.40036015459947,
+      "mem_ci95_high_kb": 173.59963984540053,
+      "mem_range_kb": 20.0,
+      "mem_series_kb": [
+        144.0,
+        164.0
+      ],
+      "runtime_scaling": {
+        "baseline_device": "amd_ryzen_7_5700x",
+        "baseline_metric": "geekbench6_single",
+        "baseline_score": 1995.0,
+        "alpha": 0.85,
+        "model": "two_term",
+        "predictions": {
+          "intel_i9_14900k": {
+            "device": "intel_i9_14900k",
+            "predicted_ms": 0.43583087684300226,
+            "factor": 0.5755822438431134,
+            "compute_ratio": 0.6065673456977805,
+            "bandwidth_ratio": 0.4,
+            "model": "two_term"
+          },
+          "amd_ryzen_9_7950x": {
+            "device": "amd_ryzen_9_7950x",
+            "predicted_ms": 0.481311309568093,
+            "factor": 0.6356462065170875,
+            "compute_ratio": 0.6708137188971083,
+            "bandwidth_ratio": 0.43636363636363634,
+            "model": "two_term"
+          },
+          "esp32_s3": {
+            "device": "esp32_s3",
+            "predicted_ms": 8.745660036220215,
+            "factor": 11.55,
+            "compute_ratio": 3.0,
+            "bandwidth_ratio": 60.0,
+            "model": "two_term"
+          },
+          "nrf52840": {
+            "device": "nrf52840",
+            "predicted_ms": 27.86406719087094,
+            "factor": 36.798820754716985,
+            "compute_ratio": 9.410377358490566,
+            "bandwidth_ratio": 192.0,
+            "model": "two_term"
+          },
+          "macbookpro16_i9_9880h": {
+            "device": "macbookpro16_i9_9880h",
+            "predicted_ms": 1.639223106864099,
+            "factor": 2.1648482568347127,
+            "compute_ratio": 1.5011286681715577,
+            "bandwidth_ratio": 5.9259259259259265,
+            "model": "two_term"
+          }
+        },
+        "notes": "Geekbench 6 single-core \u22481995; STREAM copy \u224848 GB/s (DDR4-3200)"
+      }
+    },
+    "sign": {
+      "runs": 2,
+      "mean_ms": 1.4835999754723161,
+      "min_ms": 1.0907999821938574,
+      "max_ms": 1.8763999687507749,
+      "median_ms": 1.4835999754723161,
+      "stddev_ms": 0.3927999932784587,
+      "ci95_low_ms": 0.713726135518962,
+      "ci95_high_ms": 2.25347381542567,
+      "range_ms": 0.7855999865569174,
+      "series": [
+        1.8763999687507749,
+        1.0907999821938574
+      ],
+      "mem_mean_kb": 142.0,
+      "mem_min_kb": 136.0,
+      "mem_max_kb": 148.0,
+      "mem_median_kb": 142.0,
+      "mem_stddev_kb": 6.0,
+      "mem_ci95_low_kb": 130.24021609275968,
+      "mem_ci95_high_kb": 153.75978390724032,
+      "mem_range_kb": 12.0,
+      "mem_series_kb": [
+        148.0,
+        136.0
+      ],
+      "runtime_scaling": {
+        "baseline_device": "amd_ryzen_7_5700x",
+        "baseline_metric": "geekbench6_single",
+        "baseline_score": 1995.0,
+        "alpha": 0.85,
+        "model": "two_term",
+        "predictions": {
+          "intel_i9_14900k": {
+            "device": "intel_i9_14900k",
+            "predicted_ms": 0.8539338028479437,
+            "factor": 0.5755822438431134,
+            "compute_ratio": 0.6065673456977805,
+            "bandwidth_ratio": 0.4,
+            "model": "two_term"
+          },
+          "amd_ryzen_9_7950x": {
+            "device": "amd_ryzen_9_7950x",
+            "predicted_ms": 0.9430446963978217,
+            "factor": 0.6356462065170875,
+            "compute_ratio": 0.6708137188971083,
+            "bandwidth_ratio": 0.43636363636363634,
+            "model": "two_term"
+          },
+          "esp32_s3": {
+            "device": "esp32_s3",
+            "predicted_ms": 17.13557971670525,
+            "factor": 11.55,
+            "compute_ratio": 3.0,
+            "bandwidth_ratio": 60.0,
+            "model": "two_term"
+          },
+          "nrf52840": {
+            "device": "nrf52840",
+            "predicted_ms": 54.594729569108274,
+            "factor": 36.798820754716985,
+            "compute_ratio": 9.410377358490566,
+            "bandwidth_ratio": 192.0,
+            "model": "two_term"
+          },
+          "macbookpro16_i9_9880h": {
+            "device": "macbookpro16_i9_9880h",
+            "predicted_ms": 3.2117688207412662,
+            "factor": 2.1648482568347127,
+            "compute_ratio": 1.5011286681715577,
+            "bandwidth_ratio": 5.9259259259259265,
+            "model": "two_term"
+          }
+        },
+        "notes": "Geekbench 6 single-core \u22481995; STREAM copy \u224848 GB/s (DDR4-3200)"
+      }
+    },
+    "verify": {
+      "runs": 2,
+      "mean_ms": 0.9730500169098377,
+      "min_ms": 0.9539000457152724,
+      "max_ms": 0.992199988104403,
+      "median_ms": 0.9730500169098377,
+      "stddev_ms": 0.019149971194565296,
+      "ci95_low_ms": 0.9355167630635103,
+      "ci95_high_ms": 1.0105832707561653,
+      "range_ms": 0.03829994238913059,
+      "series": [
+        0.9539000457152724,
+        0.992199988104403
+      ],
+      "mem_mean_kb": 126.0,
+      "mem_min_kb": 112.0,
+      "mem_max_kb": 140.0,
+      "mem_median_kb": 126.0,
+      "mem_stddev_kb": 14.0,
+      "mem_ci95_low_kb": 98.56050421643926,
+      "mem_ci95_high_kb": 153.43949578356074,
+      "mem_range_kb": 28.0,
+      "mem_series_kb": [
+        112.0,
+        140.0
+      ],
+      "runtime_scaling": {
+        "baseline_device": "amd_ryzen_7_5700x",
+        "baseline_metric": "geekbench6_single",
+        "baseline_score": 1995.0,
+        "alpha": 0.85,
+        "model": "two_term",
+        "predictions": {
+          "intel_i9_14900k": {
+            "device": "intel_i9_14900k",
+            "predicted_ms": 0.5600703121045438,
+            "factor": 0.5755822438431134,
+            "compute_ratio": 0.6065673456977805,
+            "bandwidth_ratio": 0.4,
+            "model": "two_term"
+          },
+          "amd_ryzen_9_7950x": {
+            "device": "amd_ryzen_9_7950x",
+            "predicted_ms": 0.6185155520001262,
+            "factor": 0.6356462065170875,
+            "compute_ratio": 0.6708137188971083,
+            "bandwidth_ratio": 0.43636363636363634,
+            "model": "two_term"
+          },
+          "esp32_s3": {
+            "device": "esp32_s3",
+            "predicted_ms": 11.238727695308626,
+            "factor": 11.55,
+            "compute_ratio": 3.0,
+            "bandwidth_ratio": 60.0,
+            "model": "two_term"
+          },
+          "nrf52840": {
+            "device": "nrf52840",
+            "predicted_ms": 35.80709315763945,
+            "factor": 36.798820754716985,
+            "compute_ratio": 9.410377358490566,
+            "bandwidth_ratio": 192.0,
+            "model": "two_term"
+          },
+          "macbookpro16_i9_9880h": {
+            "device": "macbookpro16_i9_9880h",
+            "predicted_ms": 2.10650563292025,
+            "factor": 2.1648482568347127,
+            "compute_ratio": 1.5011286681715577,
+            "bandwidth_ratio": 5.9259259259259265,
+            "model": "two_term"
+          }
+        },
+        "notes": "Geekbench 6 single-core \u22481995; STREAM copy \u224848 GB/s (DDR4-3200)"
+      }
+    }
+  },
+  "meta": {
+    "public_key_len": 1952,
+    "secret_key_len": 4032,
+    "signature_len": 3309,
+    "message_size": 1024,
+    "signature_expansion_ratio": 3.2314453125,
+    "mechanism": "ML-DSA-65",
+    "run_mode": "cold",
+    "backend": "native",
+    "secret_key_analysis": {
+      "method": "bitstring_hw_hd_v1",
+      "model": {
+        "name": "structured_lattice_blob",
+        "expected_hw_fraction": 0.5,
+        "expected_hd_fraction": 0.5,
+        "notes": [
+          "Structured lattice secret; blob mixes seeds/compressed state.",
+          "Treat bit-level HW/HD as coarse RNG sanity only."
+        ],
+        "extras": {}
+      },
+      "samples": 32,
+      "bits_per_sample": 32256,
+      "hw": {
+        "mean_fraction": 0.45080663287450395,
+        "std_fraction": 0.0031087483476149036,
+        "min_fraction": 0.44382440476190477,
+        "max_fraction": 0.4584573412698413,
+        "mean_bits": 14541.21875,
+        "std_bits": 100.27578670066633,
+        "expected_fraction": 0.5,
+        "expected_bits": 16128.0
+      },
+      "hd": {
+        "samples": 128,
+        "mean_fraction": 0.4723309713696677,
+        "std_fraction": 0.0029482488479247383,
+        "min_fraction": 0.46630084325396826,
+        "max_fraction": 0.4801587301587302,
+        "expected_fraction": 0.5
+      },
+      "byte_bias": {
+        "reference_fraction": 0.5,
+        "max_abs_deviation": 0.21875,
+        "mean_abs_deviation": 0.06427389477926587
+      },
+      "pair_sample_limit": 128,
+      "warnings": [],
+      "context": {
+        "algo": "dilithium",
+        "kind": "SIG",
+        "family": "ML-DSA",
+        "mechanism": "ML-DSA-65",
+        "sampled_keys": 32,
+        "category_floor": 192,
+        "param_notes": "k=6, l=5; n=256; q=8380417; eta=4"
+      }
+    },
+    "environment": {
+      "cpu_model": "AMD Ryzen 7 5700X 8-Core Processor",
+      "os": "Windows-10-10.0.19045-SP0",
+      "python": "3.11.9",
+      "dependencies": {
+        "liboqs_commit": "dd942d434463872193ba282250532ac0be15f1e3",
+        "pqclean_commit": "1eacfdafc15ddc5d5759d0b85b4cef26627df181"
+      },
+      "build_flags": {
+        "native": {
+          "CMAKE_BUILD_TYPE": "Release",
+          "CMAKE_C_FLAGS": "/DWIN32 /D_WINDOWS",
+          "CMAKE_C_FLAGS_DEBUG": "/Zi /Ob0 /Od /RTC1",
+          "CMAKE_C_FLAGS_MINSIZEREL": "/O1 /Ob1 /DNDEBUG",
+          "CMAKE_C_FLAGS_RELEASE": "/O2 /Ob2 /DNDEBUG",
+          "CMAKE_C_FLAGS_RELWITHDEBINFO": "/Zi /O2 /Ob1 /DNDEBUG",
+          "CMAKE_EXE_LINKER_FLAGS": "/machine:x64",
+          "CMAKE_EXE_LINKER_FLAGS_DEBUG": "/debug /INCREMENTAL",
+          "CMAKE_EXE_LINKER_FLAGS_MINSIZEREL": "/INCREMENTAL:NO",
+          "CMAKE_EXE_LINKER_FLAGS_RELEASE": "/INCREMENTAL:NO",
+          "CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO": "/debug /INCREMENTAL",
+          "CMAKE_MODULE_LINKER_FLAGS": "/machine:x64",
+          "CMAKE_MODULE_LINKER_FLAGS_DEBUG": "/debug /INCREMENTAL",
+          "CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL": "/INCREMENTAL:NO",
+          "CMAKE_MODULE_LINKER_FLAGS_RELEASE": "/INCREMENTAL:NO",
+          "CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO": "/debug /INCREMENTAL",
+          "CMAKE_RC_FLAGS": "-DWIN32",
+          "CMAKE_RC_FLAGS_DEBUG": "-D_DEBUG",
+          "CMAKE_SHARED_LINKER_FLAGS": "/machine:x64",
+          "CMAKE_SHARED_LINKER_FLAGS_DEBUG": "/debug /INCREMENTAL",
+          "CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL": "/INCREMENTAL:NO",
+          "CMAKE_SHARED_LINKER_FLAGS_RELEASE": "/INCREMENTAL:NO",
+          "CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO": "/debug /INCREMENTAL",
+          "CMAKE_STATIC_LINKER_FLAGS": "/machine:x64",
+          "CMAKE_ASM_FLAGS-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_ASM_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_C_FLAGS-ADVANCED": "1",
+          "CMAKE_C_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_C_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_C_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_C_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_RC_FLAGS-ADVANCED": "1",
+          "CMAKE_RC_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_RC_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_RC_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_RC_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1"
+        }
+      }
+    }
+  },
+  "security": {
+    "mechanism": "ML-DSA-65",
+    "family": "ML-DSA",
+    "category_floor": 192,
+    "nist_category": 3,
+    "classical_bits": 170.21499999999997,
+    "quantum_bits": 150.45,
+    "shor_breakable": false,
+    "notes": "ML-DSA module-LWE cost model: BKZ (primal/dual/hybrid) with Core-SVP constants. Category floor retained in extras.category_floor.",
+    "estimator": {
+      "name": "unavailable (fallback to NIST floor)",
+      "profile": "floor",
+      "available": false
+    },
+    "parameters": {
+      "mechanism": "ML-DSA-65",
+      "n": 256,
+      "k": 6,
+      "l": 5,
+      "q": 8380417,
+      "eta": 4,
+      "rank": 1536
+    },
+    "assumptions": {
+      "core_svp_constants": {
+        "classical": 0.292,
+        "quantum": 0.262
+      },
+      "module_lwe_model": {
+        "dimension": 1536,
+        "n": 256,
+        "k": 6,
+        "alpha": 7.722869130719465e-07,
+        "sigma_e": 2.581988897471611,
+        "classical_bits_range": [
+          168.14999999999998,
+          177.0
+        ],
+        "quantum_bits_range": [
+          147.5,
+          159.3
+        ]
+      },
+      "module_lwe_profile_constants": {
+        "aggressive": {
+          "classical_consts": [
+            0.285,
+            0.292
+          ],
+          "quantum_consts": [
+            0.25,
+            0.26
+          ]
+        },
+        "conservative": {
+          "classical_consts": [
+            0.292,
+            0.3
+          ],
+          "quantum_consts": [
+            0.26,
+            0.27
+          ]
+        }
+      }
+    },
+    "details": {
+      "module_lwe_attacks": [
+        {
+          "attack": "primal-usvp",
+          "guess_modules": 0,
+          "beta": 605,
+          "delta0": 1.0092351234625434,
+          "profiles": [
+            {
+              "profile": "aggressive",
+              "classical_bits_range": [
+                172.42499999999998,
+                176.66
+              ],
+              "quantum_bits_range": [
+                151.25,
+                157.3
+              ]
+            },
+            {
+              "profile": "conservative",
+              "classical_bits_range": [
+                176.66,
+                181.5
+              ],
+              "quantum_bits_range": [
+                157.3,
+                163.35000000000002
+              ]
+            }
+          ]
+        },
+        {
+          "attack": "dual",
+          "guess_modules": 0,
+          "beta": 590,
+          "delta0": 1.0094281608410216,
+          "profiles": [
+            {
+              "profile": "aggressive",
+              "classical_bits_range": [
+                168.14999999999998,
+                172.28
+              ],
+              "quantum_bits_range": [
+                147.5,
+                153.4
+              ]
+            },
+            {
+              "profile": "conservative",
+              "classical_bits_range": [
+                172.28,
+                177.0
+              ],
+              "quantum_bits_range": [
+                153.4,
+                159.3
+              ]
+            }
+          ]
+        },
+        {
+          "attack": "hybrid-1",
+          "guess_modules": 1,
+          "beta": 464,
+          "delta0": 1.0114810904163178,
+          "profiles": [
+            {
+              "profile": "aggressive",
+              "classical_bits_range": [
+                943.7408003692319,
+                946.988800369232
+              ],
+              "quantum_bits_range": [
+                521.750400184616,
+                526.3904001846159
+              ]
+            },
+            {
+              "profile": "conservative",
+              "classical_bits_range": [
+                946.988800369232,
+                950.700800369232
+              ],
+              "quantum_bits_range": [
+                526.3904001846159,
+                531.0304001846159
+              ]
+            }
+          ]
+        },
+        {
+          "attack": "hybrid-2",
+          "guess_modules": 2,
+          "beta": 375,
+          "delta0": 1.01365095406341,
+          "profiles": [
+            {
+              "profile": "aggressive",
+              "classical_bits_range": [
+                1729.8766007384638,
+                1732.5016007384638
+              ],
+              "quantum_bits_range": [
+                905.2508003692319,
+                909.0008003692319
+              ]
+            },
+            {
+              "profile": "conservative",
+              "classical_bits_range": [
+                1732.5016007384638,
+                1735.5016007384638
+              ],
+              "quantum_bits_range": [
+                909.0008003692319,
+                912.7508003692319
+              ]
+            }
+          ]
+        }
+      ],
+      "module_lwe_profiles": {
+        "aggressive": {
+          "attack": "dual",
+          "classical_bits_range": [
+            168.14999999999998,
+            172.28
+          ],
+          "quantum_bits_range": [
+            147.5,
+            153.4
+          ],
+          "headline_mid_classical": 170.21499999999997,
+          "headline_mid_quantum": 150.45
+        },
+        "conservative": {
+          "attack": "dual",
+          "classical_bits_range": [
+            172.28,
+            177.0
+          ],
+          "quantum_bits_range": [
+            153.4,
+            159.3
+          ],
+          "headline_mid_classical": 174.64,
+          "headline_mid_quantum": 156.35000000000002
+        }
+      }
+    },
+    "estimates": {
+      "curated": {
+        "classical_bits_mid": 146.0,
+        "classical_bits_range": [
+          140.0,
+          155.0
+        ],
+        "quantum_bits_mid": 131.0,
+        "quantum_bits_range": [
+          125.6,
+          139.1
+        ],
+        "assumptions": {
+          "core_svp_constants": {
+            "classical": 0.292,
+            "quantum": 0.262
+          },
+          "notes": "Dilithium3 (ML-DSA-65) \u2248 mid\u2011140s classical in public estimates."
+        }
+      },
+      "calculated": {
+        "profile": "aggressive",
+        "attack": "dual",
+        "classical_bits": 170.21499999999997,
+        "quantum_bits": 150.45,
+        "classical_bits_range": [
+          168.14999999999998,
+          172.28
+        ],
+        "quantum_bits_range": [
+          147.5,
+          153.4
+        ]
+      }
+    },
+    "bruteforce": {
+      "model": "random_forgery",
+      "space_bits": 170.21499999999997,
+      "rates": [
+        1000000.0,
+        1000000000.0,
+        1000000000000.0
+      ],
+      "time_years": {
+        "1000000.0": {
+          "value": 5.508255858193942e+37,
+          "sci": "5.508e+37",
+          "log10": 37.741014105009185
+        },
+        "1000000000.0": {
+          "value": 5.5082558581939415e+34,
+          "sci": "5.508e+34",
+          "log10": 34.741014105009185
+        },
+        "1000000000000.0": {
+          "value": 5.508255858193942e+31,
+          "sci": "5.508e+31",
+          "log10": 31.741014105009185
+        }
+      },
+      "assumptions": {
+        "rationale": "acceptance ~ 2^-b per try",
+        "notes": "Educational baseline only. Use reduced parameters for lab demos; real parameters are astronomically out of reach."
+      },
+      "guidance": {
+        "lab_mode_max_bits": 32,
+        "warning": "Refuse or simulate >32-bit spaces when running any brute loop."
+      }
+    }
+  },
+  "validation": {
+    "vectorset": null,
+    "mechanism": "ML-DSA-65",
+    "cases": 0,
+    "passes": 0,
+    "fails": 0,
+    "status": "missing_binary",
+    "reason": "liboqs vectors_sig binary not available (configure native/ with -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON)",
+    "source": "acvp",
+    "git_sha": "dd942d434463872193ba282250532ac0be15f1e3"
+  }
+}
