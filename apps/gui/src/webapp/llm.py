@@ -182,9 +182,6 @@ def _build_user_prompt_v2(summary: Dict[str, Any], user_request: Optional[str] =
     return "\n".join(lines)
 
 
-def _build_user_prompt(summary: Dict[str, Any], user_request: Optional[str] = None, *, prefer_html: bool = False) -> str:
-    """Render a compact, structured prompt from the condensed summary.
-
     If ``user_request`` is provided, it is included to steer the analysis
     toward the viewer's specific interests.
     """
@@ -403,51 +400,6 @@ def _call_ollama(cfg: LLMConfig, user_prompt: str) -> Tuple[str, Dict[str, Any]]
 
 
 # --- Heuristic fallback (no external calls)
-
-def _heuristic_summary(summary: Dict[str, Any]) -> str:
-    kind = summary.get("kind")
-    ops_order = ["keygen", "encapsulate", "decapsulate"] if kind == "KEM" else ["keygen", "sign", "verify"]
-
-    def best_for_op(op: str) -> Optional[Tuple[str, float]]:
-        best: Optional[Tuple[str, float]] = None
-        for a in summary.get("algos", []):
-            s = a.get("ops", {}).get(op, {})
-            mean = s.get("mean_ms")
-            if isinstance(mean, (int, float)):
-                if best is None or mean < best[1]:
-                    best = (a.get("label") or a.get("name") or "?", float(mean))
-        return best
-
-    lines: List[str] = []
-    lines.append("Automatic analysis (fallback – no external LLM configured):")
-    for op in ops_order:
-        best = best_for_op(op)
-        if best:
-            lines.append(f"- Fastest {op}: {best[0]} (≈{best[1]:.3f} ms mean)")
-    # Memory deltas
-    for op in ops_order:
-        best_mem: Optional[Tuple[str, float]] = None
-        for a in summary.get("algos", []):
-            s = a.get("ops", {}).get(op, {})
-            mm = s.get("mem_mean_kb")
-            if isinstance(mm, (int, float)):
-                if best_mem is None or mm < best_mem[1]:
-                    best_mem = (a.get("label") or a.get("name") or "?", float(mm))
-        if best_mem:
-            lines.append(f"- Lowest memory {op}: {best_mem[0]} (≈{best_mem[1]:.2f} KB)")
-    # Sizes
-    for a in summary.get("algos", []):
-        md = a.get("meta", {}) or {}
-        sizes = []
-        for k, label in (("public_key_len", "pk"), ("secret_key_len", "sk"), ("ciphertext_len", "ct"), ("signature_len", "sig")):
-            v = md.get(k)
-            if isinstance(v, (int, float)):
-                sizes.append(f"{label}:{int(v)}B")
-        if sizes:
-            lines.append(f"- {a.get('label') or a.get('name')}: " + ", ".join(sizes))
-    lines.append("- Note: This is a heuristic summary. For nuanced interpretation, enable an LLM provider.")
-    return "\n".join(lines)
-
 
 def _heuristic_summary_html(summary: Dict[str, Any]) -> str:
     kind = summary.get("kind")
