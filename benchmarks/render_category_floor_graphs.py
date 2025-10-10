@@ -138,6 +138,40 @@ def _parse_series(raw: str | None) -> Sequence[float]:
             series.append(val)
     return series
 
+def _scatter_with_best_fit(
+    ax: plt.Axes,
+    x_values: Sequence[float],
+    y_values: Sequence[Optional[float]],
+    label: str,
+) -> bool:
+    points = [(float(x), float(y)) for x, y in zip(x_values, y_values) if y is not None]
+    if not points:
+        return False
+
+    xs, ys = zip(*points)
+    scatter = ax.scatter(xs, ys, label=label, zorder=3)
+
+    color = None
+    facecolors = scatter.get_facecolor()
+    if len(facecolors):
+        color = facecolors[0]
+    else:
+        edgecolors = scatter.get_edgecolor()
+        if len(edgecolors):
+            color = edgecolors[0]
+
+    if len(points) >= 2 and len(set(xs)) > 1:
+        try:
+            slope, intercept = statistics.linear_regression(xs, ys)
+        except statistics.StatisticsError:
+            pass
+        else:
+            x_min, x_max = min(xs), max(xs)
+            fit_x = [x_min, x_max]
+            fit_y = [slope * x + intercept for x in fit_x]
+            ax.plot(fit_x, fit_y, linestyle="--", linewidth=1.2, color=color, alpha=0.85, zorder=2)
+
+    return True
 
 def _parse_bool(value: str | None) -> Optional[bool]:
     if value in (None, ""):
