@@ -63,6 +63,8 @@ class Record:
     mem_ci95_high_kb: Optional[float]
     security_classical_bits: Optional[float]
     security_quantum_bits: Optional[float]
+    security_shor_breakable: Optional[bool]
+    security_extras: Dict[str, Any]
     category_label: str
     mechanism: str
     meta: Dict[str, Any]
@@ -137,6 +139,29 @@ def _parse_series(raw: str | None) -> Sequence[float]:
     return series
 
 
+def _parse_bool(value: str | None) -> Optional[bool]:
+    if value in (None, ""):
+        return None
+    if isinstance(value, bool):
+        return value
+    normalized = value.strip().lower()
+    if normalized in {"true", "1", "yes"}:
+        return True
+    if normalized in {"false", "0", "no"}:
+        return False
+    return None
+
+
+def _humanize_seconds(seconds: float) -> str:
+    if seconds >= 86400:
+        return f"{seconds / 86400:.1f} d"
+    if seconds >= 3600:
+        return f"{seconds / 3600:.1f} h"
+    if seconds >= 60:
+        return f"{seconds / 60:.1f} m"
+    return f"{seconds:.0f} s"
+
+
 def load_records(csv_path: pathlib.Path) -> List[Record]:
     if not csv_path.exists():
         raise SystemExit(f"CSV file not found: {csv_path}")
@@ -150,6 +175,12 @@ def load_records(csv_path: pathlib.Path) -> List[Record]:
                     meta = {}
             except json.JSONDecodeError:
                 meta = {}
+            try:
+                security_extras = json.loads(row.get("security_extras_json", "") or "{}")
+                if not isinstance(security_extras, dict):
+                    security_extras = {}
+            except json.JSONDecodeError:
+                security_extras = {}
 
             record = Record(
                 session_id=row.get("session_id", ""),
@@ -172,6 +203,8 @@ def load_records(csv_path: pathlib.Path) -> List[Record]:
                 series=_parse_series(row.get("series_json")),
                 mem_series=_parse_series(row.get("mem_series_json")),
                 runtime_scaling=json.loads(row.get("runtime_scaling_json")) if row.get("runtime_scaling_json") else None,
+                security_shor_breakable=_parse_bool(row.get("security_shor_breakable")),
+                security_extras=security_extras,
             )
             records.append(record)
     if not records:
@@ -732,6 +765,61 @@ def plot_security_cost_bars(records: Sequence[Record], output_dir: pathlib.Path,
     _save_with_caption(fig, outfile, caption, captions)
 
 
+def plot_shor_runtime(records: Sequence[Record], output_dir: pathlib.Path, captions: CaptionLog) -> None:
+    unique = _collect_unique_meta(records)
+    for (kind, algo, category), rec in unique.items():
+        if not rec.security_shor_breakable:
+            continue
+        profiles = rec.security_extras.get("shor_profiles") if isinstance(rec.security_extras, dict) else None
+        if not isinstance(profiles, dict):
+            continue
+        scenario_groups = profiles.get("scenarios", [])
+        entries: List[Tuple[str, float, Optional[float]]] = []
+        for group in scenario_groups:
+            if not isinstance(group, dict):
+                continue
+            modulus_bits = group.get("modulus_bits")
+            for scenario in group.get("scenarios", []) or []:
+                if not isinstance(scenario, dict):
+                    continue
+                runtime = scenario.get("runtime_seconds")
+                if runtime is None:
+                    continue
+                try:
+                    runtime_seconds = float(runtime)
+                except (TypeError, ValueError):
+                    continue
+                label = scenario.get("label") or scenario.get("name") or scenario.get("calibrated_against") or "scenario"
+                entries.append((label, runtime_seconds, modulus_bits))
+        if not entries:
+            continue
+        labels: List[str] = []
+        days: List[float] = []
+        annotations: List[str] = []
+        for label, runtime_seconds, modulus_bits in entries:
+            suffix = ""
+            if modulus_bits:
+                modulus_int = int(modulus_bits) if float(modulus_bits).is_integer() else modulus_bits
+                suffix = f"\n{modulus_int}-bit"
+            labels.append(f"{label}{suffix}")
+            days.append(runtime_seconds / 86400.0)
+            annotations.append(_humanize_seconds(runtime_seconds))
+        fig, ax = plt.subplots(figsize=(max(6, len(labels) * 0.9), 4.5))
+        x_positions = list(range(len(labels)))
+        ax.bar(x_positions, days, color="#6c5ce7")
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(labels, rotation=45, ha="right")
+        ax.set_ylabel("Runtime to factor (days)")
+        ax.grid(True, axis="y", linestyle="--", alpha=0.3)
+        for idx, (value, text) in enumerate(zip(days, annotations)):
+            ax.text(idx, value, text, ha="center", va="bottom", fontsize=8, rotation=90 if len(labels) > 6 else 0)
+        ax.set_ylim(bottom=0)
+        safe_algo = algo.replace("/", "_").replace(" ", "_").lower()
+        outfile = output_dir / f"shor_runtime_{safe_algo}_cat-{category}.png"
+        caption = f"Shor surface-code runtime scenarios for {algo} (Cat-{category})"
+        _save_with_caption(fig, outfile, caption, captions)
+
+
 def plot_tradeoff_frontier(records: Sequence[Record], output_dir: pathlib.Path, preferred_passes: Sequence[str], captions: CaptionLog) -> None:
     available_passes = {rec.measurement_pass for rec in records}
     pass_name = next((p for p in preferred_passes if p in available_passes), None)
@@ -882,6 +970,7 @@ def generate_graphs(records: Sequence[Record], output_dir: pathlib.Path, passes:
     plot_size_stacked_bars(records, output_dir, captions)
     plot_expansion_scatter(records, output_dir, captions)
     plot_security_cost_bars(records, output_dir, captions)
+    plot_shor_runtime(records, output_dir, captions)
     plot_tradeoff_frontier(records, output_dir, preferred_passes=[p for p in passes if "timing" in p] + list(passes), captions=captions)
     plot_hamming_metrics(records, output_dir, captions)
     plot_runtime_scaling(records, output_dir, captions)
