@@ -25,6 +25,26 @@ Prerequisites:
 - Git, CMake >= 3.24, and Ninja (recommended for native builds)
 - OpenSSL 3.x when compiling liboqs
 
+### One-command bootstrap
+
+If you prefer an automated setup, the helper scripts clone the Open Quantum Safe repositories, create the virtual environment, install dependencies, run the native CMake build, and register development hooks in a single run.
+
+Windows PowerShell:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_dev.ps1
+```
+
+macOS/Linux (or Git Bash on Windows):
+```bash
+bash scripts/setup_dev.sh
+```
+
+Optional flags:
+- `--force-clone` re-clones `liboqs` and `liboqs-python` even if the directories already exist.
+- `--skip-native-build` configures the environment without rebuilding `native/`.
+
+Manual steps remain documented below for reference.
+
 1. Create and activate a virtual environment.
 
    Windows (PowerShell):
