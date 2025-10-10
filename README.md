@@ -1,94 +1,245 @@
+﻿# Analysis of Post-Quantum Cryptography (PQC Investigation)
 
-# PQC Investigation – Modular Monorepo
+This repository is a modular, multi-package workspace for benchmarking and analyzing classical and post-quantum cryptography. It brings together reusable libraries, algorithm adapters, a Typer-based CLI, a Flask GUI, ACVP tooling, and native extensions so you can evaluate RSA-OAEP, RSA-PSS, ML-KEM (Kyber), HQC, ML-DSA (Dilithium), Falcon, SPHINCS+, XMSSMT, and MAYO under a single workflow.
 
-A modular, multi-package repository for benchmarking classical and post‑quantum cryptography (RSA‑OAEP, RSA‑PSS, Kyber/ML‑KEM, HQC, Dilithium/ML‑DSA, Falcon/FN‑DSA, SPHINCS+, XMSSMT, MAYO) with ACVP validation, a CLI, and a Flask GUI.
+## Highlights
+- Editable multi-package layout (`libs/core`, `libs/adapters/*`, `apps/cli`, `apps/gui`) with shared pytest, linting, and pre-commit tooling.
+- Benchmark runners capture latency, memory, key sizes, and security estimates with reproducible JSON exports.
+- Flask GUI demonstrates the image-encryption pipeline, entropy analytics, and optional LLM-backed commentary for benchmark comparisons.
+- Security estimator models classical and quantum costs, produces runtime scaling projections, and performs secret-key sanity checks.
+- Baseline CSV bundles, curated benchmark captures, and scripts recreate the published tables and figures.
+- Helper scripts build liboqs with HQC/XMSSMT support and compile an optional native C backend for tighter timing.
 
-## Quick start (dev)
+## Design principles
+- Interface-first architecture: shared `KEM`/`Signature` protocols and adapter traits live in `libs/core`, so new algorithms implement a consistent contract.
+- Adapter isolation: each scheme family ships as a thin package inside `libs/adapters/*`, keeping third-party dependencies and build steps scoped.
+- Registry-driven discovery: adapters self-register with `pqcbench.registry`, letting the CLI, GUI, and tests load algorithms without hard-coded imports.
+- Deterministic benchmarking: runners set seeds, capture metadata (git commit, CPU profile, environment), and emit JSON so results are reproducible.
+- Documentation and test parity: every feature has a README entry and pytest coverage (`tests/`, `tests/gui/`, `liboqs-python/tests/`) to enforce shared terminology.
+
+## Quick start (development setup)
+
+Prerequisites:
+- Python 3.11 or newer
+- pip and virtualenv support (`python -m venv`)
+- Git, CMake >= 3.24, and Ninja (recommended for native builds)
+- OpenSSL 3.x when compiling liboqs
+
+1. Create and activate a virtual environment.
+
+   Windows (PowerShell):
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+
+   macOS/Linux:
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+
+2. Install the editable packages and common tooling.
+
+   ```bash
+   python -m pip install --upgrade pip setuptools wheel
+   pip install -r requirements-dev.txt
+   ```
+
+   The helper scripts `scripts/setup_dev.sh` and `scripts/setup_dev.ps1` perform the same steps if you prefer a single command.
+
+3. Enable git hooks and run smoke tests.
+
+   ```bash
+   pre-commit install
+   pytest -q
+   pqcbench run-tests
+   ```
+
+4. Inspect the CLI and GUI entry points.
+
+   ```bash
+   pqcbench --help
+   FLASK_APP=apps/gui/src/webapp/app.py flask run
+   ```
+
+   Windows PowerShell:
+   ```powershell
+   $env:FLASK_APP = 'apps/gui/src/webapp/app.py'
+   flask run
+   ```
+
+## CLI workflows
+
+The Typer CLI shipped by `apps/cli` exposes these top-level commands:
+- `pqcbench list-algos` — enumerate registered algorithms from the adapter registry.
+- `pqcbench demo <name>` — run a one-shot keygen plus encapsulation/signature cycle.
+- `pqcbench run-tests [--skip-liboqs] [PYTEST ARGS...]` — launch pytest for the repo (and liboqs-python tests when available).
+- `pqcbench probe-oqs` — list liboqs KEM/SIG mechanisms detected in the current environment.
+
+After installing the editable packages you also get dedicated benchmark runners:
+
 ```bash
-# Linux/macOS (PowerShell script also included for Windows)
-python -m venv .venv && source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements-dev.txt
-pre-commit install
-pytest -q
-pqcbench --help   # CLI entry point
-FLASK_APP=apps/gui/src/webapp/app.py flask run
+run-kyber       # KEM
+run-hqc         # KEM
+run-rsa-oaep    # KEM-style wrapper over RSA-OAEP
+run-rsa-pss     # Signature (RSA-PSS)
+run-dilithium   # Signature (ML-DSA / Dilithium)
+run-falcon      # Signature
+run-sphincsplus # Signature
+run-xmssmt      # Stateful signature family
+run-mayo        # Signature (MAYO)
 ```
 
-## Environment with liboqs (HQC, XMSS/XMSSMT enabled)
+Each runner accepts `--runs`, `--tests` (to include known-answer tests), `--message-size` for signatures, and `--export results/<file>.json` for structured output. PowerShell wrappers live under `scripts\run_*.ps1` for convenience on Windows.
 
-If you need full PQC support via liboqs (Kyber, HQC, Dilithium, Falcon, SPHINCS+, XMSS/XMSSMT), build from source using the helper script. This ensures HQC and XMSSMT are enabled.
+### Metrics recorded by runners
+- Latency per operation (mean, median, min, max, standard deviation, and per-run series).
+- Key, ciphertext, and signature lengths for comparison across algorithms.
+- Expansion ratios (ciphertext-to-shared-secret for KEMs, signature-to-message for signatures).
+- Resident memory deltas per run when `psutil` is installed.
+- Secret-key Hamming weight/distance summaries to flag distribution anomalies (e.g., HQC constant weight).
+- Security estimator block summarising classical, quantum, and surface-code resource projections when enabled.
+- Runtime scaling predictions using built-in or custom device profiles.
 
-Prereqs:
-- Build tools: `git`, `cmake`, `ninja` (optional but recommended)
-- OpenSSL 3.x (recommended). On macOS: `brew install cmake ninja openssl@3`
+### Security estimator overview
+- Core module: `libs/core/src/pqcbench/security_estimator.py` combines classical hardness tables, optional lattice estimators, and RSA surface-code models.
+- Inputs: adapter metadata (parameter sets, key sizes), measured latency, and optional CLI flags (`--sec-*`, `--quantum-arch`, `--rsa-model`).
+- Outputs: per-algorithm JSON sections capturing classical bits, quantum bits, runtime projections, logical qubits, Toffoli/T counts, and failure probabilities.
+- Integrations: GUI panels render the same data, CSV mergers in `benchmarks/` preserve the security block, and native runs inherit the estimator via shared interfaces.
+- Extensibility: drop-in estimator hooks allow you to add new PQC families or swap lattice back-ends without modifying consumer code.
 
-Steps:
+### Selecting parameter sets
+
+The liboqs-backed adapters auto-detect supported mechanisms. Override them with environment variables before launching the CLI or GUI:
+- `PQCBENCH_KYBER_ALG` (for example `ML-KEM-768` or `Kyber1024`)
+- `PQCBENCH_HQC_ALG` (for example `HQC-192`)
+- `PQCBENCH_DILITHIUM_ALG`
+- `PQCBENCH_FALCON_ALG`
+- `PQCBENCH_SPHINCS_ALG`
+- `PQCBENCH_XMSSMT_ALG`
+- `PQCBENCH_MAYO_ALG`
+
+Example:
+
 ```bash
-# If its showing (base)
-conda deactivate
-
-$PY312 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip setuptools wheel
-pip install -r requirements-dev.txt
-
-#python3 -m venv .venv && source .venv/bin/activate
-
-# Build and install liboqs + python bindings locally under .local/oqs
-scripts/setup_oqs.sh --branch main   # or omit to use main
-
-# Export runtime env so Python can find the shared lib
-source scripts/env.example.sh
-
-# Install repo packages (editable)
-#pip install -r requirements-dev.txt
-
-pqcbench probe-oqs
-
-# Sanity check
-# Just run this again if it cant find the algorithms
-pqcbench list-algos
-#pip uninstall -y oqs
-#bash scripts/setup_oqs.sh --branch 0.10.0
-#source scripts/env.example.sh
-#pqcbench list-algos 
-run-kyber --runs 5 --export results/kyber.json
-run-hqc --runs 5 --export results/hqc.json
-run-xmssmt --runs 3 --export results/xmssmt.json
-
-
-
-## If you add a new PQC, run the following:
-pip install --upgrade pip setuptools wheel
-pip install -r requirements-dev.txt
-
-## Native C backend
-
-For tighter timing measurements, build the bundled C library and install the
-native adapters. This swaps the liboqs/python and cryptography shims for direct
-calls into liboqs/OpenSSL from C.
-
+export PQCBENCH_KYBER_ALG=ML-KEM-1024
+export PQCBENCH_DILITHIUM_ALG=ML-DSA-65
 ```
+
+Legacy `*_MECH` variables are still honoured but the `PQCBENCH_*` family takes precedence.
+
+### Security estimator flags
+
+Add the following options to any `run-*` command to emit extended security analysis:
+- `--sec-adv` — attempt a detailed lattice estimator; otherwise fall back to NIST category floors but note the downgrade.
+- `--sec-rsa-phys` — include surface-code physical resource estimates for RSA (ignored for PQC algorithms).
+- `--sec-phys-error-rate <rate>` — physical error rate per operation (default `1e-3`).
+- `--sec-cycle-time-ns <ns>` — surface-code cycle time in nanoseconds (default `1000`).
+- `--sec-fail-prob <probability>` — total failure probability budget (default `1e-2`).
+- `--sec-profile floor|classical|quantum` — choose the lattice modelling depth.
+- `--quantum-arch superconducting-2025|iontrap-2025` — use preset surface-code parameters.
+- `--rsa-model ge2019` — pick the RSA resource model constants (extendable).
+
+### Runtime scaling configuration
+
+Runtime scaling extrapolates benchmark measurements to other devices using compute and bandwidth proxies:
+- `PQCBENCH_BASELINE_PROFILE` pins the detected host to a known profile (e.g., `macbookpro16_i9_9880h`, `intel_i9_14900k`).
+- `PQCBENCH_BASELINE_COMPUTE_SCORE` (and optional `PQCBENCH_BASELINE_COMPUTE_METRIC`) overrides the measured compute proxy.
+- `PQCBENCH_BASELINE_BANDWIDTH_SCORE` preloads a memcpy bandwidth proxy when you already have STREAM-style data.
+- `PQCBENCH_DEVICE_PROFILES` points to a JSON file describing custom target profiles (shape documented in `libs/core/src/pqcbench/runtime_scaling.py`).
+- `PQCBENCH_RUNTIME_TARGETS=profile_a,profile_b` selects which targets to include in exports.
+- `PQCBENCH_RUNTIME_ALPHA` (and the specialised `PQCBENCH_RUNTIME_ALPHA_KEYGEN`, `_ENCAPS`, `_SIGN`, `_VERIFY`, etc.) adjust the compute/bandwidth weighting by stage.
+
+The runners automatically measure a memcpy proxy when possible so you get compute-only projections even if you skip custom tuning.
+
+## GUI workflows
+
+The Flask GUI under `apps/gui` renders the same registry, benchmark exports, and security estimator in an interactive dashboard. Launch it from the repo root:
+
+```bash
+export FLASK_APP=apps/gui/src/webapp/app.py
+flask run
+```
+
+Key features:
+- Image encryption pipeline with original, ciphertext, and decrypted previews.
+- Entropy heatmaps and per-channel histograms for quick visual sanity checks.
+- Baseline comparisons that align CLI exports with curated CSV bundles.
+- Runtime scaling and security estimator sections that mirror CLI output.
+- Optional LLM panel that summarises benchmark deltas and highlights notable metrics.
+
+Consult `apps/gui/README.md` for widget-level details, sample datasets, and test coverage notes (`tests/gui/`).
+
+### Optional LLM summariser
+
+1. Copy `apps/gui/.env.example` to `apps/gui/.env` or set equivalent environment variables.
+2. Choose a provider with `LLM_PROVIDER`:
+   - `openai_compatible` — OpenAI, vLLM, LM Studio, etc. Configure `LLM_BASE_URL`, `LLM_MODEL`, and `LLM_API_KEY` when required.
+   - `huggingface` — Hugging Face Inference API. Provide `HF_API_KEY` and optionally `HF_MODEL`.
+   - `ollama` — Local Ollama server; ensure it is running and set `LLM_MODEL` if you want something other than the default `llama3.1:8b`.
+3. Install the optional HTTP dependency (already listed in `requirements-dev.txt`):
+   ```bash
+   pip install requests
+   ```
+4. Restart `flask run` so the configuration is picked up.
+
+When no provider is configured the GUI falls back to a deterministic heuristic summariser and surfaces a warning banner instead of failing the workflow.
+
+## Optional components
+
+### liboqs support
+
+The repository includes helpers to build liboqs with HQC and XMSSMT enabled and to install the Python bindings locally:
+
+```bash
+./scripts/setup_oqs.sh --branch main   # or pick a release tag, e.g. 0.10.0
+source scripts/env.example.sh          # exports LD_LIBRARY_PATH / DYLD_LIBRARY_PATH / PATH entries
+pqcbench probe-oqs                     # verify mechanisms now load
+```
+
+The script stages the build under `.local/oqs`. On Windows you can execute the script through WSL or follow the same steps manually. Remember to activate the virtual environment and re-run `source scripts/env.example.sh` (or translate it to PowerShell) before launching the CLI or GUI so the shared library can be located.
+
+### Native C backend
+
+For tighter timing and memory measurements you can build the optional native backend:
+
+```bash
 cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release
 cmake --build native/build --config Release
-
 pip install -e libs/core
 pip install -e libs/adapters/native
 ```
 
-If the shared library is not discovered automatically, point
-`PQCBENCH_NATIVE_LIB` at the compiled binary (e.g.,
-`native/build/Release/pqcbench_native.dll`).
-```
+If the shared library is not discovered automatically, point `PQCBENCH_NATIVE_LIB` at the compiled artifact (for example `native/build/Release/pqcbench_native.dll` on Windows). Enable liboqs-backed unit tests inside the native project with `cmake -S native -B native/build -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON` and rebuild.
 
-Notes:
-- The script enables a broad set of algorithms (not a minimal build) and links with OpenSSL if available.
-- On macOS, ensure `DYLD_LIBRARY_PATH` includes `.local/oqs/lib`; on Linux, ensure `LD_LIBRARY_PATH` does. The `scripts/env.example.sh` does this for you.
-- You can pin `--branch` to a liboqs release tag (e.g., `0.10.0`) for stability.
-- To select parameter sets, set env vars like `PQCBENCH_KYBER_ALG=ML-KEM-1024` or `PQCBENCH_XMSSMT_ALG=XMSSMT-SHA2_20/2_256`.
+## Benchmarks, baselines, and data
+- `benchmarks/run_benchmarks.py`, `run_category_floor_matrix.py`, and `render_category_floor_graphs.py` reproduce published tables and plots; see `benchmarks/README.md` and `benchmarks/category-floor-matrix.md` for scenarios.
+- `baselines/*.csv` capture curated latency and security data for flagship devices.
+- `Tested Benchmarks/` contains harvested runs from hardware such as the Ryzen 5700X and MacBook Pro i9-9880H.
+- CLI and GUI exports belong in `results/` (gitignored). Use `python benchmarks/merge_results.py` to collate the directory into `results/security_metrics.csv`.
+- `acvp/` holds the ACVP harness, scripts, and test vectors (check out with Git LFS).
+- `tools/forensic_probe.py` and `tools/forensic_report.py` support deeper key and ciphertext analysis, while `tools/sidechannel/README.md` outlines how to integrate dudect-style leakage tests.
+
+## Testing and quality gates
+- `pytest` at the repository root exercises the core libraries, CLI runners, and GUI utilities (via `tests/` and `tests/gui/`).
+- `pqcbench run-tests --skip-liboqs` runs the same suite without probing liboqs; drop the flag once `oqs` is installed to include `liboqs-python/tests`.
+- `pre-commit run --all-files` enforces formatting and lint rules defined in `.pre-commit-config.yaml`.
+- Optional: enable native vector checks via `cmake -S native -B native/build -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON`.
+- Optional: run side-channel skeletons documented in `tools/sidechannel/` to generate dudect t-scores for result bundles.
+
+## Documentation
+
+Extended guides live under `docs/` and are ready to publish with MkDocs or Sphinx:
+- `docs/algorithm-implementations.md` — backend overview and benchmarking notes per algorithm family.
+- `docs/image-encryption-pipeline.md` — GUI walkthrough.
+- `docs/llm-integration-guide.md` — configuration tips for the assistant panel.
+- `docs/security/` — estimator models, RSA resource analysis, brute-force baselines, side-channel methodology, and native backend checklists.
+- `docs/testing/validation-coverage.md` — coverage snapshot for runners and adapters.
+- `docs/issues/` — known caveats and troubleshooting notes.
 
 ## Repo map
+
 ```
 .
 ├─ apps/
@@ -98,221 +249,30 @@ Notes:
 │  ├─ core/           # Interfaces, registry, metrics, shared utils
 │  └─ adapters/
 │     ├─ liboqs/      # PQC adapters using liboqs (Kyber, Dilithium, Falcon, etc.)
+│     ├─ native/      # Optional native bridge for C backend
 │     └─ rsa/         # Classical RSA-OAEP / RSA-PSS adapter
 ├─ acvp/              # ACVP harness, vector management
+├─ baselines/         # Curated baseline CSV bundles
 ├─ benchmarks/        # Reproducible benchmark scenarios + scripts
-├─ tests/             # Unit + integration tests
-├─ docs/              # Optional: MkDocs (or Sphinx) docs scaffold
+├─ docs/              # MkDocs-ready documentation scaffold
+├─ liboqs/            # Upstream liboqs checkout (optional)
+├─ liboqs-python/     # Vendored liboqs Python bindings for tests
+├─ native/            # CMake project for native backend
 ├─ results/           # CSV/JSON benchmark outputs (gitignored)
-├─ scripts/           # Dev/setup utilities
-├─ .github/workflows/ # CI
+├─ scripts/           # Dev/setup utilities and runner helpers
+├─ tests/             # Unit + integration tests (core, CLI, GUI)
+├─ tools/             # Forensic utilities and side-channel skeletons
+├─ Tested Benchmarks/ # Captured runs for reference hardware
+├─ .github/workflows/ # CI pipelines
 └─ requirements-dev.txt
 ```
 
-## Design principles
-- **Interfaces first:** algorithm‑agnostic `KEM` and `Signature` protocols define the contract.
-- **Adapters:** each algorithm lives behind a small adapter package (e.g., `pqcbench_liboqs`, `pqcbench_rsa`).
-- **Registry:** adapters self‑register; the CLI/GUI discover algorithms at runtime without import spaghetti.
-- **ACVP harness:** vectors in `acvp/vectors` (tracked with Git LFS), scripts in `acvp/harness`.
-- **Benchmarks:** deterministic scenarios; outputs are machine‑readable (CSV/JSON) and versioned.
-- **Separation of concerns:** GUI/CLI never talk to liboqs/crypto directly—only via the core interfaces.
+## Useful scripts
+- `scripts/setup_dev.sh` / `scripts/setup_dev.ps1` — bootstrap development dependencies.
+- `scripts/setup_oqs.sh` — build and install liboqs + bindings locally.
+- `scripts/run_*.ps1` — Windows shortcuts for the `run-*` runners.
+- `scripts/env.example.sh` — environment template for sourcing liboqs paths.
 
-Replace `@studentA` / `@studentB` in `CODEOWNERS` with your GitHub handles.
+## Further reading
 
-## Security estimator snapshot
-- **ML‑KEM (Kyber):** keeps a local core‑SVP scan but headlines the CRYSTALS-Kyber Table 4 numbers (`source = core-svp-spec-table`) so the report matches the official hardness curve; the analytic tuple remains in the detailed export.
-- **ML‑DSA (Dilithium):** uses the Round 3 specification’s refined MLWE hardness table (β, n, log₂ cost) as a core-SVP lookup (`source = core-svp-spec-table`) for calculated headlines, with curated ranges/NIST floors preserved for context.
-- **Falcon:** provides an NTRU BKZ curve (β sweep with success margins) and curated ranges; floors remain the default until an external estimator (`--sec-adv`) is available.
-- **HQC:** reports dual ISD heuristics (Stern entropy vs BJMM) including classical/quantum/memory exponents and weight sensitivity.
-- **Hash-based (SPHINCS+/XMSSMT):** maps hash lengths to preimage/collision exponents and adds Grover/BHT reductions for quantum contexts.
-- **RSA:** maps modulus sizes via SP 800‑57 and publishes Shor resource budgets (logical qubits, Toffoli/T counts, surface-code overlays).
-
-Use `pqcbench security <algo>` to inspect the structured outputs; extended discussion lives in `docs/security/`.
-
-
-## One-command runners (installed via editable install)
-After `pip install -r requirements-dev.txt`, the following commands are available:
-```
-run-kyber         # KEM
-run-hqc           # KEM
-run-rsa-oaep      # KEM-style wrapper
-run-dilithium     # SIG
-run-falcon        # SIG
-run-sphincsplus   # SIG
-run-xmssmt        # SIG
-run-rsa-pss       # SIG
-run-mayo          # SIG
-```
-Each supports `--runs N` and (for signatures) `--message-size BYTES`, plus `--export results/<file>.json`.
-Examples:
-```
-run-kyber --runs 50 --export results/kyber.json
-run-dilithium --runs 50 --message-size 4096 --export results/dilithium.json
-```
-On Windows you can also use the wrappers in `scripts\run_*.ps1`.
-
-## Selecting PQC parameter sets
-
-The liboqs-backed adapters auto-detect available algorithms. You can override the chosen parameter set via environment variables (if supported by your liboqs build):
-
-- `PQCBENCH_KYBER_ALG` (e.g., `ML-KEM-768`, `ML-KEM-1024`, `Kyber768`)
-- `PQCBENCH_HQC_ALG` (e.g., `HQC-128`, `HQC-192`, `HQC-256`)
-- `PQCBENCH_DILITHIUM_ALG` (e.g., `ML-DSA-65`, `Dilithium2`)
-- `PQCBENCH_FALCON_ALG` (e.g., `Falcon-512`)
-- `PQCBENCH_SPHINCS_ALG` (e.g., `SPHINCS+-SHA2-128f-simple`)
-- `PQCBENCH_XMSSMT_ALG` (e.g., `XMSSMT-SHA2_20/2_256`)
-- `PQCBENCH_MAYO_ALG` (e.g., `MAYO-1`, `MAYO-2`, `MAYO-3`, `MAYO-5`)
-
-Example:
-
-```
-export PQCBENCH_KYBER_ALG=ML-KEM-1024
-export PQCBENCH_DILITHIUM_ALG=ML-DSA-65
-
-```
-
-## Optional: AI-assisted analysis in the GUI
-
-The Flask GUI can summarise benchmark comparisons with a local or hosted LLM.  By
-default the feature stays in a deterministic fallback mode, so no extra setup is
-required.  To enable one of the providers:
-
-1. Choose a provide in `apps/gui/.env`:
-   - `LLM_PROVIDER=openai_compatible` for OpenAI, vLLM, LM Studio, etc. Configure
-     `LLM_BASE_URL`, `LLM_MODEL`, and (if needed) `LLM_API_KEY`.
-   - `LLM_PROVIDER=huggingface` for the Hugging Face Inference API. Supply
-     `HF_API_KEY` and optionally override `HF_MODEL`.
-   - `LLM_PROVIDER=ollama` for a local Ollama server. Ensure Ollama is running and
-     set `LLM_MODEL` if you want something other than the default `llama3.1:8b`.
-2. Install the optional dependency used for HTTP calls: `pip install requests`
-   (the package is listed in `requirements-dev.txt` for convenience).
-3. Restart `flask run` so the GUI picks up the new environment.
-
-When the configuration is missing or the provider cannot be reached the GUI falls
-back to the built-in heuristic summariser and surfaces a warning banner instead of
-failing the benchmark workflow.
-
-Compatibility: legacy `*_MECH` env vars (e.g., `KYBER_MECH`) are also honored,
-but `PQCBENCH_*` takes precedence when both are set.
-
-### Metrics captured
-- Latency per operation: `mean_ms`, `median_ms`, `stddev_ms`, `range_ms`, `min_ms`, `max_ms`, and per-run `series`.
-- Sizes: `public_key_len`, `secret_key_len`, and `ciphertext_len`/`signature_len`.
-- Expansion ratios:
-  - KEMs: `ciphertext_expansion_ratio = ciphertext_len / shared_secret_len` (shared-secret bytes in the denominator).
-  - Signatures: `signature_expansion_ratio = signature_len / message_size` (original message bytes in the denominator).
-  These are floats and may be null if inputs are unavailable.
-- Memory footprint: peak RSS delta per run (`mem_series_kb`) plus `mem_mean_kb`,
-  `mem_median_kb`, `mem_stddev_kb`, `mem_range_kb`, `mem_min_kb`, `mem_max_kb`
-  when `psutil` is available. If `psutil` is not installed, these fields are
-  omitted or null.
-- Secret-key sanity: `meta.secret_key_analysis` reports Hamming weight/distance
-  aggregates across freshly generated secrets, flagging constant-weight deviations
-  (HQC) and suspicious bit biases in uniform schemes.
-
-### Runtime scaling predictions
-- Each operation now exposes `runtime_scaling` alongside the latency stats so you can project the measured `mean_ms` onto other hardware profiles.
-- Model: `T_target = T_measured × [ α×(Compute_b/Compute_t) + (1−α)×(BW_b/BW_t) ]`, automatically falling back to compute-only when bandwidth proxies are missing.
-- Built-in profiles cover `intel_i9_14900k` (Geekbench 6 single-core ~3289), `amd_ryzen_9_7950x` (~2974), `macbookpro16_i9_9880h` (Geekbench 6 single-core ~1329), `esp32_s3` (CoreMark ~665 for one core @240 MHz), and `nrf52840` (CoreMark ~212 @64 MHz).
-- Baseline detection prefers the current host’s `environment.cpu_model`; override with `PQCBENCH_BASELINE_PROFILE`, or inject a raw score via `PQCBENCH_BASELINE_COMPUTE_SCORE` (+ optional `PQCBENCH_BASELINE_COMPUTE_METRIC`).
-  - Matching a teammate’s baseline exactly: set `PQCBENCH_BASELINE_PROFILE` before launching either the CLI or GUI so both produce identical `runtime_scaling.baseline_device` and predictions regardless of OS.
-    - PowerShell (Windows): `setx PQCBENCH_BASELINE_PROFILE macbookpro16_i9_9880h` then restart your shell/app.
-    - bash/zsh (macOS/Linux): `export PQCBENCH_BASELINE_PROFILE=macbookpro16_i9_9880h` before running.
-- Configure targets with `PQCBENCH_RUNTIME_TARGETS=profile_a,profile_b`, or point `PQCBENCH_DEVICE_PROFILES` at a JSON file shaped like the example in `libs/core/src/pqcbench/runtime_scaling.py` to register custom devices (include `compute_proxy` and optional `bandwidth_proxy`).
-- Alpha defaults follow algorithm families (Kyber/Dilithium/Falcon ~0.85, SPHINCS+ ~0.75, HQC ~0.65, Mayo ~0.7, otherwise 0.8); override globally with `PQCBENCH_RUNTIME_ALPHA`, or per-stage (e.g., `PQCBENCH_RUNTIME_ALPHA_KEYGEN`, `PQCBENCH_RUNTIME_ALPHA_SIGN`).
-- Host runs automatically measure a memcpy bandwidth proxy (median GB/s across a handful of 32 MB copies) so the two-term model can kick in; override or pre-fill with `PQCBENCH_BASELINE_BANDWIDTH_SCORE` if you already have STREAM/AIDA data.
-- Default targets also ship with rough bandwidth proxies (`memcpy_gbps`): i9-14900K ≈120 GB/s, Ryzen 9 7950X ≈110 GB/s, MacBook Pro 16" i9-9880H ≈8.1 GB/s (Python memcpy probe), ESP32-S3 ≈0.8 GB/s (SRAM), nRF52840 ≈0.25 GB/s.
-- If the CPU name does not match a built-in profile, the CLI estimates a Geekbench 6 single-core proxy from the advertised GHz (≈548 points/GHz) so you still get compute-only projections; set `PQCBENCH_BASELINE_COMPUTE_SCORE` when you have measured data.
-- Exported JSON includes the per-target multiplier and predicted latency so downstream notebooks/UI copy can surface lines like "expect ~10% faster on an i9-14900K" without re-running the benchmark.
-
-## Security estimator options
-
-All runners can emit a per-algorithm security block in both the terminal output and JSON files. Advanced options are available via flags:
-
-- `--sec-adv`: enable optional lattice estimator integration when available; otherwise falls back to NIST category floors.
-- `--sec-rsa-phys`: include RSA surface-code overhead (physical qubits and runtime) derived from logical resources; ignored for non-RSA algos.
-- `--sec-phys-error-rate`: physical error rate per operation for surface-code modeling (default `1e-3`).
-- `--sec-cycle-time-ns`: surface-code cycle time in nanoseconds (default `1000`, i.e., 1 µs).
-- `--sec-fail-prob`: acceptable total run failure probability budget (default `1e-2`).
-
-Examples (all flags enabled)
-
-```bash
-# KEMs
-run-kyber        --tests --runs 2 --export results/kyber_sec.json \
-  --sec-adv
-
-run-hqc          --tests --runs 2 --export results/hqc_sec.json \
-  --sec-adv 
-
-run-rsa-oaep     --tests --runs 2 --export results/rsa_oaep_sec.json \
-  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
-
-# Signatures
-run-dilithium    --tests --runs 2 --message-size 4096 --export results/dilithium_sec.json \
-  --sec-adv 
-
-run-falcon      --tests  --runs 2 --message-size 4096 --export results/falcon_sec.json \
-  --sec-adv 
-
-run-sphincsplus  --tests --runs 2 --message-size 4096 --export results/sphincsplus_sec.json \
-  --sec-adv 
-
-run-rsa-pss      --tests --runs 2 --message-size 2048 --export results/rsa_pss_sec.json \
-  --sec-adv --sec-rsa-phys --sec-phys-error-rate 1e-3 --sec-cycle-time-ns 1000 --sec-fail-prob 1e-2
-
-run-mayo         --tests --runs 2 --message-size 4096 --export results/mayo_sec.json \
-  --sec-adv 
-
-run-xmssmt       --tests --runs 2 --message-size 2048 --export results/xmssmt_sec.json \
-  --sec-adv
-```
-
-Notes:
-- RSA commands benefit from `--sec-rsa-phys` by adding surface-code physical resource estimates. For non‑RSA algorithms the flag is ignored.
-- Enabling `--sec-adv` attempts to use an external lattice estimator if present; otherwise the result clearly states that the floor model was used.
-
-## Security analysis docs
-Entropy analytics (GUI)
-------------------------
-- Global entropy averages R/G/B (or RGBA) channel Shannon entropy in bits per byte (0�8).
-- Bits-per-pixel sums channel entropies; ciphertext and random pads should approach 24 in RGB.
-- Per-channel readouts expose color bias; enable the alpha toggle to include transparency.
-- The 16�16 heatmap averages RGB entropy per tile and clamps brightness to 5.0�8.0 b/B.
-- Bright blocks indicate locally random structure; darker cells highlight residual patterns.
-- Wrong-key decrypts usually mirror ciphertext globally yet dip over objects (�ghost leakage�).
-- Random pads serve as the ideal baseline, typically flat at ~8.0 b/B per channel.
-- 256-bin histograms (Original vs Ciphertext) show how encryption flattens distributions.
-
-
-For background on how pqcbench computes and reports security measures (classical bits, quantum considerations, and algorithm‑specific resource models), see `docs/security/README.md`. This document explains the RSA estimator in detail and outlines the models used for PQC families; additional sections will be populated as advanced estimators are integrated.
-
-Profiles and architectures
---------------------------
-
-- `--sec-profile floor|classical|quantum` selects the lattice modeling level (defaults to `floor`).
-- `--quantum-arch superconducting-2025|iontrap-2025` picks surface-code presets (overrides error rate and cycle time). Use with `--sec-rsa-phys`.
-- `--rsa-model ge2019` selects the RSA resource model constants (more models can be added).
-
-Merging results to CSV
-----------------------
-
-Collect all JSON files in `results/` into a single CSV with key performance and security columns:
-
-```bash
-python benchmarks/merge_results.py
-```
-
-Writes `results/security_metrics.csv`.
-
-Side-channel checks (optional)
-------------------------------
-
-See `tools/sidechannel/README.md` for a skeleton dudect setup you can adopt to
-produce leakage t-scores and merge them into your results.
-
-
-
-
-To enable tests in cmake, rebuild with the following: `cmake -S native -B native/build -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON` and then `cmake --build native/build --target vectors_kem vectors_sig` or `cmake --build native/build` if you don't mind rebuilding everything.
-
+For deeper coverage of the security estimator, runtime scaling model, and native instrumentation refer to `docs/security/README.md` and the inline documentation inside `libs/core/src/pqcbench/security_estimator.py` and `runtime_scaling.py`. If you add new algorithms or adapters, update the relevant package README, baseline CSV, and documentation entry alongside the core implementation.
