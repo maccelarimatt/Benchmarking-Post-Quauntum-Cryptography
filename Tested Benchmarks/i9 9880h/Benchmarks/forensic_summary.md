@@ -1,1 +1,0 @@
-No leakage indicators found.
