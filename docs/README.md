@@ -25,5 +25,3 @@ directly into MkDocs, Sphinx, or another static-site generator.
 - `testing/` - validation coverage notes for runners and adapters.
 - `issues/` - known issue reports and troubleshooting guidance.
 
-Add new topics by creating a subdirectory (for example
-`docs/new-topic/README.md`) so each guide remains self-contained.
