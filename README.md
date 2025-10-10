@@ -44,6 +44,10 @@ Prerequisites:
    ```bash
    python -m pip install --upgrade pip setuptools wheel
    pip install -r requirements-dev.txt
+   cmake -S native -B native/build -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON
+   cmake --build native/build
+   pip install -e libs/core
+   pip install -e libs/adapters/native
    ```
 
    The helper scripts `scripts/setup_dev.sh` and `scripts/setup_dev.ps1` perform the same steps if you prefer a single command.
