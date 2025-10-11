@@ -6,21 +6,19 @@
 -e apps/cli
 -e apps/gui
 
-# Tooling
-pytest
-pytest-cov
-mypy
-flake8
-black
-isort
-pre-commit
-typer
-flask
-psutil
-numpy
-scipy
-# cryptography and liboqs (Python bindings) are optional; uncomment to force install
-cryptography
-# oqs
-requests
-matplotlib
+# Tooling (pinned for reproducibility)
+pytest==8.4.2
+pytest-cov==7.0.0
+mypy==1.18.2
+flake8==7.3.0
+black==25.9.0
+isort==6.1.0
+pre-commit==4.3.0
+typer==0.19.2
+flask==3.1.2
+psutil==7.1.0
+numpy==2.3.3
+scipy==1.16.2
+cryptography==46.0.2
+requests==2.32.5
+matplotlib==3.10.7

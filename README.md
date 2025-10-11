@@ -43,6 +43,8 @@ Optional flags:
 - `--force-clone` re-clones `liboqs` and `liboqs-python` even if the directories already exist.
 - `--skip-native-build` configures the environment without rebuilding `native/`.
 
+The script pins everything to the tested stack: Python dependencies follow `requirements-dev.txt`, while `liboqs` (`b02d0c9`) and `liboqs-python` (`f70842e`) are checked out at known-good commits so future upstream changes do not affect local testing.
+
 Manual steps remain documented below for reference.
 
 1. Create and activate a virtual environment.

@@ -11,9 +11,8 @@ readme = "README.md"
 requires-python = ">=3.11"
 authors = [{name="Investigation Team"}]
 dependencies = [
-  # liboqs python bindings (PyPI package name is 'oqs').
-  # If not installed, adapters fall back to placeholders at runtime.
-  "oqs>=0.10.0",
+  # liboqs python bindings (distributed as 'liboqs-python' providing the 'oqs' module).
+  "liboqs-python==0.14.0",
   "pqcbench-core>=0.1.0"
 ]
 
