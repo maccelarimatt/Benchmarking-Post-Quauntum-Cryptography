@@ -262,11 +262,19 @@ Classical vs quantum security estimates
 
 ![20251008T114603Z/category_1/security_vs_latency_memory.png](20251008T114603Z/category_1/security_vs_latency_memory.png)
 
-Keygen latency vs. classical security (memory)
+Keygen latency vs. classical security bits (memory)
+
+![20251008T114603Z/category_1/security_vs_latency_quantum_memory.png](20251008T114603Z/category_1/security_vs_latency_quantum_memory.png)
+
+Keygen latency vs. quantum security bits (memory)
+
+![20251008T114603Z/category_1/security_vs_latency_quantum_timing.png](20251008T114603Z/category_1/security_vs_latency_quantum_timing.png)
+
+Keygen latency vs. quantum security bits (timing)
 
 ![20251008T114603Z/category_1/security_vs_latency_timing.png](20251008T114603Z/category_1/security_vs_latency_timing.png)
 
-Keygen latency vs. classical security (timing)
+Keygen latency vs. classical security bits (timing)
 
 ![20251008T114603Z/category_1/shor_runtime_rsa-oaep_cat-1.png](20251008T114603Z/category_1/shor_runtime_rsa-oaep_cat-1.png)
 
@@ -570,11 +578,19 @@ Classical vs quantum security estimates
 
 ![20251008T114603Z/category_3/security_vs_latency_memory.png](20251008T114603Z/category_3/security_vs_latency_memory.png)
 
-Keygen latency vs. classical security (memory)
+Keygen latency vs. classical security bits (memory)
+
+![20251008T114603Z/category_3/security_vs_latency_quantum_memory.png](20251008T114603Z/category_3/security_vs_latency_quantum_memory.png)
+
+Keygen latency vs. quantum security bits (memory)
+
+![20251008T114603Z/category_3/security_vs_latency_quantum_timing.png](20251008T114603Z/category_3/security_vs_latency_quantum_timing.png)
+
+Keygen latency vs. quantum security bits (timing)
 
 ![20251008T114603Z/category_3/security_vs_latency_timing.png](20251008T114603Z/category_3/security_vs_latency_timing.png)
 
-Keygen latency vs. classical security (timing)
+Keygen latency vs. classical security bits (timing)
 
 ![20251008T114603Z/category_3/shor_runtime_rsa-oaep_cat-3.png](20251008T114603Z/category_3/shor_runtime_rsa-oaep_cat-3.png)
 
@@ -870,11 +886,19 @@ Classical vs quantum security estimates
 
 ![20251008T114603Z/category_5/security_vs_latency_memory.png](20251008T114603Z/category_5/security_vs_latency_memory.png)
 
-Keygen latency vs. classical security (memory)
+Keygen latency vs. classical security bits (memory)
+
+![20251008T114603Z/category_5/security_vs_latency_quantum_memory.png](20251008T114603Z/category_5/security_vs_latency_quantum_memory.png)
+
+Keygen latency vs. quantum security bits (memory)
+
+![20251008T114603Z/category_5/security_vs_latency_quantum_timing.png](20251008T114603Z/category_5/security_vs_latency_quantum_timing.png)
+
+Keygen latency vs. quantum security bits (timing)
 
 ![20251008T114603Z/category_5/security_vs_latency_timing.png](20251008T114603Z/category_5/security_vs_latency_timing.png)
 
-Keygen latency vs. classical security (timing)
+Keygen latency vs. classical security bits (timing)
 
 ![20251008T114603Z/category_5/sizes_sig.png](20251008T114603Z/category_5/sizes_sig.png)
 
@@ -1250,11 +1274,19 @@ Classical vs quantum security estimates
 
 ![20251008T114603Z/security_vs_latency_memory.png](20251008T114603Z/security_vs_latency_memory.png)
 
-Keygen latency vs. classical security (memory)
+Keygen latency vs. classical security bits (memory)
+
+![20251008T114603Z/security_vs_latency_quantum_memory.png](20251008T114603Z/security_vs_latency_quantum_memory.png)
+
+Keygen latency vs. quantum security bits (memory)
+
+![20251008T114603Z/security_vs_latency_quantum_timing.png](20251008T114603Z/security_vs_latency_quantum_timing.png)
+
+Keygen latency vs. quantum security bits (timing)
 
 ![20251008T114603Z/security_vs_latency_timing.png](20251008T114603Z/security_vs_latency_timing.png)
 
-Keygen latency vs. classical security (timing)
+Keygen latency vs. classical security bits (timing)
 
 ![20251008T114603Z/shor_runtime_rsa-oaep_cat-1.png](20251008T114603Z/shor_runtime_rsa-oaep_cat-1.png)
 
