@@ -17,6 +17,25 @@ except ImportError as exc:  # pragma: no cover - import guard
         "matplotlib is required for graph rendering. Install it via 'pip install matplotlib'."
     ) from exc
 
+try:
+    plt.style.use("seaborn-v0_8-colorblind")
+except (ValueError, OSError):
+    plt.style.use("seaborn-darkgrid")
+
+plt.rcParams.update(
+    {
+        "axes.titlesize": 12,
+        "axes.labelsize": 11,
+        "axes.grid": True,
+        "grid.alpha": 0.35,
+        "grid.linestyle": "--",
+        "legend.frameon": False,
+        "legend.fontsize": 9,
+        "xtick.labelsize": 9,
+        "ytick.labelsize": 9,
+    }
+)
+
 HERE = pathlib.Path(__file__).resolve().parent
 RESULTS_DIR = HERE.parent / "results"
 DEFAULT_CSV = RESULTS_DIR / "category_floor_benchmarks.csv"
@@ -149,16 +168,26 @@ def _scatter_with_best_fit(
         return False
 
     xs, ys = zip(*points)
-    scatter = ax.scatter(xs, ys, label=label, zorder=3)
+    scatter = ax.scatter(
+        xs,
+        ys,
+        label=label,
+        marker="o",
+        s=60,
+        alpha=0.85,
+        linewidths=0.6,
+        edgecolors="black",
+        zorder=3,
+    )
 
     color = None
     facecolors = scatter.get_facecolor()
     if len(facecolors):
-        color = facecolors[0]
+        color = tuple(facecolors[0])
     else:
         edgecolors = scatter.get_edgecolor()
         if len(edgecolors):
-            color = edgecolors[0]
+            color = tuple(edgecolors[0])
 
     if len(points) >= 2 and len(set(xs)) > 1:
         try:
@@ -169,7 +198,10 @@ def _scatter_with_best_fit(
             x_min, x_max = min(xs), max(xs)
             fit_x = [x_min, x_max]
             fit_y = [slope * x + intercept for x in fit_x]
-            ax.plot(fit_x, fit_y, linestyle="--", linewidth=1.2, color=color, alpha=0.85, zorder=2)
+            fit_kwargs = {"linestyle": "--", "linewidth": 1.2, "alpha": 0.85, "zorder": 2}
+            if color is not None:
+                fit_kwargs["color"] = color
+            ax.plot(fit_x, fit_y, **fit_kwargs)
 
     return True
 
@@ -499,19 +531,23 @@ def plot_throughput_vs_category(records: Sequence[Record], output_dir: pathlib.P
         if not categories or len(algo_map) < 1:
             continue
         fig, ax = plt.subplots(figsize=(max(6, len(categories) * 1.2), 4.5))
-        x_positions = range(len(categories))
+        x_positions = list(range(len(categories)))
+        plotted_any = False
         for algo, values in sorted(algo_map.items()):
             y_vals = [values.get(cat) for cat in categories]
             if all(v is None for v in y_vals):
                 continue
-            ax.plot(x_positions, y_vals, marker="o", label=algo)
+            if _scatter_with_best_fit(ax, x_positions, y_vals, algo):
+                plotted_any = True
         ax.set_ylabel("Ops per second")
         ax.set_xlabel("Security category")
         ax.set_xticks(list(x_positions))
         ax.set_xticklabels([str(cat) for cat in categories])
-        ax.grid(True, linestyle="--", alpha=0.3)
-        if ax.lines:
-            ax.legend()
+        ax.grid(True, linewidth=0.6, alpha=0.35)
+        ax.margins(x=0.05, y=0.1)
+        ax.set_title(f"{kind} {operation} throughput by category ({pass_name})")
+        if plotted_any:
+            ax.legend(title="Algorithm")
         outfile = output_dir / f"throughput_{pass_name}_{kind.lower()}_{operation}.png"
         caption = f"Throughput across categories for {kind} {operation} ({pass_name})"
         _save_with_caption(fig, outfile, caption, captions)
@@ -1045,48 +1081,50 @@ def plot_session_comparisons(
 
         for (kind, operation), algo_map in latency_lines.items():
             fig, ax = plt.subplots(figsize=(max(6, len(sessions) * 0.75), 4.5))
+            plotted_any = False
             for algo, values_by_session in sorted(algo_map.items()):
                 values = [values_by_session.get(sid) for sid in sessions]
-                if all(v is None for v in values):
-                    continue
-                ax.plot(x_positions, values, marker="o", label=algo)            
-                ax.set_ylabel("Mean latency (ms)")
+                if _scatter_with_best_fit(ax, x_positions, values, algo):
+                    plotted_any = True
+            if not plotted_any:
+                plt.close(fig)
+                continue
+            ax.set_ylabel("Mean latency (ms)")
             ax.set_xlabel("Session")
-            ax.grid(True, linestyle="--", alpha=0.3)
-            if ax.lines:
-                ax.legend()
             ax.set_xticks(x_positions)
-            ax.set_xticklabels(sessions, rotation=45)
-            for tick in ax.get_xticklabels():
-                tick.set_horizontalalignment("right")
-            fig.tight_layout()
+            ax.set_xticklabels(sessions, rotation=45, ha="right")
+            ax.margins(x=0.05, y=0.1)
+            ax.set_title(f"{kind} {operation} latency trend ({pass_name})")
+            ax.grid(True, linewidth=0.6, alpha=0.35)
+            ax.legend(title="Algorithm")
+            caption = f"Latency trend across sessions - {kind} {operation} ({pass_name})"
             outfile = output_dir / f"trend_latency_{pass_name}_{kind.lower()}_{operation}.png"
-            fig.savefig(outfile, dpi=200)
-            captions.add(outfile, f"Latency trend across sessions — {kind} {operation} ({pass_name})")
-            plt.close(fig)
+            _save_with_caption(fig, outfile, caption, captions)
+
 
         if pass_name.startswith("memory"):
             for (kind, operation), algo_map in memory_lines.items():
                 fig, ax = plt.subplots(figsize=(max(6, len(sessions) * 0.75), 4.5))
+                plotted_any = False
                 for algo, values_by_session in sorted(algo_map.items()):
                     values = [values_by_session.get(sid) for sid in sessions]
-                    if all(v is None for v in values):
-                        continue
-                    ax.plot(x_positions, values, marker="o", label=algo)                
-                    ax.set_ylabel("Peak memory (KB)")
+                    if _scatter_with_best_fit(ax, x_positions, values, algo):
+                        plotted_any = True
+                if not plotted_any:
+                    plt.close(fig)
+                    continue
+                ax.set_ylabel("Peak memory (KB)")
                 ax.set_xlabel("Session")
-                ax.grid(True, linestyle="--", alpha=0.3)
-                if ax.lines:
-                    ax.legend()
                 ax.set_xticks(x_positions)
-                ax.set_xticklabels(sessions, rotation=45)
-            for tick in ax.get_xticklabels():
-                tick.set_horizontalalignment("right")
-                fig.tight_layout()
+                ax.set_xticklabels(sessions, rotation=45, ha="right")
+                ax.margins(x=0.05, y=0.1)
+                ax.set_title(f"{kind} {operation} memory trend ({pass_name})")
+                ax.grid(True, linewidth=0.6, alpha=0.35)
+                ax.legend(title="Algorithm")
+                caption = f"Peak memory trend across sessions - {kind} {operation} ({pass_name})"
                 outfile = output_dir / f"trend_memory_{pass_name}_{kind.lower()}_{operation}.png"
-                fig.savefig(outfile, dpi=200)
-                captions.add(outfile, f"Peak memory trend across sessions — {kind} {operation} ({pass_name})")
-                plt.close(fig)
+                _save_with_caption(fig, outfile, caption, captions)
+
 
 
 def parse_args() -> argparse.Namespace:
