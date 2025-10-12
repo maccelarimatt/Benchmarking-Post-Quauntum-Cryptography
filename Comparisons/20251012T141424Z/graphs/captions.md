@@ -1,29 +1,5 @@
 # Graph Captions
 
-![cat-1/trend_latency_memory_kem_decapsulate.png](cat-1/trend_latency_memory_kem_decapsulate.png)
-
-Latency trend across sessions - KEM decapsulate (memory)
-
-![cat-1/trend_latency_memory_kem_encapsulate.png](cat-1/trend_latency_memory_kem_encapsulate.png)
-
-Latency trend across sessions - KEM encapsulate (memory)
-
-![cat-1/trend_latency_memory_kem_keygen.png](cat-1/trend_latency_memory_kem_keygen.png)
-
-Latency trend across sessions - KEM keygen (memory)
-
-![cat-1/trend_latency_memory_sig_keygen.png](cat-1/trend_latency_memory_sig_keygen.png)
-
-Latency trend across sessions - SIG keygen (memory)
-
-![cat-1/trend_latency_memory_sig_sign.png](cat-1/trend_latency_memory_sig_sign.png)
-
-Latency trend across sessions - SIG sign (memory)
-
-![cat-1/trend_latency_memory_sig_verify.png](cat-1/trend_latency_memory_sig_verify.png)
-
-Latency trend across sessions - SIG verify (memory)
-
 ![cat-1/trend_latency_timing_kem_decapsulate.png](cat-1/trend_latency_timing_kem_decapsulate.png)
 
 Latency trend across sessions - KEM decapsulate (timing)
@@ -71,30 +47,6 @@ Peak memory trend across sessions - SIG sign (memory)
 ![cat-1/trend_memory_memory_sig_verify.png](cat-1/trend_memory_memory_sig_verify.png)
 
 Peak memory trend across sessions - SIG verify (memory)
-
-![cat-3/trend_latency_memory_kem_decapsulate.png](cat-3/trend_latency_memory_kem_decapsulate.png)
-
-Latency trend across sessions - KEM decapsulate (memory)
-
-![cat-3/trend_latency_memory_kem_encapsulate.png](cat-3/trend_latency_memory_kem_encapsulate.png)
-
-Latency trend across sessions - KEM encapsulate (memory)
-
-![cat-3/trend_latency_memory_kem_keygen.png](cat-3/trend_latency_memory_kem_keygen.png)
-
-Latency trend across sessions - KEM keygen (memory)
-
-![cat-3/trend_latency_memory_sig_keygen.png](cat-3/trend_latency_memory_sig_keygen.png)
-
-Latency trend across sessions - SIG keygen (memory)
-
-![cat-3/trend_latency_memory_sig_sign.png](cat-3/trend_latency_memory_sig_sign.png)
-
-Latency trend across sessions - SIG sign (memory)
-
-![cat-3/trend_latency_memory_sig_verify.png](cat-3/trend_latency_memory_sig_verify.png)
-
-Latency trend across sessions - SIG verify (memory)
 
 ![cat-3/trend_latency_timing_kem_decapsulate.png](cat-3/trend_latency_timing_kem_decapsulate.png)
 
@@ -144,30 +96,6 @@ Peak memory trend across sessions - SIG sign (memory)
 
 Peak memory trend across sessions - SIG verify (memory)
 
-![cat-5/trend_latency_memory_kem_decapsulate.png](cat-5/trend_latency_memory_kem_decapsulate.png)
-
-Latency trend across sessions - KEM decapsulate (memory)
-
-![cat-5/trend_latency_memory_kem_encapsulate.png](cat-5/trend_latency_memory_kem_encapsulate.png)
-
-Latency trend across sessions - KEM encapsulate (memory)
-
-![cat-5/trend_latency_memory_kem_keygen.png](cat-5/trend_latency_memory_kem_keygen.png)
-
-Latency trend across sessions - KEM keygen (memory)
-
-![cat-5/trend_latency_memory_sig_keygen.png](cat-5/trend_latency_memory_sig_keygen.png)
-
-Latency trend across sessions - SIG keygen (memory)
-
-![cat-5/trend_latency_memory_sig_sign.png](cat-5/trend_latency_memory_sig_sign.png)
-
-Latency trend across sessions - SIG sign (memory)
-
-![cat-5/trend_latency_memory_sig_verify.png](cat-5/trend_latency_memory_sig_verify.png)
-
-Latency trend across sessions - SIG verify (memory)
-
 ![cat-5/trend_latency_timing_kem_decapsulate.png](cat-5/trend_latency_timing_kem_decapsulate.png)
 
 Latency trend across sessions - KEM decapsulate (timing)
@@ -215,30 +143,6 @@ Peak memory trend across sessions - SIG sign (memory)
 ![cat-5/trend_memory_memory_sig_verify.png](cat-5/trend_memory_memory_sig_verify.png)
 
 Peak memory trend across sessions - SIG verify (memory)
-
-![trend_latency_memory_kem_decapsulate.png](trend_latency_memory_kem_decapsulate.png)
-
-Latency trend across sessions - KEM decapsulate (memory)
-
-![trend_latency_memory_kem_encapsulate.png](trend_latency_memory_kem_encapsulate.png)
-
-Latency trend across sessions - KEM encapsulate (memory)
-
-![trend_latency_memory_kem_keygen.png](trend_latency_memory_kem_keygen.png)
-
-Latency trend across sessions - KEM keygen (memory)
-
-![trend_latency_memory_sig_keygen.png](trend_latency_memory_sig_keygen.png)
-
-Latency trend across sessions - SIG keygen (memory)
-
-![trend_latency_memory_sig_sign.png](trend_latency_memory_sig_sign.png)
-
-Latency trend across sessions - SIG sign (memory)
-
-![trend_latency_memory_sig_verify.png](trend_latency_memory_sig_verify.png)
-
-Latency trend across sessions - SIG verify (memory)
 
 ![trend_latency_timing_kem_decapsulate.png](trend_latency_timing_kem_decapsulate.png)
 

@@ -8,8 +8,7 @@ import pathlib
 import statistics
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import (Any, Callable, Dict, Iterable, List, Optional, Sequence,
-                    Tuple)
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 try:
     import matplotlib.pyplot as plt
@@ -641,9 +640,7 @@ def plot_security_vs_latency_quantum_all_ops(
     if handles:
         ax.legend(handles, labels, title="Kind")
     outfile = output_dir / f"security_vs_latency_quantum_all_ops_{pass_name}.png"
-    caption = (
-        f"Mean latency across operations vs quantum security bits ({pass_name})"
-    )
+    caption = f"Mean latency across operations vs quantum security bits ({pass_name})"
     _save_with_caption(fig, outfile, caption, captions)
 
 
@@ -745,9 +742,7 @@ def plot_memory_distributions(
             output_dir
             / f"memory_distribution_{pass_name}_{kind.lower()}_{operation}.png"
         )
-        caption = (
-            f"Peak memory mean ± standard deviation for {kind} {operation} ({pass_name})"
-        )
+        caption = f"Peak memory mean ± standard deviation for {kind} {operation} ({pass_name})"
         _save_with_caption(fig, outfile, caption, captions)
 
 
@@ -1411,17 +1406,22 @@ def generate_graphs(
     for pass_name in passes:
         if pass_name not in available_passes:
             continue
-        plot_latency_bars(records, output_dir, pass_name, captions)
-        plot_latency_distributions(records, output_dir, pass_name, captions)
-        plot_latency_ecdf(records, output_dir, pass_name, captions)
-        plot_security_vs_latency(records, output_dir, pass_name, captions)
-        plot_security_vs_latency_quantum(records, output_dir, pass_name, captions)
-        plot_security_vs_latency_quantum_all_ops(
-            records, output_dir, pass_name, captions
-        )
-        if "timing" in pass_name:
+
+        is_timing_pass = "timing" in pass_name
+        is_memory_pass = "memory" in pass_name
+
+        if is_timing_pass:
+            plot_latency_bars(records, output_dir, pass_name, captions)
+            plot_latency_distributions(records, output_dir, pass_name, captions)
+            plot_latency_ecdf(records, output_dir, pass_name, captions)
+            plot_security_vs_latency(records, output_dir, pass_name, captions)
+            plot_security_vs_latency_quantum(records, output_dir, pass_name, captions)
+            plot_security_vs_latency_quantum_all_ops(
+                records, output_dir, pass_name, captions
+            )
             plot_throughput_vs_category(records, output_dir, pass_name, captions)
-        if pass_name.startswith("memory"):
+
+        if is_memory_pass:
             plot_memory_bars(records, output_dir, pass_name, captions)
             plot_memory_distributions(records, output_dir, pass_name, captions)
             plot_memory_error_bars(records, output_dir, pass_name, captions)
@@ -1458,6 +1458,9 @@ def plot_session_comparisons(
     _ensure_output_dir(output_dir)
 
     for pass_name in pass_list:
+        is_timing_pass = "timing" in pass_name
+        is_memory_pass = "memory" in pass_name
+
         latency_lines: Dict[Tuple[str, str], Dict[str, Dict[str, float]]] = defaultdict(
             lambda: defaultdict(dict)
         )
@@ -1468,44 +1471,46 @@ def plot_session_comparisons(
             for rec in session_records[session_id]:
                 if rec.measurement_pass != pass_name:
                     continue
-                if rec.mean_ms is not None:
+                if is_timing_pass and rec.mean_ms is not None:
                     latency_lines[(rec.kind, rec.operation)][rec.algo][
                         session_id
                     ] = rec.mean_ms
-                if rec.mem_mean_kb is not None:
+                if is_memory_pass and rec.mem_mean_kb is not None:
                     memory_lines[(rec.kind, rec.operation)][rec.algo][
                         session_id
                     ] = rec.mem_mean_kb
 
         x_positions = list(range(len(sessions)))
 
-        for (kind, operation), algo_map in latency_lines.items():
-            fig, ax = plt.subplots(figsize=(max(6, len(sessions) * 0.75), 4.5))
-            plotted_any = False
-            for algo, values_by_session in sorted(algo_map.items()):
-                values = [values_by_session.get(sid) for sid in sessions]
-                if _scatter_with_best_fit(ax, x_positions, values, algo):
-                    plotted_any = True
-            if not plotted_any:
-                plt.close(fig)
-                continue
-            ax.set_ylabel("Mean latency (ms)")
-            ax.set_xlabel("Session")
-            ax.set_xticks(x_positions)
-            ax.set_xticklabels(sessions, rotation=45, ha="right")
-            ax.margins(x=0.05, y=0.1)
-            ax.set_title(f"{kind} {operation} latency trend ({pass_name})")
-            ax.grid(True, linewidth=0.6, alpha=0.35)
-            ax.legend(title="Algorithm")
-            caption = (
-                f"Latency trend across sessions - {kind} {operation} ({pass_name})"
-            )
-            outfile = (
-                output_dir / f"trend_latency_{pass_name}_{kind.lower()}_{operation}.png"
-            )
-            _save_with_caption(fig, outfile, caption, captions)
+        if is_timing_pass:
+            for (kind, operation), algo_map in latency_lines.items():
+                fig, ax = plt.subplots(figsize=(max(6, len(sessions) * 0.75), 4.5))
+                plotted_any = False
+                for algo, values_by_session in sorted(algo_map.items()):
+                    values = [values_by_session.get(sid) for sid in sessions]
+                    if _scatter_with_best_fit(ax, x_positions, values, algo):
+                        plotted_any = True
+                if not plotted_any:
+                    plt.close(fig)
+                    continue
+                ax.set_ylabel("Mean latency (ms)")
+                ax.set_xlabel("Session")
+                ax.set_xticks(x_positions)
+                ax.set_xticklabels(sessions, rotation=45, ha="right")
+                ax.margins(x=0.05, y=0.1)
+                ax.set_title(f"{kind} {operation} latency trend ({pass_name})")
+                ax.grid(True, linewidth=0.6, alpha=0.35)
+                ax.legend(title="Algorithm")
+                caption = (
+                    f"Latency trend across sessions - {kind} {operation} ({pass_name})"
+                )
+                outfile = (
+                    output_dir
+                    / f"trend_latency_{pass_name}_{kind.lower()}_{operation}.png"
+                )
+                _save_with_caption(fig, outfile, caption, captions)
 
-        if pass_name.startswith("memory"):
+        if is_memory_pass:
             for (kind, operation), algo_map in memory_lines.items():
                 fig, ax = plt.subplots(figsize=(max(6, len(sessions) * 0.75), 4.5))
                 plotted_any = False

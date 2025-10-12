@@ -24,30 +24,6 @@ Hamming weight per algorithm/category
 
 Hamming weight — Category 1
 
-![20251007T091128Z/category_1/latency_distribution_memory_kem_decapsulate.png](20251007T091128Z/category_1/latency_distribution_memory_kem_decapsulate.png)
-
-Latency mean ± standard deviation for KEM decapsulate (memory)
-
-![20251007T091128Z/category_1/latency_distribution_memory_kem_encapsulate.png](20251007T091128Z/category_1/latency_distribution_memory_kem_encapsulate.png)
-
-Latency mean ± standard deviation for KEM encapsulate (memory)
-
-![20251007T091128Z/category_1/latency_distribution_memory_kem_keygen.png](20251007T091128Z/category_1/latency_distribution_memory_kem_keygen.png)
-
-Latency mean ± standard deviation for KEM keygen (memory)
-
-![20251007T091128Z/category_1/latency_distribution_memory_sig_keygen.png](20251007T091128Z/category_1/latency_distribution_memory_sig_keygen.png)
-
-Latency mean ± standard deviation for SIG keygen (memory)
-
-![20251007T091128Z/category_1/latency_distribution_memory_sig_sign.png](20251007T091128Z/category_1/latency_distribution_memory_sig_sign.png)
-
-Latency mean ± standard deviation for SIG sign (memory)
-
-![20251007T091128Z/category_1/latency_distribution_memory_sig_verify.png](20251007T091128Z/category_1/latency_distribution_memory_sig_verify.png)
-
-Latency mean ± standard deviation for SIG verify (memory)
-
 ![20251007T091128Z/category_1/latency_distribution_timing_kem_decapsulate.png](20251007T091128Z/category_1/latency_distribution_timing_kem_decapsulate.png)
 
 Latency mean ± standard deviation for KEM decapsulate (timing)
@@ -72,30 +48,6 @@ Latency mean ± standard deviation for SIG sign (timing)
 
 Latency mean ± standard deviation for SIG verify (timing)
 
-![20251007T091128Z/category_1/latency_ecdf_memory_kem_decapsulate.png](20251007T091128Z/category_1/latency_ecdf_memory_kem_decapsulate.png)
-
-Latency ECDF for KEM decapsulate (memory)
-
-![20251007T091128Z/category_1/latency_ecdf_memory_kem_encapsulate.png](20251007T091128Z/category_1/latency_ecdf_memory_kem_encapsulate.png)
-
-Latency ECDF for KEM encapsulate (memory)
-
-![20251007T091128Z/category_1/latency_ecdf_memory_kem_keygen.png](20251007T091128Z/category_1/latency_ecdf_memory_kem_keygen.png)
-
-Latency ECDF for KEM keygen (memory)
-
-![20251007T091128Z/category_1/latency_ecdf_memory_sig_keygen.png](20251007T091128Z/category_1/latency_ecdf_memory_sig_keygen.png)
-
-Latency ECDF for SIG keygen (memory)
-
-![20251007T091128Z/category_1/latency_ecdf_memory_sig_sign.png](20251007T091128Z/category_1/latency_ecdf_memory_sig_sign.png)
-
-Latency ECDF for SIG sign (memory)
-
-![20251007T091128Z/category_1/latency_ecdf_memory_sig_verify.png](20251007T091128Z/category_1/latency_ecdf_memory_sig_verify.png)
-
-Latency ECDF for SIG verify (memory)
-
 ![20251007T091128Z/category_1/latency_ecdf_timing_kem_decapsulate.png](20251007T091128Z/category_1/latency_ecdf_timing_kem_decapsulate.png)
 
 Latency ECDF for KEM decapsulate (timing)
@@ -119,14 +71,6 @@ Latency ECDF for SIG sign (timing)
 ![20251007T091128Z/category_1/latency_ecdf_timing_sig_verify.png](20251007T091128Z/category_1/latency_ecdf_timing_sig_verify.png)
 
 Latency ECDF for SIG verify (timing)
-
-![20251007T091128Z/category_1/latency_memory_kem.png](20251007T091128Z/category_1/latency_memory_kem.png)
-
-Mean latency per operation for KEM (memory)
-
-![20251007T091128Z/category_1/latency_memory_sig.png](20251007T091128Z/category_1/latency_memory_sig.png)
-
-Mean latency per operation for SIG (memory)
 
 ![20251007T091128Z/category_1/latency_timing_kem.png](20251007T091128Z/category_1/latency_timing_kem.png)
 
@@ -260,21 +204,9 @@ Runtime scaling — sphincs+ (all categories)
 
 Classical vs quantum security estimates
 
-![20251007T091128Z/category_1/security_vs_latency_memory.png](20251007T091128Z/category_1/security_vs_latency_memory.png)
-
-Keygen latency vs. classical security bits (memory)
-
-![20251007T091128Z/category_1/security_vs_latency_quantum_all_ops_memory.png](20251007T091128Z/category_1/security_vs_latency_quantum_all_ops_memory.png)
-
-Mean latency across operations vs quantum security bits (memory)
-
 ![20251007T091128Z/category_1/security_vs_latency_quantum_all_ops_timing.png](20251007T091128Z/category_1/security_vs_latency_quantum_all_ops_timing.png)
 
 Mean latency across operations vs quantum security bits (timing)
-
-![20251007T091128Z/category_1/security_vs_latency_quantum_memory.png](20251007T091128Z/category_1/security_vs_latency_quantum_memory.png)
-
-Keygen latency vs. quantum security bits (memory)
 
 ![20251007T091128Z/category_1/security_vs_latency_quantum_timing.png](20251007T091128Z/category_1/security_vs_latency_quantum_timing.png)
 
@@ -348,30 +280,6 @@ Hamming weight per algorithm/category
 
 Hamming weight — Category 3
 
-![20251007T091128Z/category_3/latency_distribution_memory_kem_decapsulate.png](20251007T091128Z/category_3/latency_distribution_memory_kem_decapsulate.png)
-
-Latency mean ± standard deviation for KEM decapsulate (memory)
-
-![20251007T091128Z/category_3/latency_distribution_memory_kem_encapsulate.png](20251007T091128Z/category_3/latency_distribution_memory_kem_encapsulate.png)
-
-Latency mean ± standard deviation for KEM encapsulate (memory)
-
-![20251007T091128Z/category_3/latency_distribution_memory_kem_keygen.png](20251007T091128Z/category_3/latency_distribution_memory_kem_keygen.png)
-
-Latency mean ± standard deviation for KEM keygen (memory)
-
-![20251007T091128Z/category_3/latency_distribution_memory_sig_keygen.png](20251007T091128Z/category_3/latency_distribution_memory_sig_keygen.png)
-
-Latency mean ± standard deviation for SIG keygen (memory)
-
-![20251007T091128Z/category_3/latency_distribution_memory_sig_sign.png](20251007T091128Z/category_3/latency_distribution_memory_sig_sign.png)
-
-Latency mean ± standard deviation for SIG sign (memory)
-
-![20251007T091128Z/category_3/latency_distribution_memory_sig_verify.png](20251007T091128Z/category_3/latency_distribution_memory_sig_verify.png)
-
-Latency mean ± standard deviation for SIG verify (memory)
-
 ![20251007T091128Z/category_3/latency_distribution_timing_kem_decapsulate.png](20251007T091128Z/category_3/latency_distribution_timing_kem_decapsulate.png)
 
 Latency mean ± standard deviation for KEM decapsulate (timing)
@@ -396,30 +304,6 @@ Latency mean ± standard deviation for SIG sign (timing)
 
 Latency mean ± standard deviation for SIG verify (timing)
 
-![20251007T091128Z/category_3/latency_ecdf_memory_kem_decapsulate.png](20251007T091128Z/category_3/latency_ecdf_memory_kem_decapsulate.png)
-
-Latency ECDF for KEM decapsulate (memory)
-
-![20251007T091128Z/category_3/latency_ecdf_memory_kem_encapsulate.png](20251007T091128Z/category_3/latency_ecdf_memory_kem_encapsulate.png)
-
-Latency ECDF for KEM encapsulate (memory)
-
-![20251007T091128Z/category_3/latency_ecdf_memory_kem_keygen.png](20251007T091128Z/category_3/latency_ecdf_memory_kem_keygen.png)
-
-Latency ECDF for KEM keygen (memory)
-
-![20251007T091128Z/category_3/latency_ecdf_memory_sig_keygen.png](20251007T091128Z/category_3/latency_ecdf_memory_sig_keygen.png)
-
-Latency ECDF for SIG keygen (memory)
-
-![20251007T091128Z/category_3/latency_ecdf_memory_sig_sign.png](20251007T091128Z/category_3/latency_ecdf_memory_sig_sign.png)
-
-Latency ECDF for SIG sign (memory)
-
-![20251007T091128Z/category_3/latency_ecdf_memory_sig_verify.png](20251007T091128Z/category_3/latency_ecdf_memory_sig_verify.png)
-
-Latency ECDF for SIG verify (memory)
-
 ![20251007T091128Z/category_3/latency_ecdf_timing_kem_decapsulate.png](20251007T091128Z/category_3/latency_ecdf_timing_kem_decapsulate.png)
 
 Latency ECDF for KEM decapsulate (timing)
@@ -443,14 +327,6 @@ Latency ECDF for SIG sign (timing)
 ![20251007T091128Z/category_3/latency_ecdf_timing_sig_verify.png](20251007T091128Z/category_3/latency_ecdf_timing_sig_verify.png)
 
 Latency ECDF for SIG verify (timing)
-
-![20251007T091128Z/category_3/latency_memory_kem.png](20251007T091128Z/category_3/latency_memory_kem.png)
-
-Mean latency per operation for KEM (memory)
-
-![20251007T091128Z/category_3/latency_memory_sig.png](20251007T091128Z/category_3/latency_memory_sig.png)
-
-Mean latency per operation for SIG (memory)
 
 ![20251007T091128Z/category_3/latency_timing_kem.png](20251007T091128Z/category_3/latency_timing_kem.png)
 
@@ -584,21 +460,9 @@ Runtime scaling — sphincs+ (all categories)
 
 Classical vs quantum security estimates
 
-![20251007T091128Z/category_3/security_vs_latency_memory.png](20251007T091128Z/category_3/security_vs_latency_memory.png)
-
-Keygen latency vs. classical security bits (memory)
-
-![20251007T091128Z/category_3/security_vs_latency_quantum_all_ops_memory.png](20251007T091128Z/category_3/security_vs_latency_quantum_all_ops_memory.png)
-
-Mean latency across operations vs quantum security bits (memory)
-
 ![20251007T091128Z/category_3/security_vs_latency_quantum_all_ops_timing.png](20251007T091128Z/category_3/security_vs_latency_quantum_all_ops_timing.png)
 
 Mean latency across operations vs quantum security bits (timing)
-
-![20251007T091128Z/category_3/security_vs_latency_quantum_memory.png](20251007T091128Z/category_3/security_vs_latency_quantum_memory.png)
-
-Keygen latency vs. quantum security bits (memory)
 
 ![20251007T091128Z/category_3/security_vs_latency_quantum_timing.png](20251007T091128Z/category_3/security_vs_latency_quantum_timing.png)
 
@@ -672,30 +536,6 @@ Hamming weight per algorithm/category
 
 Hamming weight — Category 5
 
-![20251007T091128Z/category_5/latency_distribution_memory_kem_decapsulate.png](20251007T091128Z/category_5/latency_distribution_memory_kem_decapsulate.png)
-
-Latency mean ± standard deviation for KEM decapsulate (memory)
-
-![20251007T091128Z/category_5/latency_distribution_memory_kem_encapsulate.png](20251007T091128Z/category_5/latency_distribution_memory_kem_encapsulate.png)
-
-Latency mean ± standard deviation for KEM encapsulate (memory)
-
-![20251007T091128Z/category_5/latency_distribution_memory_kem_keygen.png](20251007T091128Z/category_5/latency_distribution_memory_kem_keygen.png)
-
-Latency mean ± standard deviation for KEM keygen (memory)
-
-![20251007T091128Z/category_5/latency_distribution_memory_sig_keygen.png](20251007T091128Z/category_5/latency_distribution_memory_sig_keygen.png)
-
-Latency mean ± standard deviation for SIG keygen (memory)
-
-![20251007T091128Z/category_5/latency_distribution_memory_sig_sign.png](20251007T091128Z/category_5/latency_distribution_memory_sig_sign.png)
-
-Latency mean ± standard deviation for SIG sign (memory)
-
-![20251007T091128Z/category_5/latency_distribution_memory_sig_verify.png](20251007T091128Z/category_5/latency_distribution_memory_sig_verify.png)
-
-Latency mean ± standard deviation for SIG verify (memory)
-
 ![20251007T091128Z/category_5/latency_distribution_timing_kem_decapsulate.png](20251007T091128Z/category_5/latency_distribution_timing_kem_decapsulate.png)
 
 Latency mean ± standard deviation for KEM decapsulate (timing)
@@ -720,30 +560,6 @@ Latency mean ± standard deviation for SIG sign (timing)
 
 Latency mean ± standard deviation for SIG verify (timing)
 
-![20251007T091128Z/category_5/latency_ecdf_memory_kem_decapsulate.png](20251007T091128Z/category_5/latency_ecdf_memory_kem_decapsulate.png)
-
-Latency ECDF for KEM decapsulate (memory)
-
-![20251007T091128Z/category_5/latency_ecdf_memory_kem_encapsulate.png](20251007T091128Z/category_5/latency_ecdf_memory_kem_encapsulate.png)
-
-Latency ECDF for KEM encapsulate (memory)
-
-![20251007T091128Z/category_5/latency_ecdf_memory_kem_keygen.png](20251007T091128Z/category_5/latency_ecdf_memory_kem_keygen.png)
-
-Latency ECDF for KEM keygen (memory)
-
-![20251007T091128Z/category_5/latency_ecdf_memory_sig_keygen.png](20251007T091128Z/category_5/latency_ecdf_memory_sig_keygen.png)
-
-Latency ECDF for SIG keygen (memory)
-
-![20251007T091128Z/category_5/latency_ecdf_memory_sig_sign.png](20251007T091128Z/category_5/latency_ecdf_memory_sig_sign.png)
-
-Latency ECDF for SIG sign (memory)
-
-![20251007T091128Z/category_5/latency_ecdf_memory_sig_verify.png](20251007T091128Z/category_5/latency_ecdf_memory_sig_verify.png)
-
-Latency ECDF for SIG verify (memory)
-
 ![20251007T091128Z/category_5/latency_ecdf_timing_kem_decapsulate.png](20251007T091128Z/category_5/latency_ecdf_timing_kem_decapsulate.png)
 
 Latency ECDF for KEM decapsulate (timing)
@@ -767,14 +583,6 @@ Latency ECDF for SIG sign (timing)
 ![20251007T091128Z/category_5/latency_ecdf_timing_sig_verify.png](20251007T091128Z/category_5/latency_ecdf_timing_sig_verify.png)
 
 Latency ECDF for SIG verify (timing)
-
-![20251007T091128Z/category_5/latency_memory_kem.png](20251007T091128Z/category_5/latency_memory_kem.png)
-
-Mean latency per operation for KEM (memory)
-
-![20251007T091128Z/category_5/latency_memory_sig.png](20251007T091128Z/category_5/latency_memory_sig.png)
-
-Mean latency per operation for SIG (memory)
 
 ![20251007T091128Z/category_5/latency_timing_kem.png](20251007T091128Z/category_5/latency_timing_kem.png)
 
@@ -900,21 +708,9 @@ Runtime scaling — sphincs+ (all categories)
 
 Classical vs quantum security estimates
 
-![20251007T091128Z/category_5/security_vs_latency_memory.png](20251007T091128Z/category_5/security_vs_latency_memory.png)
-
-Keygen latency vs. classical security bits (memory)
-
-![20251007T091128Z/category_5/security_vs_latency_quantum_all_ops_memory.png](20251007T091128Z/category_5/security_vs_latency_quantum_all_ops_memory.png)
-
-Mean latency across operations vs quantum security bits (memory)
-
 ![20251007T091128Z/category_5/security_vs_latency_quantum_all_ops_timing.png](20251007T091128Z/category_5/security_vs_latency_quantum_all_ops_timing.png)
 
 Mean latency across operations vs quantum security bits (timing)
-
-![20251007T091128Z/category_5/security_vs_latency_quantum_memory.png](20251007T091128Z/category_5/security_vs_latency_quantum_memory.png)
-
-Keygen latency vs. quantum security bits (memory)
 
 ![20251007T091128Z/category_5/security_vs_latency_quantum_timing.png](20251007T091128Z/category_5/security_vs_latency_quantum_timing.png)
 
@@ -996,30 +792,6 @@ Hamming weight — Category 3
 
 Hamming weight — Category 5
 
-![20251007T091128Z/latency_distribution_memory_kem_decapsulate.png](20251007T091128Z/latency_distribution_memory_kem_decapsulate.png)
-
-Latency mean ± standard deviation for KEM decapsulate (memory)
-
-![20251007T091128Z/latency_distribution_memory_kem_encapsulate.png](20251007T091128Z/latency_distribution_memory_kem_encapsulate.png)
-
-Latency mean ± standard deviation for KEM encapsulate (memory)
-
-![20251007T091128Z/latency_distribution_memory_kem_keygen.png](20251007T091128Z/latency_distribution_memory_kem_keygen.png)
-
-Latency mean ± standard deviation for KEM keygen (memory)
-
-![20251007T091128Z/latency_distribution_memory_sig_keygen.png](20251007T091128Z/latency_distribution_memory_sig_keygen.png)
-
-Latency mean ± standard deviation for SIG keygen (memory)
-
-![20251007T091128Z/latency_distribution_memory_sig_sign.png](20251007T091128Z/latency_distribution_memory_sig_sign.png)
-
-Latency mean ± standard deviation for SIG sign (memory)
-
-![20251007T091128Z/latency_distribution_memory_sig_verify.png](20251007T091128Z/latency_distribution_memory_sig_verify.png)
-
-Latency mean ± standard deviation for SIG verify (memory)
-
 ![20251007T091128Z/latency_distribution_timing_kem_decapsulate.png](20251007T091128Z/latency_distribution_timing_kem_decapsulate.png)
 
 Latency mean ± standard deviation for KEM decapsulate (timing)
@@ -1044,30 +816,6 @@ Latency mean ± standard deviation for SIG sign (timing)
 
 Latency mean ± standard deviation for SIG verify (timing)
 
-![20251007T091128Z/latency_ecdf_memory_kem_decapsulate.png](20251007T091128Z/latency_ecdf_memory_kem_decapsulate.png)
-
-Latency ECDF for KEM decapsulate (memory)
-
-![20251007T091128Z/latency_ecdf_memory_kem_encapsulate.png](20251007T091128Z/latency_ecdf_memory_kem_encapsulate.png)
-
-Latency ECDF for KEM encapsulate (memory)
-
-![20251007T091128Z/latency_ecdf_memory_kem_keygen.png](20251007T091128Z/latency_ecdf_memory_kem_keygen.png)
-
-Latency ECDF for KEM keygen (memory)
-
-![20251007T091128Z/latency_ecdf_memory_sig_keygen.png](20251007T091128Z/latency_ecdf_memory_sig_keygen.png)
-
-Latency ECDF for SIG keygen (memory)
-
-![20251007T091128Z/latency_ecdf_memory_sig_sign.png](20251007T091128Z/latency_ecdf_memory_sig_sign.png)
-
-Latency ECDF for SIG sign (memory)
-
-![20251007T091128Z/latency_ecdf_memory_sig_verify.png](20251007T091128Z/latency_ecdf_memory_sig_verify.png)
-
-Latency ECDF for SIG verify (memory)
-
 ![20251007T091128Z/latency_ecdf_timing_kem_decapsulate.png](20251007T091128Z/latency_ecdf_timing_kem_decapsulate.png)
 
 Latency ECDF for KEM decapsulate (timing)
@@ -1091,14 +839,6 @@ Latency ECDF for SIG sign (timing)
 ![20251007T091128Z/latency_ecdf_timing_sig_verify.png](20251007T091128Z/latency_ecdf_timing_sig_verify.png)
 
 Latency ECDF for SIG verify (timing)
-
-![20251007T091128Z/latency_memory_kem.png](20251007T091128Z/latency_memory_kem.png)
-
-Mean latency per operation for KEM (memory)
-
-![20251007T091128Z/latency_memory_sig.png](20251007T091128Z/latency_memory_sig.png)
-
-Mean latency per operation for SIG (memory)
 
 ![20251007T091128Z/latency_timing_kem.png](20251007T091128Z/latency_timing_kem.png)
 
@@ -1296,21 +1036,9 @@ Runtime scaling — sphincs+ (all categories)
 
 Classical vs quantum security estimates
 
-![20251007T091128Z/security_vs_latency_memory.png](20251007T091128Z/security_vs_latency_memory.png)
-
-Keygen latency vs. classical security bits (memory)
-
-![20251007T091128Z/security_vs_latency_quantum_all_ops_memory.png](20251007T091128Z/security_vs_latency_quantum_all_ops_memory.png)
-
-Mean latency across operations vs quantum security bits (memory)
-
 ![20251007T091128Z/security_vs_latency_quantum_all_ops_timing.png](20251007T091128Z/security_vs_latency_quantum_all_ops_timing.png)
 
 Mean latency across operations vs quantum security bits (timing)
-
-![20251007T091128Z/security_vs_latency_quantum_memory.png](20251007T091128Z/security_vs_latency_quantum_memory.png)
-
-Keygen latency vs. quantum security bits (memory)
 
 ![20251007T091128Z/security_vs_latency_quantum_timing.png](20251007T091128Z/security_vs_latency_quantum_timing.png)
 
