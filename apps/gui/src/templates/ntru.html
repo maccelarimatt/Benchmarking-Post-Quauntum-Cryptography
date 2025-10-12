@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ label }} - Details</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" sizes="any" />
+  <link rel="mask-icon" href="/static/favicon.svg" color="#1fb6b8" />
+  <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
+  <meta name="theme-color" content="#0b0f14" />
+  <style>
+    /* Dark scrollbar styling */
+    html { scrollbar-width: thin; scrollbar-color: rgba(36, 49, 63, 0.85) rgba(7, 11, 17, 0.92); }
+    html::-webkit-scrollbar { width: 12px; height: 12px; }
+    html::-webkit-scrollbar-track { background: rgba(7, 11, 17, 0.92); }
+    html::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.45);
+      border-radius: 999px; border: 2px solid rgba(7, 11, 17, 0.92);
+    }
+    html::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.65); }
+
+    :root { --island-bg: rgba(38,41,45,.92); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
+    body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
+    .island { background:var(--island-bg); border-radius:var(--island-radius); padding:1.25rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 1.6vh auto; }
+    .btn, button, input[type="submit"], input[type="button"], a.btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow: 0 4px 14px rgba(31,182,184,.25); text-decoration:none; transition: background-color .2s ease, filter .15s ease, box-shadow .2s ease; }
+    .btn:hover, button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover { filter: brightness(0.92); box-shadow: 0 6px 18px rgba(31,182,184,.32); }
+    .badge { font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem; display:inline-block; }
+    .muted { opacity:.9; }
+    h2, h3 { margin: 0 0 .6rem 0; }
+    h2 { font-size:1.25rem; }
+    h3 { font-size:1.05rem; margin-top:1.2rem; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:.45rem .4rem; border-bottom:1px solid rgba(255,255,255,.2); }
+    th { font-weight:600; }
+    .refs li { margin:.35rem 0; }
+    .chip { display:inline-block; font-size:.85rem; padding:.1rem .5rem; border-radius:.4rem; background:rgba(255,255,255,.15); margin-right:.4rem; }
+    .toc a { color:#fff; text-decoration:none; }
+    .toc a:hover { text-decoration:underline; }
+    .note { font-size:.95rem; opacity:.95; }
+    code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
+    ol.refs { list-style: none; margin: 0; padding-left: 0; }
+  </style>
+  <!-- MathJax for LaTeX-style math -->
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <div class="island" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+    <div>
+      <div style="font-size:1.6rem; font-weight:700;">{{ label }}</div>
+      {% if kind %}<div class="badge" title="Kind">{{ kind }}</div>{% endif %}
+    </div>
+    <div><a href="/" class="btn">Back to home</a></div>
+  </div>
+
+  <div class="island">
+    <div style="font-weight:700; margin-bottom:.5rem;">About</div>
+    <p class="muted">
+      {{ about or 'This page explains the NTRU lattice-based KEM: origins, design overview, math, parameter sets, algorithms, security considerations, and implementation notes—plus references.' }}
+    </p>
+    <div class="toc muted">
+      <span class="chip"><a href="#history">Origins & history</a></span>
+      <span class="chip"><a href="#overview">Design overview</a></span>
+      <span class="chip"><a href="#math">Mathematical setting</a></span>
+      <span class="chip"><a href="#params">Parameter sets</a></span>
+      <span class="chip"><a href="#algorithms">Algorithms</a></span>
+      <span class="chip"><a href="#security">Security</a></span>
+      <span class="chip"><a href="#impl">Implementation notes</a></span>
+      <span class="chip"><a href="#proscons">Pros & cons</a></span>
+      <span class="chip"><a href="#references">References</a></span>
+    </div>
+  </div>
+
+  <div class="island" id="history">
+    <h2>Origins & history</h2>
+    <p class="muted">
+      <strong>NTRU</strong> is one of the earliest lattice-based public-key systems (late 1990s), adapted as a KEM for the NIST PQC
+      project with families <em>NTRU-HPS</em> and <em>NTRU-HRSS</em>. It was a Round-3 finalist; NIST ultimately standardized ML-KEM
+      (Kyber) and later selected HQC, while NTRU remains available in research libraries and drafts as a well-studied
+      alternative KEM. [1][2][3]
+    </p>
+  </div>
+
+  <div class="island" id="overview">
+    <h2>Design overview</h2>
+    <p class="muted">
+      NTRU works in a polynomial ring \( \mathbb{Z}_q[x]/(x^n-1) \) with small ternary secrets. The public key is
+      \( h \equiv g * f^{-1} \pmod{q} \) for small \( f,g \). To encapsulate, a small “message”/error polynomial \( r \) is sampled and
+      combined with \( h \) to form a ciphertext; decapsulation uses \( f \) to “lift” and recover \( r \), then hashes agreed
+      values to a shared key. IND-CCA2 security is obtained by wrapping the CPA core in a Fujisaki–Okamoto-style transform. [1][4]
+    </p>
+  </div>
+
+  <div class="island" id="math">
+    <h2>Mathematical setting</h2>
+    <p class="muted">
+      Work in \( R_q=\mathbb{Z}_q[x]/(x^n-1) \) with power-of-two \( q \) and prime \( n \) (typical); secrets are small, often in
+      \( \{-1,0,1\} \) with fixed (HPS) or variable (HRSS) Hamming weight. Convolution is cyclic: \( (a*b)(x)=a(x)b(x)\bmod (x^n-1) \).
+    </p>
+    <h3>Key relation</h3>
+    <p class="mono">
+      \( \text{sk}=(f,g),\quad h \equiv g * f^{-1} \pmod{q},\quad \text{pk}=h. \)
+    </p>
+    <p class="muted">
+      Decryption uses a “center-lift” with \( f \) modulo \( q \) then reduces modulo a small modulus (often \(p=3\)) to
+      recover the small polynomial. [1]
+    </p>
+  </div>
+
+  <div class="island" id="params">
+    <h2>Parameter sets (HPS / HRSS)</h2>
+    <p class="muted note">The sets below reflect commonly used liboqs profiles and their claimed NIST strengths.</p>
+    <div class="grid-2">
+      <div>
+        <table>
+          <thead><tr><th>Set</th><th>Alias</th><th>Claimed level</th><th>Security model</th></tr></thead>
+          <tbody>
+            <tr><td>NTRU-HPS-2048-509</td><td>—</td><td>Cat-1</td><td>IND-CCA2 (FO)</td></tr>
+            <tr><td>NTRU-HPS-2048-677</td><td>—</td><td>Cat-3</td><td>IND-CCA2 (FO)</td></tr>
+            <tr><td>NTRU-HPS-4096-821</td><td>—</td><td>Cat-5</td><td>IND-CCA2 (FO)</td></tr>
+            <tr><td>NTRU-HPS-4096-1229</td><td>—</td><td>Cat-5</td><td>IND-CCA2 (FO)</td></tr>
+            <tr><td>NTRU-HRSS-701</td><td>—</td><td>Cat-3</td><td>IND-CCA2 (FO)</td></tr>
+            <tr><td>NTRU-HRSS-1373</td><td>—</td><td>Cat-5</td><td>IND-CCA2 (FO)</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:.5rem;">HPS uses fixed-weight secrets; HRSS uses variable-weight sampling and slightly different reconciliation. [1][5]</p>
+      </div>
+      <div class="muted">
+        <h3>Sizes (bytes)</h3>
+        <table>
+          <thead><tr><th>Set</th><th>Public key</th><th>Secret key</th><th>Ciphertext</th><th>Shared secret</th></tr></thead>
+          <tbody>
+            <tr><td>NTRU-HPS-2048-509</td><td>699</td><td>935</td><td>699</td><td>32</td></tr>
+            <tr><td>NTRU-HPS-2048-677</td><td>930</td><td>1234</td><td>930</td><td>32</td></tr>
+            <tr><td>NTRU-HPS-4096-821</td><td>1230</td><td>1590</td><td>1230</td><td>32</td></tr>
+            <tr><td>NTRU-HPS-4096-1229</td><td>1842</td><td>2366</td><td>1842</td><td>32</td></tr>
+            <tr><td>NTRU-HRSS-701</td><td>1138</td><td>1450</td><td>1138</td><td>32</td></tr>
+            <tr><td>NTRU-HRSS-1373</td><td>2401</td><td>2983</td><td>2401</td><td>32</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:.5rem;">Representative liboqs sizes. See references for source and version context. [2]</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="algorithms">
+    <h2>Algorithms</h2>
+
+    <h3>Key generation</h3>
+    <p class="muted">
+      Sample small \( f,g \in R_q \) (ternary with bounds/weight checks). Ensure \( f \) is invertible modulo \( q \) and modulo \( p \).
+      Compute \( h \equiv g*f^{-1}\bmod q \). The public key is \( h \); the secret key stores \( f \) (and often \( f_p^{-1} \), etc.). [1]
+    </p>
+
+    <h3>Encapsulation (CPA core + transform)</h3>
+    <p class="muted">
+      Derive randomness; sample a small polynomial \( r \). Form ciphertext components via cyclic convolutions with \( h \)
+      and small-mod reductions; derive a shared secret by hashing authenticated inputs. FO-style hashing binds randomness
+      and resists CCA. [1][4]
+    </p>
+
+    <h3>Decapsulation</h3>
+    <p class="muted">
+      Use \( f \) to lift the ciphertext to a near-small polynomial, reduce modulo \( p \) to recover \( r \), recompute the expected
+      ciphertext and run transform checks; output the agreed key or a fallback if verification fails (for CCA security). [1][4]
+    </p>
+  </div>
+
+  <div class="island" id="security">
+    <h2>Security at a glance</h2>
+    <ul class="muted">
+      <li><b>Assumptions:</b> Hardness of NTRU problems in \( R_q \) (no direct reduction to LWE); security from small-polynomial convolution and reconciliation. [1]</li>
+      <li><b>Categories:</b> HPS-509 → Cat-1; HPS-677 / HRSS-701 → Cat-3; HPS-821/1229 / HRSS-1373 → Cat-5 (claimed). [2]</li>
+      <li><b>CCA transform:</b> Fujisaki–Okamoto wrapping of the CPA primitive. [4]</li>
+      <li><b>NIST status:</b> Round-3 finalist; not standardized (as of 2025). Still actively implemented in research libraries and drafts. [3]</li>
+    </ul>
+  </div>
+
+  <div class="island" id="impl">
+    <h2>Implementation notes</h2>
+    <ul class="muted">
+      <li><b>Symmetric:</b> SHAKE or SHA-2 depending on build; KDF per spec/draft. [1][4]</li>
+      <li><b>Convolution:</b> Cyclic polynomial mult (schoolbook/Toom-Cook/NTT-like with power-of-two \(q\)); vectorized popcount and bit-slicing help. [1]</li>
+      <li><b>Side-channels:</b> Constant-time small-poly sampling, no secret-dependent branches, masked reductions; validate ciphertext structure. [1][4]</li>
+      <li><b>Ecosystem:</b> Available via liboqs and experimental OpenSSL providers; IETF CFRG draft documents the KEM. [2][3][4]</li>
+    </ul>
+  </div>
+
+  <div class="island" id="proscons">
+    <h2>Pros & cons</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Pros</h3>
+        <ul class="muted">
+          <li>Smallish keys/ciphertexts (≈0.7–2.4 KB pk/ct) with fast software performance; no floating-point needed. [2]</li>
+          <li>Long public history and independent variants (HPS/HRSS; related NTRU Prime) informing conservative choices. [1][5]</li>
+          <li>Clean constant-time implementations exist with AVX2 optimizations. [2]</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Cons</h3>
+        <ul class="muted">
+          <li>Keygen typically slower than Kyber; tuning small-poly sampling and inversions is important. [1]</li>
+          <li>Not a NIST selection (as of 2025), so fewer turnkey profiles than ML-KEM/HQC. [3]</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="references">
+    <h2>References</h2>
+    <ol class="refs muted">
+      <li>[1] NTRU Team, “<i>NTRU: Algorithm Specifications and Supporting Documentation</i>,” 2019 (Round-3 submission). <a target="_blank" rel="noopener" href="https://ntru.org/f/ntru-20190330.pdf">ntru.org</a></li>
+      <li>[2] Open Quantum Safe, “<i>NTRU in liboqs (parameter sizes & profiles)</i>.” <a target="_blank" rel="noopener" href="https://openquantumsafe.org/liboqs/algorithms/kem/ntru.html">openquantumsafe.org</a></li>
+      <li>[3] IETF CFRG, “<i>NTRU Key Encapsulation</i>,” Internet-Draft (latest). <a target="_blank" rel="noopener" href="https://www.ietf.org/archive/id/draft-fluhrer-cfrg-ntru-03.html">ietf.org</a></li>
+      <li>[4] NIST IR 8413, “<i>Status Report on the Third Round of the NIST PQC Standardization Process</i>,” 2022. <a target="_blank" rel="noopener" href="https://nvlpubs.nist.gov/nistpubs/ir/2022/NIST.IR.8413.pdf">nist.gov</a></li>
+      <li>[5] NTRU Prime FAQ (differences vs. HPS/HRSS), 2024. <a target="_blank" rel="noopener" href="https://ntruprime.cr.yp.to/faq.html">ntruprime.cr.yp.to</a></li>
+    </ol>
+  </div>
+</body>
+</html>
