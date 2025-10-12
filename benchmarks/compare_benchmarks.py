@@ -194,70 +194,22 @@ def _write_memory_ratio_table(grouped, sessions, outfile: pathlib.Path) -> None:
                 )
 
 
-def _plot_scatter(
-    metrics,
-    sessions,
-    output_dir: pathlib.Path,
-    value_getter,
-    value_label: str,
-    filename_suffix: str,
-) -> None:
-    if len(sessions) < 2:
-        return
-    baseline = sessions[0]
-    for (pass_name, kind, operation, category, algo), recs in sorted(metrics.items()):
-        base_rec = recs.get(baseline)
-        if base_rec is None:
-            continue
-        base_val = value_getter(base_rec)
-        if base_val is None:
-            continue
-        for session in sessions[1:]:
-            cmp_rec = recs.get(session)
-            if cmp_rec is None:
-                continue
-            cmp_val = value_getter(cmp_rec)
-            if cmp_val is None:
-                continue
-            fig, ax = plt.subplots(figsize=(5, 5))
-            ax.scatter(base_val, cmp_val, color="#1f77b4", alpha=0.85)
-            ax.annotate(
-                f"{algo}\nCat-{category}",
-                (base_val, cmp_val),
-                textcoords="offset points",
-                xytext=(4, 4),
-                fontsize=8,
-            )
-            lim_min = min(base_val, cmp_val)
-            lim_max = max(base_val, cmp_val)
-            pad = 0.1 * (lim_max - lim_min or 1.0)
-            ax.plot(
-                [lim_min - pad, lim_max + pad],
-                [lim_min - pad, lim_max + pad],
-                linestyle="--",
-                color="#555555",
-                linewidth=1,
-            )
-            ax.set_xlim(lim_min - pad, lim_max + pad)
-            ax.set_ylim(lim_min - pad, lim_max + pad)
-            ax.set_xlabel(f"{baseline} {value_label}")
-            ax.set_ylabel(f"{session} {value_label}")
-            ax.set_title(f"{kind} {operation} ({pass_name}, Cat-{category})")
-            ax.grid(True, linestyle="--", alpha=0.3)
-            safe_name = (
-                f"{pass_name}_{kind}_{operation}_cat-{category}_{session}".lower()
-                .replace("/", "-")
-                .replace(" ", "_")
-            )
-            outfile = output_dir / f"scatter_{filename_suffix}_{safe_name}.png"
-            outfile.parent.mkdir(parents=True, exist_ok=True)
-            fig.tight_layout()
-            fig.savefig(outfile, dpi=200)
-            plt.close(fig)
-
-
 def _aggregate_passes(records: Sequence[Record]) -> List[str]:
     return sorted({rec.measurement_pass for rec in records})
+
+
+def _filter_records_by_category(
+    records_by_session: Dict[str, List[Record]], category: int
+) -> Dict[str, List[Record]]:
+    filtered: Dict[str, List[Record]] = {}
+    for session, records in records_by_session.items():
+        subset = [rec for rec in records if rec.category_number == category]
+        if subset:
+            filtered[session] = subset
+    return filtered
+
+
+CATEGORY_TREND_LEVELS = (1, 3, 5)
 
 
 def parse_args() -> argparse.Namespace:
@@ -313,29 +265,17 @@ def main() -> None:
 
     captions = CaptionLog()
     plot_session_comparisons(records_by_session, graph_root, passes, captions)
+    for category in CATEGORY_TREND_LEVELS:
+        filtered_sessions = _filter_records_by_category(records_by_session, category)
+        if filtered_sessions:
+            cat_root = graph_root / f"cat-{category}"
+            plot_session_comparisons(filtered_sessions, cat_root, passes, captions)
     captions.write(graph_root)
 
     metrics = _build_metrics(all_records)
     sessions = list(records_by_session.keys())
     _write_latency_ratio_table(metrics, sessions, table_root / "latency_ratios.csv")
     _write_memory_ratio_table(metrics, sessions, table_root / "memory_ratios.csv")
-
-    _plot_scatter(
-        metrics,
-        sessions,
-        graph_root,
-        value_getter=lambda rec: rec.mean_ms,
-        value_label="mean latency (ms)",
-        filename_suffix="latency",
-    )
-    _plot_scatter(
-        metrics,
-        sessions,
-        graph_root,
-        value_getter=lambda rec: rec.mem_mean_kb,
-        value_label="peak memory (KB)",
-        filename_suffix="memory",
-    )
 
     print(f"Comparison outputs written to {comparison_root}")
 
