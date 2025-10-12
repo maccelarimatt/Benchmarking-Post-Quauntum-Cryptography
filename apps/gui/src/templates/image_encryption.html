@@ -471,10 +471,38 @@
           <div>
             <label for="kem-select">KEM</label>
             <select id="kem-select">
-              <option value="Kyber512">Kyber512 (ML-KEM-512)</option>
-              <option value="Kyber768">Kyber768 (ML-KEM-768)</option>
-              <option value="HQC-128">HQC-128</option>
-              <option value="HQC-192">HQC-192</option>
+              <optgroup label="ML-KEM (Kyber)">
+                <option value="Kyber512">Kyber512 (ML-KEM-512)</option>
+                <option value="Kyber768">Kyber768 (ML-KEM-768)</option>
+              </optgroup>
+              <optgroup label="HQC">
+                <option value="HQC-128">HQC-128</option>
+                <option value="HQC-192">HQC-192</option>
+                <option value="HQC-256">HQC-256</option>
+              </optgroup>
+              <optgroup label="BIKE">
+                <option value="BIKE-L1">BIKE-L1 (Level 1)</option>
+                <option value="BIKE-L3">BIKE-L3 (Level 3)</option>
+                <option value="BIKE-L5">BIKE-L5 (Level 5)</option>
+              </optgroup>
+              <optgroup label="Classic McEliece">
+                <option value="Classic-McEliece-460896f">Classic McEliece 460896f (Level 3)</option>
+                <option value="Classic-McEliece-6688128f">Classic McEliece 6688128f (Level 5)</option>
+              </optgroup>
+              <optgroup label="FrodoKEM">
+                <option value="FrodoKEM-640-AES">FrodoKEM-640-AES (Level 1)</option>
+                <option value="FrodoKEM-976-AES">FrodoKEM-976-AES (Level 3)</option>
+                <option value="FrodoKEM-1344-AES">FrodoKEM-1344-AES (Level 5)</option>
+              </optgroup>
+              <optgroup label="NTRU">
+                <option value="NTRU-HPS-2048-677">NTRU-HPS-2048-677 (Level 3)</option>
+                <option value="NTRU-HPS-4096-821">NTRU-HPS-4096-821 (Level 4/5)</option>
+                <option value="NTRU-HRSS-701">NTRU-HRSS-701 (Level 3)</option>
+              </optgroup>
+              <optgroup label="NTRU Prime">
+                <option value="sntrup761">sntrup761 (Level 3)</option>
+                <option value="ntrulpr761">ntrulpr761 (Level 3)</option>
+              </optgroup>
             </select>
           </div>
           <div>

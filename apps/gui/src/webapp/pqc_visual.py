@@ -105,6 +105,20 @@ KEM_ALIASES: Dict[str, str] = {
     "ML-KEM-768": "Kyber768",
     "HQC-128": "HQC-128",
     "HQC-192": "HQC-192",
+    "HQC-256": "HQC-256",
+    "BIKE-L1": "BIKE-L1",
+    "BIKE-L3": "BIKE-L3",
+    "BIKE-L5": "BIKE-L5",
+    "Classic-McEliece-460896f": "Classic-McEliece-460896f",
+    "Classic-McEliece-6688128f": "Classic-McEliece-6688128f",
+    "FrodoKEM-640-AES": "FrodoKEM-640-AES",
+    "FrodoKEM-976-AES": "FrodoKEM-976-AES",
+    "FrodoKEM-1344-AES": "FrodoKEM-1344-AES",
+    "NTRU-HPS-2048-677": "NTRU-HPS-2048-677",
+    "NTRU-HPS-4096-821": "NTRU-HPS-4096-821",
+    "NTRU-HRSS-701": "NTRU-HRSS-701",
+    "sntrup761": "sntrup761",
+    "ntrulpr761": "ntrulpr761",
 }
 
 SIG_ALIASES: Dict[str, str] = {
