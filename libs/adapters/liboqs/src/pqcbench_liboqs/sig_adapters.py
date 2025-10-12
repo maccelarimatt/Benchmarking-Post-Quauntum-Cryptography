@@ -57,6 +57,46 @@ if _oqs is None:
             return b"sig"
         def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
             return True
+
+    @registry.register("cross")
+    class CrossPlaceholder:
+        name = "cross"
+        def keygen(self) -> Tuple[bytes, bytes]:
+            return b"pk", b"sk"
+        def sign(self, secret_key: bytes, message: bytes) -> bytes:
+            return b"sig"
+        def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
+            return True
+
+    @registry.register("slh-dsa")
+    class SLHDSAPlaceholder:
+        name = "slh-dsa"
+        def keygen(self) -> Tuple[bytes, bytes]:
+            return b"pk", b"sk"
+        def sign(self, secret_key: bytes, message: bytes) -> bytes:
+            return b"sig"
+        def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
+            return True
+
+    @registry.register("snova")
+    class SNOVAPlaceholder:
+        name = "snova"
+        def keygen(self) -> Tuple[bytes, bytes]:
+            return b"pk", b"sk"
+        def sign(self, secret_key: bytes, message: bytes) -> bytes:
+            return b"sig"
+        def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
+            return True
+
+    @registry.register("uov")
+    class UOVPlaceholder:
+        name = "uov"
+        def keygen(self) -> Tuple[bytes, bytes]:
+            return b"pk", b"sk"
+        def sign(self, secret_key: bytes, message: bytes) -> bytes:
+            return b"sig"
+        def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
+            return True
 else:
     # Real liboqs-backed adapters
     @registry.register("dilithium")
@@ -210,6 +250,168 @@ else:
             )
             if not self.alg:
                 raise RuntimeError("No supported MAYO algorithm enabled in liboqs")
+
+        def keygen(self) -> Tuple[bytes, bytes]:
+            with _oqs.Signature(self.alg) as s:
+                pk = s.generate_keypair()
+                sk = s.export_secret_key()
+                return pk, sk
+
+        def sign(self, secret_key: bytes, message: bytes) -> bytes:
+            with _oqs.Signature(self.alg, secret_key=secret_key) as s:
+                return s.sign(message)
+
+        def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
+            with _oqs.Signature(self.alg) as v:
+                return v.verify(message, signature, public_key)
+
+    @registry.register("cross")
+    class Cross:
+        name = "cross"
+
+        def __init__(self) -> None:
+            self.alg = pick_sig_algorithm(
+                _oqs,
+                "PQCBENCH_CROSS_ALG",
+                [
+                    "cross-rsdpg-256-balanced",
+                    "cross-rsdpg-256-fast",
+                    "cross-rsdpg-256-small",
+                    "cross-rsdp-256-balanced",
+                    "cross-rsdp-256-fast",
+                    "cross-rsdp-256-small",
+                    "cross-rsdpg-192-balanced",
+                    "cross-rsdpg-192-fast",
+                    "cross-rsdpg-192-small",
+                    "cross-rsdp-192-balanced",
+                    "cross-rsdp-192-fast",
+                    "cross-rsdp-192-small",
+                    "cross-rsdpg-128-balanced",
+                    "cross-rsdpg-128-fast",
+                    "cross-rsdpg-128-small",
+                    "cross-rsdp-128-balanced",
+                    "cross-rsdp-128-fast",
+                    "cross-rsdp-128-small",
+                ],
+            )
+            if not self.alg:
+                raise RuntimeError("No supported CROSS algorithm enabled in liboqs")
+
+        def keygen(self) -> Tuple[bytes, bytes]:
+            with _oqs.Signature(self.alg) as s:
+                pk = s.generate_keypair()
+                sk = s.export_secret_key()
+                return pk, sk
+
+        def sign(self, secret_key: bytes, message: bytes) -> bytes:
+            with _oqs.Signature(self.alg, secret_key=secret_key) as s:
+                return s.sign(message)
+
+        def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
+            with _oqs.Signature(self.alg) as v:
+                return v.verify(message, signature, public_key)
+
+    @registry.register("slh-dsa")
+    class SLHDSA:
+        name = "slh-dsa"
+
+        def __init__(self) -> None:
+            self.alg = pick_sig_algorithm(
+                _oqs,
+                "PQCBENCH_SLH_DSA_ALG",
+                [
+                    "SLH_DSA_PURE_SHA2_256S",
+                    "SLH_DSA_PURE_SHA2_256F",
+                    "SLH_DSA_PURE_SHA2_192S",
+                    "SLH_DSA_PURE_SHA2_192F",
+                    "SLH_DSA_PURE_SHA2_128S",
+                    "SLH_DSA_PURE_SHA2_128F",
+                    "SLH_DSA_PURE_SHAKE_256S",
+                    "SLH_DSA_PURE_SHAKE_256F",
+                    "SLH_DSA_PURE_SHAKE_192S",
+                    "SLH_DSA_PURE_SHAKE_192F",
+                    "SLH_DSA_PURE_SHAKE_128S",
+                    "SLH_DSA_PURE_SHAKE_128F",
+                ],
+            )
+            if not self.alg:
+                raise RuntimeError("No supported SLH-DSA algorithm enabled in liboqs")
+
+        def keygen(self) -> Tuple[bytes, bytes]:
+            with _oqs.Signature(self.alg) as s:
+                pk = s.generate_keypair()
+                sk = s.export_secret_key()
+                return pk, sk
+
+        def sign(self, secret_key: bytes, message: bytes) -> bytes:
+            with _oqs.Signature(self.alg, secret_key=secret_key) as s:
+                return s.sign(message)
+
+        def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
+            with _oqs.Signature(self.alg) as v:
+                return v.verify(message, signature, public_key)
+
+    @registry.register("snova")
+    class SNOVA:
+        name = "snova"
+
+        def __init__(self) -> None:
+            self.alg = pick_sig_algorithm(
+                _oqs,
+                "PQCBENCH_SNOVA_ALG",
+                [
+                    "SNOVA_60_10_4",
+                    "SNOVA_37_17_2",
+                    "SNOVA_49_11_3",
+                    "SNOVA_37_8_4",
+                    "SNOVA_56_25_2",
+                    "SNOVA_29_6_5",
+                    "SNOVA_25_8_3",
+                    "SNOVA_24_5_5",
+                ],
+            )
+            if not self.alg:
+                raise RuntimeError("No supported SNOVA algorithm enabled in liboqs")
+
+        def keygen(self) -> Tuple[bytes, bytes]:
+            with _oqs.Signature(self.alg) as s:
+                pk = s.generate_keypair()
+                sk = s.export_secret_key()
+                return pk, sk
+
+        def sign(self, secret_key: bytes, message: bytes) -> bytes:
+            with _oqs.Signature(self.alg, secret_key=secret_key) as s:
+                return s.sign(message)
+
+        def verify(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
+            with _oqs.Signature(self.alg) as v:
+                return v.verify(message, signature, public_key)
+
+    @registry.register("uov")
+    class UOV:
+        name = "uov"
+
+        def __init__(self) -> None:
+            self.alg = pick_sig_algorithm(
+                _oqs,
+                "PQCBENCH_UOV_ALG",
+                [
+                    "OV-V-pkc-skc",
+                    "OV-V-pkc",
+                    "OV-V",
+                    "OV-III-pkc-skc",
+                    "OV-III-pkc",
+                    "OV-III",
+                    "OV-Ip-pkc-skc",
+                    "OV-Ip-pkc",
+                    "OV-Ip",
+                    "OV-Is-pkc-skc",
+                    "OV-Is-pkc",
+                    "OV-Is",
+                ],
+            )
+            if not self.alg:
+                raise RuntimeError("No supported UOV algorithm enabled in liboqs")
 
         def keygen(self) -> Tuple[bytes, bytes]:
             with _oqs.Signature(self.alg) as s:

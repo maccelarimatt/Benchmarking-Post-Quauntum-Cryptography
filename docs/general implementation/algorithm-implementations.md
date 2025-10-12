@@ -80,7 +80,7 @@ This document explains how the classical and post‑quantum algorithms are imple
 - liboqs adapters (PQC)
   - Choose concrete mechanisms through environment variables:
     - KEMs: `PQCBENCH_KYBER_ALG`, `PQCBENCH_HQC_ALG`, `PQCBENCH_BIKE_ALG`, `PQCBENCH_CLASSIC_MCELIECE_ALG`, `PQCBENCH_FRODOKEM_ALG`, `PQCBENCH_NTRU_ALG`, `PQCBENCH_NTRUPRIME_ALG`.
-    - Signatures: `PQCBENCH_DILITHIUM_ALG`, `PQCBENCH_FALCON_ALG`, `PQCBENCH_SPHINCS_ALG`, `PQCBENCH_XMSSMT_ALG`, `PQCBENCH_MAYO_ALG`.
+    - Signatures: `PQCBENCH_DILITHIUM_ALG`, `PQCBENCH_FALCON_ALG`, `PQCBENCH_SPHINCS_ALG`, `PQCBENCH_XMSSMT_ALG`, `PQCBENCH_MAYO_ALG`, `PQCBENCH_CROSS_ALG`, `PQCBENCH_SLH_DSA_ALG`, `PQCBENCH_SNOVA_ALG`, `PQCBENCH_UOV_ALG`.
   - If unset, we pick reasonable defaults (e.g., ML‑KEM‑768, ML‑DSA‑65).
 
 - RSA adapters (classical)

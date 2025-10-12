@@ -17,6 +17,13 @@ def test_registry_has_placeholders():
     assert "ntru" in items
     assert "ntruprime" in items
     assert "dilithium" in items
+    assert "falcon" in items
+    assert "sphincs+" in items
+    assert "mayo" in items
+    assert "cross" in items
+    assert "slh-dsa" in items
+    assert "snova" in items
+    assert "uov" in items
 
 
 def test_measure_reports_extended_stats():
