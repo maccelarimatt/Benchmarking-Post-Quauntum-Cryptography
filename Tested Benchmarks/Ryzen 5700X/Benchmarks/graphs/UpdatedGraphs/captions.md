@@ -264,6 +264,14 @@ Classical vs quantum security estimates
 
 Keygen latency vs. classical security bits (memory)
 
+![20251007T091128Z/category_1/security_vs_latency_quantum_all_ops_memory.png](20251007T091128Z/category_1/security_vs_latency_quantum_all_ops_memory.png)
+
+Mean latency across operations vs quantum security bits (memory)
+
+![20251007T091128Z/category_1/security_vs_latency_quantum_all_ops_timing.png](20251007T091128Z/category_1/security_vs_latency_quantum_all_ops_timing.png)
+
+Mean latency across operations vs quantum security bits (timing)
+
 ![20251007T091128Z/category_1/security_vs_latency_quantum_memory.png](20251007T091128Z/category_1/security_vs_latency_quantum_memory.png)
 
 Keygen latency vs. quantum security bits (memory)
@@ -580,6 +588,14 @@ Classical vs quantum security estimates
 
 Keygen latency vs. classical security bits (memory)
 
+![20251007T091128Z/category_3/security_vs_latency_quantum_all_ops_memory.png](20251007T091128Z/category_3/security_vs_latency_quantum_all_ops_memory.png)
+
+Mean latency across operations vs quantum security bits (memory)
+
+![20251007T091128Z/category_3/security_vs_latency_quantum_all_ops_timing.png](20251007T091128Z/category_3/security_vs_latency_quantum_all_ops_timing.png)
+
+Mean latency across operations vs quantum security bits (timing)
+
 ![20251007T091128Z/category_3/security_vs_latency_quantum_memory.png](20251007T091128Z/category_3/security_vs_latency_quantum_memory.png)
 
 Keygen latency vs. quantum security bits (memory)
@@ -887,6 +903,14 @@ Classical vs quantum security estimates
 ![20251007T091128Z/category_5/security_vs_latency_memory.png](20251007T091128Z/category_5/security_vs_latency_memory.png)
 
 Keygen latency vs. classical security bits (memory)
+
+![20251007T091128Z/category_5/security_vs_latency_quantum_all_ops_memory.png](20251007T091128Z/category_5/security_vs_latency_quantum_all_ops_memory.png)
+
+Mean latency across operations vs quantum security bits (memory)
+
+![20251007T091128Z/category_5/security_vs_latency_quantum_all_ops_timing.png](20251007T091128Z/category_5/security_vs_latency_quantum_all_ops_timing.png)
+
+Mean latency across operations vs quantum security bits (timing)
 
 ![20251007T091128Z/category_5/security_vs_latency_quantum_memory.png](20251007T091128Z/category_5/security_vs_latency_quantum_memory.png)
 
@@ -1275,6 +1299,14 @@ Classical vs quantum security estimates
 ![20251007T091128Z/security_vs_latency_memory.png](20251007T091128Z/security_vs_latency_memory.png)
 
 Keygen latency vs. classical security bits (memory)
+
+![20251007T091128Z/security_vs_latency_quantum_all_ops_memory.png](20251007T091128Z/security_vs_latency_quantum_all_ops_memory.png)
+
+Mean latency across operations vs quantum security bits (memory)
+
+![20251007T091128Z/security_vs_latency_quantum_all_ops_timing.png](20251007T091128Z/security_vs_latency_quantum_all_ops_timing.png)
+
+Mean latency across operations vs quantum security bits (timing)
 
 ![20251007T091128Z/security_vs_latency_quantum_memory.png](20251007T091128Z/security_vs_latency_quantum_memory.png)
 

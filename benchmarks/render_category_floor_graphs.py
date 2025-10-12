@@ -567,6 +567,86 @@ def plot_security_vs_latency_quantum(
     )
 
 
+def plot_security_vs_latency_quantum_all_ops(
+    records: Sequence[Record],
+    output_dir: pathlib.Path,
+    pass_name: str,
+    captions: CaptionLog,
+) -> None:
+    unique = _collect_unique_meta(records)
+    points: List[Tuple[float, float, str, str, Optional[int]]] = []
+    for (kind, algo, category), _ in unique.items():
+        relevant = [
+            rec
+            for rec in records
+            if rec.algo == algo
+            and rec.kind == kind
+            and rec.category_number == category
+            and rec.measurement_pass == pass_name
+            and rec.mean_ms is not None
+        ]
+        if not relevant:
+            continue
+        latencies = [rec.mean_ms for rec in relevant if rec.mean_ms is not None]
+        if not latencies:
+            continue
+        mean_latency = statistics.fmean(latencies)
+        security_bits = next(
+            (
+                rec.security_quantum_bits
+                for rec in relevant
+                if rec.security_quantum_bits is not None
+            ),
+            None,
+        )
+        if security_bits is None:
+            continue
+        points.append((security_bits, mean_latency, kind, algo, category))
+
+    if not points:
+        return
+
+    fig, ax = plt.subplots(figsize=(6, 4.5))
+    markers = {"KEM": "o", "SIG": "^"}
+    colors = {"KEM": "#1f77b4", "SIG": "#ff7f0e"}
+
+    for security_bits, latency, kind, algo, category in points:
+        marker = markers.get(kind, "o")
+        color = colors.get(kind, "#555555")
+        ax.scatter(security_bits, latency, marker=marker, color=color, alpha=0.8)
+        ax.annotate(
+            _format_category_label(algo, category),
+            (security_bits, latency),
+            textcoords="offset points",
+            xytext=(4, 4),
+            fontsize=7,
+        )
+
+    ax.set_xlabel("Quantum security bits")
+    ax.set_ylabel("Mean latency across operations (ms)")
+    ax.grid(True, linestyle="--", alpha=0.3)
+    handles = [
+        plt.Line2D(
+            [0],
+            [0],
+            marker=markers[k],
+            color="w",
+            markerfacecolor=colors[k],
+            markersize=8,
+        )
+        for k in markers
+        if any(pt[2] == k for pt in points)
+    ]
+    labels = [k for k in markers if any(pt[2] == k for pt in points)]
+    if handles:
+        ax.legend(handles, labels, title="Kind")
+    outfile = output_dir / f"security_vs_latency_quantum_all_ops_{pass_name}.png"
+    caption = (
+        f"Mean latency across operations vs quantum security bits ({pass_name})"
+    )
+    _save_with_caption(fig, outfile, caption, captions)
+
+
 def plot_latency_distributions(
     records: Sequence[Record],
     output_dir: pathlib.Path,
@@ -1336,6 +1416,9 @@ def generate_graphs(
         plot_latency_ecdf(records, output_dir, pass_name, captions)
         plot_security_vs_latency(records, output_dir, pass_name, captions)
         plot_security_vs_latency_quantum(records, output_dir, pass_name, captions)
+        plot_security_vs_latency_quantum_all_ops(
+            records, output_dir, pass_name, captions
+        )
         if "timing" in pass_name:
             plot_throughput_vs_category(records, output_dir, pass_name, captions)
         if pass_name.startswith("memory"):
