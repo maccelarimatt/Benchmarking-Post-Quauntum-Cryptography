@@ -298,9 +298,9 @@ QUANTUM_ARCH_CHOICES = [
 RSA_MODEL_CHOICES = ["ge2019", "ge2025", "fast2025"]
 SECURITY_CATEGORY_CHOICES = [
     ("", "Adapter default"),
-    ("1", "Category 1 (â‰ˆ AES-128)"),
-    ("3", "Category 3 (â‰ˆ AES-192)"),
-    ("5", "Category 5 (â‰ˆ AES-256)"),
+    ("1", "Category 1 (≈ AES-128)"),
+    ("3", "Category 3 (≈ AES-192)"),
+    ("5", "Category 5 (≈ AES-256)"),
 ]
 DEFAULT_SECURITY_FORM = {
     "sec_adv": False,
@@ -1669,7 +1669,7 @@ def _heuristic_analysis(compare: dict) -> str:
     for op in ops:
         b = best_for(op)
         if b:
-            lines.append(f"- Fastest {op}: {b[0]} (â‰ˆ{b[1]:.3f} ms mean)")
+            lines.append(f"- Fastest {op}: {b[0]} (≈{b[1]:.3f} ms mean)")
     for op in ops:
         best_mem = None
         for a in compare.get("algos", []):
@@ -1678,7 +1678,7 @@ def _heuristic_analysis(compare: dict) -> str:
             if isinstance(mm, (int, float)):
                 best_mem = (a.get("label") or a.get("name") or "?", float(mm)) if best_mem is None or mm < best_mem[1] else best_mem
         if best_mem:
-            lines.append(f"- Lowest memory {op}: {best_mem[0]} (â‰ˆ{best_mem[1]:.2f} KB)")
+            lines.append(f"- Lowest memory {op}: {best_mem[0]} (≈{best_mem[1]:.2f} KB)")
     for a in compare.get("algos", []):
         md = a.get("meta") or {}
         sizes = []
