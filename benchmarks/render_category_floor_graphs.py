@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tupl
 
 try:
     import matplotlib.pyplot as plt
+    import matplotlib.transforms as mtransforms
 except ImportError as exc:  # pragma: no cover - import guard
     raise SystemExit(
         "matplotlib is required for graph rendering. Install it via 'pip install matplotlib'."
@@ -497,17 +498,16 @@ def _plot_security_vs_latency(
     markers = {"KEM": "o", "SIG": "^"}
     colors = {"KEM": "#1f77b4", "SIG": "#ff7f0e"}
 
+    label_specs: List[Tuple[float, float, str]] = []
     for security_bits, latency, kind, algo, category in points:
         marker = markers.get(kind, "o")
         color = colors.get(kind, "#555555")
         ax.scatter(security_bits, latency, marker=marker, color=color, alpha=0.8)
-        ax.annotate(
-            _format_category_label(algo, category),
-            (security_bits, latency),
-            textcoords="offset points",
-            xytext=(4, 4),
-            fontsize=7,
+        label_specs.append(
+            (security_bits, latency, _format_category_label(algo, category))
         )
+
+    _place_point_labels(fig, ax, label_specs)
 
     ax.set_xlabel(axis_label)
     ax.set_ylabel("Keygen mean latency (ms)")
@@ -609,17 +609,16 @@ def plot_security_vs_latency_quantum_all_ops(
     markers = {"KEM": "o", "SIG": "^"}
     colors = {"KEM": "#1f77b4", "SIG": "#ff7f0e"}
 
+    label_specs: List[Tuple[float, float, str]] = []
     for security_bits, latency, kind, algo, category in points:
         marker = markers.get(kind, "o")
         color = colors.get(kind, "#555555")
         ax.scatter(security_bits, latency, marker=marker, color=color, alpha=0.8)
-        ax.annotate(
-            _format_category_label(algo, category),
-            (security_bits, latency),
-            textcoords="offset points",
-            xytext=(4, 4),
-            fontsize=7,
+        label_specs.append(
+            (security_bits, latency, _format_category_label(algo, category))
         )
+
+    _place_point_labels(fig, ax, label_specs)
 
     ax.set_xlabel("Quantum security bits")
     ax.set_ylabel("Mean latency across operations (ms)")
@@ -1233,6 +1232,80 @@ def plot_shor_runtime(
         _save_with_caption(fig, outfile, caption, captions)
 
 
+def _place_point_labels(
+    fig: plt.Figure,
+    ax: plt.Axes,
+    label_specs: Sequence[Tuple[float, float, str]],
+) -> None:
+    if not label_specs:
+        return
+    base_offsets = [
+        (12, 12),
+        (-12, 12),
+        (12, -12),
+        (-12, -12),
+        (20, 12),
+        (20, -12),
+        (12, 20),
+        (-12, 20),
+    ]
+    offsets: List[Tuple[float, float]] = []
+    for radius_mult in range(1, 7):
+        scale = radius_mult
+        for ox, oy in base_offsets:
+            offsets.append((ox * scale, oy * scale))
+    usage: Dict[Tuple[float, float], int] = defaultdict(int)
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    placed_bboxes: List[mtransforms.Bbox] = []
+
+    for x, y, label_text in label_specs:
+        start_idx = usage[(x, y)]
+        placed = False
+        for attempt in range(start_idx, start_idx + len(offsets)):
+            offset = offsets[attempt % len(offsets)]
+            text_artist = ax.annotate(
+                label_text,
+                (x, y),
+                textcoords="offset points",
+                xytext=offset,
+                fontsize=7,
+                bbox=dict(boxstyle="round,pad=0.2", fc="white", alpha=0.65, lw=0.0),
+                arrowprops=dict(arrowstyle="-", color="#666666", lw=0.6, alpha=0.7),
+                annotation_clip=False,
+            )
+            fig.canvas.draw()
+            bbox = (
+                text_artist.get_window_extent(renderer=renderer)
+                .expanded(1.05, 1.12)
+                .frozen()
+            )
+            if not any(bbox.overlaps(existing) for existing in placed_bboxes):
+                placed_bboxes.append(bbox)
+                usage[(x, y)] = attempt + 1
+                placed = True
+                break
+            text_artist.remove()
+        if not placed:
+            text_artist = ax.annotate(
+                label_text,
+                (x, y),
+                textcoords="offset points",
+                xytext=offsets[0],
+                fontsize=7,
+                bbox=dict(boxstyle="round,pad=0.2", fc="white", alpha=0.65, lw=0.0),
+                arrowprops=dict(arrowstyle="-", color="#666666", lw=0.6, alpha=0.7),
+                annotation_clip=False,
+            )
+            fig.canvas.draw()
+            placed_bboxes.append(
+                text_artist.get_window_extent(renderer=renderer)
+                .expanded(1.05, 1.12)
+                .frozen()
+            )
+            usage[(x, y)] = start_idx + 1
+
+
 def _plot_tradeoff_frontier(
     points: Sequence[Tuple[float, float, float, str, int, str]],
     y_label: str,
@@ -1245,8 +1318,7 @@ def _plot_tradeoff_frontier(
         return
 
     fig, ax = plt.subplots(figsize=(7.5, 4.75))
-    offsets = [(6, 6), (-52, 6), (6, -18), (-52, -18), (18, 18), (-30, 18)]
-    coord_counts: Dict[Tuple[float, float], int] = defaultdict(int)
+    label_specs: List[Tuple[float, float, str]] = []
     marker_props = {
         "KEM": {"marker": "o", "facecolor": "#1f77b4"},
         "SIG": {"marker": "^", "facecolor": "#ff7f0e"},
@@ -1266,19 +1338,9 @@ def _plot_tradeoff_frontier(
             linewidths=0.4,
             alpha=0.75,
         )
-        coord_key = (latency, sec_bits)
-        offset_idx = coord_counts[coord_key] % len(offsets)
-        coord_counts[coord_key] += 1
-        xytext = offsets[offset_idx]
-        ax.annotate(
-            f"{algo}\nCat-{category}",
-            (latency, sec_bits),
-            textcoords="offset points",
-            xytext=xytext,
-            fontsize=7,
-            bbox=dict(boxstyle="round,pad=0.2", fc="white", alpha=0.65, lw=0.0),
-            arrowprops=dict(arrowstyle="-", color="#666666", lw=0.6, alpha=0.7),
-        )
+        label_specs.append((latency, sec_bits, f"{algo}\nCat-{category}"))
+
+    _place_point_labels(fig, ax, label_specs)
 
     ax.set_xlabel(f"Latency (ms) — {pass_name}")
     ax.set_ylabel(y_label)
