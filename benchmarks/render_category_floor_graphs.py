@@ -354,6 +354,10 @@ def plot_latency_bars(
     output_dir: pathlib.Path,
     pass_name: str,
     captions: CaptionLog,
+    *,
+    algorithm_filter: Optional[Callable[[Record], bool]] = None,
+    suffix: str = "",
+    caption_suffix: str = "",
 ) -> None:
     by_kind: Dict[str, Dict[Tuple[str, Optional[int], str], Optional[float]]] = (
         defaultdict(dict)
@@ -363,6 +367,8 @@ def plot_latency_bars(
 
     for rec in records:
         if rec.measurement_pass != pass_name:
+            continue
+        if algorithm_filter and not algorithm_filter(rec):
             continue
         key = (rec.algo, rec.category_number, rec.operation)
         by_kind[rec.kind][key] = rec.mean_ms
@@ -401,8 +407,8 @@ def plot_latency_bars(
         ax.grid(True, axis="y", linestyle="--", alpha=0.3)
         for tick in ax.get_xticklabels():
             tick.set_horizontalalignment("right")
-        outfile = output_dir / f"latency_{pass_name}_{kind.lower()}.png"
-        caption = f"Mean latency per operation for {kind} ({pass_name})"
+        outfile = output_dir / f"latency_{pass_name}{suffix}_{kind.lower()}.png"
+        caption = f"Mean latency per operation for {kind} ({pass_name}){caption_suffix}"
         _save_with_caption(fig, outfile, caption, captions)
 
 
@@ -648,12 +654,18 @@ def plot_latency_distributions(
     output_dir: pathlib.Path,
     pass_name: str,
     captions: CaptionLog,
+    *,
+    algorithm_filter: Optional[Callable[[Record], bool]] = None,
+    suffix: str = "",
+    caption_suffix: str = "",
 ) -> None:
     grouped: Dict[Tuple[str, str], List[Tuple[str, int, Sequence[float]]]] = (
         defaultdict(list)
     )
     for rec in records:
         if rec.measurement_pass != pass_name or not rec.series:
+            continue
+        if algorithm_filter and not algorithm_filter(rec):
             continue
         grouped[(rec.kind, rec.operation)].append(
             (rec.algo, rec.category_number, rec.series)
@@ -687,11 +699,9 @@ def plot_latency_distributions(
         ax.grid(True, axis="y", linestyle="--", alpha=0.3)
         outfile = (
             output_dir
-            / f"latency_distribution_{pass_name}_{kind.lower()}_{operation}.png"
+            / f"latency_distribution_{pass_name}{suffix}_{kind.lower()}_{operation}.png"
         )
-        caption = (
-            f"Latency mean ± standard deviation for {kind} {operation} ({pass_name})"
-        )
+        caption = f"Latency mean ± standard deviation for {kind} {operation} ({pass_name}){caption_suffix}"
         _save_with_caption(fig, outfile, caption, captions)
 
 
@@ -750,12 +760,18 @@ def plot_latency_ecdf(
     output_dir: pathlib.Path,
     pass_name: str,
     captions: CaptionLog,
+    *,
+    algorithm_filter: Optional[Callable[[Record], bool]] = None,
+    suffix: str = "",
+    caption_suffix: str = "",
 ) -> None:
     grouped: Dict[Tuple[str, str], List[Tuple[str, int, Sequence[float]]]] = (
         defaultdict(list)
     )
     for rec in records:
         if rec.measurement_pass != pass_name or not rec.series:
+            continue
+        if algorithm_filter and not algorithm_filter(rec):
             continue
         grouped[(rec.kind, rec.operation)].append(
             (rec.algo, rec.category_number, rec.series)
@@ -778,9 +794,10 @@ def plot_latency_ecdf(
         if ax.lines:
             ax.legend()
         outfile = (
-            output_dir / f"latency_ecdf_{pass_name}_{kind.lower()}_{operation}.png"
+            output_dir
+            / f"latency_ecdf_{pass_name}{suffix}_{kind.lower()}_{operation}.png"
         )
-        caption = f"Latency ECDF for {kind} {operation} ({pass_name})"
+        caption = f"Latency ECDF for {kind} {operation} ({pass_name}){caption_suffix}"
         _save_with_caption(fig, outfile, caption, captions)
 
 
@@ -1529,11 +1546,39 @@ def generate_graphs(
 
         is_timing_pass = "timing" in pass_name
         is_memory_pass = "memory" in pass_name
+        pqc_filter = lambda rec: "rsa" not in (rec.algo or "").lower()
 
         if is_timing_pass:
             plot_latency_bars(records, output_dir, pass_name, captions)
             plot_latency_distributions(records, output_dir, pass_name, captions)
             plot_latency_ecdf(records, output_dir, pass_name, captions)
+            plot_latency_bars(
+                records,
+                output_dir,
+                pass_name,
+                captions,
+                algorithm_filter=pqc_filter,
+                suffix="_pqc",
+                caption_suffix=" (PQC only)",
+            )
+            plot_latency_distributions(
+                records,
+                output_dir,
+                pass_name,
+                captions,
+                algorithm_filter=pqc_filter,
+                suffix="_pqc",
+                caption_suffix=" (PQC only)",
+            )
+            plot_latency_ecdf(
+                records,
+                output_dir,
+                pass_name,
+                captions,
+                algorithm_filter=pqc_filter,
+                suffix="_pqc",
+                caption_suffix=" (PQC only)",
+            )
             plot_security_vs_latency(records, output_dir, pass_name, captions)
             plot_security_vs_latency_quantum(records, output_dir, pass_name, captions)
             plot_security_vs_latency_quantum_all_ops(
