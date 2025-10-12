@@ -585,32 +585,37 @@ def plot_latency_distributions(
 
     for (kind, operation), entries in grouped.items():
         entries = sorted(entries, key=lambda item: (item[0], item[1]))
-        data = [list(series) for _, _, series in entries if series]
-        if not data:
+        stats: List[Tuple[str, float, float]] = []
+        for algo, category, series in entries:
+            if not series:
+                continue
+            mean_val = statistics.fmean(series)
+            std_val = statistics.stdev(series) if len(series) > 1 else 0.0
+            stats.append((f"{algo} (Cat-{category})", mean_val, std_val))
+        if not stats:
             continue
-        labels = [
-            f"{algo} (Cat-{category})" for algo, category, series in entries if series
-        ]
-        positions = list(range(1, len(data) + 1))
+
+        labels = [label for label, _, _ in stats]
+        means = [mean for _, mean, _ in stats]
+        stds = [std for _, _, std in stats]
+        positions = list(range(len(stats)))
 
         fig, ax = plt.subplots(figsize=(max(6, len(labels) * 0.75), 4.5))
-        violins = ax.violinplot(
-            data, positions=positions, showmeans=True, showextrema=False
-        )
-        for body in violins["bodies"]:
-            body.set_alpha(0.6)
-        ax.boxplot(data, positions=positions, widths=0.2, patch_artist=True)
+        ax.bar(positions, means, yerr=stds, capsize=4)
         ax.set_xticks(positions)
         ax.set_xticklabels(labels, rotation=45)
         for tick in ax.get_xticklabels():
             tick.set_horizontalalignment("right")
         ax.set_ylabel("Latency (ms)")
+        ax.set_title(f"{kind} {operation} latency — mean ± σ ({pass_name})")
         ax.grid(True, axis="y", linestyle="--", alpha=0.3)
         outfile = (
             output_dir
             / f"latency_distribution_{pass_name}_{kind.lower()}_{operation}.png"
         )
-        caption = f"Latency distribution for {kind} {operation} ({pass_name})"
+        caption = (
+            f"Latency mean ± standard deviation for {kind} {operation} ({pass_name})"
+        )
         _save_with_caption(fig, outfile, caption, captions)
 
 
@@ -632,32 +637,37 @@ def plot_memory_distributions(
 
     for (kind, operation), entries in grouped.items():
         entries = sorted(entries, key=lambda item: (item[0], item[1]))
-        data = [list(series) for _, _, series in entries if series]
-        if not data:
+        stats: List[Tuple[str, float, float]] = []
+        for algo, category, series in entries:
+            if not series:
+                continue
+            mean_val = statistics.fmean(series)
+            std_val = statistics.stdev(series) if len(series) > 1 else 0.0
+            stats.append((f"{algo} (Cat-{category})", mean_val, std_val))
+        if not stats:
             continue
-        labels = [
-            f"{algo} (Cat-{category})" for algo, category, series in entries if series
-        ]
-        positions = list(range(1, len(data) + 1))
+
+        labels = [label for label, _, _ in stats]
+        means = [mean for _, mean, _ in stats]
+        stds = [std for _, _, std in stats]
+        positions = list(range(len(stats)))
 
         fig, ax = plt.subplots(figsize=(max(6, len(labels) * 0.75), 4.5))
-        violins = ax.violinplot(
-            data, positions=positions, showmeans=True, showextrema=False
-        )
-        for body in violins["bodies"]:
-            body.set_alpha(0.6)
-        ax.boxplot(data, positions=positions, widths=0.2, patch_artist=True)
+        ax.bar(positions, means, yerr=stds, capsize=4)
         ax.set_xticks(positions)
         ax.set_xticklabels(labels, rotation=45)
         for tick in ax.get_xticklabels():
             tick.set_horizontalalignment("right")
         ax.set_ylabel("Peak memory (KB)")
+        ax.set_title(f"{kind} {operation} RSS — mean ± σ ({pass_name})")
         ax.grid(True, axis="y", linestyle="--", alpha=0.3)
         outfile = (
             output_dir
             / f"memory_distribution_{pass_name}_{kind.lower()}_{operation}.png"
         )
-        caption = f"Memory distribution for {kind} {operation} ({pass_name})"
+        caption = (
+            f"Peak memory mean ± standard deviation for {kind} {operation} ({pass_name})"
+        )
         _save_with_caption(fig, outfile, caption, captions)
 
 
@@ -1543,4 +1553,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

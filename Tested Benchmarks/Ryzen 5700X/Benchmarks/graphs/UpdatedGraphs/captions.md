@@ -26,51 +26,51 @@ Hamming weight — Category 1
 
 ![20251007T091128Z/category_1/latency_distribution_memory_kem_decapsulate.png](20251007T091128Z/category_1/latency_distribution_memory_kem_decapsulate.png)
 
-Latency distribution for KEM decapsulate (memory)
+Latency mean ± standard deviation for KEM decapsulate (memory)
 
 ![20251007T091128Z/category_1/latency_distribution_memory_kem_encapsulate.png](20251007T091128Z/category_1/latency_distribution_memory_kem_encapsulate.png)
 
-Latency distribution for KEM encapsulate (memory)
+Latency mean ± standard deviation for KEM encapsulate (memory)
 
 ![20251007T091128Z/category_1/latency_distribution_memory_kem_keygen.png](20251007T091128Z/category_1/latency_distribution_memory_kem_keygen.png)
 
-Latency distribution for KEM keygen (memory)
+Latency mean ± standard deviation for KEM keygen (memory)
 
 ![20251007T091128Z/category_1/latency_distribution_memory_sig_keygen.png](20251007T091128Z/category_1/latency_distribution_memory_sig_keygen.png)
 
-Latency distribution for SIG keygen (memory)
+Latency mean ± standard deviation for SIG keygen (memory)
 
 ![20251007T091128Z/category_1/latency_distribution_memory_sig_sign.png](20251007T091128Z/category_1/latency_distribution_memory_sig_sign.png)
 
-Latency distribution for SIG sign (memory)
+Latency mean ± standard deviation for SIG sign (memory)
 
 ![20251007T091128Z/category_1/latency_distribution_memory_sig_verify.png](20251007T091128Z/category_1/latency_distribution_memory_sig_verify.png)
 
-Latency distribution for SIG verify (memory)
+Latency mean ± standard deviation for SIG verify (memory)
 
 ![20251007T091128Z/category_1/latency_distribution_timing_kem_decapsulate.png](20251007T091128Z/category_1/latency_distribution_timing_kem_decapsulate.png)
 
-Latency distribution for KEM decapsulate (timing)
+Latency mean ± standard deviation for KEM decapsulate (timing)
 
 ![20251007T091128Z/category_1/latency_distribution_timing_kem_encapsulate.png](20251007T091128Z/category_1/latency_distribution_timing_kem_encapsulate.png)
 
-Latency distribution for KEM encapsulate (timing)
+Latency mean ± standard deviation for KEM encapsulate (timing)
 
 ![20251007T091128Z/category_1/latency_distribution_timing_kem_keygen.png](20251007T091128Z/category_1/latency_distribution_timing_kem_keygen.png)
 
-Latency distribution for KEM keygen (timing)
+Latency mean ± standard deviation for KEM keygen (timing)
 
 ![20251007T091128Z/category_1/latency_distribution_timing_sig_keygen.png](20251007T091128Z/category_1/latency_distribution_timing_sig_keygen.png)
 
-Latency distribution for SIG keygen (timing)
+Latency mean ± standard deviation for SIG keygen (timing)
 
 ![20251007T091128Z/category_1/latency_distribution_timing_sig_sign.png](20251007T091128Z/category_1/latency_distribution_timing_sig_sign.png)
 
-Latency distribution for SIG sign (timing)
+Latency mean ± standard deviation for SIG sign (timing)
 
 ![20251007T091128Z/category_1/latency_distribution_timing_sig_verify.png](20251007T091128Z/category_1/latency_distribution_timing_sig_verify.png)
 
-Latency distribution for SIG verify (timing)
+Latency mean ± standard deviation for SIG verify (timing)
 
 ![20251007T091128Z/category_1/latency_ecdf_memory_kem_decapsulate.png](20251007T091128Z/category_1/latency_ecdf_memory_kem_decapsulate.png)
 
@@ -138,27 +138,27 @@ Mean latency per operation for SIG (timing)
 
 ![20251007T091128Z/category_1/memory_distribution_memory_kem_decapsulate.png](20251007T091128Z/category_1/memory_distribution_memory_kem_decapsulate.png)
 
-Memory distribution for KEM decapsulate (memory)
+Peak memory mean ± standard deviation for KEM decapsulate (memory)
 
 ![20251007T091128Z/category_1/memory_distribution_memory_kem_encapsulate.png](20251007T091128Z/category_1/memory_distribution_memory_kem_encapsulate.png)
 
-Memory distribution for KEM encapsulate (memory)
+Peak memory mean ± standard deviation for KEM encapsulate (memory)
 
 ![20251007T091128Z/category_1/memory_distribution_memory_kem_keygen.png](20251007T091128Z/category_1/memory_distribution_memory_kem_keygen.png)
 
-Memory distribution for KEM keygen (memory)
+Peak memory mean ± standard deviation for KEM keygen (memory)
 
 ![20251007T091128Z/category_1/memory_distribution_memory_sig_keygen.png](20251007T091128Z/category_1/memory_distribution_memory_sig_keygen.png)
 
-Memory distribution for SIG keygen (memory)
+Peak memory mean ± standard deviation for SIG keygen (memory)
 
 ![20251007T091128Z/category_1/memory_distribution_memory_sig_sign.png](20251007T091128Z/category_1/memory_distribution_memory_sig_sign.png)
 
-Memory distribution for SIG sign (memory)
+Peak memory mean ± standard deviation for SIG sign (memory)
 
 ![20251007T091128Z/category_1/memory_distribution_memory_sig_verify.png](20251007T091128Z/category_1/memory_distribution_memory_sig_verify.png)
 
-Memory distribution for SIG verify (memory)
+Peak memory mean ± standard deviation for SIG verify (memory)
 
 ![20251007T091128Z/category_1/memory_errorbars_memory_kem_decapsulate.png](20251007T091128Z/category_1/memory_errorbars_memory_kem_decapsulate.png)
 
@@ -342,51 +342,51 @@ Hamming weight — Category 3
 
 ![20251007T091128Z/category_3/latency_distribution_memory_kem_decapsulate.png](20251007T091128Z/category_3/latency_distribution_memory_kem_decapsulate.png)
 
-Latency distribution for KEM decapsulate (memory)
+Latency mean ± standard deviation for KEM decapsulate (memory)
 
 ![20251007T091128Z/category_3/latency_distribution_memory_kem_encapsulate.png](20251007T091128Z/category_3/latency_distribution_memory_kem_encapsulate.png)
 
-Latency distribution for KEM encapsulate (memory)
+Latency mean ± standard deviation for KEM encapsulate (memory)
 
 ![20251007T091128Z/category_3/latency_distribution_memory_kem_keygen.png](20251007T091128Z/category_3/latency_distribution_memory_kem_keygen.png)
 
-Latency distribution for KEM keygen (memory)
+Latency mean ± standard deviation for KEM keygen (memory)
 
 ![20251007T091128Z/category_3/latency_distribution_memory_sig_keygen.png](20251007T091128Z/category_3/latency_distribution_memory_sig_keygen.png)
 
-Latency distribution for SIG keygen (memory)
+Latency mean ± standard deviation for SIG keygen (memory)
 
 ![20251007T091128Z/category_3/latency_distribution_memory_sig_sign.png](20251007T091128Z/category_3/latency_distribution_memory_sig_sign.png)
 
-Latency distribution for SIG sign (memory)
+Latency mean ± standard deviation for SIG sign (memory)
 
 ![20251007T091128Z/category_3/latency_distribution_memory_sig_verify.png](20251007T091128Z/category_3/latency_distribution_memory_sig_verify.png)
 
-Latency distribution for SIG verify (memory)
+Latency mean ± standard deviation for SIG verify (memory)
 
 ![20251007T091128Z/category_3/latency_distribution_timing_kem_decapsulate.png](20251007T091128Z/category_3/latency_distribution_timing_kem_decapsulate.png)
 
-Latency distribution for KEM decapsulate (timing)
+Latency mean ± standard deviation for KEM decapsulate (timing)
 
 ![20251007T091128Z/category_3/latency_distribution_timing_kem_encapsulate.png](20251007T091128Z/category_3/latency_distribution_timing_kem_encapsulate.png)
 
-Latency distribution for KEM encapsulate (timing)
+Latency mean ± standard deviation for KEM encapsulate (timing)
 
 ![20251007T091128Z/category_3/latency_distribution_timing_kem_keygen.png](20251007T091128Z/category_3/latency_distribution_timing_kem_keygen.png)
 
-Latency distribution for KEM keygen (timing)
+Latency mean ± standard deviation for KEM keygen (timing)
 
 ![20251007T091128Z/category_3/latency_distribution_timing_sig_keygen.png](20251007T091128Z/category_3/latency_distribution_timing_sig_keygen.png)
 
-Latency distribution for SIG keygen (timing)
+Latency mean ± standard deviation for SIG keygen (timing)
 
 ![20251007T091128Z/category_3/latency_distribution_timing_sig_sign.png](20251007T091128Z/category_3/latency_distribution_timing_sig_sign.png)
 
-Latency distribution for SIG sign (timing)
+Latency mean ± standard deviation for SIG sign (timing)
 
 ![20251007T091128Z/category_3/latency_distribution_timing_sig_verify.png](20251007T091128Z/category_3/latency_distribution_timing_sig_verify.png)
 
-Latency distribution for SIG verify (timing)
+Latency mean ± standard deviation for SIG verify (timing)
 
 ![20251007T091128Z/category_3/latency_ecdf_memory_kem_decapsulate.png](20251007T091128Z/category_3/latency_ecdf_memory_kem_decapsulate.png)
 
@@ -454,27 +454,27 @@ Mean latency per operation for SIG (timing)
 
 ![20251007T091128Z/category_3/memory_distribution_memory_kem_decapsulate.png](20251007T091128Z/category_3/memory_distribution_memory_kem_decapsulate.png)
 
-Memory distribution for KEM decapsulate (memory)
+Peak memory mean ± standard deviation for KEM decapsulate (memory)
 
 ![20251007T091128Z/category_3/memory_distribution_memory_kem_encapsulate.png](20251007T091128Z/category_3/memory_distribution_memory_kem_encapsulate.png)
 
-Memory distribution for KEM encapsulate (memory)
+Peak memory mean ± standard deviation for KEM encapsulate (memory)
 
 ![20251007T091128Z/category_3/memory_distribution_memory_kem_keygen.png](20251007T091128Z/category_3/memory_distribution_memory_kem_keygen.png)
 
-Memory distribution for KEM keygen (memory)
+Peak memory mean ± standard deviation for KEM keygen (memory)
 
 ![20251007T091128Z/category_3/memory_distribution_memory_sig_keygen.png](20251007T091128Z/category_3/memory_distribution_memory_sig_keygen.png)
 
-Memory distribution for SIG keygen (memory)
+Peak memory mean ± standard deviation for SIG keygen (memory)
 
 ![20251007T091128Z/category_3/memory_distribution_memory_sig_sign.png](20251007T091128Z/category_3/memory_distribution_memory_sig_sign.png)
 
-Memory distribution for SIG sign (memory)
+Peak memory mean ± standard deviation for SIG sign (memory)
 
 ![20251007T091128Z/category_3/memory_distribution_memory_sig_verify.png](20251007T091128Z/category_3/memory_distribution_memory_sig_verify.png)
 
-Memory distribution for SIG verify (memory)
+Peak memory mean ± standard deviation for SIG verify (memory)
 
 ![20251007T091128Z/category_3/memory_errorbars_memory_kem_decapsulate.png](20251007T091128Z/category_3/memory_errorbars_memory_kem_decapsulate.png)
 
@@ -658,51 +658,51 @@ Hamming weight — Category 5
 
 ![20251007T091128Z/category_5/latency_distribution_memory_kem_decapsulate.png](20251007T091128Z/category_5/latency_distribution_memory_kem_decapsulate.png)
 
-Latency distribution for KEM decapsulate (memory)
+Latency mean ± standard deviation for KEM decapsulate (memory)
 
 ![20251007T091128Z/category_5/latency_distribution_memory_kem_encapsulate.png](20251007T091128Z/category_5/latency_distribution_memory_kem_encapsulate.png)
 
-Latency distribution for KEM encapsulate (memory)
+Latency mean ± standard deviation for KEM encapsulate (memory)
 
 ![20251007T091128Z/category_5/latency_distribution_memory_kem_keygen.png](20251007T091128Z/category_5/latency_distribution_memory_kem_keygen.png)
 
-Latency distribution for KEM keygen (memory)
+Latency mean ± standard deviation for KEM keygen (memory)
 
 ![20251007T091128Z/category_5/latency_distribution_memory_sig_keygen.png](20251007T091128Z/category_5/latency_distribution_memory_sig_keygen.png)
 
-Latency distribution for SIG keygen (memory)
+Latency mean ± standard deviation for SIG keygen (memory)
 
 ![20251007T091128Z/category_5/latency_distribution_memory_sig_sign.png](20251007T091128Z/category_5/latency_distribution_memory_sig_sign.png)
 
-Latency distribution for SIG sign (memory)
+Latency mean ± standard deviation for SIG sign (memory)
 
 ![20251007T091128Z/category_5/latency_distribution_memory_sig_verify.png](20251007T091128Z/category_5/latency_distribution_memory_sig_verify.png)
 
-Latency distribution for SIG verify (memory)
+Latency mean ± standard deviation for SIG verify (memory)
 
 ![20251007T091128Z/category_5/latency_distribution_timing_kem_decapsulate.png](20251007T091128Z/category_5/latency_distribution_timing_kem_decapsulate.png)
 
-Latency distribution for KEM decapsulate (timing)
+Latency mean ± standard deviation for KEM decapsulate (timing)
 
 ![20251007T091128Z/category_5/latency_distribution_timing_kem_encapsulate.png](20251007T091128Z/category_5/latency_distribution_timing_kem_encapsulate.png)
 
-Latency distribution for KEM encapsulate (timing)
+Latency mean ± standard deviation for KEM encapsulate (timing)
 
 ![20251007T091128Z/category_5/latency_distribution_timing_kem_keygen.png](20251007T091128Z/category_5/latency_distribution_timing_kem_keygen.png)
 
-Latency distribution for KEM keygen (timing)
+Latency mean ± standard deviation for KEM keygen (timing)
 
 ![20251007T091128Z/category_5/latency_distribution_timing_sig_keygen.png](20251007T091128Z/category_5/latency_distribution_timing_sig_keygen.png)
 
-Latency distribution for SIG keygen (timing)
+Latency mean ± standard deviation for SIG keygen (timing)
 
 ![20251007T091128Z/category_5/latency_distribution_timing_sig_sign.png](20251007T091128Z/category_5/latency_distribution_timing_sig_sign.png)
 
-Latency distribution for SIG sign (timing)
+Latency mean ± standard deviation for SIG sign (timing)
 
 ![20251007T091128Z/category_5/latency_distribution_timing_sig_verify.png](20251007T091128Z/category_5/latency_distribution_timing_sig_verify.png)
 
-Latency distribution for SIG verify (timing)
+Latency mean ± standard deviation for SIG verify (timing)
 
 ![20251007T091128Z/category_5/latency_ecdf_memory_kem_decapsulate.png](20251007T091128Z/category_5/latency_ecdf_memory_kem_decapsulate.png)
 
@@ -770,27 +770,27 @@ Mean latency per operation for SIG (timing)
 
 ![20251007T091128Z/category_5/memory_distribution_memory_kem_decapsulate.png](20251007T091128Z/category_5/memory_distribution_memory_kem_decapsulate.png)
 
-Memory distribution for KEM decapsulate (memory)
+Peak memory mean ± standard deviation for KEM decapsulate (memory)
 
 ![20251007T091128Z/category_5/memory_distribution_memory_kem_encapsulate.png](20251007T091128Z/category_5/memory_distribution_memory_kem_encapsulate.png)
 
-Memory distribution for KEM encapsulate (memory)
+Peak memory mean ± standard deviation for KEM encapsulate (memory)
 
 ![20251007T091128Z/category_5/memory_distribution_memory_kem_keygen.png](20251007T091128Z/category_5/memory_distribution_memory_kem_keygen.png)
 
-Memory distribution for KEM keygen (memory)
+Peak memory mean ± standard deviation for KEM keygen (memory)
 
 ![20251007T091128Z/category_5/memory_distribution_memory_sig_keygen.png](20251007T091128Z/category_5/memory_distribution_memory_sig_keygen.png)
 
-Memory distribution for SIG keygen (memory)
+Peak memory mean ± standard deviation for SIG keygen (memory)
 
 ![20251007T091128Z/category_5/memory_distribution_memory_sig_sign.png](20251007T091128Z/category_5/memory_distribution_memory_sig_sign.png)
 
-Memory distribution for SIG sign (memory)
+Peak memory mean ± standard deviation for SIG sign (memory)
 
 ![20251007T091128Z/category_5/memory_distribution_memory_sig_verify.png](20251007T091128Z/category_5/memory_distribution_memory_sig_verify.png)
 
-Memory distribution for SIG verify (memory)
+Peak memory mean ± standard deviation for SIG verify (memory)
 
 ![20251007T091128Z/category_5/memory_errorbars_memory_kem_decapsulate.png](20251007T091128Z/category_5/memory_errorbars_memory_kem_decapsulate.png)
 
@@ -974,51 +974,51 @@ Hamming weight — Category 5
 
 ![20251007T091128Z/latency_distribution_memory_kem_decapsulate.png](20251007T091128Z/latency_distribution_memory_kem_decapsulate.png)
 
-Latency distribution for KEM decapsulate (memory)
+Latency mean ± standard deviation for KEM decapsulate (memory)
 
 ![20251007T091128Z/latency_distribution_memory_kem_encapsulate.png](20251007T091128Z/latency_distribution_memory_kem_encapsulate.png)
 
-Latency distribution for KEM encapsulate (memory)
+Latency mean ± standard deviation for KEM encapsulate (memory)
 
 ![20251007T091128Z/latency_distribution_memory_kem_keygen.png](20251007T091128Z/latency_distribution_memory_kem_keygen.png)
 
-Latency distribution for KEM keygen (memory)
+Latency mean ± standard deviation for KEM keygen (memory)
 
 ![20251007T091128Z/latency_distribution_memory_sig_keygen.png](20251007T091128Z/latency_distribution_memory_sig_keygen.png)
 
-Latency distribution for SIG keygen (memory)
+Latency mean ± standard deviation for SIG keygen (memory)
 
 ![20251007T091128Z/latency_distribution_memory_sig_sign.png](20251007T091128Z/latency_distribution_memory_sig_sign.png)
 
-Latency distribution for SIG sign (memory)
+Latency mean ± standard deviation for SIG sign (memory)
 
 ![20251007T091128Z/latency_distribution_memory_sig_verify.png](20251007T091128Z/latency_distribution_memory_sig_verify.png)
 
-Latency distribution for SIG verify (memory)
+Latency mean ± standard deviation for SIG verify (memory)
 
 ![20251007T091128Z/latency_distribution_timing_kem_decapsulate.png](20251007T091128Z/latency_distribution_timing_kem_decapsulate.png)
 
-Latency distribution for KEM decapsulate (timing)
+Latency mean ± standard deviation for KEM decapsulate (timing)
 
 ![20251007T091128Z/latency_distribution_timing_kem_encapsulate.png](20251007T091128Z/latency_distribution_timing_kem_encapsulate.png)
 
-Latency distribution for KEM encapsulate (timing)
+Latency mean ± standard deviation for KEM encapsulate (timing)
 
 ![20251007T091128Z/latency_distribution_timing_kem_keygen.png](20251007T091128Z/latency_distribution_timing_kem_keygen.png)
 
-Latency distribution for KEM keygen (timing)
+Latency mean ± standard deviation for KEM keygen (timing)
 
 ![20251007T091128Z/latency_distribution_timing_sig_keygen.png](20251007T091128Z/latency_distribution_timing_sig_keygen.png)
 
-Latency distribution for SIG keygen (timing)
+Latency mean ± standard deviation for SIG keygen (timing)
 
 ![20251007T091128Z/latency_distribution_timing_sig_sign.png](20251007T091128Z/latency_distribution_timing_sig_sign.png)
 
-Latency distribution for SIG sign (timing)
+Latency mean ± standard deviation for SIG sign (timing)
 
 ![20251007T091128Z/latency_distribution_timing_sig_verify.png](20251007T091128Z/latency_distribution_timing_sig_verify.png)
 
-Latency distribution for SIG verify (timing)
+Latency mean ± standard deviation for SIG verify (timing)
 
 ![20251007T091128Z/latency_ecdf_memory_kem_decapsulate.png](20251007T091128Z/latency_ecdf_memory_kem_decapsulate.png)
 
@@ -1086,27 +1086,27 @@ Mean latency per operation for SIG (timing)
 
 ![20251007T091128Z/memory_distribution_memory_kem_decapsulate.png](20251007T091128Z/memory_distribution_memory_kem_decapsulate.png)
 
-Memory distribution for KEM decapsulate (memory)
+Peak memory mean ± standard deviation for KEM decapsulate (memory)
 
 ![20251007T091128Z/memory_distribution_memory_kem_encapsulate.png](20251007T091128Z/memory_distribution_memory_kem_encapsulate.png)
 
-Memory distribution for KEM encapsulate (memory)
+Peak memory mean ± standard deviation for KEM encapsulate (memory)
 
 ![20251007T091128Z/memory_distribution_memory_kem_keygen.png](20251007T091128Z/memory_distribution_memory_kem_keygen.png)
 
-Memory distribution for KEM keygen (memory)
+Peak memory mean ± standard deviation for KEM keygen (memory)
 
 ![20251007T091128Z/memory_distribution_memory_sig_keygen.png](20251007T091128Z/memory_distribution_memory_sig_keygen.png)
 
-Memory distribution for SIG keygen (memory)
+Peak memory mean ± standard deviation for SIG keygen (memory)
 
 ![20251007T091128Z/memory_distribution_memory_sig_sign.png](20251007T091128Z/memory_distribution_memory_sig_sign.png)
 
-Memory distribution for SIG sign (memory)
+Peak memory mean ± standard deviation for SIG sign (memory)
 
 ![20251007T091128Z/memory_distribution_memory_sig_verify.png](20251007T091128Z/memory_distribution_memory_sig_verify.png)
 
-Memory distribution for SIG verify (memory)
+Peak memory mean ± standard deviation for SIG verify (memory)
 
 ![20251007T091128Z/memory_errorbars_memory_kem_decapsulate.png](20251007T091128Z/memory_errorbars_memory_kem_decapsulate.png)
 
