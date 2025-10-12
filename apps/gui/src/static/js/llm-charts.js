@@ -11,14 +11,14 @@
   const MAX_RETRIES = 20;
   const RETRY_DELAY_MS = 150;
   const palette = [
-    { bg: "rgba(56,189,248,0.55)", border: "rgba(56,189,248,1)" }, // sky-400
-    { bg: "rgba(248,113,113,0.55)", border: "rgba(248,113,113,1)" }, // red-400
-    { bg: "rgba(74,222,128,0.55)", border: "rgba(74,222,128,1)" }, // green-400
-    { bg: "rgba(251,191,36,0.55)", border: "rgba(251,191,36,1)" }, // amber-400
-    { bg: "rgba(129,140,248,0.55)", border: "rgba(129,140,248,1)" }, // indigo-400
-    { bg: "rgba(244,114,182,0.55)", border: "rgba(244,114,182,1)" }, // pink-400
-    { bg: "rgba(45,212,191,0.55)", border: "rgba(45,212,191,1)" }, // teal-400
-    { bg: "rgba(196,181,253,0.55)", border: "rgba(196,181,253,1)" }, // violet-300
+    { bg: "rgba(56,189,248,1)", border: "rgba(56,189,248,1)" }, // sky-400
+    { bg: "rgba(248,113,113,1)", border: "rgba(248,113,113,1)" }, // red-400
+    { bg: "rgba(74,222,128,1)", border: "rgba(74,222,128,1)" }, // green-400
+    { bg: "rgba(251,191,36,1)", border: "rgba(251,191,36,1)" }, // amber-400
+    { bg: "rgba(129,140,248,1)", border: "rgba(129,140,248,1)" }, // indigo-400
+    { bg: "rgba(244,114,182,1)", border: "rgba(244,114,182,1)" }, // pink-400
+    { bg: "rgba(45,212,191,1)", border: "rgba(45,212,191,1)" }, // teal-400
+    { bg: "rgba(196,181,253,1)", border: "rgba(196,181,253,1)" }, // violet-300
   ];
 
   function ensureStyle() {
@@ -277,6 +277,9 @@
     const titleText =
       typeof cfg.title === "string" && cfg.title.trim() ? cfg.title.trim() : "";
 
+    const isLineChart = type === "line";
+    const legendBoxSize = isLineChart ? 12 : 14;
+    const legendPointStyle = isLineChart ? "line" : "circle";
     const baseOptions = {
       responsive: true,
       maintainAspectRatio: false,
@@ -291,7 +294,10 @@
               : "top",
           labels: {
             color: theme.text,
-            usePointStyle: type === "line",
+            usePointStyle: true,
+            pointStyle: legendPointStyle,
+            boxWidth: legendBoxSize,
+            boxHeight: legendBoxSize,
             font: { size: 12 },
           },
         },
