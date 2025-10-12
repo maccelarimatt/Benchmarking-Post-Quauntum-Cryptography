@@ -346,7 +346,7 @@
     }
     const channelLine = channelKeys
       .map((key) => `${key}: ${formatNumber(channels[key], 2)}`)
-      .join(" · ");
+      .join(" | ");
     const blockStats = computeBlockStats(summary);
     const lines = [
       `<strong>Global:</strong> ${formatNumber(summary.bitsPerByteGlobal, 3)} b/B`,
@@ -357,7 +357,7 @@
     }
     lines.push(`<strong>Per-channel:</strong> ${channelLine}`);
     if (blockStats) {
-      lines.push(`<strong>Heatmap:</strong> ${formatNumber(blockStats.min, 2)} ? ${formatNumber(blockStats.max, 2)} b/B`);
+      lines.push(`<strong>Heatmap:</strong> ${formatNumber(blockStats.min, 2)} to ${formatNumber(blockStats.max, 2)} b/B`);
     }
     panel.metrics.innerHTML = lines.join("<br />");
   }
