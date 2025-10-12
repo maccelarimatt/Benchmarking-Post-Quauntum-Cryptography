@@ -4,7 +4,7 @@ This document explains how the classical and post‑quantum algorithms are imple
 
 ## Backends at a Glance
 
-- PQC (Kyber/ML‑KEM, HQC, Dilithium/ML‑DSA, Falcon, SPHINCS+, XMSSMT, MAYO)
+- PQC KEMs and signatures (KEM: ML‑KEM/Kyber, HQC, BIKE, Classic McEliece, FrodoKEM, NTRU, NTRU Prime; SIG: Dilithium/ML‑DSA, Falcon, SPHINCS+, XMSSMT, MAYO)
   - Primary: liboqs C implementations exposed via `python-oqs` adapters.
   - Optional: native C wrapper (`pqcbench_native`) that calls liboqs directly (no Python in hot path).
 - Classical RSA baselines
@@ -78,7 +78,9 @@ This document explains how the classical and post‑quantum algorithms are imple
 ## Implementation Specifics (per adapter)
 
 - liboqs adapters (PQC)
-  - Choose concrete mechanisms through environment variables: `PQCBENCH_KYBER_ALG`, `PQCBENCH_HQC_ALG`, `PQCBENCH_DILITHIUM_ALG`, `PQCBENCH_FALCON_ALG`, `PQCBENCH_SPHINCS_ALG`, `PQCBENCH_XMSSMT_ALG`, `PQCBENCH_MAYO_ALG`.
+  - Choose concrete mechanisms through environment variables:
+    - KEMs: `PQCBENCH_KYBER_ALG`, `PQCBENCH_HQC_ALG`, `PQCBENCH_BIKE_ALG`, `PQCBENCH_CLASSIC_MCELIECE_ALG`, `PQCBENCH_FRODOKEM_ALG`, `PQCBENCH_NTRU_ALG`, `PQCBENCH_NTRUPRIME_ALG`.
+    - Signatures: `PQCBENCH_DILITHIUM_ALG`, `PQCBENCH_FALCON_ALG`, `PQCBENCH_SPHINCS_ALG`, `PQCBENCH_XMSSMT_ALG`, `PQCBENCH_MAYO_ALG`.
   - If unset, we pick reasonable defaults (e.g., ML‑KEM‑768, ML‑DSA‑65).
 
 - RSA adapters (classical)

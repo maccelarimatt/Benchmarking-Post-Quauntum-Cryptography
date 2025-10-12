@@ -11,6 +11,11 @@ def test_registry_has_placeholders():
     assert "rsa-oaep" in items
     assert "rsa-pss" in items
     assert "kyber" in items
+    assert "bike" in items
+    assert "classic-mceliece" in items
+    assert "frodokem" in items
+    assert "ntru" in items
+    assert "ntruprime" in items
     assert "dilithium" in items
 
 
