@@ -252,9 +252,13 @@ Throughput across categories for SIG sign (timing)
 
 Throughput across categories for SIG verify (timing)
 
+![20251008T114603Z/category_1/tradeoff_quantum_timing.png](20251008T114603Z/category_1/tradeoff_quantum_timing.png)
+
+Performance vs quantum security trade-off
+
 ![20251008T114603Z/category_1/tradeoff_timing.png](20251008T114603Z/category_1/tradeoff_timing.png)
 
-Performance vs security trade-off
+Performance vs classical security trade-off
 
 ![20251008T114603Z/category_3/expansion_kem.png](20251008T114603Z/category_3/expansion_kem.png)
 
@@ -508,9 +512,13 @@ Throughput across categories for SIG sign (timing)
 
 Throughput across categories for SIG verify (timing)
 
+![20251008T114603Z/category_3/tradeoff_quantum_timing.png](20251008T114603Z/category_3/tradeoff_quantum_timing.png)
+
+Performance vs quantum security trade-off
+
 ![20251008T114603Z/category_3/tradeoff_timing.png](20251008T114603Z/category_3/tradeoff_timing.png)
 
-Performance vs security trade-off
+Performance vs classical security trade-off
 
 ![20251008T114603Z/category_5/expansion_kem.png](20251008T114603Z/category_5/expansion_kem.png)
 
@@ -748,9 +756,13 @@ Throughput across categories for SIG sign (timing)
 
 Throughput across categories for SIG verify (timing)
 
+![20251008T114603Z/category_5/tradeoff_quantum_timing.png](20251008T114603Z/category_5/tradeoff_quantum_timing.png)
+
+Performance vs quantum security trade-off
+
 ![20251008T114603Z/category_5/tradeoff_timing.png](20251008T114603Z/category_5/tradeoff_timing.png)
 
-Performance vs security trade-off
+Performance vs classical security trade-off
 
 ![20251008T114603Z/expansion_kem.png](20251008T114603Z/expansion_kem.png)
 
@@ -1092,6 +1104,10 @@ Throughput across categories for SIG sign (timing)
 
 Throughput across categories for SIG verify (timing)
 
+![20251008T114603Z/tradeoff_quantum_timing.png](20251008T114603Z/tradeoff_quantum_timing.png)
+
+Performance vs quantum security trade-off
+
 ![20251008T114603Z/tradeoff_timing.png](20251008T114603Z/tradeoff_timing.png)
 
-Performance vs security trade-off
+Performance vs classical security trade-off

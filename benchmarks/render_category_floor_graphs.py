@@ -1233,6 +1233,75 @@ def plot_shor_runtime(
         _save_with_caption(fig, outfile, caption, captions)
 
 
+def _plot_tradeoff_frontier(
+    points: Sequence[Tuple[float, float, float, str, int, str]],
+    y_label: str,
+    pass_name: str,
+    outfile: pathlib.Path,
+    caption: str,
+    captions: CaptionLog,
+) -> None:
+    if not points:
+        return
+
+    fig, ax = plt.subplots(figsize=(7.5, 4.75))
+    offsets = [(6, 6), (-52, 6), (6, -18), (-52, -18), (18, 18), (-30, 18)]
+    coord_counts: Dict[Tuple[float, float], int] = defaultdict(int)
+    marker_props = {
+        "KEM": {"marker": "o", "facecolor": "#1f77b4"},
+        "SIG": {"marker": "^", "facecolor": "#ff7f0e"},
+    }
+
+    for latency, sec_bits, size, algo, category, kind in sorted(
+        points, key=lambda x: (x[5], x[0])
+    ):
+        props = marker_props.get(kind.upper(), {"marker": "o", "facecolor": "#555555"})
+        ax.scatter(
+            latency,
+            sec_bits,
+            s=max(36, size / 4),
+            marker=props["marker"],
+            facecolors=props["facecolor"],
+            edgecolors="#222222",
+            linewidths=0.4,
+            alpha=0.75,
+        )
+        coord_key = (latency, sec_bits)
+        offset_idx = coord_counts[coord_key] % len(offsets)
+        coord_counts[coord_key] += 1
+        xytext = offsets[offset_idx]
+        ax.annotate(
+            f"{algo}\nCat-{category}",
+            (latency, sec_bits),
+            textcoords="offset points",
+            xytext=xytext,
+            fontsize=7,
+            bbox=dict(boxstyle="round,pad=0.2", fc="white", alpha=0.65, lw=0.0),
+            arrowprops=dict(arrowstyle="-", color="#666666", lw=0.6, alpha=0.7),
+        )
+
+    ax.set_xlabel(f"Latency (ms) — {pass_name}")
+    ax.set_ylabel(y_label)
+    ax.grid(True, linestyle="--", alpha=0.3)
+    legend_handles = []
+    for kind, props in marker_props.items():
+        legend_handles.append(
+            plt.Line2D(
+                [0],
+                [0],
+                marker=props["marker"],
+                color="w",
+                markerfacecolor=props["facecolor"],
+                markeredgecolor="#222222",
+                markersize=7,
+                label=kind,
+            )
+        )
+    ax.legend(handles=legend_handles, title="Kind", fontsize=8, frameon=False)
+    fig.tight_layout()
+    _save_with_caption(fig, outfile, caption, captions)
+
+
 def plot_tradeoff_frontier(
     records: Sequence[Record],
     output_dir: pathlib.Path,
@@ -1245,7 +1314,8 @@ def plot_tradeoff_frontier(
         return
 
     unique = _collect_unique_meta(records)
-    points = []
+    classical_points = []
+    quantum_points = []
     for (kind, algo, category), rec in unique.items():
         relevant = [
             r
@@ -1269,42 +1339,30 @@ def plot_tradeoff_frontier(
             or rec.meta.get("ciphertext_len")
             or 0
         )
-        points.append(
+        classical_points.append(
             (mean_latency, rec.security_classical_bits, size, algo, category, kind)
         )
+        if rec.security_quantum_bits is not None:
+            quantum_points.append(
+                (mean_latency, rec.security_quantum_bits, size, algo, category, kind)
+            )
 
-    if not points:
-        return
-
-    fig, ax = plt.subplots(figsize=(6, 4.5))
-    for latency, sec_bits, size, algo, category, kind in sorted(
-        points, key=lambda x: (x[5], x[0])
-    ):
-        marker = "o" if kind.upper() == "KEM" else "^"
-        ax.scatter(
-            latency,
-            sec_bits,
-            s=max(20, size / 5),
-            marker=marker,
-            alpha=0.7,
-            label=f"{algo} Cat-{category}",
-        )
-        ax.annotate(
-            f"{algo}\nCat-{category}",
-            (latency, sec_bits),
-            textcoords="offset points",
-            xytext=(4, 4),
-            fontsize=7,
-        )
-    ax.set_xlabel(f"Latency (ms) — {pass_name}")
-    ax.set_ylabel("Security bits (classical)")
-    ax.grid(True, linestyle="--", alpha=0.3)
-    handles, labels = ax.get_legend_handles_labels()
-    unique_pairs = dict(zip(labels, handles))
-    ax.legend(unique_pairs.values(), unique_pairs.keys(), fontsize=8)
-    outfile = output_dir / f"tradeoff_{pass_name}.png"
-    caption = "Performance vs security trade-off"
-    _save_with_caption(fig, outfile, caption, captions)
+    _plot_tradeoff_frontier(
+        classical_points,
+        "Security bits (classical)",
+        pass_name,
+        output_dir / f"tradeoff_{pass_name}.png",
+        "Performance vs classical security trade-off",
+        captions,
+    )
+    _plot_tradeoff_frontier(
+        quantum_points,
+        "Security bits (quantum)",
+        pass_name,
+        output_dir / f"tradeoff_quantum_{pass_name}.png",
+        "Performance vs quantum security trade-off",
+        captions,
+    )
 
 
 def _aggregate_scaling(
