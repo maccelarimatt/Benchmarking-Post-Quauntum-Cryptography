@@ -257,6 +257,31 @@ ALGO_INFO = {
         "label": "RSA-OAEP",
         "about": "RSA-OAEP: Classical RSA encryption in a KEM-style wrapper for comparison.",
     },
+    "ntruprime": {
+        "kind": "KEM",
+        "label": "NTRU-Prime",
+        "about": "NTRU-Prime: Streamlined NTRU lattice KEM covering sntrup and ntrulpr parameter sets.",
+    },
+    "ntru": {
+        "kind": "KEM",
+        "label": "NTRU",
+        "about": "NTRU: Lattice-based KEM built on truncated polynomial rings with product-form secrets.",
+    },
+    "frodokem": {
+        "kind": "KEM",
+        "label": "FrodoKEM",
+        "about": "FrodoKEM: Conservative LWE-based key encapsulation without structured rings.",
+    },
+    "classic-mceliece": {
+        "kind": "KEM",
+        "label": "Classic McEliece",
+        "about": "Classic McEliece: Code-based KEM relying on binary Goppa codes.",
+    },
+    "bike": {
+        "kind": "KEM",
+        "label": "BIKE",
+        "about": "BIKE: QC-MDPC code-based key encapsulation mechanism from the BIKE standard.",
+    },
     "dilithium": {
         "kind": "SIG",
         "label": "Dilithium",
@@ -286,6 +311,26 @@ ALGO_INFO = {
         "kind": "SIG",
         "label": "MAYO",
         "about": "MAYO: Multivariate post-quantum signature (selects MAYO-1/2/3/5 if available).",
+    },
+    "uov": {
+        "kind": "SIG",
+        "label": "UOV",
+        "about": "UOV: Unbalanced Oil and Vinegar multivariate signatures leveraging vinegar variables for trapdoor structure.",
+    },
+    "slh-dsa": {
+        "kind": "SIG",
+        "label": "SLH-DSA",
+        "about": "SLH-DSA: Stateless hash-based signature family standardized in FIPS 205.",
+    },
+    "snova": {
+        "kind": "SIG",
+        "label": "SNOVA",
+        "about": "SNOVA: Structured Oil and Vinegar signatures with rank-support truncation for post-quantum security.",
+    },
+    "cross": {
+        "kind": "SIG",
+        "label": "CROSS",
+        "about": "CROSS: Rank-based signature suite (RSDP/RSDPG variants) with compact keys and fast verification.",
     },
 }
 
