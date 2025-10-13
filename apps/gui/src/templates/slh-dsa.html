@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ label }} - Details</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" sizes="any" />
+  <link rel="mask-icon" href="/static/favicon.svg" color="#1fb6b8" />
+  <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
+  <meta name="theme-color" content="#0b0f14" />
+  <style>
+    /* Dark scrollbar styling */
+    html { scrollbar-width: thin; scrollbar-color: rgba(36,49,63,.85) rgba(7,11,17,.92); }
+    html::-webkit-scrollbar { width:12px; height:12px; }
+    html::-webkit-scrollbar-track { background: rgba(7,11,17,.92); }
+    html::-webkit-scrollbar-thumb { background: rgba(148,163,184,.45); border-radius:999px; border:2px solid rgba(7,11,17,.92); }
+    html::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,.65); }
+
+    :root { --island-bg: rgba(38,41,45,.92); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
+    body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
+    .island { background:var(--island-bg); border-radius:var(--island-radius); padding:1.25rem; backdrop-filter: blur(4px); max-width:1000px; margin:0 auto 1.6vh auto; }
+    .btn, button, input[type="submit"], input[type="button"], a.btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow:0 4px 14px rgba(31,182,184,.25); text-decoration:none; transition: background-color .2s ease, filter .15s ease, box-shadow .2s ease; }
+    .btn:hover, button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover { filter:brightness(.92); box-shadow:0 6px 18px rgba(31,182,184,.32); }
+    .badge { font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem; display:inline-block; }
+    .muted { opacity:.9; }
+    h2, h3 { margin:0 0 .6rem 0; }
+    h2 { font-size:1.25rem; }
+    h3 { font-size:1.05rem; margin-top:1.2rem; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:.45rem .4rem; border-bottom:1px solid rgba(255,255,255,.2); }
+    th { font-weight:600; }
+    .refs li { margin:.35rem 0; }
+    .chip { display:inline-block; font-size:.85rem; padding:.1rem .5rem; border-radius:.4rem; background:rgba(255,255,255,.15); margin-right:.4rem; }
+    .toc a { color:#fff; text-decoration:none; }
+    .toc a:hover { text-decoration:underline; }
+    .note { font-size:.95rem; opacity:.95; }
+    code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
+    ol.refs { list-style:none; margin:0; padding-left:0; }
+  </style>
+  <!-- MathJax for LaTeX-style math -->
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <div class="island" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+    <div>
+      <div style="font-size:1.6rem; font-weight:700;">{{ label }}</div>
+      {% if kind %}<div class="badge" title="Kind">{{ kind }}</div>{% endif %}
+    </div>
+    <div><a href="/" class="btn">Back to home</a></div>
+  </div>
+
+  <div class="island">
+    <div style="font-weight:700; margin-bottom:.5rem;">About</div>
+    <p class="muted">
+      {{ about or 'This page explains SLH-DSA (formerly SPHINCS+) — a stateless, hash-based digital signature scheme — including history, design, math, parameters, algorithms, security, and implementation notes.' }}
+    </p>
+    <div class="toc muted">
+      <span class="chip"><a href="#history">Origins & history</a></span>
+      <span class="chip"><a href="#overview">Design overview</a></span>
+      <span class="chip"><a href="#math">Mathematical setting</a></span>
+      <span class="chip"><a href="#params">Parameter sets</a></span>
+      <span class="chip"><a href="#algorithms">Algorithms</a></span>
+      <span class="chip"><a href="#security">Security</a></span>
+      <span class="chip"><a href="#impl">Implementation notes</a></span>
+      <span class="chip"><a href="#proscons">Pros & cons</a></span>
+      <span class="chip"><a href="#references">References</a></span>
+    </div>
+  </div>
+
+  <div class="island" id="history">
+    <h2>Origins & history</h2>
+    <p class="muted">
+      <strong>SLH-DSA</strong> is a stateless <em>hash-based</em> signature scheme evolved from SPHINCS+. It was selected by NIST in
+      <strong>July 2022</strong> for standardization alongside lattice schemes and was finalized as <em>FIPS 205: Stateless Hash-Based
+      Digital Signature Standard</em> on <strong>August 13, 2024</strong>. Families include SHA2- and SHAKE-based variants at NIST
+      categories 1, 3, and 5, each with “s” (small/fast-verify) and “f” (fast-sign) profiles. [1][2][3]
+    </p>
+  </div>
+
+  <div class="island" id="overview">
+    <h2>Design overview</h2>
+    <p class="muted">
+      SLH-DSA builds signatures using only hash-function primitives. It organizes many one-time signature (WOTS+)
+      keypairs into Merkle trees and stacks them into a <em>hypertree</em>. A few message-dependent leaf indices are derived
+      via a tweakable hash; each signature reveals a FORS proof (Forest of Random Subsets) plus a WOTS+ signature and
+      the authentication paths up the tree. No state is kept between signatures (hence <em>stateless</em>), avoiding the
+      catastrophic misuse risks of stateful schemes like XMSS/LM-OTS. Security reduces to the preimage/second-preimage/
+      collision resistance of the underlying hash function. [1][3]
+    </p>
+  </div>
+
+  <div class="island" id="math">
+    <h2>Mathematical setting</h2>
+    <p class="muted">
+      The construction operates over bitstrings with a <em>tweakable</em> hash \( T_k(\cdot) \) domain-separated by public seeds,
+      addresses, and roles. Core components:
+    </p>
+    <ul class="muted">
+      <li><b>FORS:</b> Encodes a message digest into indices across multiple small Merkle trees; reveals one authentication path per tree.</li>
+      <li><b>WOTS+:</b> A one-time signature using chains of hash applications with randomized message-dependent positions.</li>
+      <li><b>Hypertree:</b> Stacks many Merkle trees; each level authenticates the public key of the level below.</li>
+    </ul>
+    <p class="muted">
+      Parameters (heights, number of layers \(d\), Winternitz parameter \(w\), chain lengths, etc.) trade off signature size,
+      signing cost, and verification speed. [3]
+    </p>
+  </div>
+
+  <div class="island" id="params">
+    <h2>Parameter sets (SHA2 / SHAKE; Cat-1/3/5)</h2>
+    <p class="muted note">
+      FIPS 205 defines two families — <em>SLH-DSA-SHA2</em> and <em>SLH-DSA-SHAKE</em> — each with “-128s/f”, “-192s/f”, “-256s/f”.
+      Public keys are compact; signatures are larger (KBs), with “f” variants typically smaller/faster-sign than “s”.
+    </p>
+    <div class="grid-2">
+      <div>
+        <table>
+          <thead><tr><th>Set</th><th>Cat.</th><th>Layers \(d\)</th><th>Heights (FORS/Tree)</th><th>Winternitz</th></tr></thead>
+          <tbody>
+            <tr><td>-128s / -128f</td><td>1</td><td>e.g. 2–4</td><td>profile-dependent</td><td>WOTS+ (typical \(w{=}16\))</td></tr>
+            <tr><td>-192s / -192f</td><td>3</td><td>e.g. 4–8</td><td>profile-dependent</td><td>WOTS+ (typical \(w{=}16\))</td></tr>
+            <tr><td>-256s / -256f</td><td>5</td><td>e.g. 8–12</td><td>profile-dependent</td><td>WOTS+ (typical \(w{=}16\))</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:.5rem;">Exact parameters are fixed per profile in FIPS 205; values above illustrate the style of trade-offs. [1]</p>
+      </div>
+      <div class="muted">
+        <h3>Sizes (bytes)</h3>
+        <table>
+          <thead><tr><th>Quantity</th><th>Typical value</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Public key</td><td>64</td><td>32-byte public seed + 32-byte root.</td></tr>
+            <tr><td>Secret key</td><td>128</td><td>sk.seed (32) + sk.prf (32) + pk.seed (32) + pk.root (32).</td></tr>
+            <tr><td>Signature</td><td>~7.5–49 KB</td><td>≈7–17 KB (-128s/f), ≈16–36 KB (-192s/f), ≈30–49 KB (-256s/f), family-dependent.</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:.5rem;">Signature sizes vary with SHA2 vs SHAKE and “s” vs “f” profiles. [1][3]</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="algorithms">
+    <h2>Algorithms</h2>
+
+    <h3>Key generation</h3>
+    <p class="muted">
+      Sample a 32-byte <code>sk.seed</code> and 32-byte <code>sk.prf</code>. Derive the public seed <code>pk.seed</code>, expand the hypertree,
+      and compute the top-level root <code>pk.root</code>.
+    </p>
+    <p class="mono">
+      \( \mathrm{pk} = (\texttt{pk.seed}, \texttt{pk.root}),\quad \mathrm{sk} = (\texttt{sk.seed}, \texttt{sk.prf}, \texttt{pk.seed}, \texttt{pk.root}). \)
+    </p>
+
+    <h3>Signing (stateless)</h3>
+    <p class="muted">
+      Derive randomness \(R \leftarrow \mathrm{PRF}(\texttt{sk.prf}, M)\). Compute a digest and message address using a tweakable
+      hash. Use FORS to sign the digest (revealing one path per small tree). Then compute a WOTS+ signature on the FORS
+      root and include authentication paths up the hypertree to the public root.
+    </p>
+    <p class="mono">
+      \( \sigma = (R,\ \text{FORS sig},\ \text{WOTS+ sig},\ \text{auth paths (all layers)}). \)
+    </p>
+
+    <h3>Verification</h3>
+    <p class="muted">
+      Recompute the digest, verify the FORS proof to get a root, verify the WOTS+ signature, and climb the authentication
+      paths up to the hypertree root. Accept iff the computed root equals <code>pk.root</code>.
+    </p>
+  </div>
+
+  <div class="island" id="security">
+    <h2>Security at a glance</h2>
+    <ul class="muted">
+      <li><b>Assumption:</b> Only requires standard hash security (preimage/second-preimage/collision resistance).</li>
+      <li><b>Model:</b> EUF-CMA in the (Q)ROM; stateless design avoids reuse/state-loss pitfalls of XMSS-family schemes. [1][3]</li>
+      <li><b>Categories:</b> -128 → Cat-1, -192 → Cat-3, -256 → Cat-5 (SHA2 and SHAKE families). [1]</li>
+      <li><b>Robustness:</b> Hedge against poor entropy via message-dependent randomness \(R\); mandatory domain separation throughout. [1]</li>
+    </ul>
+  </div>
+
+  <div class="island" id="impl">
+    <h2>Implementation notes</h2>
+    <ul class="muted">
+      <li><b>Symmetric core:</b> SHA-256/SHA-512 (SLH-DSA-SHA2) or SHAKE-256 (SLH-DSA-SHAKE) as building blocks for PRF, H, and tweakable hash. [1]</li>
+      <li><b>Parallelism:</b> WOTS+ chains and FORS subtrees parallelize well (SIMD/OpenMP/GPU).</li>
+      <li><b>Memory:</b> Streaming/leaf-by-leaf computation avoids holding entire trees; cache prehashes for speed.</li>
+      <li><b>Constant-time:</b> No secret-dependent branches or memory lookups; fixed-time hash invocations; careful address handling. [1][3]</li>
+      <li><b>Ecosystem:</b> IETF LAMPS drafts define OIDs and X.509 encodings for SLH-DSA; many TLS/PKI stacks now include support. [2]</li>
+    </ul>
+  </div>
+
+  <div class="island" id="proscons">
+    <h2>Pros & cons</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Pros</h3>
+        <ul class="muted">
+          <li>Minimal assumptions (only hashes); mature, constant-time implementations.</li>
+          <li>Stateless design — no key-usage counter or state persistence needed.</li>
+          <li>Versatile profiles (-s/-f) for speed vs size; strong security analysis history. [1][3]</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Cons</h3>
+        <ul class="muted">
+          <li>Signatures are large (several to many KB); bandwidth/storage impact in constrained protocols.</li>
+          <li>Verification can be slower than lattice signatures (many hash evaluations and path checks).</li>
+          <li>Implementation complexity around address/tweak domains; careful API design required. [1][3]</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="references">
+    <h2>References</h2>
+    <ol class="refs muted">
+      <li>[1] NIST, “<i>Stateless Hash-Based Digital Signature Standard (FIPS 205)</i>,” Aug. 13, 2024. [Online]. Available: <a target="_blank" rel="noopener" href="https://nvlpubs.nist.gov/nistpubs/fips/nist.fips.205.pdf">nist.gov</a></li>
+      <li>[2] NIST, “NIST Releases First Finalized PQC Standards,” Aug. 13, 2024 (context on FIPS 203/204/205). [Online]. Available: <a target="_blank" rel="noopener" href="https://www.nist.gov/news-events/news/2024/08/nist-releases-first-3-finalized-post-quantum-encryption-standards">nist.gov</a></li>
+      <li>[3] SPHINCS+ Team, “<i>SPHINCS+ Specification</i>,” v3.1, 2023 (design & parameters). [Online]. Available: <a target="_blank" rel="noopener" href="https://sphincs.org/resources.html">sphincs.org</a></li>
+      <li>[4] IETF LAMPS, “<i>SLH-DSA in PKIX Certificates & CRLs</i>,” Internet-Draft, 2025. [Online]. Available: <a target="_blank" rel="noopener" href="https://datatracker.ietf.org/doc/draft-ietf-lamps-sphincs-plus-pkix/">ietf.org</a></li>
+    </ol>
+  </div>
+</body>
+</html>
