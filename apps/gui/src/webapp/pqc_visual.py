@@ -109,21 +109,25 @@ KEM_ALIASES: Dict[str, str] = {
     "BIKE-L1": "BIKE-L1",
     "BIKE-L3": "BIKE-L3",
     "BIKE-L5": "BIKE-L5",
+    "Classic-McEliece-348864f": "Classic-McEliece-348864f",
     "Classic-McEliece-460896f": "Classic-McEliece-460896f",
     "Classic-McEliece-6688128f": "Classic-McEliece-6688128f",
     "FrodoKEM-640-AES": "FrodoKEM-640-AES",
     "FrodoKEM-976-AES": "FrodoKEM-976-AES",
     "FrodoKEM-1344-AES": "FrodoKEM-1344-AES",
+    "NTRU-HPS-2048-509": "NTRU-HPS-2048-509",
     "NTRU-HPS-2048-677": "NTRU-HPS-2048-677",
     "NTRU-HPS-4096-821": "NTRU-HPS-4096-821",
     "NTRU-HRSS-701": "NTRU-HRSS-701",
+    "sntrup653": "sntrup653",
     "sntrup761": "sntrup761",
+    "sntrup1277": "sntrup1277",
     "ntrulpr761": "ntrulpr761",
 }
 
 SIG_ALIASES: Dict[str, str] = {
+    "ML-DSA-44": "ML-DSA-44",
     "Dilithium2": "Dilithium2",
-    "ML-DSA-44": "Dilithium2",
     "ML-DSA-65": "ML-DSA-65",
     "ML-DSA-87": "ML-DSA-87",
     "ML-DSA-110": "ML-DSA-110",
@@ -140,6 +144,10 @@ SIG_ALIASES: Dict[str, str] = {
     "XMSS-SHA2_20_256": "XMSS-SHA2_20_256",
     "XMSSMT-SHA2_20/2_256": "XMSSMT-SHA2_20/2_256",
     "XMSSMT-SHA2_20/4_256": "XMSSMT-SHA2_20/4_256",
+    "XMSSMT-SHA2_40/4_256": "XMSSMT-SHA2_40/4_256",
+    "XMSSMT-SHA2_60/6_256": "XMSSMT-SHA2_60/6_256",
+    "XMSSMT-SHA2_40/4_256": "XMSSMT-SHA2_40/4_256",
+    "XMSSMT-SHA2_60/6_256": "XMSSMT-SHA2_60/6_256",
     "MAYO-1": "MAYO-1",
     "MAYO-2": "MAYO-2",
     "MAYO-3": "MAYO-3",
@@ -525,5 +533,3 @@ def decrypt_image_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         response["verifyOk"] = bool(verify_ok)
     response["entropy"] = {"recovered": summary_recovered}
     return response
-
-
