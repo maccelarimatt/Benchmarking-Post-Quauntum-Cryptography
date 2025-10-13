@@ -163,6 +163,7 @@ class ProbeConfig:
     report_format: str = "markdown"
     report_output: Optional[pathlib.Path] = None
     report_options: str = ""
+    resume_from: Optional[pathlib.Path] = None
 
 
 @dataclass
@@ -175,6 +176,7 @@ class AlgorithmDescriptor:
     security_category: Optional[int] = None
     override_note: Optional[str] = None
     override_env: Dict[str, str] = field(default_factory=dict)
+    pending_scenarios: Optional[Set[str]] = None
 
 
 @dataclass
@@ -852,6 +854,40 @@ def classify_algorithm(key: str, obj: Any) -> Optional[str]:
     return None
 
 
+def _load_completed_probe(path: Optional[pathlib.Path]) -> Dict[Tuple[str, Optional[int]], Set[str]]:
+    if not path:
+        return {}
+    try:
+        if not path.exists():
+            return {}
+    except OSError:
+        return {}
+
+    completed: Dict[Tuple[str, Optional[int]], Set[str]] = defaultdict(set)
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except Exception as exc:  # noqa: BLE001 - resume helper failures should not abort probe
+        print(f"[resume] Failed to load prior probe results from {path}: {exc}", file=sys.stderr)
+        return {}
+
+    for entry in data.get("scenarios", []):
+        if not isinstance(entry, dict):
+            continue
+        algo = (entry.get("algorithm") or "").strip()
+        scenario = (entry.get("scenario") or "").strip()
+        if not algo or not scenario:
+            continue
+        category_raw = entry.get("security_category")
+        category: Optional[int]
+        try:
+            category = int(category_raw)
+        except (TypeError, ValueError):
+            category = None
+        completed[(algo, category)].add(scenario)
+    return {key: set(values) for key, values in completed.items()}
+
+
 def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
     discovered: List[AlgorithmDescriptor] = []
     available = registry.list()
@@ -882,6 +918,30 @@ def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
         categories = sorted({cat for cat in config.categories if cat in (1, 3, 5)})
     else:
         categories = []
+
+    completed_scenarios = _load_completed_probe(config.resume_from)
+    if config.resume_from:
+        if completed_scenarios:
+            scenario_total = sum(len(items) for items in completed_scenarios.values())
+            print(
+                f"[resume] Loaded {len(completed_scenarios)} algorithm/category entries "
+                f"covering {scenario_total} scenarios from {config.resume_from}",
+                flush=True,
+            )
+        else:
+            print(
+                f"[resume] No scenarios found in {config.resume_from}; running full probe.",
+                flush=True,
+            )
+
+    scenario_name_cache: Dict[str, List[str]] = {
+        "kem": [definition.name for definition in build_kem_scenarios(config)],
+        "signature": [definition.name for definition in build_signature_scenarios(config)],
+    }
+    if config.include_scenarios:
+        allowed = {name for name in config.include_scenarios}
+        for kind in scenario_name_cache:
+            scenario_name_cache[kind] = [name for name in scenario_name_cache[kind] if name in allowed]
 
     for key, candidate in sorted(available.items()):
         canonical_key = _canonical_algorithm_name(key) or key
@@ -951,6 +1011,36 @@ def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
                 override_note=note,
                 override_env=dict(overrides),
             )
+            if config.resume_from:
+                expected_names = scenario_name_cache.get(kind, [])
+                expected = set(expected_names)
+                if expected:
+                    completed = completed_scenarios.get((descriptor.key, category), set())
+                    missing = expected - completed
+                    if not missing:
+                        category_suffix = f" Cat-{category}" if category is not None else ""
+                        print(
+                            f"[resume] Skipping {descriptor.key}{category_suffix}: scenarios already present in {config.resume_from}",
+                            flush=True,
+                        )
+                        del probe_obj
+                        continue
+                    descriptor.pending_scenarios = missing
+                    if completed:
+                        skipped = [name for name in expected_names if name in completed]
+                        if skipped:
+                            remaining_ordered = [name for name in expected_names if name in missing]
+                            if not remaining_ordered:
+                                remaining_ordered = sorted(missing)
+                            category_suffix = f" Cat-{category}" if category is not None else ""
+                            resume_note = f" from {config.resume_from}" if config.resume_from else ""
+                            print(
+                                f"[resume] {descriptor.key}{category_suffix}: running remaining scenarios {', '.join(remaining_ordered)}; "
+                                f"skipping {', '.join(skipped)}{resume_note}",
+                                flush=True,
+                            )
+                else:
+                    descriptor.pending_scenarios = None
             discovered.append(descriptor)
             del probe_obj
 
@@ -1084,8 +1174,11 @@ def collect_results(config: ProbeConfig, descriptors: List[AlgorithmDescriptor])
         variant_text = f" [{' | '.join(variant_tokens)}]" if variant_tokens else ""
         print(f"[forensic_probe] Running scenarios for {descriptor.key}{variant_text} ({descriptor.kind})")
         scenarios = build_kem_scenarios(config) if descriptor.kind == "kem" else build_signature_scenarios(config)
+        pending_names = set(descriptor.pending_scenarios) if descriptor.pending_scenarios else None
         for definition in scenarios:
             if config.include_scenarios and definition.name not in config.include_scenarios:
+                continue
+            if pending_names is not None and definition.name not in pending_names:
                 continue
             print(f"    -> Scenario {definition.name}: {definition.description}")
             result = run_scenario(config, descriptor, definition, rng)
@@ -1455,6 +1548,8 @@ def summarise_results(scenario_results: List[ScenarioResult], analysis_results: 
     config_dict = dataclasses.asdict(config)
     if config_dict.get("output_path") is not None:
         config_dict["output_path"] = str(config_dict["output_path"])
+    if config_dict.get("resume_from") is not None:
+        config_dict["resume_from"] = str(config_dict["resume_from"])
     if config_dict.get("include_algorithms") is not None:
         config_dict["include_algorithms"] = list(config_dict["include_algorithms"])
     if config_dict.get("include_scenarios") is not None:
@@ -1734,6 +1829,11 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> ProbeConfig:
     parser.add_argument("--iterations", type=int, default=800, help="Iterations per scenario (default: 800)")
     parser.add_argument("--seed", type=int, default=991239, help="Seed for deterministic helper randomness")
     parser.add_argument("--output", type=pathlib.Path, help="Optional output JSON path")
+    parser.add_argument(
+        "--resume-from",
+        type=pathlib.Path,
+        help="Path to an existing forensic_probe JSON file; scenarios already present there are skipped",
+    )
     parser.add_argument("--keep-artifacts", action="store_true", help="Retain temporary artifacts generated during scenarios")
     parser.add_argument("--alg", nargs="*", help="Limit to specific registry keys")
     parser.add_argument("--scenario", nargs="*", help="Limit to specific scenario names")
@@ -1817,6 +1917,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> ProbeConfig:
         report_output=args.report_output,
         report_options=args.report_options,
         rsa_max_category=max(1, min(args.rsa_max_category, 5)),
+        resume_from=args.resume_from,
     )
 
 
