@@ -40,7 +40,7 @@ import shlex
 from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 import psutil
 import tracemalloc
@@ -886,6 +886,107 @@ def _load_completed_probe(path: Optional[pathlib.Path]) -> Dict[Tuple[str, Optio
             category = None
         completed[(algo, category)].add(scenario)
     return {key: set(values) for key, values in completed.items()}
+
+
+def _merge_unique_entries(
+    previous: Optional[Iterable[Dict[str, Any]]],
+    new: Optional[Iterable[Dict[str, Any]]],
+    key_fields: Sequence[str],
+) -> List[Dict[str, Any]]:
+    combined: List[Dict[str, Any]] = []
+    seen: Set[Tuple[Any, ...]] = set()
+
+    def _add(entry: Dict[str, Any]) -> None:
+        key = tuple(entry.get(field) for field in key_fields)
+        if key in seen:
+            return
+        seen.add(key)
+        combined.append(entry)
+
+    if previous:
+        for entry in previous:
+            if isinstance(entry, dict):
+                _add(entry)
+    if new:
+        for entry in new:
+            if isinstance(entry, dict):
+                _add(entry)
+    return combined
+
+
+def _merge_report_artifacts(
+    previous: Optional[Dict[str, Any]],
+    current: Optional[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    if not previous and not current:
+        return None
+    if not previous:
+        return current
+    if not current:
+        return previous
+    merged: Dict[str, Any] = {}
+    merged["csv"] = current.get("csv") or previous.get("csv")
+    merged["captions"] = current.get("captions") or previous.get("captions")
+    previous_plots = previous.get("plots", []) or []
+    current_plots = current.get("plots", []) or []
+    merged["plots"] = sorted({*previous_plots, *current_plots})
+    previous_notes = previous.get("notes", []) or []
+    current_notes = current.get("notes", []) or []
+    merged_notes: List[str] = []
+    for note in previous_notes + current_notes:
+        if note not in merged_notes:
+            merged_notes.append(note)
+    merged["notes"] = merged_notes
+    return merged
+
+
+def _merge_summaries(
+    previous: Dict[str, Any],
+    current: Dict[str, Any],
+    resume_source: Optional[pathlib.Path],
+) -> Dict[str, Any]:
+    merged: Dict[str, Any] = dict(previous)
+
+    merged["scenarios"] = _merge_unique_entries(
+        previous.get("scenarios"), current.get("scenarios"),
+        ("algorithm", "parameter_name", "security_category", "scenario"),
+    )
+    merged["analysis"] = _merge_unique_entries(
+        previous.get("analysis"), current.get("analysis"),
+        ("algorithm", "parameter_name", "security_category", "scenario_name"),
+    )
+
+    config_history = list(previous.get("config_history", []))
+    prev_config = previous.get("config")
+    if isinstance(prev_config, dict):
+        config_history.append(prev_config)
+    merged["config_history"] = config_history
+    merged["config"] = current.get("config")
+
+    host_history = list(previous.get("host_history", []))
+    prev_host = previous.get("host")
+    if isinstance(prev_host, dict):
+        host_history.append(prev_host)
+    merged["host_history"] = host_history
+    merged["host"] = current.get("host")
+
+    merged_report = _merge_report_artifacts(previous.get("report_artifacts"), current.get("report_artifacts"))
+    if merged_report:
+        merged["report_artifacts"] = merged_report
+    else:
+        merged.pop("report_artifacts", None)
+
+    if current.get("forensic_report"):
+        merged["forensic_report"] = current["forensic_report"]
+    elif previous.get("forensic_report"):
+        merged["forensic_report"] = previous["forensic_report"]
+
+    resume_sources = set(previous.get("resume_sources", []))
+    if resume_source:
+        resume_sources.add(str(resume_source))
+    merged["resume_sources"] = sorted(resume_sources)
+
+    return merged
 
 
 def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
@@ -1776,10 +1877,12 @@ def generate_visual_report(analysis_results: List[AnalysisResult], report_dir: p
         friendly_name = scenario_name.replace(":", " — ")
         ax.set_title(f"{algorithm} — {friendly_name}")
         ax.grid(True, axis="y", linestyle="--", alpha=0.3)
-        ymax = max(
-            [max(category_map.get(cat, {}).values(), default=0.0) for cat in categories] + [TVLA_T_THRESHOLD]
-        )
-        ax.set_ylim(0, max(ymax * 1.15, TVLA_T_THRESHOLD * 1.1))
+        sample_values = [v for cat in categories for v in category_map.get(cat, {}).values() if v is not None]
+        if sample_values:
+            ymax = max(sample_values + [TVLA_T_THRESHOLD])
+            ax.set_ylim(0, max(ymax * 1.15, TVLA_T_THRESHOLD * 1.1))
+        else:
+            ax.set_ylim(0, TVLA_T_THRESHOLD * 1.1)
         ax.axhline(
             TVLA_T_THRESHOLD,
             color="#d62728",
@@ -1923,6 +2026,16 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> ProbeConfig:
 
 def main(argv: Optional[Iterable[str]] = None) -> int:
     config = parse_args(argv)
+    existing_summary: Optional[Dict[str, Any]] = None
+    if config.resume_from:
+        try:
+            with config.resume_from.open("r", encoding="utf-8") as fh:
+                existing_summary = json.load(fh)
+        except FileNotFoundError:
+            existing_summary = None
+        except Exception as exc:
+            print(f"[resume] Failed to load existing summary from {config.resume_from}: {exc}", file=sys.stderr)
+            existing_summary = None
     descriptors = discover_algorithms(config)
     if not descriptors:
         print("[forensic_probe] No algorithms discovered. Ensure adapters are available.", file=sys.stderr)
@@ -1945,6 +2058,8 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             print(f"[forensic_probe] Wrote plot captions to {report_artifacts['captions']}")
         for note in report_artifacts.get("notes", []):
             print(f"[forensic_probe] {note}")
+    if existing_summary:
+        summary = _merge_summaries(existing_summary, summary, config.resume_from)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     def _write_summary() -> None:
         with output_path.open("w", encoding="utf-8") as fh:
