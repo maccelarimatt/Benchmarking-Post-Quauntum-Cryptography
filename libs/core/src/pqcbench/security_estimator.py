@@ -692,6 +692,53 @@ def _apply_quantum_arch_presets(opts: EstimatorOptions | None) -> EstimatorOptio
         opts.cycle_time_s = 1e-5
     return opts
 
+def _quantum_bits_with_offset(floor: int, offset: float = 10.0) -> float:
+    classical = float(floor)
+    quantum = classical - float(offset)
+    # Do not let quantum fall below square-root style bound as a sanity guard
+    sqrt_bound = classical / 2.0
+    if quantum < sqrt_bound:
+        quantum = sqrt_bound
+    return quantum
+
+
+_BIKE_CURATED: Dict[int, Dict[str, Any]] = {
+    128: {
+        "classical_bits_mid": 128.0,
+        "quantum_bits_mid": 118.0,
+        "source": "BIKE Round-4 design rationale (QC-MDPC ISD).",
+    },
+    192: {
+        "classical_bits_mid": 192.0,
+        "quantum_bits_mid": 182.0,
+        "source": "BIKE Round-4 design rationale (QC-MDPC ISD).",
+    },
+    256: {
+        "classical_bits_mid": 256.0,
+        "quantum_bits_mid": 246.0,
+        "source": "BIKE Round-4 design rationale (QC-MDPC ISD).",
+    },
+}
+
+
+_MCE_CURATED: Dict[int, Dict[str, Any]] = {
+    128: {
+        "classical_bits_mid": 128.0,
+        "quantum_bits_mid": 118.0,
+        "source": "Classic McEliece submission (BJMM/Stern analysis).",
+    },
+    192: {
+        "classical_bits_mid": 192.0,
+        "quantum_bits_mid": 182.0,
+        "source": "Classic McEliece submission (BJMM/Stern analysis).",
+    },
+    256: {
+        "classical_bits_mid": 256.0,
+        "quantum_bits_mid": 246.0,
+        "source": "Classic McEliece submission (BJMM/Stern analysis).",
+    },
+}
+
 
 def _get_shor_model(name: Optional[str]) -> ShorModelSpec:
     if not name:
@@ -1203,6 +1250,133 @@ def _estimate_lattice_like_from_name(name: str, opts: Optional[EstimatorOptions]
     return metrics
 
 
+def _estimate_bike_from_name(name: str) -> SecMetrics:
+    floor = 128
+    hint_extras: Dict[str, Any] = {}
+    try:
+        from pqcbench.params import find as find_params  # type: ignore
+        ph = find_params(name)
+        if ph:
+            floor = ph.category_floor
+            if ph.extras:
+                hint_extras = dict(ph.extras)
+    except Exception:
+        hint_extras = {}
+    nist_category = {128: 1, 192: 3, 256: 5}.get(int(floor), None)
+    curated = _BIKE_CURATED.get(int(floor))
+    quantum_bits = _quantum_bits_with_offset(floor, offset=10.0)
+
+    extras = {
+        "category_floor": floor,
+        "nist_category": nist_category,
+        "bike": {
+            "mechanism": name,
+            "parameters": hint_extras or None,
+            "attack_model": {
+                "classical": "QC-MDPC information-set decoding (BJMM/May–Ozerov).",
+                "quantum": "Quadratic-speedup ISD (Guo–Johansson / Kachigar–Tillich).",
+            },
+            "curated_estimates": curated,
+        },
+    }
+
+    return SecMetrics(
+        classical_bits=float(floor),
+        quantum_bits=float(quantum_bits),
+        shor_breakable=False,
+        notes=(
+            "BIKE (QC-MDPC) code-based KEM; security driven by information-set decoding. "
+            "Quantum estimate assumes quadratic speedup for ISD-style attacks."
+        ),
+        extras=extras,
+    )
+
+
+def _estimate_classic_mceliece_from_name(name: str) -> SecMetrics:
+    floor = 128
+    hint_extras: Dict[str, Any] = {}
+    try:
+        from pqcbench.params import find as find_params  # type: ignore
+        ph = find_params(name)
+        if ph:
+            floor = ph.category_floor
+            if ph.extras:
+                hint_extras = dict(ph.extras)
+    except Exception:
+        hint_extras = {}
+    nist_category = {128: 1, 192: 3, 256: 5}.get(int(floor), None)
+    curated = _MCE_CURATED.get(int(floor))
+    quantum_bits = _quantum_bits_with_offset(floor, offset=10.0)
+
+    extras = {
+        "category_floor": floor,
+        "nist_category": nist_category,
+        "classic_mceliece": {
+            "mechanism": name,
+            "parameters": hint_extras or None,
+            "attack_model": {
+                "classical": "Binary Goppa ISD (Prange/Stern/BJMM).",
+                "quantum": "Quadratic speedup for ISD-style decoding (projection/Kuperberg-inspired).",
+            },
+            "curated_estimates": curated,
+        },
+    }
+
+    return SecMetrics(
+        classical_bits=float(floor),
+        quantum_bits=float(quantum_bits),
+        shor_breakable=False,
+        notes=(
+            "Classic McEliece: code-based KEM relying on binary Goppa decoding hardness. "
+            "Quantum cost assumes square-root style speedup of ISD variants."
+        ),
+        extras=extras,
+    )
+
+
+def _estimate_multivariate_from_name(name: str, family: str) -> SecMetrics:
+    floor = 128
+    hint_extras: Dict[str, Any] = {}
+    try:
+        from pqcbench.params import find as find_params  # type: ignore
+        ph = find_params(name)
+        if ph:
+            floor = ph.category_floor
+            if ph.extras:
+                hint_extras = dict(ph.extras)
+    except Exception:
+        hint_extras = {}
+    nist_category = {128: 1, 192: 3, 256: 5}.get(int(floor), None)
+    quantum_bits = _quantum_bits_with_offset(floor, offset=12.0)
+
+    extras = {
+        "category_floor": floor,
+        "nist_category": nist_category,
+        "multivariate": {
+            "family": family,
+            "mechanism": name,
+            "parameters": hint_extras or None,
+            "attack_model": {
+                "classical": "Hybrid algebraic attacks (XL/F4/F5, Kipnis–Shamir, MinRank variants).",
+                "quantum": "Grover / quantum walk speedups applied to algebraic-system search.",
+            },
+        },
+    }
+
+    notes = (
+        f"{family}: multivariate polynomial system; classical security tracks NIST floor, "
+        "quantum estimate assumes Grover-style square-root speedup over algebraic attacks."
+    )
+
+    return SecMetrics(
+        classical_bits=float(floor),
+        quantum_bits=float(quantum_bits),
+        shor_breakable=False,
+        notes=notes,
+        extras=extras,
+    )
+
+
 _HQC_CURATED_ESTIMATES: Dict[str, Dict[str, Any]] = {
     "hqc-128": {
         "classical_bits_mid": 128.0,
@@ -1624,13 +1798,31 @@ def estimate_for_summary(summary: Any, options: Optional[EstimatorOptions] = Non
     elif name == "falcon":
         metrics = _estimate_falcon_from_name(param_hint, options)
     elif name == "hqc":
-            metrics = _estimate_hqc_from_name(param_hint, options)
+        metrics = _estimate_hqc_from_name(param_hint, options)
+    elif name == "bike":
+        metrics = _estimate_bike_from_name(param_hint)
+    elif name == "classic-mceliece":
+        metrics = _estimate_classic_mceliece_from_name(param_hint)
+    elif name == "frodokem":
+        metrics = _estimate_lattice_like_from_name(param_hint, options)
+    elif name == "ntru":
+        metrics = _estimate_lattice_like_from_name(param_hint, options)
+    elif name == "ntruprime":
+        metrics = _estimate_lattice_like_from_name(param_hint, options)
     elif name in ("sphincsplus", "sphincs+"):
         metrics = _estimate_sphincs_from_name(param_hint)
     elif name == "xmssmt":
         metrics = _estimate_xmss_from_name(param_hint)
     elif name == "mayo":
         metrics = _estimate_mayo_from_name(param_hint)
+    elif name == "slh-dsa":
+        metrics = _estimate_hash_based_from_name(param_hint)
+    elif name == "cross":
+        metrics = _estimate_multivariate_from_name(param_hint, "CROSS")
+    elif name == "snova":
+        metrics = _estimate_multivariate_from_name(param_hint, "SNOVA")
+    elif name == "uov":
+        metrics = _estimate_multivariate_from_name(param_hint, "UOV")
     else:
         metrics = SecMetrics(
             classical_bits=None,
