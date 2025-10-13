@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from pathlib import Path
+from typing import Iterable
 import sys
 import pytest
 
@@ -128,6 +129,53 @@ def test_prepare_keys_for_analysis_rsa_normalises_length():
     prepared = prepare_keys_for_analysis(keys, family="RSA", mechanism="rsa-pss")
     assert len(prepared.keys) == 2
     assert len(prepared.keys[0]) == len(prepared.keys[1])
+
+
+def test_prepare_keys_for_analysis_bike_constant_weight():
+    from pqcbench.bike_secret_parser import parse_bike_secret_keys
+
+    r_bits = 12323
+    weight = 71
+    n0 = 2
+    r_bytes = (r_bits + 7) // 8
+
+    # Construct synthetic BIKE secret key matching liboqs layout (wlist + h0 + h1 + pk + sigma)
+    h0_indices = list(range(weight))
+    h1_indices = list(range(weight, 2 * weight))
+    raw = bytearray()
+    for idx in h0_indices + h1_indices:
+        raw.extend(idx.to_bytes(4, "little"))
+
+    def build_sparse(indices: Iterable[int]) -> bytes:
+        buf = bytearray(r_bytes)
+        for position in indices:
+            byte_pos = position // 8
+            bit_pos = position % 8
+            buf[byte_pos] |= 1 << bit_pos
+        excess = (r_bytes * 8) - r_bits
+        if excess:
+            mask = (1 << (8 - excess)) - 1
+            buf[-1] &= mask
+        return bytes(buf)
+
+    h0_bytes = build_sparse(h0_indices)
+    h1_bytes = build_sparse(h1_indices)
+    raw.extend(h0_bytes)
+    raw.extend(h1_bytes)
+    raw.extend(b"\0" * r_bytes)  # public key (unused by parser)
+    raw.extend(b"\0" * 32)       # sigma seed
+
+    parsed = parse_bike_secret_keys([bytes(raw)], r_bits=r_bits, weight_per_vector=weight, n0=n0)
+    assert parsed is not None
+    assert len(parsed.bitstrings) == 1
+    bitstring = parsed.bitstrings[0]
+    assert len(bitstring) == r_bytes * n0
+    total_weight = sum(bin(b).count("1") for b in bitstring)
+    assert total_weight == weight * n0
+
+    prepared = prepare_keys_for_analysis([bytes(raw)], family="BIKE", mechanism="BIKE-L1")
+    assert prepared.context.get("parser") == "bike_constant_weight_v1"
+    assert sum(bin(b).count("1") for b in prepared.keys[0]) == weight * n0
 
 
 def _make_mlkem_secret_bytes(mechanism: str, coeffs: list[list[int]]) -> bytes:

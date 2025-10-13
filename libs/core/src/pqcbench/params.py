@@ -191,6 +191,32 @@ _add(["HQC-256-1-CCA2"], family="HQC", category_floor=256,
      notes="alias of HQC-256",
      extras={"n": 57637, "k": 32, "w": 131, "n1": 90, "n2": 640, "omega": 131, "omega_e": 149, "omega_r": 149, "delta": 29})
 
+# BIKE (QC-MDPC) — two sparse polynomials of constant weight D per parameter set
+_add(["BIKE-L1"], family="BIKE", category_floor=128,
+     notes="Round-4 BIKE; r=12323, weight per polynomial D=71",
+     extras={
+         "r_bits": 12323,
+         "weight_per_vector": 71,
+         "n0": 2,
+         "sizes_bytes": {"public_key": 1541, "secret_key": 5223, "ciphertext": 1573, "shared_secret": 32},
+     })
+_add(["BIKE-L3"], family="BIKE", category_floor=192,
+     notes="Round-4 BIKE; r=24659, weight per polynomial D=103",
+     extras={
+         "r_bits": 24659,
+         "weight_per_vector": 103,
+         "n0": 2,
+         "sizes_bytes": {"public_key": 3083, "secret_key": 10105, "ciphertext": 3115, "shared_secret": 32},
+     })
+_add(["BIKE-L5"], family="BIKE", category_floor=256,
+     notes="Round-4 BIKE; r=40973, weight per polynomial D=137",
+     extras={
+         "r_bits": 40973,
+         "weight_per_vector": 137,
+         "n0": 2,
+         "sizes_bytes": {"public_key": 5122, "secret_key": 16494, "ciphertext": 5154, "shared_secret": 32},
+     })
+
 # SPHINCS+ (hash-based) — many variants; approximate by suffix
 _SPHINCS_EXTRAS = {
     "128s": {"n": 16, "full_height": 63, "layers": 7, "fors_height": 12, "fors_trees": 14, "wots_w": 16},
