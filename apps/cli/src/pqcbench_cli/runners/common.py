@@ -1005,6 +1005,8 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
     est_name = extras.get("estimator_model")
     est_profile = extras.get("lattice_profile")
     est_available = extras.get("estimator_available")
+    est_requested = extras.get("estimator_requested")
+    est_supported = extras.get("estimator_supported")
     if est_available is None:
         est_available = bool(est_name) and not str(est_name).startswith("unavailable")
     if est_name or est_profile or extras.get("estimator_reference"):
@@ -1015,6 +1017,14 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         }
         if extras.get("estimator_reference"):
             out["estimator"]["reference"] = extras.get("estimator_reference")
+    elif est_requested is not None or est_supported is not None:
+        out["estimator"] = {
+            "name": "floor",
+            "profile": est_profile,
+            "available": bool(est_available),
+            "requested": bool(est_requested),
+            "supported": bool(est_supported),
+        }
 
     # Parameters per family (best-effort)
     params: Dict[str, Any] | None = None
@@ -1460,6 +1470,32 @@ def _build_security_headline(out: Dict[str, Any], extras: Dict[str, Any]) -> Dic
             "attack": target.get("attack") or attack,
             "notes": notes,
         }
+
+    if family in {"FRODOKEM", "NTRU", "NTRU PRIME"}:
+        requested = bool(extras.get("estimator_requested"))
+        available = bool(extras.get("estimator_available"))
+        supported = bool(extras.get("estimator_supported"))
+        reason_parts = [f"{family}: NIST category floor."]
+        if requested:
+            if available:
+                reason_parts.append("APS lattice estimator output applied.")
+            elif supported:
+                reason_parts.append("Advanced estimator requested; APS modeling data unavailable for this mechanism run.")
+            else:
+                reason_parts.append("Advanced estimator requested, but APS modeling is not available for this family.")
+        else:
+            if supported:
+                reason_parts.append("Enable the advanced lattice estimator to attempt APS cost modeling.")
+            else:
+                reason_parts.append("APS lattice estimator not available for this family.")
+        headline = _fallback_floor(" ".join(reason_parts))
+        if requested and not available:
+            headline["estimator"] = "floor (APS unavailable)"
+        elif supported:
+            headline["estimator"] = "floor (APS optional)"
+        else:
+            headline["estimator"] = "floor (no APS support)"
+        return headline
 
     if family == "ML-KEM":
         module = (details.get("module_lwe_core_svp") or {})

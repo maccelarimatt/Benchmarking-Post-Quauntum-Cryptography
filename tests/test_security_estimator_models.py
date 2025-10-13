@@ -19,6 +19,7 @@ from pqcbench.security_estimator import (
     _estimate_mayo_from_name,
     _estimate_sphincs_from_name,
     _estimate_kyber_from_name,
+    _estimate_lattice_like_from_name,
     EstimatorOptions,
 )
 
@@ -170,3 +171,22 @@ def test_rsa_shor_profiles_present():
     assert "factory_utilization_target" in rd
     calib = metrics.extras.get("calibration", {})
     assert calib.get("baseline_delta_pct") is not None
+
+
+def test_lattice_like_notes_when_advanced_not_supported():
+    metrics = _estimate_lattice_like_from_name("sntrup761", EstimatorOptions(lattice_use_estimator=True))
+    assert "Advanced estimator requested" in metrics.notes
+    assert "APS modeling is not available" in metrics.notes
+    extras = metrics.extras
+    assert extras.get("estimator_available") is False
+    assert extras.get("estimator_supported") is False
+    assert metrics.classical_bits == 192.0
+    sec_dict = asdict(metrics)
+    sec_dict["extras"] = metrics.extras
+    sec_dict["mechanism"] = "sntrup761"
+    summary = SimpleNamespace(algo="ntruprime", kind="KEM", meta={"mechanism": "sntrup761"})
+    formatted = _standardize_security(summary, sec_dict)
+    headline = formatted["headline"]
+    notes_joined = " ".join(headline.get("notes") or [])
+    assert "APS modeling is not available" in notes_joined
+    assert headline.get("estimator") == "floor (APS unavailable)"
