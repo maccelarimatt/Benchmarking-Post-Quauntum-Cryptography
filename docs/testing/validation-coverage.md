@@ -63,17 +63,25 @@ The CLI prints a short status line and the exported JSON contains a
 | Algorithm / Runner | Validation Source | Vectorset / Check | Notes |
 | --- | --- | --- | --- |
 | Kyber / `run-kyber` | ACVP (`source: acvp`) | `ML-KEM:FIPS203` keyGen/encap/decap | Uses liboqs `vectors_kem`; honours mechanism selection. |
-| HQC / `run-hqc` | *Skipped* | — | No public ACVP vectors yet; `validation.status=skipped` explains this. |
+| BIKE / `run-bike` | liboqs deterministic KAT (`source: liboqs_kat`) | `kat_kem:BIKE-L*` | Executes `kat_kem --all`; covers whichever BIKE level the adapter resolved. |
+| Classic McEliece / `run-classic-mceliece` | liboqs_kat | `kat_kem:Classic-McEliece-*` | Runs `kat_kem --all` for the concrete Classic McEliece parameter set. |
+| FrodoKEM / `run-frodokem` | liboqs_kat | `kat_kem:FrodoKEM-*` | Uses liboqs `kat_kem --all`; AES and SHAKE variants are honoured. |
+| NTRU / `run-ntru` | liboqs_kat | `kat_kem:NTRU-*` | Deterministic `kat_kem` check for the chosen NTRU flavour. |
+| NTRU Prime / `run-ntruprime` | liboqs_kat | `kat_kem:sntrup761` | Current liboqs snapshot ships sntrup761 KATs; other variants report `unsupported`. |
+| HQC / `run-hqc` | liboqs_kat | `kat_kem:HQC-*` | Falls back to `kat_kem --all`; works for both core and `*-1-CCA2` aliases. |
 | RSA-OAEP / `run-rsa-oaep` | Built-in static KAT (`source: builtin_kat`) | `rsa-oaep:static-v1` | Decapsulates a fixed OAEP ciphertext with the deterministic 2048-bit key. |
 | Dilithium / `run-dilithium` | ACVP | `ML-DSA:FIPS204` keyGen/sigGen/sigVer | Requires liboqs `vectors_sig`. |
 | Falcon / `run-falcon` | liboqs deterministic KAT (`source: liboqs_kat`) | `kat_sig:Falcon-{512,1024}` | Executes `kat_sig --all` and hashes the transcript—reported as one case. |
-| SPHINCS+ / `run-sphincsplus` | ACVP | `SLH-DSA:FIPS205` | Covered for the `*-simple` variants that map to ACVP parameter names; other presets are skipped. |
-| XMSS^MT / `run-xmssmt` | *Skipped* | — | No standard vectors; message clarifies the gap. |
+| SPHINCS+ / `run-sphincsplus` | ACVP / liboqs KAT fallback | `SLH-DSA:FIPS205` or `kat_sig:*` | ACVP covers the `*-simple` presets; other variants fall back to `kat_sig --all`. |
+| SLH-DSA / `run-slh-dsa` | ACVP / liboqs KAT fallback | `SLH-DSA:FIPS205` or `kat_sig:*` | Pure profiles use ACVP vectors when available; remaining presets use deterministic KATs. |
+| CROSS / `run-cross` | liboqs_kat | `kat_sig:cross-*` | Covers all CROSS RSDP/RSDPG variants via `kat_sig --all`. |
+| MAYO / `run-mayo` | liboqs_kat | `kat_sig:MAYO-*` | Deterministic `kat_sig` run for the selected MAYO parameter set. |
+| SNOVA / `run-snova` | liboqs_kat | `kat_sig:SNOVA_*` | Uses `kat_sig --all`; includes the eight SNOVA candidates exposed by the adapter. |
+| UOV / `run-uov` | liboqs_kat | `kat_sig:OV-*` | Deterministic `kat_sig` coverage for OV and pkc/pkc+skc variants. |
+| XMSS^MT / `run-xmssmt` | liboqs_kat | `kat_sig_stfl:XMSSMT-*` | Uses the stateful liboqs deterministic harness (`kat_sig_stfl --all`). |
 | RSA-PSS / `run-rsa-pss` | Built-in static KAT | `rsa-pss:static-v1` | Verifies a pre-computed PSS signature with the fixed key. |
-| MAYO / `run-mayo` | *Skipped* | — | No vector suites available. |
 
-All other runners (e.g. `run-mayo`, `run-hqc`) report a descriptive skipped
-status so dashboards remain consistent.
+Remaining unsupported runners (currently only algorithms not exposed through adapters) report a descriptive skipped status so dashboards remain consistent.
 
 ## 4. JSON semantics
 

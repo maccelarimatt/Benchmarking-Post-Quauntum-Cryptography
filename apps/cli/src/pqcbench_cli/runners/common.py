@@ -21,7 +21,7 @@ import threading
 import time
 
 from dataclasses import dataclass, asdict
-from typing import Callable, Dict, Any, List, Tuple, Optional, Sequence
+from typing import Callable, Dict, Any, List, Tuple, Optional, Sequence, Iterable
 from pqcbench import registry
 from pqcbench.runtime_scaling import (
     RuntimeScalingResult,
@@ -2244,6 +2244,18 @@ _SPHINCS_TO_SLH: Dict[str, Tuple[str, str]] = {
     "SPHINCS+-SHA2-128s-simple": ("SLH_DSA_PURE_SHA2_128S", "SLH-DSA-SHA2-128s"),
     "SPHINCS+-SHAKE-128f-simple": ("SLH_DSA_PURE_SHAKE_128F", "SLH-DSA-SHAKE-128f"),
     "SPHINCS+-SHAKE-128s-simple": ("SLH_DSA_PURE_SHAKE_128S", "SLH-DSA-SHAKE-128s"),
+    "SLH_DSA_PURE_SHA2_128S": ("SLH_DSA_PURE_SHA2_128S", "SLH-DSA-SHA2-128s"),
+    "SLH_DSA_PURE_SHA2_128F": ("SLH_DSA_PURE_SHA2_128F", "SLH-DSA-SHA2-128f"),
+    "SLH_DSA_PURE_SHA2_192S": ("SLH_DSA_PURE_SHA2_192S", "SLH-DSA-SHA2-192s"),
+    "SLH_DSA_PURE_SHA2_192F": ("SLH_DSA_PURE_SHA2_192F", "SLH-DSA-SHA2-192f"),
+    "SLH_DSA_PURE_SHA2_256S": ("SLH_DSA_PURE_SHA2_256S", "SLH-DSA-SHA2-256s"),
+    "SLH_DSA_PURE_SHA2_256F": ("SLH_DSA_PURE_SHA2_256F", "SLH-DSA-SHA2-256f"),
+    "SLH_DSA_PURE_SHAKE_128S": ("SLH_DSA_PURE_SHAKE_128S", "SLH-DSA-SHAKE-128s"),
+    "SLH_DSA_PURE_SHAKE_128F": ("SLH_DSA_PURE_SHAKE_128F", "SLH-DSA-SHAKE-128f"),
+    "SLH_DSA_PURE_SHAKE_192S": ("SLH_DSA_PURE_SHAKE_192S", "SLH-DSA-SHAKE-192s"),
+    "SLH_DSA_PURE_SHAKE_192F": ("SLH_DSA_PURE_SHAKE_192F", "SLH-DSA-SHAKE-192f"),
+    "SLH_DSA_PURE_SHAKE_256S": ("SLH_DSA_PURE_SHAKE_256S", "SLH-DSA-SHAKE-256s"),
+    "SLH_DSA_PURE_SHAKE_256F": ("SLH_DSA_PURE_SHAKE_256F", "SLH-DSA-SHAKE-256f"),
 }
 
 
@@ -2419,41 +2431,244 @@ def _run_acvp_slh_dsa(mechanism: str | None) -> Dict[str, Any]:
     return result
 
 
-def _run_kat_falcon(mechanism: str | None) -> Dict[str, Any]:
-    mech = (mechanism or "").strip()
-    if mech not in {"Falcon-512", "Falcon-1024"}:
+_KAT_KEM_SUPPORTED = {
+    "BIKE-L1",
+    "BIKE-L3",
+    "BIKE-L5",
+    "HQC-128",
+    "HQC-192",
+    "HQC-256",
+    "HQC-128-1-CCA2",
+    "HQC-192-1-CCA2",
+    "HQC-256-1-CCA2",
+    "Classic-McEliece-348864",
+    "Classic-McEliece-348864f",
+    "Classic-McEliece-460896",
+    "Classic-McEliece-460896f",
+    "Classic-McEliece-6688128",
+    "Classic-McEliece-6688128f",
+    "Classic-McEliece-6960119",
+    "Classic-McEliece-6960119f",
+    "Classic-McEliece-8192128",
+    "Classic-McEliece-8192128f",
+    "FrodoKEM-640-AES",
+    "FrodoKEM-640-SHAKE",
+    "FrodoKEM-976-AES",
+    "FrodoKEM-976-SHAKE",
+    "FrodoKEM-1344-AES",
+    "FrodoKEM-1344-SHAKE",
+    "NTRU-HPS-2048-509",
+    "NTRU-HPS-2048-677",
+    "NTRU-HPS-4096-821",
+    "NTRU-HPS-4096-1229",
+    "NTRU-HRSS-701",
+    "NTRU-HRSS-1373",
+    "sntrup761",
+}
+
+
+_KAT_SIG_SUPPORTED = {
+    "SPHINCS+-SHA2-128f-simple",
+    "SPHINCS+-SHA2-128s-simple",
+    "SPHINCS+-SHA2-192f-simple",
+    "SPHINCS+-SHA2-192s-simple",
+    "SPHINCS+-SHA2-256f-simple",
+    "SPHINCS+-SHA2-256s-simple",
+    "SPHINCS+-SHAKE-128f-simple",
+    "SPHINCS+-SHAKE-128s-simple",
+    "SPHINCS+-SHAKE-192f-simple",
+    "SPHINCS+-SHAKE-192s-simple",
+    "SPHINCS+-SHAKE-256f-simple",
+    "SPHINCS+-SHAKE-256s-simple",
+    "SPHINCS+-SHA2-128f-robust",
+    "SPHINCS+-SHA2-128s-robust",
+    "SPHINCS+-SHA2-192f-robust",
+    "SPHINCS+-SHA2-192s-robust",
+    "SPHINCS+-SHA2-256f-robust",
+    "SPHINCS+-SHA2-256s-robust",
+    "SPHINCS+-SHAKE-128f-robust",
+    "SPHINCS+-SHAKE-128s-robust",
+    "SPHINCS+-SHAKE-192f-robust",
+    "SPHINCS+-SHAKE-192s-robust",
+    "SPHINCS+-SHAKE-256f-robust",
+    "SPHINCS+-SHAKE-256s-robust",
+    "Falcon-512",
+    "Falcon-1024",
+    "MAYO-1",
+    "MAYO-2",
+    "MAYO-3",
+    "MAYO-5",
+    "cross-rsdp-128-balanced",
+    "cross-rsdp-128-fast",
+    "cross-rsdp-128-small",
+    "cross-rsdp-192-balanced",
+    "cross-rsdp-192-fast",
+    "cross-rsdp-192-small",
+    "cross-rsdp-256-balanced",
+    "cross-rsdp-256-fast",
+    "cross-rsdp-256-small",
+    "cross-rsdpg-128-balanced",
+    "cross-rsdpg-128-fast",
+    "cross-rsdpg-128-small",
+    "cross-rsdpg-192-balanced",
+    "cross-rsdpg-192-fast",
+    "cross-rsdpg-192-small",
+    "cross-rsdpg-256-balanced",
+    "cross-rsdpg-256-fast",
+    "cross-rsdpg-256-small",
+    "OV-Is",
+    "OV-Ip",
+    "OV-III",
+    "OV-V",
+    "OV-Is-pkc",
+    "OV-Ip-pkc",
+    "OV-III-pkc",
+    "OV-V-pkc",
+    "OV-Is-pkc-skc",
+    "OV-Ip-pkc-skc",
+    "OV-III-pkc-skc",
+    "OV-V-pkc-skc",
+    "SNOVA_24_5_5",
+    "SNOVA_25_8_3",
+    "SNOVA_29_6_5",
+    "SNOVA_37_8_4",
+    "SNOVA_37_17_2",
+    "SNOVA_49_11_3",
+    "SNOVA_56_25_2",
+    "SNOVA_60_10_4",
+    "SLH_DSA_PURE_SHA2_128S",
+    "SLH_DSA_PURE_SHA2_128F",
+    "SLH_DSA_PURE_SHA2_192S",
+    "SLH_DSA_PURE_SHA2_192F",
+    "SLH_DSA_PURE_SHA2_256S",
+    "SLH_DSA_PURE_SHA2_256F",
+    "SLH_DSA_PURE_SHAKE_128S",
+    "SLH_DSA_PURE_SHAKE_128F",
+    "SLH_DSA_PURE_SHAKE_192S",
+    "SLH_DSA_PURE_SHAKE_192F",
+    "SLH_DSA_PURE_SHAKE_256S",
+    "SLH_DSA_PURE_SHAKE_256F",
+}
+
+
+_KAT_SIG_STFL_SUPPORTED = {
+    "XMSSMT-SHA2_20/2_256",
+    "XMSSMT-SHA2_20/4_256",
+    "XMSSMT-SHA2_40/2_256",
+    "XMSSMT-SHA2_40/4_256",
+    "XMSSMT-SHA2_40/8_256",
+    "XMSSMT-SHA2_60/3_256",
+    "XMSSMT-SHA2_60/6_256",
+    "XMSSMT-SHA2_60/12_256",
+    "XMSSMT-SHAKE_20/2_256",
+    "XMSSMT-SHAKE_20/4_256",
+    "XMSSMT-SHAKE_40/2_256",
+    "XMSSMT-SHAKE_40/4_256",
+    "XMSSMT-SHAKE_40/8_256",
+    "XMSSMT-SHAKE_60/3_256",
+    "XMSSMT-SHAKE_60/6_256",
+    "XMSSMT-SHAKE_60/12_256",
+}
+
+
+def _normalise_identifier(mechanism: str | None, supported: Iterable[str]) -> str | None:
+    if not mechanism:
+        return None
+    mech = mechanism.strip()
+    if not mech:
+        return None
+    if mech in supported:
+        return mech
+    mech_norm = mech.replace("_", "-").lower()
+    for candidate in supported:
+        if candidate.replace("_", "-").lower() == mech_norm:
+            return candidate
+    return None
+
+
+def _run_liboqs_kat(
+    binary_name: str,
+    mechanism: str | None,
+    *,
+    supported: Iterable[str],
+    unknown_reason: str,
+    vectorset_prefix: str,
+) -> Dict[str, Any]:
+    mech = _normalise_identifier(mechanism, supported)
+    if mech is None:
         return _acvp_skip(
-            "Falcon mechanism not recognised for liboqs KAT fallback",
+            unknown_reason,
             mechanism=mechanism,
+            status="unsupported",
             source="liboqs_kat",
         )
 
-    binary = _liboqs_build_dir() / "tests" / "kat_sig"
+    binary = _liboqs_build_dir() / "tests" / binary_name
     if not binary.exists():
         return _acvp_skip(
-            "liboqs kat_sig binary not available (configure native/ with -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON)",
-            mechanism=mechanism,
+            f"liboqs {binary_name} binary not available (configure native/ with -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON)",
+            mechanism=mech,
             status="missing_binary",
             source="liboqs_kat",
         )
 
     ok, output = _run_acvp_binary(binary, [mech, "--all"])
     tally = _ACVPTally()
-    tally.record(ok, "kat --all", output)
+    tally.record(ok, f"{binary_name} --all", output)
 
     status = "ok" if ok else "failed"
     result = {
         "source": "liboqs_kat",
-        "vectorset": f"kat_sig:{mech}",
-        "mechanism": mechanism,
+        "vectorset": f"{vectorset_prefix}:{mech}",
+        "mechanism": mech,
         "cases": tally.cases,
         "passes": tally.passes,
         "fails": tally.fails,
         "status": status,
     }
-    if not ok:
+    if not ok and tally.fail_examples:
         result["fail_examples"] = tally.fail_examples
     return result
+
+
+def _run_kat_kem(mechanism: str | None) -> Dict[str, Any]:
+    return _run_liboqs_kat(
+        "kat_kem",
+        mechanism,
+        supported=_KAT_KEM_SUPPORTED,
+        unknown_reason="KEM mechanism not recognised for liboqs KAT fallback",
+        vectorset_prefix="kat_kem",
+    )
+
+
+def _run_kat_falcon(mechanism: str | None) -> Dict[str, Any]:
+    return _run_liboqs_kat(
+        "kat_sig",
+        mechanism,
+        supported={"Falcon-512", "Falcon-1024"},
+        unknown_reason="Falcon mechanism not recognised for liboqs KAT fallback",
+        vectorset_prefix="kat_sig",
+    )
+
+
+def _run_kat_sig(mechanism: str | None) -> Dict[str, Any]:
+    return _run_liboqs_kat(
+        "kat_sig",
+        mechanism,
+        supported=_KAT_SIG_SUPPORTED,
+        unknown_reason="Signature mechanism not recognised for liboqs KAT fallback",
+        vectorset_prefix="kat_sig",
+    )
+
+
+def _run_kat_sig_stfl(mechanism: str | None) -> Dict[str, Any]:
+    return _run_liboqs_kat(
+        "kat_sig_stfl",
+        mechanism,
+        supported=_KAT_SIG_STFL_SUPPORTED,
+        unknown_reason="Stateful signature mechanism not recognised for liboqs KAT fallback",
+        vectorset_prefix="kat_sig_stfl",
+    )
 
 
 def _run_kat_rsa_oaep() -> Dict[str, Any]:
@@ -2541,10 +2756,9 @@ def run_acvp_validation(summary: AlgoSummary) -> Tuple[Dict[str, Any], List[str]
         if algo in {"kyber", "ml-kem"} or (mechanism and "ML-KEM" in mechanism):
             result = _run_acvp_ml_kem(mechanism)
         elif algo in {"hqc"}:
-            result = _acvp_skip(
-                "No ACVP vectors published for HQC",
-                mechanism=mechanism,
-            )
+            result = _run_kat_kem(mechanism)
+        elif algo in {"bike", "classic-mceliece", "frodokem", "ntru", "ntruprime"}:
+            result = _run_kat_kem(mechanism)
         elif algo in {"rsa-oaep"}:
             result = _run_kat_rsa_oaep()
         else:
@@ -2559,20 +2773,29 @@ def run_acvp_validation(summary: AlgoSummary) -> Tuple[Dict[str, Any], List[str]
             result = _run_acvp_ml_dsa(mechanism)
         elif algo in {"sphincs+", "sphincsplus"} or (mechanism and mechanism.startswith("SPHINCS+")):
             result = _run_acvp_slh_dsa(mechanism)
+            if result.get("status") == "skipped" and "simple profiles only" in result.get("reason", ""):
+                fallback = _run_kat_sig(mechanism)
+                if fallback.get("status") != "unsupported":
+                    result = fallback
         elif algo == "falcon" or (mechanism and mechanism.startswith("Falcon")):
             result = _run_kat_falcon(mechanism)
         elif algo == "rsa-pss":
             result = _run_kat_rsa_pss()
-        elif algo == "xmssmt":
-            result = _acvp_skip(
-                "No ACVP vectors published for XMSS^MT",
-                mechanism=mechanism,
-            )
         elif algo == "mayo":
-            result = _acvp_skip(
-                "No ACVP vectors published for MAYO",
-                mechanism=mechanism,
-            )
+            result = _run_kat_sig(mechanism)
+        elif algo == "cross":
+            result = _run_kat_sig(mechanism)
+        elif algo == "slh-dsa":
+            if mechanism and mechanism in _SPHINCS_TO_SLH:
+                result = _run_acvp_slh_dsa(mechanism)
+            else:
+                result = _run_kat_sig(mechanism)
+        elif algo == "snova":
+            result = _run_kat_sig(mechanism)
+        elif algo == "uov":
+            result = _run_kat_sig(mechanism)
+        elif algo in {"xmssmt", "xmss"}:
+            result = _run_kat_sig_stfl(mechanism)
         else:
             result = _acvp_skip(
                 "Unsupported signature algorithm for validation",
