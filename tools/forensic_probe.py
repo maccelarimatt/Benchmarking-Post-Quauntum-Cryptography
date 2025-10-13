@@ -40,7 +40,7 @@ import shlex
 from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 import psutil
 import tracemalloc
@@ -96,6 +96,46 @@ from pqcbench.security_levels import available_categories, resolve_security_over
 # ---------------------------------------------------------------------------
 
 DEFAULT_ALGORITHM_EXCLUDE = {"xmssmt"}
+
+_ALGO_NAME_ALIASES = {
+    "ml-kem": "kyber",
+    "mlkem": "kyber",
+    "ml_kem": "kyber",
+    "ml dsa": "dilithium",
+    "ml-dsa": "dilithium",
+    "ml_dsa": "dilithium",
+    "mldsa": "dilithium",
+    "fn-dsa": "falcon",
+    "fn_dsa": "falcon",
+    "fndsa": "falcon",
+    "sphincsplus": "sphincs+",
+    "classicmceliece": "classic-mceliece",
+    "classic_mceliece": "classic-mceliece",
+    "frodo-kem": "frodokem",
+    "frodo_kem": "frodokem",
+    "ntru-prime": "ntruprime",
+    "ntru_prime": "ntruprime",
+    "slh_dsa": "slh-dsa",
+}
+
+_DISPLAY_NAME_OVERRIDES = {
+    "kyber": "ml-kem",
+    "dilithium": "ml-dsa",
+    "falcon": "fn-dsa",
+}
+
+
+def _canonical_algorithm_name(name: Optional[str]) -> Optional[str]:
+    if not name:
+        return name
+    key = name.strip().lower()
+    return _ALGO_NAME_ALIASES.get(key, key)
+
+
+def _display_algorithm_name(canonical_name: str, explicit: Optional[str] = None) -> str:
+    if explicit:
+        return explicit
+    return _DISPLAY_NAME_OVERRIDES.get(canonical_name.lower(), canonical_name)
 
 TVLA_T_THRESHOLD = 4.5
 SIGNIFICANCE_ALPHA = 1e-3
@@ -815,23 +855,46 @@ def classify_algorithm(key: str, obj: Any) -> Optional[str]:
 def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
     discovered: List[AlgorithmDescriptor] = []
     available = registry.list()
-    include_set = set(config.include_algorithms or [])
-    explicit_include = bool(config.include_algorithms)
-    exclude_set = {key.lower() for key in (config.exclude_algorithms or [])}
+    include_raw = config.include_algorithms or []
+    include_set: Set[str] = set()
+    include_set_lower: Set[str] = set()
+    explicit_display_overrides: Dict[str, str] = {}
+    for name in include_raw:
+        canonical = _canonical_algorithm_name(name)
+        if canonical is None:
+            continue
+        include_set.add(canonical)
+        include_set_lower.add(canonical.lower())
+        explicit_display_overrides.setdefault(canonical, name)
+    explicit_include = bool(include_set)
+
+    exclude_raw = config.exclude_algorithms or []
+    exclude_set: Set[str] = set()
+    exclude_set_lower: Set[str] = set()
+    for name in exclude_raw:
+        canonical = _canonical_algorithm_name(name)
+        if canonical is None:
+            continue
+        exclude_set.add(canonical)
+        exclude_set_lower.add(canonical.lower())
+
     if config.categories:
         categories = sorted({cat for cat in config.categories if cat in (1, 3, 5)})
     else:
         categories = []
 
     for key, candidate in sorted(available.items()):
-        key_lower = key.lower()
-        if config.include_algorithms and key not in include_set:
+        canonical_key = _canonical_algorithm_name(key) or key
+        key_lower = canonical_key.lower()
+        display_name = _display_algorithm_name(canonical_key, explicit_display_overrides.get(canonical_key))
+
+        if include_set and canonical_key not in include_set and key_lower not in include_set_lower:
             continue
-        if key_lower in exclude_set:
-            print(f"[forensic_probe] Skipping {key}: excluded via CLI", file=sys.stderr)
+        if canonical_key in exclude_set or key_lower in exclude_set_lower:
+            print(f"[forensic_probe] Skipping {display_name}: excluded via CLI", file=sys.stderr)
             continue
-        if key_lower in DEFAULT_ALGORITHM_EXCLUDE and not (explicit_include and key in include_set):
-            print(f"[forensic_probe] Skipping {key}: excluded by default (unstable)", file=sys.stderr)
+        if key_lower in DEFAULT_ALGORITHM_EXCLUDE and not (explicit_include and (canonical_key in include_set or key_lower in include_set_lower)):
+            print(f"[forensic_probe] Skipping {display_name}: excluded by default (unstable)", file=sys.stderr)
             continue
         if inspect.isclass(candidate):
             base_factory: Callable[[], Any] = candidate
@@ -843,17 +906,17 @@ def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
         variant_specs: List[Tuple[Dict[str, str], Optional[int], Optional[str]]] = [({}, None, None)]
         if categories:
             variant_specs = []
-            available_for_algo = set(available_categories(key))
+            available_for_algo = set(available_categories(display_name))
             for category in categories:
-                if key_lower in {"rsa-oaep", "rsa-pss"} and category > config.rsa_max_category:
+                if canonical_key in {"rsa-oaep", "rsa-pss"} and category > config.rsa_max_category:
                     print(
-                        f"[forensic_probe] Skipping {key} Cat-{category}: limited by --rsa-max-category={config.rsa_max_category}",
+                        f"[forensic_probe] Skipping {display_name} Cat-{category}: limited by --rsa-max-category={config.rsa_max_category}",
                         file=sys.stderr,
                     )
                     continue
                 if available_for_algo and category not in available_for_algo:
                     continue
-                override = resolve_security_override(key, category)
+                override = resolve_security_override(display_name, category)
                 overrides: Dict[str, str] = {}
                 note = None
                 if override:
@@ -868,7 +931,7 @@ def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
             try:
                 probe_obj = factory()
             except Exception as exc:
-                label = f"{key} cat-{category}" if category is not None else key
+                label = f"{display_name} cat-{category}" if category is not None else display_name
                 print(f"[forensic_probe] Skipping {label}: instantiation failed ({exc!r})", file=sys.stderr)
                 continue
             kind = classify_algorithm(key, probe_obj)
@@ -877,9 +940,9 @@ def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
             parameter_name = resolve_mechanism_name(probe_obj)
             if parameter_name is None:
                 parameter_name = getattr(probe_obj, "alg", None)
-            param_hint = find_param_hint(parameter_name or key)
+            param_hint = find_param_hint(parameter_name or canonical_key)
             descriptor = AlgorithmDescriptor(
-                key=key,
+                key=display_name,
                 factory=factory,
                 kind=kind,
                 parameter_name=parameter_name,

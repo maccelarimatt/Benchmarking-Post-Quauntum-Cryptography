@@ -138,6 +138,22 @@ _ALGO_VARIANTS: Dict[str, Mapping[SecurityCategory, AlgorithmVariant]] = {
 # Provide aliases so callers can refer to liboqs naming variations.
 _ALGO_ALIASES: Dict[str, str] = {
     "sphincsplus": "sphincs+",
+    "ml-kem": "kyber",
+    "mlkem": "kyber",
+    "ml_kem": "kyber",
+    "ml-dsa": "dilithium",
+    "ml_dsa": "dilithium",
+    "mldsa": "dilithium",
+    "fn-dsa": "falcon",
+    "fn_dsa": "falcon",
+    "fndsa": "falcon",
+    "classicmceliece": "classic-mceliece",
+    "classic_mceliece": "classic-mceliece",
+    "frodo-kem": "frodokem",
+    "frodo_kem": "frodokem",
+    "ntru-prime": "ntruprime",
+    "ntru_prime": "ntruprime",
+    "slh_dsa": "slh-dsa",
 }
 
 # Mapping from algorithm canonical name to the environment variable used by
