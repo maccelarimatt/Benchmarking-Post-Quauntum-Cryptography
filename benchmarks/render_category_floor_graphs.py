@@ -67,6 +67,46 @@ NUMERIC_FIELDS = (
 )
 
 
+_ALGO_LABEL_OVERRIDES: Dict[str, str] = {
+    "bike": "BIKE",
+    "classic-mceliece": "Classic McEliece",
+    "cross": "CROSS",
+    "dilithium": "ML-DSA",
+    "falcon": "Falcon",
+    "frodokem": "FrodoKEM",
+    "hqc": "HQC",
+    "kyber": "ML-KEM",
+    "mayo": "MAYO",
+    "ntru": "NTRU",
+    "ntruprime": "NTRU Prime",
+    "rsa-oaep": "RSA-OAEP",
+    "rsa-pss": "RSA-PSS",
+    "slh-dsa": "SLH-DSA",
+    "snova": "SNOVA",
+    "sphincs+": "SPHINCS+",
+    "sphincsplus": "SPHINCS+",
+    "uov": "UOV",
+    "xmssmt": "XMSSMT",
+}
+
+
+def _friendly_algo_label(algo: str) -> str:
+    key = (algo or "").strip().lower()
+    if not key:
+        return algo
+    override = _ALGO_LABEL_OVERRIDES.get(key)
+    if override:
+        return override
+    cleaned = (algo or "").replace("_", " ").replace("-", " ").strip()
+    if not cleaned:
+        return algo
+    if "+" in cleaned:
+        parts = [part.strip() for part in cleaned.split("+") if part.strip()]
+        if parts:
+            return "+".join(part.upper() for part in parts)
+    return cleaned.title()
+
+
 @dataclass
 class Record:
     session_id: str
@@ -331,9 +371,10 @@ def _operations_for_kind(kind: str, present_ops: Iterable[str]) -> List[str]:
 
 
 def _format_category_label(algo: str, category: Optional[int]) -> str:
+    friendly = _friendly_algo_label(algo)
     if category is None:
-        return f"{algo}\nCat-?"
-    return f"{algo}\nCat-{category}"
+        return f"{friendly}\nCat-?"
+    return f"{friendly}\nCat-{category}"
 
 
 def _sorted_algo_entries(
@@ -667,7 +708,8 @@ def plot_latency_distributions(
                 continue
             mean_val = statistics.fmean(series)
             std_val = statistics.stdev(series) if len(series) > 1 else 0.0
-            stats.append((f"{algo} (Cat-{category})", mean_val, std_val))
+            label = _friendly_algo_label(algo)
+            stats.append((f"{label} (Cat-{category})", mean_val, std_val))
         if not stats:
             continue
 
@@ -719,7 +761,8 @@ def plot_memory_distributions(
                 continue
             mean_val = statistics.fmean(series)
             std_val = statistics.stdev(series) if len(series) > 1 else 0.0
-            stats.append((f"{algo} (Cat-{category})", mean_val, std_val))
+            label = _friendly_algo_label(algo)
+            stats.append((f"{label} (Cat-{category})", mean_val, std_val))
         if not stats:
             continue
 
@@ -770,7 +813,7 @@ def plot_latency_ecdf(
             sorted_vals = sorted(series)
             n = len(sorted_vals)
             y_vals = [i / n for i in range(1, n + 1)]
-            label = f"{algo} (Cat-{category})"
+            label = f"{_friendly_algo_label(algo)} (Cat-{category})"
             ax.step(sorted_vals, y_vals, where="post", label=label)
         ax.set_xlabel("Latency (ms)")
         ax.set_ylabel("F(x)")
@@ -816,7 +859,8 @@ def plot_throughput_vs_category(
             y_vals = [values.get(cat) for cat in categories]
             if all(v is None for v in y_vals):
                 continue
-            if _scatter_with_best_fit(ax, x_positions, y_vals, algo):
+            label = _friendly_algo_label(algo)
+            if _scatter_with_best_fit(ax, x_positions, y_vals, label):
                 plotted_any = True
         ax.set_ylabel("Ops per second")
         ax.set_xlabel("Security category")
@@ -862,7 +906,7 @@ def plot_size_stacked_bars(
         if not entries:
             return
         entries.sort()
-        labels = [f"{algo}\nCat-{cat}" for cat, algo, _ in entries]
+        labels = [f"{_friendly_algo_label(algo)}\nCat-{cat}" for cat, algo, _ in entries]
         components = []
         if kind_label == "KEM":
             components = [
@@ -935,7 +979,7 @@ def plot_expansion_scatter(
             return
         fig, ax = plt.subplots(figsize=(6, 4.5))
         for ratio, category, algo in sorted(points, key=lambda x: (x[1], x[2])):
-            algo_label = f"{algo} (Cat-{category})"
+            algo_label = f"{_friendly_algo_label(algo)} (Cat-{category})"
             ax.scatter(category, ratio, label=algo_label)
             ax.annotate(
                 algo_label,
@@ -1016,7 +1060,7 @@ def plot_hamming_metrics(
     overall_hw_items: List[Tuple[str, float, float]] = []
     overall_hd_items: List[Tuple[str, float, float]] = []
     for entry in sorted(entries, key=lambda e: (e["category"], e["algo"])):
-        label = f"{entry['algo']} (Cat-{entry['category']})"
+        label = f"{_friendly_algo_label(entry['algo'])} (Cat-{entry['category']})"
         if entry["hw_mean"] is not None:
             overall_hw_items.append(
                 (label, entry["hw_mean"] * 100.0, entry["hw_std"] * 100.0)
@@ -1046,7 +1090,7 @@ def plot_hamming_metrics(
         hw_items: List[Tuple[str, float, float]] = []
         hd_items: List[Tuple[str, float, float]] = []
         for entry in sorted(items, key=lambda e: e["algo"]):
-            label = entry["algo"]
+            label = _friendly_algo_label(entry["algo"])
             if entry["hw_mean"] is not None:
                 hw_items.append(
                     (label, entry["hw_mean"] * 100.0, entry["hw_std"] * 100.0)
@@ -1088,7 +1132,7 @@ def plot_memory_error_bars(
         ):
             continue
         key = f"{rec.kind} / {rec.operation}"
-        label_name = f"{rec.algo} (Cat-{rec.category_number})"
+        label_name = f"{_friendly_algo_label(rec.algo)} (Cat-{rec.category_number})"
         grouped[key][label_name] = (
             rec.mem_mean_kb,
             max(0.0, rec.mem_mean_kb - rec.mem_ci95_low_kb),
@@ -1124,7 +1168,7 @@ def plot_security_cost_bars(
     for (kind, algo, category), rec in unique.items():
         if rec.security_classical_bits is None and rec.security_quantum_bits is None:
             continue
-        label = f"{algo}\nCat-{category}"
+        label = f"{_friendly_algo_label(algo)}\nCat-{category}"
         entries.append(
             (
                 label,
@@ -1228,7 +1272,7 @@ def plot_shor_runtime(
         ax.set_ylim(bottom=0)
         safe_algo = algo.replace("/", "_").replace(" ", "_").lower()
         outfile = output_dir / f"shor_runtime_{safe_algo}_cat-{category}.png"
-        caption = f"Shor surface-code runtime scenarios for {algo} (Cat-{category})"
+        caption = f"Shor surface-code runtime scenarios for {_friendly_algo_label(algo)} (Cat-{category})"
         _save_with_caption(fig, outfile, caption, captions)
 
 
@@ -1338,7 +1382,7 @@ def _plot_tradeoff_frontier(
             linewidths=0.4,
             alpha=0.75,
         )
-        label_specs.append((latency, sec_bits, f"{algo}\nCat-{category}"))
+        label_specs.append((latency, sec_bits, f"{_friendly_algo_label(algo)}\nCat-{category}"))
 
     _place_point_labels(fig, ax, label_specs)
 
@@ -1488,7 +1532,7 @@ def plot_runtime_scaling(
             continue
         safe_algo = algo.replace("/", "_").replace(" ", "_")
         outfile = output_dir / f"runtime_scaling_{safe_algo}_cat-{category}.png"
-        title = f"Runtime scaling — {algo} (Cat-{category})"
+        title = f"Runtime scaling — {_friendly_algo_label(algo)} (Cat-{category})"
         _plot_group(container, title, outfile)
 
     for algo, container in per_algo.items():
@@ -1496,7 +1540,7 @@ def plot_runtime_scaling(
             continue
         safe_algo = algo.replace("/", "_").replace(" ", "_")
         outfile = output_dir / f"runtime_scaling_{safe_algo}_overall.png"
-        title = f"Runtime scaling — {algo} (all categories)"
+        title = f"Runtime scaling — {_friendly_algo_label(algo)} (all categories)"
         _plot_group(container, title, outfile)
 
     for category, container in per_category.items():
@@ -1608,7 +1652,8 @@ def plot_session_comparisons(
                 plotted_any = False
                 for algo, values_by_session in sorted(algo_map.items()):
                     values = [values_by_session.get(sid) for sid in sessions]
-                    if _scatter_with_best_fit(ax, x_positions, values, algo):
+                    label = _friendly_algo_label(algo)
+                    if _scatter_with_best_fit(ax, x_positions, values, label):
                         plotted_any = True
                 if not plotted_any:
                     plt.close(fig)
@@ -1636,7 +1681,8 @@ def plot_session_comparisons(
                 plotted_any = False
                 for algo, values_by_session in sorted(algo_map.items()):
                     values = [values_by_session.get(sid) for sid in sessions]
-                    if _scatter_with_best_fit(ax, x_positions, values, algo):
+                    label = _friendly_algo_label(algo)
+                    if _scatter_with_best_fit(ax, x_positions, values, label):
                         plotted_any = True
                 if not plotted_any:
                     plt.close(fig)
