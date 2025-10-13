@@ -716,7 +716,7 @@ def main() -> None:
 
     output_path = args.output
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    mode = "a" if args.append and output_path.exists() else "w"
+    mode = "a" if (args.append or (args.resume_from and output_path.exists())) else "w"
     with output_path.open(mode, newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=_FIELDNAMES)
         if mode == "w":
