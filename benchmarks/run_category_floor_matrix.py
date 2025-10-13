@@ -187,6 +187,25 @@ def _clone_hint_for_category(hint: ParamHint, category: int, override_value: Any
     )
 
 
+def _fallback_hint(name: str, mechanism: Optional[str], category: int, override_value: Any) -> ParamHint:
+    fallback_bits = _CATEGORY_DEFAULT_FLOOR.get(category, _CATEGORY_DEFAULT_FLOOR.get(1, 0))
+    mechanism_label: str = (
+        str(override_value)
+        if isinstance(override_value, str)
+        else (mechanism or name)
+    )
+    extras: Dict[str, Any] | None = None
+    if isinstance(override_value, int):
+        extras = {"modulus_bits": int(override_value)}
+    return ParamHint(
+        family=name.replace("_", "-").upper(),
+        mechanism=mechanism_label,
+        category_floor=fallback_bits,
+        notes="Fallback hint (add pqcbench.params entry for richer metadata).",
+        extras=extras,
+    )
+
+
 def discover_algorithms(categories: Iterable[int], *, rsa_max_category: int = 5) -> List[AlgorithmSpec]:
     desired = [cat for cat in categories if cat in (1, 3, 5)]
     specs: List[AlgorithmSpec] = []
@@ -200,8 +219,6 @@ def discover_algorithms(categories: Iterable[int], *, rsa_max_category: int = 5)
             continue
         mechanism = _resolve_mechanism(adapter, name)
         hint = find_param_hint(mechanism) or find_param_hint(name)
-        if not hint:
-            continue
         available = set(available_categories(name))
         for category in desired:
             if available and category not in available:
@@ -209,7 +226,19 @@ def discover_algorithms(categories: Iterable[int], *, rsa_max_category: int = 5)
             override = resolve_security_override(name, category)
             if name in {"rsa-oaep", "rsa-pss"} and int(category) > int(rsa_max_category):
                 continue
-            hint_for_cat = _clone_hint_for_category(hint, category, override.value if override else None)
+            if hint:
+                hint_for_cat = _clone_hint_for_category(
+                    hint,
+                    category,
+                    override.value if override else None,
+                )
+            else:
+                hint_for_cat = _fallback_hint(
+                    name,
+                    mechanism,
+                    category,
+                    override.value if override else None,
+                )
             label = f"cat-{category}"
             specs.append(
                 AlgorithmSpec(
