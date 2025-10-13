@@ -1382,14 +1382,56 @@ def _estimate_bike_from_name(name: str) -> SecMetrics:
         f"BIKE: NIST L{nist_category or '?'} QC-MDPC code-based KEM.",
         "Estimator: category floor; design targets available in details.",
     ]
+    bike_isd: Dict[str, Any] | None = None
     if parameters and parameters.get("r_bits") and parameters.get("weight_per_vector"):
+        r = int(parameters.get("r_bits") or 0)
+        weight = int(parameters.get("weight_per_vector") or 0)
+        n0 = int(parameters.get("n0") or 2)
+        n = max(1, r * max(1, n0))
+        k = max(1, r)
+
+        def _H2(p: float) -> float:
+            if p <= 0.0 or p >= 1.0:
+                return 0.0
+            return -(p * math.log2(p) + (1.0 - p) * math.log2(1.0 - p))
+
+        def _log2_binom(n_val: int, t_val: int) -> float:
+            if t_val < 0 or t_val > n_val or n_val <= 0:
+                return 0.0
+            p_val = float(t_val) / float(n_val)
+            return float(n_val) * _H2(p_val)
+
+        half = max(1, weight // 2)
+        quarter = max(1, weight // 4)
+        logNw = _log2_binom(n, weight)
+        logKh = _log2_binom(k, half)
+        logKq = _log2_binom(k, quarter)
+        stern_time = max(0.0, logNw - logKh)
+        stern_mem = max(0.0, stern_time * 0.5)
+        bjmm_time = max(0.0, logNw - 2.0 * logKh + _log2_binom(n, half) - logKq)
+        bjmm_mem = max(0.0, bjmm_time * 0.35)
+        grover_factor = 0.5
+        bike_isd = {
+            "stern": {
+                "time_bits_classical": stern_time,
+                "memory_bits_classical": stern_mem,
+                "time_bits_quantum_grover": stern_time * grover_factor,
+            },
+            "bjmm": {
+                "time_bits_classical": bjmm_time,
+                "memory_bits_classical": bjmm_mem,
+                "time_bits_quantum_grover": bjmm_time * grover_factor,
+            },
+            "grover_factor": grover_factor,
+        }
         notes_parts.append(
-            f"Structure: r={parameters.get('r_bits')}, w={parameters.get('weight_per_vector')}, n0={parameters.get('n0', 2)}."
+            f"Structure: r={r}, w={weight}, n0={n0}."
         )
     if curated:
         notes_parts.append(
             f"Design target ≈ {curated.get('classical_bits_mid')} classical bits / {curated.get('quantum_bits_mid')} quantum bits (BJMM)."
         )
+    extras["bike"]["isd"] = bike_isd
 
     return SecMetrics(
         classical_bits=float(floor),
@@ -1946,8 +1988,9 @@ def estimate_for_summary(summary: Any, options: Optional[EstimatorOptions] = Non
     mech = _get_mechanism_for_algo(name)  # may be None
     meta = dict(summary.meta or {})
 
-    # Prefer a human-readable parameter/mech string when present
-    param_hint = mech or meta.get("parameter", None) or meta.get("mechanism", None) or name
+    # Prefer mechanism hints recorded in the summary metadata (reflects overrides)
+    meta_mech = meta.get("mechanism") or meta.get("parameter")
+    param_hint = meta_mech or mech or name
     metrics: SecMetrics
 
     if name in ("rsa-pss", "rsa-oaep"):

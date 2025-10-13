@@ -373,6 +373,16 @@
               </td>
             </tr>
             {% endif %}
+            {% set std = sec_obj.get('standardization') %}
+            {% if std %}
+            <tr>
+              <td class="kv-label">Standardization</td>
+              <td class="kv-value">
+                <span class="badge">{% if std.label %}{{ std.label }}{% else %}{{ std.state }}{% endif %}</span>
+                {% if std.state %}<span class="kv-sub" style="margin-left:.4rem;">{{ std.state }}</span>{% endif %}
+              </td>
+            </tr>
+            {% endif %}
             <tr>
               <td class="kv-label">Backend</td>
               <td class="kv-value">{{ backend_hint }}</td>

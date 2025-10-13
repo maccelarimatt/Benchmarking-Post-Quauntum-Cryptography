@@ -32,6 +32,8 @@ def _pick_kem(
         return cached
 
     order: list[str] = []
+    if env_value:
+        order.append(env_value)
     for env_name in legacy_envs:
         val = os.getenv(env_name)
         if val:

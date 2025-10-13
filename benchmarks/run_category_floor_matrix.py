@@ -173,6 +173,35 @@ def _resolve_mechanism(candidate: Any, fallback_name: str) -> str | None:
     return fallback_name
 
 
+def _supports_category(algo: str, category: int, override) -> bool:
+    """Return True if applying the security override selects a distinct mechanism."""
+
+    if override is None:
+        return False
+    try:
+        value = override.value
+    except AttributeError:
+        value = None
+    if value is None:
+        return False
+    if not isinstance(value, str):
+        return True  # RSA-sized overrides
+    env_var = override.env_var
+    desired = value.strip().lower()
+    if not desired:
+        return False
+    with _temporary_env({env_var: str(value)}):
+        reset_adapter_cache(algo)
+        try:
+            candidate = registry.get(algo)()
+        except Exception:
+            return False
+    mechanism = _resolve_mechanism(candidate, algo)
+    if not mechanism:
+        return False
+    return mechanism.strip().lower() == desired
+
+
 def _clone_hint_for_category(hint: ParamHint, category: int, override_value: Any) -> ParamHint:
     extras = copy.deepcopy(hint.extras) if hint.extras else {}
     category_floor = _CATEGORY_DEFAULT_FLOOR.get(category, hint.category_floor)
@@ -255,6 +284,8 @@ def discover_algorithms(categories: Iterable[int], *, rsa_max_category: int = 5)
                 continue
             override = resolve_security_override(name, category)
             if name in {"rsa-oaep", "rsa-pss"} and int(category) > int(rsa_max_category):
+                continue
+            if not _supports_category(name, category, override):
                 continue
             if hint:
                 hint_for_cat = _clone_hint_for_category(

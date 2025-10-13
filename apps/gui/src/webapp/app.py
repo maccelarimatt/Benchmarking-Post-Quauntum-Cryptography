@@ -447,6 +447,20 @@ def _security_override_scope(override: Optional[SecurityOverride]):
             os.environ[env_var] = previous
 
 
+def _mechanism_to_category(algo: str, mechanism: str) -> Optional[int]:
+    mech_lower = mechanism.strip().lower()
+    if not mech_lower:
+        return None
+    for level in SECURITY_CATEGORIES:
+        try:
+            ov = resolve_security_override(algo, level)
+        except Exception:
+            ov = None
+        if ov and isinstance(ov.value, str) and ov.value.strip().lower() == mech_lower:
+            return ov.applied_category
+    return None
+
+
 def _attach_security_meta(summary, requested_category: Optional[int], override: Optional[SecurityOverride]) -> None:
     if requested_category is None:
         return
@@ -483,6 +497,22 @@ def _attach_security_meta(summary, requested_category: Optional[int], override: 
         display += f" - {override.value}"
     if override.note:
         display += f". {override.note}"
+    actual_mech = None
+    for key in ("mechanism", "parameter", "alg", "algorithm", "mech"):
+        val = meta.get(key)
+        if isinstance(val, str) and val.strip():
+            actual_mech = val.strip()
+            break
+    if actual_mech and isinstance(override.value, str):
+        if actual_mech.lower() != str(override.value).strip().lower():
+            detected_cat = _mechanism_to_category(summary.algo, actual_mech)
+            if detected_cat is not None and detected_cat != override.applied_category:
+                data["applied_category"] = detected_cat
+            data["mismatched_mechanism"] = actual_mech
+            mismatch_note = f" Adapter selected {actual_mech}."
+            if "Adapter selected" not in (override.note or ""):
+                data["note"] = (override.note or "") + mismatch_note
+            display = f"Category {data.get('applied_category') or '?'} (requested {override.requested_category}) - {actual_mech}"
     meta["security_level_display"] = display
     if summary.algo in ("rsa-oaep", "rsa-pss"):
         if "rsa_bits" not in meta and isinstance(override.value, int):
@@ -1739,7 +1769,6 @@ def _heuristic_analysis(compare: dict) -> str:
 
 if __name__ == "__main__":
     app.run(debug=True)
-
 
 
 
