@@ -71,6 +71,109 @@ function Ensure-GitClone {
     }
 }
 
+function Install-Liboqs {
+    param(
+        [Parameter(Mandatory)][string]$SourcePath,
+        [Parameter(Mandatory)][string]$InstallPath,
+        [Parameter(Mandatory)][string]$VersionTag
+    )
+
+    if (-not (Test-Path -LiteralPath $InstallPath)) {
+        New-Item -ItemType Directory -Path $InstallPath | Out-Null
+    }
+    $installRoot = (Resolve-Path -LiteralPath $InstallPath).Path
+    $sentinel = Join-Path $installRoot '.liboqs-version'
+    $oqsDll = Join-Path $installRoot 'bin\oqs.dll'
+    $needsBuild = $true
+
+    if ((Test-Path -LiteralPath $oqsDll) -and (Test-Path -LiteralPath $sentinel)) {
+        $installedVersion = Get-Content -Path $sentinel -ErrorAction SilentlyContinue
+        if ($installedVersion -eq $VersionTag) {
+            Write-Host "[setup] Reusing existing liboqs install ($VersionTag)." -ForegroundColor Cyan
+            $needsBuild = $false
+        }
+    }
+
+    if (-not $needsBuild) {
+        return
+    }
+
+    Write-Host "[setup] Building liboqs ($VersionTag)..." -ForegroundColor Green
+
+    if (Test-Path -LiteralPath $installRoot) {
+        Remove-Item -LiteralPath $installRoot -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $installRoot | Out-Null
+
+    $buildDir = Join-Path $SourcePath 'build-setup'
+    if (Test-Path -LiteralPath $buildDir) {
+        Remove-Item -LiteralPath $buildDir -Recurse -Force
+    }
+
+    $configureArgs = @(
+        '-S', $SourcePath,
+        '-B', $buildDir,
+        "-DCMAKE_INSTALL_PREFIX=$installRoot",
+        '-DBUILD_SHARED_LIBS=ON',
+        '-DOQS_BUILD_ONLY_LIB=ON',
+        '-DOQS_DIST_BUILD=OFF',
+        '-DOQS_MINIMAL_BUILD=OFF',
+        '-DOQS_USE_OPENSSL=OFF',
+        '-DOQS_ENABLE_KEM_ML_KEM=ON',
+        '-DOQS_ENABLE_KEM_HQC=ON',
+        '-DOQS_ENABLE_SIG_ML_DSA=ON',
+        '-DOQS_ENABLE_SIG_FALCON=ON',
+        '-DOQS_ENABLE_SIG_SPHINCS=ON',
+        '-DOQS_ENABLE_SIG_STFL_XMSS=ON',
+        '-DOQS_ENABLE_SIG_STFL_LMS=ON',
+        '-DOQS_HAZARDOUS_EXPERIMENTAL_ENABLE_SIG_STFL_KEY_SIG_GEN=ON',
+        '-DCMAKE_BUILD_TYPE=Release'
+    )
+    if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
+        $configureArgs += '-DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=TRUE'
+    }
+
+    & cmake @configureArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to configure liboqs build."
+    }
+
+    $buildArgs = @('--build', $buildDir, '--config', 'Release')
+    & cmake @buildArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to build liboqs."
+    }
+
+    $installArgs = @('--install', $buildDir, '--config', 'Release')
+    & cmake @installArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to install liboqs."
+    }
+
+    Set-Content -Path $sentinel -Value $VersionTag -Encoding ASCII
+}
+
+function Sync-LiboqsRuntime {
+    param(
+        [Parameter(Mandatory)][string]$InstallPath,
+        [Parameter(Mandatory)][string]$VenvScriptsPath
+    )
+
+    $sourceDll = Join-Path $InstallPath 'bin\oqs.dll'
+    if (-not (Test-Path -LiteralPath $sourceDll)) {
+        Write-Host "[setup] WARNING: liboqs DLL not found at '$sourceDll'; skipping venv sync." -ForegroundColor Yellow
+        return
+    }
+
+    if (-not (Test-Path -LiteralPath $VenvScriptsPath)) {
+        Write-Host "[setup] WARNING: Virtualenv Scripts directory not found at '$VenvScriptsPath'; skipping liboqs DLL copy." -ForegroundColor Yellow
+        return
+    }
+
+    $destinationDll = Join-Path $VenvScriptsPath 'oqs.dll'
+    Copy-Item -LiteralPath $sourceDll -Destination $destinationDll -Force
+}
+
 try {
     Write-Host "[setup] Repo root: $repoRoot" -ForegroundColor Cyan
 
@@ -79,10 +182,15 @@ try {
     Ensure-Command -Name cmake
 
     $liboqsPythonCommit = 'f70842e3e338fa67af2eb6e72b35a4b23bad2e1c'
-    $liboqsCommit = 'b02d0c9a30b2e60f8374a92928c9426d1256bf03'
+    $liboqsVersion = '0.14.0'
+    $liboqsCommit = '94b421ebb82405c843dba4e9aa521a56ee5a333d'
 
     Ensure-GitClone -Url 'https://github.com/open-quantum-safe/liboqs-python.git' -Destination 'liboqs-python' -Force:$ForceClone -Commit:$liboqsPythonCommit
     Ensure-GitClone -Url 'https://github.com/open-quantum-safe/liboqs.git' -Destination 'liboqs' -Force:$ForceClone -Commit:$liboqsCommit
+
+    $liboqsSourcePath = Join-Path $repoRoot 'liboqs'
+    $liboqsInstallPath = Join-Path $env:USERPROFILE '_oqs'
+    Install-Liboqs -SourcePath $liboqsSourcePath -InstallPath $liboqsInstallPath -VersionTag $liboqsVersion
 
     $venvPath = Join-Path $repoRoot '.venv'
     $venvPython = Join-Path $venvPath 'Scripts\python.exe'
@@ -99,6 +207,8 @@ try {
         throw "Unable to locate virtualenv python at '$venvPython'."
     }
 
+    Sync-LiboqsRuntime -InstallPath $liboqsInstallPath -VenvScriptsPath (Join-Path $venvPath 'Scripts')
+
     Write-Host "[setup] Upgrading packaging tooling..." -ForegroundColor Green
     & $venvPython -m pip install --upgrade pip setuptools wheel
 
@@ -114,8 +224,18 @@ try {
         Write-Host "[setup] WARNING: liboqs-python checkout not found; installing pinned PyPI 'liboqs-python==0.14.0'." -ForegroundColor Yellow
         & $venvPython -m pip install liboqs-python==0.14.0
     }
-    & $venvPython -m pip show oqs *> $null
-    if ($LASTEXITCODE -eq 0) {
+    $oqsShowExitCode = 1
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue' # pip exits non-zero when the package is missing; ignore that here
+        & $venvPython -m pip show oqs *> $null
+        $oqsShowExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    if ($oqsShowExitCode -eq 0) {
         Write-Host "[setup] Removing conflicting PyPI 'oqs' package..." -ForegroundColor Yellow
         & $venvPython -m pip uninstall -y oqs | Out-Null
     }
@@ -136,7 +256,7 @@ try {
     & $venvPython -m pip install -e libs/adapters/native
 
     Write-Host "[setup] Installing development hooks..." -ForegroundColor Green
-    & $venvPython -m pre-commit install
+    & $venvPython -m pre_commit install
 
     Write-Host "`n[setup] Done. Activate the environment with:`n    .\\.venv\\Scripts\\Activate.ps1" -ForegroundColor Cyan
 }
