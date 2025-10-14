@@ -128,9 +128,6 @@ echo "[setup] Installing editable packages..."
 pip install -e libs/core
 pip install -e libs/adapters/native
 
-echo "[setup] Installing development hooks..."
-pre-commit install
-
 cat <<'EOF'
 
 [setup] Done.
