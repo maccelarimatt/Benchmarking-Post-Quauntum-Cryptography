@@ -5,429 +5,397 @@
       "category_label": "cat-1",
       "category_number": 1,
       "extras": {
-        "delta": 15,
-        "k": 16,
-        "n": 17669,
-        "n1": 46,
-        "n2": 384,
-        "omega": 66,
-        "omega_e": 75,
-        "omega_r": 75,
+        "n0": 2,
+        "r_bits": 12323,
         "sizes_bytes": {
-          "ciphertext": 4433,
-          "public_key": 2249,
-          "secret_key": 2305,
-          "shared_secret": 64
+          "ciphertext": 1573,
+          "public_key": 1541,
+          "secret_key": 5223,
+          "shared_secret": 32
         },
-        "w": 66
+        "weight_per_vector": 71
       },
-      "family": "HQC",
+      "family": "BIKE",
       "kind": "KEM",
-      "mechanism": "HQC-128",
-      "name": "hqc",
-      "notes": "n=17669; RS n1=46,k=16,delta=15; RM n2=384; omega=66; omega_e=75; omega_r=75"
+      "mechanism": "BIKE-L1",
+      "name": "bike",
+      "notes": "Round-4 BIKE; r=12323, weight per polynomial D=71"
     },
     {
       "category_floor_bits": 128,
       "category_label": "cat-1",
       "category_number": 1,
       "extras": {
-        "eta1": 3,
-        "eta2": 2,
-        "k": 2,
-        "n": 256,
-        "q": 3329,
         "sizes_bytes": {
-          "ciphertext": 768,
-          "public_key": 800,
-          "secret_key": 1632,
+          "ciphertext": 96,
+          "public_key": 261120,
+          "secret_key": 6492,
           "shared_secret": 32
         }
       },
-      "family": "ML-KEM",
+      "family": "Classic McEliece",
       "kind": "KEM",
-      "mechanism": "ML-KEM-512",
-      "name": "kyber",
-      "notes": "k=2; ring n=256; q=3329; eta1=3, eta2=2"
+      "mechanism": "Classic-McEliece-348864f",
+      "name": "classic-mceliece",
+      "notes": "Binary Goppa code; fast (f) variant targeting NIST Cat-1"
     },
     {
       "category_floor_bits": 128,
       "category_label": "cat-1",
       "category_number": 1,
       "extras": {
-        "modulus_bits": 3072,
-        "public_exponent": 65537
-      },
-      "family": "RSA",
-      "kind": "KEM",
-      "mechanism": "RSA-3072-OAEP",
-      "name": "rsa-oaep",
-      "notes": "RSA-2048 OAEP baseline; assesses Shor breakability in quantum models"
-    },
-    {
-      "category_floor_bits": 128,
-      "category_label": "cat-1",
-      "category_number": 1,
-      "extras": {
-        "n": 512,
-        "q": 12289,
         "sizes_bytes": {
-          "public_key": 897,
-          "secret_key": 1281,
-          "signature": 666,
-          "signature_note": "Deterministic padded encoding = 666 bytes; compressed signatures vary ~650-670 bytes; uncompressed ~752 bytes."
+          "ciphertext": 9720,
+          "public_key": 9616,
+          "secret_key": 19888,
+          "shared_secret": 16
         }
       },
-      "family": "Falcon",
-      "kind": "SIG",
-      "mechanism": "Falcon-512",
-      "name": "falcon",
-      "notes": "n=512; q=12289; NTRU lattice"
-    },
-    {
-      "category_floor_bits": 128,
-      "category_label": "cat-1",
-      "category_number": 1,
-      "extras": {
-        "k": 10,
-        "m": 78,
-        "n": 86,
-        "oil": 8,
-        "q": 16,
-        "sizes_bytes": {
-          "public_key": 1420,
-          "secret_key": 24,
-          "signature": 454
-        },
-        "vinegar": 78
-      },
-      "family": "MAYO",
-      "kind": "SIG",
-      "mechanism": "MAYO-1",
-      "name": "mayo",
-      "notes": "n=86, m=78, o=8, v=78; k=10; q=16"
-    },
-    {
-      "category_floor_bits": 128,
-      "category_label": "cat-1",
-      "category_number": 1,
-      "extras": {
-        "modulus_bits": 3072,
-        "public_exponent": 65537
-      },
-      "family": "RSA",
-      "kind": "SIG",
-      "mechanism": "RSA-3072-PSS",
-      "name": "rsa-pss",
-      "notes": "RSA-2048 PSS signature baseline; salt length matches hash size"
-    },
-    {
-      "category_floor_bits": 128,
-      "category_label": "cat-1",
-      "category_number": 1,
-      "extras": {
-        "fors_height": 12,
-        "fors_trees": 14,
-        "full_height": 63,
-        "layers": 7,
-        "n": 16,
-        "sizes_bytes": {
-          "public_key": 32,
-          "secret_key": 64,
-          "signature": 7856
-        },
-        "wots_w": 16
-      },
-      "family": "SPHINCS+",
-      "kind": "SIG",
-      "mechanism": "SPHINCS+-SHAKE-128s-simple",
-      "name": "sphincs+",
-      "notes": ""
-    },
-    {
-      "category_floor_bits": 192,
-      "category_label": "cat-3",
-      "category_number": 3,
-      "extras": {
-        "delta": 16,
-        "k": 24,
-        "n": 35851,
-        "n1": 56,
-        "n2": 640,
-        "omega": 100,
-        "omega_e": 114,
-        "omega_r": 114,
-        "sizes_bytes": {
-          "ciphertext": 8978,
-          "public_key": 4522,
-          "secret_key": 4586,
-          "shared_secret": 64
-        },
-        "w": 100
-      },
-      "family": "HQC",
+      "family": "FrodoKEM",
       "kind": "KEM",
-      "mechanism": "HQC-192",
-      "name": "hqc",
-      "notes": "n=35851; RS n1=56,k=24,delta=16; RM n2=640; omega=100; omega_e=114; omega_r=114"
+      "mechanism": "FrodoKEM-640-AES",
+      "name": "frodokem",
+      "notes": "n=640; AES-based sampling; NIST Cat-1"
     },
     {
-      "category_floor_bits": 192,
-      "category_label": "cat-3",
-      "category_number": 3,
+      "category_floor_bits": 128,
+      "category_label": "cat-1",
+      "category_number": 1,
       "extras": {
-        "eta1": 2,
-        "eta2": 2,
-        "k": 3,
-        "n": 256,
-        "q": 3329,
         "sizes_bytes": {
-          "ciphertext": 1088,
-          "public_key": 1184,
-          "secret_key": 2400,
+          "ciphertext": 699,
+          "public_key": 699,
+          "secret_key": 935,
           "shared_secret": 32
         }
       },
-      "family": "ML-KEM",
+      "family": "NTRU",
       "kind": "KEM",
-      "mechanism": "ML-KEM-768",
-      "name": "kyber",
-      "notes": "k=3; ring n=256; q=3329; eta1=2, eta2=2"
+      "mechanism": "NTRU-HPS-2048-509",
+      "name": "ntru",
+      "notes": "HPS Round-3 parameter targeting Cat-1"
     },
     {
-      "category_floor_bits": 192,
-      "category_label": "cat-3",
-      "category_number": 3,
-      "extras": {
-        "modulus_bits": 7680,
-        "public_exponent": 65537
-      },
-      "family": "RSA",
-      "kind": "KEM",
-      "mechanism": "RSA-7680-OAEP",
-      "name": "rsa-oaep",
-      "notes": "RSA-2048 OAEP baseline; assesses Shor breakability in quantum models"
-    },
-    {
-      "category_floor_bits": 192,
-      "category_label": "cat-3",
-      "category_number": 3,
-      "extras": {
-        "eta": 4,
-        "k": 6,
-        "l": 5,
-        "n": 256,
-        "q": 8380417,
-        "sizes_bytes": {
-          "public_key": 1952,
-          "secret_key": 4000,
-          "signature": 3309,
-          "signature_min": 3293
-        }
-      },
-      "family": "ML-DSA",
+      "category_floor_bits": 128,
+      "category_label": "cat-1",
+      "category_number": 1,
+      "extras": {},
+      "family": "CROSS",
       "kind": "SIG",
-      "mechanism": "ML-DSA-65",
-      "name": "dilithium",
-      "notes": "k=6, l=5; n=256; q=8380417; eta=4"
+      "mechanism": "cross-rsdpg-128-balanced",
+      "name": "cross",
+      "notes": "CROSS RSDPG balanced variant at 128-bit security"
     },
     {
-      "category_floor_bits": 192,
-      "category_label": "cat-3",
-      "category_number": 3,
-      "extras": {
-        "k": 11,
-        "m": 108,
-        "n": 118,
-        "oil": 10,
-        "q": 16,
-        "sizes_bytes": {
-          "public_key": 2986,
-          "secret_key": 32,
-          "signature": 681
-        },
-        "vinegar": 108
-      },
-      "family": "MAYO",
-      "kind": "SIG",
-      "mechanism": "MAYO-3",
-      "name": "mayo",
-      "notes": "n=118, m=108, o=10, v=108; k=11; q=16"
-    },
-    {
-      "category_floor_bits": 192,
-      "category_label": "cat-3",
-      "category_number": 3,
-      "extras": {
-        "modulus_bits": 7680,
-        "public_exponent": 65537
-      },
-      "family": "RSA",
-      "kind": "SIG",
-      "mechanism": "RSA-7680-PSS",
-      "name": "rsa-pss",
-      "notes": "RSA-2048 PSS signature baseline; salt length matches hash size"
-    },
-    {
-      "category_floor_bits": 192,
-      "category_label": "cat-3",
-      "category_number": 3,
-      "extras": {
-        "fors_height": 14,
-        "fors_trees": 17,
-        "full_height": 63,
-        "layers": 7,
-        "n": 24,
-        "sizes_bytes": {
-          "public_key": 48,
-          "secret_key": 96,
-          "signature": 16224
-        },
-        "wots_w": 16
-      },
-      "family": "SPHINCS+",
-      "kind": "SIG",
-      "mechanism": "SPHINCS+-SHAKE-192s-simple",
-      "name": "sphincs+",
-      "notes": ""
-    },
-    {
-      "category_floor_bits": 256,
-      "category_label": "cat-5",
-      "category_number": 5,
-      "extras": {
-        "delta": 29,
-        "k": 32,
-        "n": 57637,
-        "n1": 90,
-        "n2": 640,
-        "omega": 131,
-        "omega_e": 149,
-        "omega_r": 149,
-        "sizes_bytes": {
-          "ciphertext": 14421,
-          "public_key": 7245,
-          "secret_key": 7317,
-          "shared_secret": 64
-        },
-        "w": 131
-      },
-      "family": "HQC",
-      "kind": "KEM",
-      "mechanism": "HQC-256",
-      "name": "hqc",
-      "notes": "n=57637; RS n1=90,k=32,delta=29; RM n2=640; omega=131; omega_e=149; omega_r=149"
-    },
-    {
-      "category_floor_bits": 256,
-      "category_label": "cat-5",
-      "category_number": 5,
-      "extras": {
-        "eta1": 2,
-        "eta2": 2,
-        "k": 4,
-        "n": 256,
-        "q": 3329,
-        "sizes_bytes": {
-          "ciphertext": 1568,
-          "public_key": 1568,
-          "secret_key": 3168,
-          "shared_secret": 32
-        }
-      },
-      "family": "ML-KEM",
-      "kind": "KEM",
-      "mechanism": "ML-KEM-1024",
-      "name": "kyber",
-      "notes": "k=4; ring n=256; q=3329; eta1=2, eta2=2"
-    },
-    {
-      "category_floor_bits": 256,
-      "category_label": "cat-5",
-      "category_number": 5,
+      "category_floor_bits": 128,
+      "category_label": "cat-1",
+      "category_number": 1,
       "extras": {
         "eta": 2,
-        "k": 8,
-        "l": 7,
+        "k": 4,
+        "l": 4,
         "n": 256,
         "q": 8380417,
         "sizes_bytes": {
-          "public_key": 2592,
-          "secret_key": 4864,
-          "signature": 4627
+          "public_key": 1312,
+          "secret_key": 2528,
+          "signature": 2420
         }
       },
       "family": "ML-DSA",
       "kind": "SIG",
-      "mechanism": "ML-DSA-87",
+      "mechanism": "ML-DSA-44",
       "name": "dilithium",
-      "notes": "k=8, l=7; n=256; q=8380417; eta=2"
+      "notes": "k=4, l=4; n=256; q=8380417; eta=2"
     },
     {
-      "category_floor_bits": 256,
-      "category_label": "cat-5",
-      "category_number": 5,
+      "category_floor_bits": 128,
+      "category_label": "cat-1",
+      "category_number": 1,
+      "extras": {},
+      "family": "SLH-DSA",
+      "kind": "SIG",
+      "mechanism": "SLH_DSA_PURE_SHA2_128S",
+      "name": "slh-dsa",
+      "notes": "SLH-DSA pure SHA2 128s parameter set (FIPS 205) targeting Cat-1"
+    },
+    {
+      "category_floor_bits": 128,
+      "category_label": "cat-1",
+      "category_number": 1,
+      "extras": {},
+      "family": "SNOVA",
+      "kind": "SIG",
+      "mechanism": "SNOVA_25_8_3",
+      "name": "snova",
+      "notes": "SNOVA parameter set 25/8/3 targeting Cat-1"
+    },
+    {
+      "category_floor_bits": 128,
+      "category_label": "cat-1",
+      "category_number": 1,
+      "extras": {},
+      "family": "UOV",
+      "kind": "SIG",
+      "mechanism": "OV-Is",
+      "name": "uov",
+      "notes": "UOV parameter set OV-Is targeting Cat-1"
+    },
+    {
+      "category_floor_bits": 192,
+      "category_label": "cat-3",
+      "category_number": 3,
       "extras": {
-        "n": 1024,
-        "q": 12289,
+        "n0": 2,
+        "r_bits": 24659,
         "sizes_bytes": {
-          "public_key": 1793,
-          "secret_key": 2305,
-          "signature": 1280,
-          "signature_note": "Deterministic padded = 1280 bytes; compressed signatures vary; uncompressed ~1536 bytes."
+          "ciphertext": 3115,
+          "public_key": 3083,
+          "secret_key": 10105,
+          "shared_secret": 32
+        },
+        "weight_per_vector": 103
+      },
+      "family": "BIKE",
+      "kind": "KEM",
+      "mechanism": "BIKE-L3",
+      "name": "bike",
+      "notes": "Round-4 BIKE; r=24659, weight per polynomial D=103"
+    },
+    {
+      "category_floor_bits": 192,
+      "category_label": "cat-3",
+      "category_number": 3,
+      "extras": {
+        "sizes_bytes": {
+          "ciphertext": 156,
+          "public_key": 524160,
+          "secret_key": 13608,
+          "shared_secret": 32
         }
       },
-      "family": "Falcon",
+      "family": "Classic McEliece",
+      "kind": "KEM",
+      "mechanism": "Classic-McEliece-460896f",
+      "name": "classic-mceliece",
+      "notes": "Binary Goppa code; fast (f) variant targeting NIST Cat-3"
+    },
+    {
+      "category_floor_bits": 192,
+      "category_label": "cat-3",
+      "category_number": 3,
+      "extras": {
+        "sizes_bytes": {
+          "ciphertext": 15744,
+          "public_key": 15632,
+          "secret_key": 31296,
+          "shared_secret": 24
+        }
+      },
+      "family": "FrodoKEM",
+      "kind": "KEM",
+      "mechanism": "FrodoKEM-976-AES",
+      "name": "frodokem",
+      "notes": "n=976; AES-based sampling; NIST Cat-3"
+    },
+    {
+      "category_floor_bits": 192,
+      "category_label": "cat-3",
+      "category_number": 3,
+      "extras": {
+        "sizes_bytes": {
+          "ciphertext": 930,
+          "public_key": 930,
+          "secret_key": 1234,
+          "shared_secret": 32
+        }
+      },
+      "family": "NTRU",
+      "kind": "KEM",
+      "mechanism": "NTRU-HPS-2048-677",
+      "name": "ntru",
+      "notes": "HPS Round-3 parameter targeting Cat-3"
+    },
+    {
+      "category_floor_bits": 192,
+      "category_label": "cat-3",
+      "category_number": 3,
+      "extras": {
+        "sizes_bytes": {
+          "ciphertext": 1039,
+          "public_key": 1158,
+          "secret_key": 1763,
+          "shared_secret": 32
+        }
+      },
+      "family": "NTRU Prime",
+      "kind": "KEM",
+      "mechanism": "sntrup761",
+      "name": "ntruprime",
+      "notes": "sntrup761 (prime-degree NTRU) targeting Cat-3"
+    },
+    {
+      "category_floor_bits": 192,
+      "category_label": "cat-3",
+      "category_number": 3,
+      "extras": {},
+      "family": "CROSS",
       "kind": "SIG",
-      "mechanism": "Falcon-1024",
-      "name": "falcon",
-      "notes": "n=1024; q=12289; NTRU lattice"
+      "mechanism": "cross-rsdpg-192-balanced",
+      "name": "cross",
+      "notes": "CROSS RSDPG balanced variant at 192-bit security"
+    },
+    {
+      "category_floor_bits": 192,
+      "category_label": "cat-3",
+      "category_number": 3,
+      "extras": {},
+      "family": "SLH-DSA",
+      "kind": "SIG",
+      "mechanism": "SLH_DSA_PURE_SHA2_192S",
+      "name": "slh-dsa",
+      "notes": "SLH-DSA pure SHA2 192s parameter set (FIPS 205) targeting Cat-3"
+    },
+    {
+      "category_floor_bits": 192,
+      "category_label": "cat-3",
+      "category_number": 3,
+      "extras": {},
+      "family": "SNOVA",
+      "kind": "SIG",
+      "mechanism": "SNOVA_37_17_2",
+      "name": "snova",
+      "notes": "SNOVA parameter set 37/17/2 targeting Cat-3"
+    },
+    {
+      "category_floor_bits": 192,
+      "category_label": "cat-3",
+      "category_number": 3,
+      "extras": {},
+      "family": "UOV",
+      "kind": "SIG",
+      "mechanism": "OV-III",
+      "name": "uov",
+      "notes": "UOV parameter set OV-III targeting Cat-3"
     },
     {
       "category_floor_bits": 256,
       "category_label": "cat-5",
       "category_number": 5,
       "extras": {
-        "k": 12,
-        "m": 142,
-        "n": 154,
-        "oil": 12,
-        "q": 16,
+        "n0": 2,
+        "r_bits": 40973,
         "sizes_bytes": {
-          "public_key": 5554,
-          "secret_key": 40,
-          "signature": 964
+          "ciphertext": 5154,
+          "public_key": 5122,
+          "secret_key": 16494,
+          "shared_secret": 32
         },
-        "vinegar": 142
+        "weight_per_vector": 137
       },
-      "family": "MAYO",
-      "kind": "SIG",
-      "mechanism": "MAYO-5",
-      "name": "mayo",
-      "notes": "n=154, m=142, o=12, v=142; k=12; q=16"
+      "family": "BIKE",
+      "kind": "KEM",
+      "mechanism": "BIKE-L5",
+      "name": "bike",
+      "notes": "Round-4 BIKE; r=40973, weight per polynomial D=137"
     },
     {
       "category_floor_bits": 256,
       "category_label": "cat-5",
       "category_number": 5,
       "extras": {
-        "fors_height": 14,
-        "fors_trees": 22,
-        "full_height": 64,
-        "layers": 8,
-        "n": 32,
         "sizes_bytes": {
-          "public_key": 64,
-          "secret_key": 128,
-          "signature": 29792
-        },
-        "wots_w": 16
+          "ciphertext": 208,
+          "public_key": 1044992,
+          "secret_key": 13932,
+          "shared_secret": 32
+        }
       },
-      "family": "SPHINCS+",
+      "family": "Classic McEliece",
+      "kind": "KEM",
+      "mechanism": "Classic-McEliece-6688128f",
+      "name": "classic-mceliece",
+      "notes": "Binary Goppa code; fast (f) variant targeting NIST Cat-5"
+    },
+    {
+      "category_floor_bits": 256,
+      "category_label": "cat-5",
+      "category_number": 5,
+      "extras": {
+        "sizes_bytes": {
+          "ciphertext": 21632,
+          "public_key": 21520,
+          "secret_key": 43088,
+          "shared_secret": 32
+        }
+      },
+      "family": "FrodoKEM",
+      "kind": "KEM",
+      "mechanism": "FrodoKEM-1344-AES",
+      "name": "frodokem",
+      "notes": "n=1344; AES-based sampling; NIST Cat-5"
+    },
+    {
+      "category_floor_bits": 256,
+      "category_label": "cat-5",
+      "category_number": 5,
+      "extras": {
+        "sizes_bytes": {
+          "ciphertext": 1230,
+          "public_key": 1230,
+          "secret_key": 1590,
+          "shared_secret": 32
+        }
+      },
+      "family": "NTRU",
+      "kind": "KEM",
+      "mechanism": "NTRU-HPS-4096-821",
+      "name": "ntru",
+      "notes": "HPS Round-3 parameter targeting Cat-5"
+    },
+    {
+      "category_floor_bits": 256,
+      "category_label": "cat-5",
+      "category_number": 5,
+      "extras": {},
+      "family": "CROSS",
       "kind": "SIG",
-      "mechanism": "SPHINCS+-SHAKE-256s-simple",
-      "name": "sphincs+",
-      "notes": ""
+      "mechanism": "cross-rsdpg-256-balanced",
+      "name": "cross",
+      "notes": "CROSS RSDPG balanced variant at 256-bit security"
+    },
+    {
+      "category_floor_bits": 256,
+      "category_label": "cat-5",
+      "category_number": 5,
+      "extras": {},
+      "family": "SLH-DSA",
+      "kind": "SIG",
+      "mechanism": "SLH_DSA_PURE_SHA2_256S",
+      "name": "slh-dsa",
+      "notes": "SLH-DSA pure SHA2 256s parameter set (FIPS 205) targeting Cat-5"
+    },
+    {
+      "category_floor_bits": 256,
+      "category_label": "cat-5",
+      "category_number": 5,
+      "extras": {},
+      "family": "SNOVA",
+      "kind": "SIG",
+      "mechanism": "SNOVA_60_10_4",
+      "name": "snova",
+      "notes": "SNOVA parameter set 60/10/4 targeting Cat-5"
+    },
+    {
+      "category_floor_bits": 256,
+      "category_label": "cat-5",
+      "category_number": 5,
+      "extras": {},
+      "family": "UOV",
+      "kind": "SIG",
+      "mechanism": "OV-V",
+      "name": "uov",
+      "notes": "UOV parameter set OV-V targeting Cat-5"
     }
   ],
   "categories": [
@@ -485,21 +453,22 @@
     },
     "cpu_model": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
     "dependencies": {
-      "liboqs_commit": "f629296e28f1d1414630ea90d0f0e57bdec53c93",
+      "liboqs_commit": "b02d0c9a30b2e60f8374a92928c9426d1256bf03",
       "pqclean_commit": "1eacfdafc15ddc5d5759d0b85b4cef26627df181"
     },
     "os": "macOS-26.0.1-x86_64-i386-64bit",
     "python": "3.12.11"
   },
   "failures": [],
-  "generated_at": "2025-10-08T11:46:03Z",
+  "generated_at": "2025-10-13T20:59:42Z",
   "includes_warm": false,
   "memory_interval_seconds": 0.0005,
   "message_size": 1024,
-  "output_csv": "/Users/warwickbrown/Documents/GitHub/Analysis-of-Post-Quauntum-Cryptography/results/category_floor_benchmarks.csv",
-  "row_count": 120,
+  "output_csv": "Tested Benchmarks/i9 9880h/Benchmarks/category_floor_benchmarks.csv",
+  "resume_from_csv": "Tested Benchmarks/i9 9880h/Benchmarks/category_floor_benchmarks.csv",
+  "row_count": 156,
   "rsa_max_category": 3,
   "runs": 40,
   "security_estimation": true,
-  "session_id": "20251008T114603Z"
+  "session_id": "20251013T205942Z"
 }

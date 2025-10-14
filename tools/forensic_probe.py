@@ -1752,9 +1752,13 @@ def generate_visual_report(analysis_results: List[AnalysisResult], report_dir: p
         "cpu_leak_flag",
         "rss_leak_flag",
     ]
-    with csv_path.open("w", newline="", encoding="utf-8") as csv_file:
+    csv_exists = csv_path.exists()
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    mode = "a" if csv_exists else "w"
+    with csv_path.open(mode, newline="", encoding="utf-8") as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        writer.writeheader()
+        if not csv_exists or csv_file.tell() == 0:
+            writer.writeheader()
         for entry in analysis_results:
             metrics = entry.metrics
             writer.writerow(
