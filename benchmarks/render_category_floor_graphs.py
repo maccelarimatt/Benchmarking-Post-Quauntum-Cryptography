@@ -1731,6 +1731,11 @@ def parse_args() -> argparse.Namespace:
         help="Render multiple sessions and produce comparison plots.",
     )
     parser.add_argument(
+        "--all-sessions",
+        action="store_true",
+        help="Render all sessions present in the CSV (overrides --session unless --sessions is set).",
+    )
+    parser.add_argument(
         "--passes",
         nargs="*",
         help=(
@@ -1759,7 +1764,9 @@ def main() -> None:
         if missing:
             raise SystemExit(f"Sessions not found: {', '.join(missing)}")
     else:
-        if args.session:
+        if args.all_sessions:
+            session_ids = sorted(records_by_session.keys())
+        elif args.session:
             if args.session not in records_by_session:
                 available_sessions = ", ".join(sorted(records_by_session))
                 raise SystemExit(
@@ -1775,7 +1782,8 @@ def main() -> None:
         {rec.measurement_pass for sid in session_ids for rec in records_by_session[sid]}
     )
 
-    for session_id in session_ids:
+    if len(session_ids) == 1:
+        session_id = session_ids[0]
         session_records = records_by_session[session_id]
         output_dir = args.output_dir / session_id
         generate_graphs(session_records, output_dir, passes, captions)
@@ -1791,8 +1799,25 @@ def main() -> None:
                 continue
             cat_dir = output_dir / f"category_{category}"
             generate_graphs(cat_records, cat_dir, passes, captions)
+    else:
+        combined_name = "+".join(session_ids)
+        combined_records = [
+            rec for sid in session_ids for rec in records_by_session[sid]
+        ]
+        combined_dir = args.output_dir / combined_name
+        generate_graphs(combined_records, combined_dir, passes, captions)
+        categories = sorted(
+            {rec.category_number for rec in combined_records if rec.category_number}
+        )
+        for category in categories:
+            cat_records = [
+                rec for rec in combined_records if rec.category_number == category
+            ]
+            if not cat_records:
+                continue
+            cat_dir = combined_dir / f"category_{category}"
+            generate_graphs(cat_records, cat_dir, passes, captions)
 
-    if len(session_ids) > 1:
         compare_dir = args.output_dir / "multi_session"
         plot_session_comparisons(
             {sid: records_by_session[sid] for sid in session_ids},
