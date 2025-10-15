@@ -335,7 +335,7 @@ def plot_security_vs_latency(records: Sequence[Record], png_dir: pathlib.Path, p
     sig_palette = ["#e63946", "#f77f00", "#a01a58", "#b56576", "#ef6351"]
 
     fig, ax = plt.subplots(figsize=(12, 8))
-    ax.set_title("Quantum Security vs Latency (Key Generation)")
+    #ax.set_title("Quantum Security vs Latency (Key Generation)")
 
     label_specs: List[Tuple[float, float, str, str]] = []
     kem_idx = sig_idx = 0
@@ -358,13 +358,15 @@ def plot_security_vs_latency(records: Sequence[Record], png_dir: pathlib.Path, p
 
     # Give a touch of margin so labels have space to move
     ax.margins(x=0.05, y=0.12)
-    _place_labels_smart(ax, label_specs, base_offset=24, max_iter=400)
-
-
+    _place_labels_smart(ax, label_specs, base_offset=34, max_iter=370, max_distance_px=110.0)
 
     ax.set_xlabel("Quantum security bits")
     ax.set_ylabel("Key generation mean latency (ms)")
     ax.grid(True, linestyle="--", alpha=0.3, zorder=0)
+
+    kem_marker = plt.Line2D([], [], marker="o", color="w", markerfacecolor="#264653", markeredgecolor="#222222", markersize=10, label="KEM")
+    sig_marker = plt.Line2D([], [], marker="^", color="w", markerfacecolor="#e63946", markeredgecolor="#222222", markersize=10, label="Signature")
+    ax.legend(handles=[kem_marker, sig_marker], loc="upper left")
 
     _save_figure(fig, "poster_security_vs_latency", png_dir, pdf_dir)
 
@@ -389,7 +391,7 @@ def plot_security_vs_latency_by_category(records: Sequence[Record], png_dir: pat
         sig_palette = ["#e63946", "#f77f00", "#a01a58", "#b56576", "#ef6351"]
 
         fig, ax = plt.subplots(figsize=(12, 8))
-        ax.set_title(f"Quantum Security vs Latency (Key Generation) — Cat {category}")
+        #ax.set_title(f"Quantum Security vs Latency (Key Generation) — Cat {category}")
 
         label_specs: List[Tuple[float, float, str, str]] = []
         kem_idx = sig_idx = 0
@@ -415,10 +417,13 @@ def plot_security_vs_latency_by_category(records: Sequence[Record], png_dir: pat
             label_specs.append((qbits, latency, label, color))
 
         ax.margins(x=0.05, y=0.12)
-        _place_labels_smart(ax, label_specs, base_offset=24, max_iter=300, max_distance_px=70.0)
+        _place_labels_smart(ax, label_specs, base_offset=32, max_iter=340, max_distance_px=110.0)
         ax.set_xlabel("Quantum security bits")
         ax.set_ylabel("Key generation mean latency (ms)")
         ax.grid(True, linestyle="--", alpha=0.3, zorder=0)
+        kem_marker = plt.Line2D([], [], marker="o", color="w", markerfacecolor="#264653", markeredgecolor="#222222", markersize=10, label="KEM")
+        sig_marker = plt.Line2D([], [], marker="^", color="w", markerfacecolor="#e63946", markeredgecolor="#222222", markersize=10, label="Signature")
+        ax.legend(handles=[kem_marker, sig_marker], loc="upper left")
         _save_figure(fig, f"poster_security_vs_latency_cat{category}", png_dir, pdf_dir)
 
 
@@ -588,7 +593,7 @@ def _place_labels_smart(
     specs: Sequence[Tuple[float, float, str, str]],
     base_offset: int = 24,
     max_iter: int = 300,
-    max_distance_px: float = 80.0,
+    max_distance_px: float = 90.0,
 ) -> None:
     ring = [
         ( base_offset,  base_offset),
@@ -635,10 +640,10 @@ def _place_labels_smart(
                 y=ys,
                 ax=ax,
                 only_move={'points': 'y', 'text': 'xy'},
-                expand_points=(1.15, 1.25),
-                expand_text=(1.1, 1.2),
-                force_points=0.2,
-                force_text=0.4,
+                expand_points=(1.25, 1.35),
+                expand_text=(1.15, 1.25),
+                force_points=0.25,
+                force_text=0.45,
                 ensure_inside_axes=True,
                 precision=0.02,
             )
