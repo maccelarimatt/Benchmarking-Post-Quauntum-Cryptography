@@ -164,30 +164,43 @@ def _select_top_algos(records: Iterable[Record], kind: str, count: int, pass_nam
 
 def plot_latency_combined(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir: pathlib.Path) -> None:
     pass_name = "timing"
-    top_kems = _select_top_algos(records, "KEM", 5, pass_name)
-    top_sigs = _select_top_algos(records, "SIG", 5, pass_name)
-    if not top_kems and not top_sigs:
+    # Change this value if you want more or fewer algorithms plotted.
+    top_n = 5
+
+    aggregated: Dict[str, Dict[str, Any]] = {}
+    for rec in records:
+        if rec.measurement_pass != pass_name or rec.mean_ms is None:
+            continue
+        key = (rec.kind.upper(), rec.algo, rec.category_number)
+        bucket = aggregated.setdefault(key, {"sums": 0.0, "count": 0, "entries": []})
+        bucket["sums"] += rec.mean_ms
+        bucket["count"] += 1
+        bucket["entries"].append(rec)
+
+    averaged: List[Tuple[str, str, int, float, List[Record]]] = []
+    for (kind, algo, category), info in aggregated.items():
+        if info["count"]:
+            averaged.append((kind, algo, category, info["sums"] / info["count"], info["entries"]))
+
+    averaged.sort(key=lambda item: item[3])
+    top_algos = averaged[:top_n]
+    if not top_algos:
         return
 
     kem_palette = ["#1f77b4", "#14796d", "#33539e", "#209fb5", "#14a44d"]
     sig_palette = ["#d62839", "#f77f00", "#b56576", "#6d597a", "#ef6351"]
 
     fig, ax = plt.subplots(figsize=(13, 8))
-    ax.set_title("Latency (Timing) — Top PQC KEMs and Signatures")
+    #ax.set_title("Latency (Timing) — Top PQC Algorithms (Mean Over Operations)")
 
     bars: List[Tuple[str, float, str]] = []
-    for rec in records:
-        if rec.measurement_pass != pass_name or rec.mean_ms is None:
-            continue
-        if rec.kind.upper() == "KEM" and rec.algo in top_kems:
-            color = kem_palette[top_kems.index(rec.algo) % len(kem_palette)]
-            bars.append((f"{rec.operation[:4].upper()} (Cat-{rec.category_number})", rec.mean_ms, color))
-        elif rec.kind.upper() == "SIG" and rec.algo in top_sigs:
-            color = sig_palette[top_sigs.index(rec.algo) % len(sig_palette)]
-            bars.append((f"{rec.operation[:4].upper()} (Cat-{rec.category_number})", rec.mean_ms, color))
-
-    if not bars:
-        return
+    for idx, (kind, algo, category, _, entries) in enumerate(top_algos):
+        color_palette = kem_palette if kind == "KEM" else sig_palette
+        base_color = color_palette[idx % len(color_palette)]
+        algorithm_label = _friendly_label(algo)
+        for entry in entries:
+            op_label = entry.operation[:4].upper()
+            bars.append((f"{algorithm_label} {op_label} ({category})", entry.mean_ms, base_color))
 
     labels = [label for label, _, _ in bars]
     values = [value for _, value, _ in bars]
@@ -374,9 +387,9 @@ def plot_security_bits(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir
     fig, ax = plt.subplots(figsize=(13, 8))
     ax.set_title("Security Bits — Classical vs Quantum (All Algorithms)")
     positions = range(len(entries))
-    ax.bar(positions, classical, width=0.4, label="Classical bits", color="#1f77b4")
-    ax.bar([p + 0.4 for p in positions], quantum, width=0.4, label="Quantum bits", color="#d62728")
-    ax.set_xticks([p + 0.2 for p in positions])
+    ax.bar([p - 0.225 for p in positions], classical, width=0.35, label="Classical bits", color="#1f77b4")
+    ax.bar([p + 0.225 for p in positions], quantum, width=0.35, label="Quantum bits", color="#d62728")
+    ax.set_xticks(list(positions))
     ax.set_xticklabels(labels, rotation=45)
     for tick in ax.get_xticklabels():
         tick.set_horizontalalignment("right")
@@ -389,30 +402,42 @@ def plot_security_bits(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir
 
 def plot_memory_combined(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir: pathlib.Path) -> None:
     pass_name = "memory"
-    top_kems = _select_top_algos(records, "KEM", 5, pass_name, operation="decapsulate")
-    top_sigs = _select_top_algos(records, "SIG", 5, pass_name, operation="sign")
-    if not top_kems and not top_sigs:
+    top_n = 5
+
+    aggregated: Dict[str, Dict[str, Any]] = {}
+    for rec in records:
+        if rec.measurement_pass != pass_name or rec.mem_mean_kb is None:
+            continue
+        key = (rec.kind.upper(), rec.algo, rec.category_number)
+        bucket = aggregated.setdefault(key, {"sums": 0.0, "count": 0, "entries": []})
+        bucket["sums"] += rec.mem_mean_kb
+        bucket["count"] += 1
+        bucket["entries"].append(rec)
+
+    averaged: List[Tuple[str, str, int, float, List[Record]]] = []
+    for (kind, algo, category), info in aggregated.items():
+        if info["count"]:
+            averaged.append((kind, algo, category, info["sums"] / info["count"], info["entries"]))
+
+    averaged.sort(key=lambda item: item[3])
+    top_algos = averaged[:top_n]
+    if not top_algos:
         return
 
     kem_palette = ["#14213d", "#1b4965", "#264653", "#186276", "#0d3b66"]
     sig_palette = ["#ff7f51", "#ff9f1c", "#f4a261", "#e76f51", "#bc6c25"]
 
     fig, ax = plt.subplots(figsize=(13, 8))
-    ax.set_title("Peak Memory — Top PQC KEMs and Signatures")
+    #ax.set_title("Peak Memory — Top PQC Algorithms (Mean Over Operations)")
 
     bars: List[Tuple[str, float, str]] = []
-    for rec in records:
-        if rec.measurement_pass != pass_name or rec.mem_mean_kb is None:
-            continue
-        if rec.kind.upper() == "KEM" and rec.algo in top_kems:
-            color = kem_palette[top_kems.index(rec.algo) % len(kem_palette)]
-            bars.append((f"{_friendly_label(rec.algo)}\n{rec.operation.title()}", rec.mem_mean_kb, color))
-        elif rec.kind.upper() == "SIG" and rec.algo in top_sigs:
-            color = sig_palette[top_sigs.index(rec.algo) % len(sig_palette)]
-            bars.append((f"{_friendly_label(rec.algo)}\n{rec.operation.title()}", rec.mem_mean_kb, color))
-
-    if not bars:
-        return
+    for idx, (kind, algo, category, _, entries) in enumerate(top_algos):
+        palette = kem_palette if kind == "KEM" else sig_palette
+        base_color = palette[idx % len(palette)]
+        algo_label = _friendly_label(algo)
+        for entry in entries:
+            op_label = entry.operation[:4].upper()
+            bars.append((f"{algo_label} {op_label} ({category})", entry.mem_mean_kb, base_color))
 
     labels = [label for label, _, _ in bars]
     values = [value for _, value, _ in bars]
