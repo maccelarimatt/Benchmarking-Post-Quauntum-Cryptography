@@ -36,6 +36,30 @@ Latency mean ± standard deviation for KEM encapsulate (timing)
 
 Latency mean ± standard deviation for KEM keygen (timing)
 
+![20251008T114603Z+20251013T205942Z/category_1/latency_distribution_timing_pqc_kem_decapsulate.png](20251008T114603Z+20251013T205942Z/category_1/latency_distribution_timing_pqc_kem_decapsulate.png)
+
+Latency mean ± standard deviation for KEM decapsulate (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_1/latency_distribution_timing_pqc_kem_encapsulate.png](20251008T114603Z+20251013T205942Z/category_1/latency_distribution_timing_pqc_kem_encapsulate.png)
+
+Latency mean ± standard deviation for KEM encapsulate (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_1/latency_distribution_timing_pqc_kem_keygen.png](20251008T114603Z+20251013T205942Z/category_1/latency_distribution_timing_pqc_kem_keygen.png)
+
+Latency mean ± standard deviation for KEM keygen (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_1/latency_distribution_timing_pqc_sig_keygen.png](20251008T114603Z+20251013T205942Z/category_1/latency_distribution_timing_pqc_sig_keygen.png)
+
+Latency mean ± standard deviation for SIG keygen (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_1/latency_distribution_timing_pqc_sig_sign.png](20251008T114603Z+20251013T205942Z/category_1/latency_distribution_timing_pqc_sig_sign.png)
+
+Latency mean ± standard deviation for SIG sign (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_1/latency_distribution_timing_pqc_sig_verify.png](20251008T114603Z+20251013T205942Z/category_1/latency_distribution_timing_pqc_sig_verify.png)
+
+Latency mean ± standard deviation for SIG verify (timing) (PQC only)
+
 ![20251008T114603Z+20251013T205942Z/category_1/latency_distribution_timing_sig_keygen.png](20251008T114603Z+20251013T205942Z/category_1/latency_distribution_timing_sig_keygen.png)
 
 Latency mean ± standard deviation for SIG keygen (timing)
@@ -60,6 +84,30 @@ Latency ECDF for KEM encapsulate (timing)
 
 Latency ECDF for KEM keygen (timing)
 
+![20251008T114603Z+20251013T205942Z/category_1/latency_ecdf_timing_pqc_kem_decapsulate.png](20251008T114603Z+20251013T205942Z/category_1/latency_ecdf_timing_pqc_kem_decapsulate.png)
+
+Latency ECDF for KEM decapsulate (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_1/latency_ecdf_timing_pqc_kem_encapsulate.png](20251008T114603Z+20251013T205942Z/category_1/latency_ecdf_timing_pqc_kem_encapsulate.png)
+
+Latency ECDF for KEM encapsulate (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_1/latency_ecdf_timing_pqc_kem_keygen.png](20251008T114603Z+20251013T205942Z/category_1/latency_ecdf_timing_pqc_kem_keygen.png)
+
+Latency ECDF for KEM keygen (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_1/latency_ecdf_timing_pqc_sig_keygen.png](20251008T114603Z+20251013T205942Z/category_1/latency_ecdf_timing_pqc_sig_keygen.png)
+
+Latency ECDF for SIG keygen (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_1/latency_ecdf_timing_pqc_sig_sign.png](20251008T114603Z+20251013T205942Z/category_1/latency_ecdf_timing_pqc_sig_sign.png)
+
+Latency ECDF for SIG sign (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_1/latency_ecdf_timing_pqc_sig_verify.png](20251008T114603Z+20251013T205942Z/category_1/latency_ecdf_timing_pqc_sig_verify.png)
+
+Latency ECDF for SIG verify (timing) (PQC only)
+
 ![20251008T114603Z+20251013T205942Z/category_1/latency_ecdf_timing_sig_keygen.png](20251008T114603Z+20251013T205942Z/category_1/latency_ecdf_timing_sig_keygen.png)
 
 Latency ECDF for SIG keygen (timing)
@@ -75,6 +123,14 @@ Latency ECDF for SIG verify (timing)
 ![20251008T114603Z+20251013T205942Z/category_1/latency_timing_kem.png](20251008T114603Z+20251013T205942Z/category_1/latency_timing_kem.png)
 
 Mean latency per operation for KEM (timing)
+
+![20251008T114603Z+20251013T205942Z/category_1/latency_timing_pqc_kem.png](20251008T114603Z+20251013T205942Z/category_1/latency_timing_pqc_kem.png)
+
+Mean latency per operation for KEM (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_1/latency_timing_pqc_sig.png](20251008T114603Z+20251013T205942Z/category_1/latency_timing_pqc_sig.png)
+
+Mean latency per operation for SIG (timing) (PQC only)
 
 ![20251008T114603Z+20251013T205942Z/category_1/latency_timing_sig.png](20251008T114603Z+20251013T205942Z/category_1/latency_timing_sig.png)
 
@@ -368,6 +424,30 @@ Latency mean ± standard deviation for KEM encapsulate (timing)
 
 Latency mean ± standard deviation for KEM keygen (timing)
 
+![20251008T114603Z+20251013T205942Z/category_3/latency_distribution_timing_pqc_kem_decapsulate.png](20251008T114603Z+20251013T205942Z/category_3/latency_distribution_timing_pqc_kem_decapsulate.png)
+
+Latency mean ± standard deviation for KEM decapsulate (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_3/latency_distribution_timing_pqc_kem_encapsulate.png](20251008T114603Z+20251013T205942Z/category_3/latency_distribution_timing_pqc_kem_encapsulate.png)
+
+Latency mean ± standard deviation for KEM encapsulate (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_3/latency_distribution_timing_pqc_kem_keygen.png](20251008T114603Z+20251013T205942Z/category_3/latency_distribution_timing_pqc_kem_keygen.png)
+
+Latency mean ± standard deviation for KEM keygen (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_3/latency_distribution_timing_pqc_sig_keygen.png](20251008T114603Z+20251013T205942Z/category_3/latency_distribution_timing_pqc_sig_keygen.png)
+
+Latency mean ± standard deviation for SIG keygen (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_3/latency_distribution_timing_pqc_sig_sign.png](20251008T114603Z+20251013T205942Z/category_3/latency_distribution_timing_pqc_sig_sign.png)
+
+Latency mean ± standard deviation for SIG sign (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_3/latency_distribution_timing_pqc_sig_verify.png](20251008T114603Z+20251013T205942Z/category_3/latency_distribution_timing_pqc_sig_verify.png)
+
+Latency mean ± standard deviation for SIG verify (timing) (PQC only)
+
 ![20251008T114603Z+20251013T205942Z/category_3/latency_distribution_timing_sig_keygen.png](20251008T114603Z+20251013T205942Z/category_3/latency_distribution_timing_sig_keygen.png)
 
 Latency mean ± standard deviation for SIG keygen (timing)
@@ -392,6 +472,30 @@ Latency ECDF for KEM encapsulate (timing)
 
 Latency ECDF for KEM keygen (timing)
 
+![20251008T114603Z+20251013T205942Z/category_3/latency_ecdf_timing_pqc_kem_decapsulate.png](20251008T114603Z+20251013T205942Z/category_3/latency_ecdf_timing_pqc_kem_decapsulate.png)
+
+Latency ECDF for KEM decapsulate (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_3/latency_ecdf_timing_pqc_kem_encapsulate.png](20251008T114603Z+20251013T205942Z/category_3/latency_ecdf_timing_pqc_kem_encapsulate.png)
+
+Latency ECDF for KEM encapsulate (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_3/latency_ecdf_timing_pqc_kem_keygen.png](20251008T114603Z+20251013T205942Z/category_3/latency_ecdf_timing_pqc_kem_keygen.png)
+
+Latency ECDF for KEM keygen (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_3/latency_ecdf_timing_pqc_sig_keygen.png](20251008T114603Z+20251013T205942Z/category_3/latency_ecdf_timing_pqc_sig_keygen.png)
+
+Latency ECDF for SIG keygen (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_3/latency_ecdf_timing_pqc_sig_sign.png](20251008T114603Z+20251013T205942Z/category_3/latency_ecdf_timing_pqc_sig_sign.png)
+
+Latency ECDF for SIG sign (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_3/latency_ecdf_timing_pqc_sig_verify.png](20251008T114603Z+20251013T205942Z/category_3/latency_ecdf_timing_pqc_sig_verify.png)
+
+Latency ECDF for SIG verify (timing) (PQC only)
+
 ![20251008T114603Z+20251013T205942Z/category_3/latency_ecdf_timing_sig_keygen.png](20251008T114603Z+20251013T205942Z/category_3/latency_ecdf_timing_sig_keygen.png)
 
 Latency ECDF for SIG keygen (timing)
@@ -407,6 +511,14 @@ Latency ECDF for SIG verify (timing)
 ![20251008T114603Z+20251013T205942Z/category_3/latency_timing_kem.png](20251008T114603Z+20251013T205942Z/category_3/latency_timing_kem.png)
 
 Mean latency per operation for KEM (timing)
+
+![20251008T114603Z+20251013T205942Z/category_3/latency_timing_pqc_kem.png](20251008T114603Z+20251013T205942Z/category_3/latency_timing_pqc_kem.png)
+
+Mean latency per operation for KEM (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_3/latency_timing_pqc_sig.png](20251008T114603Z+20251013T205942Z/category_3/latency_timing_pqc_sig.png)
+
+Mean latency per operation for SIG (timing) (PQC only)
 
 ![20251008T114603Z+20251013T205942Z/category_3/latency_timing_sig.png](20251008T114603Z+20251013T205942Z/category_3/latency_timing_sig.png)
 
@@ -700,6 +812,30 @@ Latency mean ± standard deviation for KEM encapsulate (timing)
 
 Latency mean ± standard deviation for KEM keygen (timing)
 
+![20251008T114603Z+20251013T205942Z/category_5/latency_distribution_timing_pqc_kem_decapsulate.png](20251008T114603Z+20251013T205942Z/category_5/latency_distribution_timing_pqc_kem_decapsulate.png)
+
+Latency mean ± standard deviation for KEM decapsulate (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_5/latency_distribution_timing_pqc_kem_encapsulate.png](20251008T114603Z+20251013T205942Z/category_5/latency_distribution_timing_pqc_kem_encapsulate.png)
+
+Latency mean ± standard deviation for KEM encapsulate (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_5/latency_distribution_timing_pqc_kem_keygen.png](20251008T114603Z+20251013T205942Z/category_5/latency_distribution_timing_pqc_kem_keygen.png)
+
+Latency mean ± standard deviation for KEM keygen (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_5/latency_distribution_timing_pqc_sig_keygen.png](20251008T114603Z+20251013T205942Z/category_5/latency_distribution_timing_pqc_sig_keygen.png)
+
+Latency mean ± standard deviation for SIG keygen (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_5/latency_distribution_timing_pqc_sig_sign.png](20251008T114603Z+20251013T205942Z/category_5/latency_distribution_timing_pqc_sig_sign.png)
+
+Latency mean ± standard deviation for SIG sign (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_5/latency_distribution_timing_pqc_sig_verify.png](20251008T114603Z+20251013T205942Z/category_5/latency_distribution_timing_pqc_sig_verify.png)
+
+Latency mean ± standard deviation for SIG verify (timing) (PQC only)
+
 ![20251008T114603Z+20251013T205942Z/category_5/latency_distribution_timing_sig_keygen.png](20251008T114603Z+20251013T205942Z/category_5/latency_distribution_timing_sig_keygen.png)
 
 Latency mean ± standard deviation for SIG keygen (timing)
@@ -724,6 +860,30 @@ Latency ECDF for KEM encapsulate (timing)
 
 Latency ECDF for KEM keygen (timing)
 
+![20251008T114603Z+20251013T205942Z/category_5/latency_ecdf_timing_pqc_kem_decapsulate.png](20251008T114603Z+20251013T205942Z/category_5/latency_ecdf_timing_pqc_kem_decapsulate.png)
+
+Latency ECDF for KEM decapsulate (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_5/latency_ecdf_timing_pqc_kem_encapsulate.png](20251008T114603Z+20251013T205942Z/category_5/latency_ecdf_timing_pqc_kem_encapsulate.png)
+
+Latency ECDF for KEM encapsulate (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_5/latency_ecdf_timing_pqc_kem_keygen.png](20251008T114603Z+20251013T205942Z/category_5/latency_ecdf_timing_pqc_kem_keygen.png)
+
+Latency ECDF for KEM keygen (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_5/latency_ecdf_timing_pqc_sig_keygen.png](20251008T114603Z+20251013T205942Z/category_5/latency_ecdf_timing_pqc_sig_keygen.png)
+
+Latency ECDF for SIG keygen (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_5/latency_ecdf_timing_pqc_sig_sign.png](20251008T114603Z+20251013T205942Z/category_5/latency_ecdf_timing_pqc_sig_sign.png)
+
+Latency ECDF for SIG sign (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_5/latency_ecdf_timing_pqc_sig_verify.png](20251008T114603Z+20251013T205942Z/category_5/latency_ecdf_timing_pqc_sig_verify.png)
+
+Latency ECDF for SIG verify (timing) (PQC only)
+
 ![20251008T114603Z+20251013T205942Z/category_5/latency_ecdf_timing_sig_keygen.png](20251008T114603Z+20251013T205942Z/category_5/latency_ecdf_timing_sig_keygen.png)
 
 Latency ECDF for SIG keygen (timing)
@@ -739,6 +899,14 @@ Latency ECDF for SIG verify (timing)
 ![20251008T114603Z+20251013T205942Z/category_5/latency_timing_kem.png](20251008T114603Z+20251013T205942Z/category_5/latency_timing_kem.png)
 
 Mean latency per operation for KEM (timing)
+
+![20251008T114603Z+20251013T205942Z/category_5/latency_timing_pqc_kem.png](20251008T114603Z+20251013T205942Z/category_5/latency_timing_pqc_kem.png)
+
+Mean latency per operation for KEM (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/category_5/latency_timing_pqc_sig.png](20251008T114603Z+20251013T205942Z/category_5/latency_timing_pqc_sig.png)
+
+Mean latency per operation for SIG (timing) (PQC only)
 
 ![20251008T114603Z+20251013T205942Z/category_5/latency_timing_sig.png](20251008T114603Z+20251013T205942Z/category_5/latency_timing_sig.png)
 
@@ -1024,6 +1192,30 @@ Latency mean ± standard deviation for KEM encapsulate (timing)
 
 Latency mean ± standard deviation for KEM keygen (timing)
 
+![20251008T114603Z+20251013T205942Z/latency_distribution_timing_pqc_kem_decapsulate.png](20251008T114603Z+20251013T205942Z/latency_distribution_timing_pqc_kem_decapsulate.png)
+
+Latency mean ± standard deviation for KEM decapsulate (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/latency_distribution_timing_pqc_kem_encapsulate.png](20251008T114603Z+20251013T205942Z/latency_distribution_timing_pqc_kem_encapsulate.png)
+
+Latency mean ± standard deviation for KEM encapsulate (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/latency_distribution_timing_pqc_kem_keygen.png](20251008T114603Z+20251013T205942Z/latency_distribution_timing_pqc_kem_keygen.png)
+
+Latency mean ± standard deviation for KEM keygen (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/latency_distribution_timing_pqc_sig_keygen.png](20251008T114603Z+20251013T205942Z/latency_distribution_timing_pqc_sig_keygen.png)
+
+Latency mean ± standard deviation for SIG keygen (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/latency_distribution_timing_pqc_sig_sign.png](20251008T114603Z+20251013T205942Z/latency_distribution_timing_pqc_sig_sign.png)
+
+Latency mean ± standard deviation for SIG sign (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/latency_distribution_timing_pqc_sig_verify.png](20251008T114603Z+20251013T205942Z/latency_distribution_timing_pqc_sig_verify.png)
+
+Latency mean ± standard deviation for SIG verify (timing) (PQC only)
+
 ![20251008T114603Z+20251013T205942Z/latency_distribution_timing_sig_keygen.png](20251008T114603Z+20251013T205942Z/latency_distribution_timing_sig_keygen.png)
 
 Latency mean ± standard deviation for SIG keygen (timing)
@@ -1048,6 +1240,30 @@ Latency ECDF for KEM encapsulate (timing)
 
 Latency ECDF for KEM keygen (timing)
 
+![20251008T114603Z+20251013T205942Z/latency_ecdf_timing_pqc_kem_decapsulate.png](20251008T114603Z+20251013T205942Z/latency_ecdf_timing_pqc_kem_decapsulate.png)
+
+Latency ECDF for KEM decapsulate (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/latency_ecdf_timing_pqc_kem_encapsulate.png](20251008T114603Z+20251013T205942Z/latency_ecdf_timing_pqc_kem_encapsulate.png)
+
+Latency ECDF for KEM encapsulate (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/latency_ecdf_timing_pqc_kem_keygen.png](20251008T114603Z+20251013T205942Z/latency_ecdf_timing_pqc_kem_keygen.png)
+
+Latency ECDF for KEM keygen (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/latency_ecdf_timing_pqc_sig_keygen.png](20251008T114603Z+20251013T205942Z/latency_ecdf_timing_pqc_sig_keygen.png)
+
+Latency ECDF for SIG keygen (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/latency_ecdf_timing_pqc_sig_sign.png](20251008T114603Z+20251013T205942Z/latency_ecdf_timing_pqc_sig_sign.png)
+
+Latency ECDF for SIG sign (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/latency_ecdf_timing_pqc_sig_verify.png](20251008T114603Z+20251013T205942Z/latency_ecdf_timing_pqc_sig_verify.png)
+
+Latency ECDF for SIG verify (timing) (PQC only)
+
 ![20251008T114603Z+20251013T205942Z/latency_ecdf_timing_sig_keygen.png](20251008T114603Z+20251013T205942Z/latency_ecdf_timing_sig_keygen.png)
 
 Latency ECDF for SIG keygen (timing)
@@ -1063,6 +1279,14 @@ Latency ECDF for SIG verify (timing)
 ![20251008T114603Z+20251013T205942Z/latency_timing_kem.png](20251008T114603Z+20251013T205942Z/latency_timing_kem.png)
 
 Mean latency per operation for KEM (timing)
+
+![20251008T114603Z+20251013T205942Z/latency_timing_pqc_kem.png](20251008T114603Z+20251013T205942Z/latency_timing_pqc_kem.png)
+
+Mean latency per operation for KEM (timing) (PQC only)
+
+![20251008T114603Z+20251013T205942Z/latency_timing_pqc_sig.png](20251008T114603Z+20251013T205942Z/latency_timing_pqc_sig.png)
+
+Mean latency per operation for SIG (timing) (PQC only)
 
 ![20251008T114603Z+20251013T205942Z/latency_timing_sig.png](20251008T114603Z+20251013T205942Z/latency_timing_sig.png)
 
