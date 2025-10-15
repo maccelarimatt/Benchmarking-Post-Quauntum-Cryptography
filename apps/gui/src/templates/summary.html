@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PQC Bench – Experience Overview</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" sizes="any" />
+  <link rel="mask-icon" href="/static/favicon.svg" color="#1fb6b8" />
+  <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
+  <meta name="theme-color" content="#0b0f14" />
+  <style>
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(36, 49, 63, 0.85) rgba(7, 11, 17, 0.92);
+    }
+    html::-webkit-scrollbar { width: 12px; height: 12px; }
+    html::-webkit-scrollbar-track { background: rgba(7, 11, 17, 0.92); }
+    html::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.45);
+      border-radius: 999px;
+      border: 2px solid rgba(7, 11, 17, 0.92);
+    }
+    html::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.65); }
+    * { box-sizing: border-box; }
+    :root {
+      --island-bg: rgba(25, 30, 38, 0.92);
+      --island-radius: 1.6rem;
+      --island-shadow: 0 28px 60px rgba(9, 12, 18, 0.55);
+      --accent: #1fb6b8;
+      --accent-soft: rgba(31,182,184,0.18);
+      --accent-glow: rgba(31,182,184,0.45);
+      --text: #ffffff;
+      --muted: rgba(226,232,240,0.76);
+      --divider: rgba(148, 163, 184, 0.12);
+      --card-bg: rgba(15, 22, 34, 0.82);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --success: #34d399;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --gradient-1: rgba(31, 182, 184, 0.35);
+      --gradient-2: rgba(56, 189, 248, 0.28);
+      --gradient-3: rgba(196, 181, 253, 0.32);
+    }
+    body {
+      margin: 0;
+      padding: 5vh 5vw;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      color: var(--text);
+      background-image: url('/static/Images/background.gif');
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      width: 420px;
+      height: 420px;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.65;
+      pointer-events: none;
+      z-index: 0;
+      mix-blend-mode: screen;
+    }
+    body::before {
+      background: var(--gradient-1);
+      top: 6vh;
+      left: 12vw;
+      animation: floatOrb 22s ease-in-out infinite;
+    }
+    body::after {
+      background: var(--gradient-3);
+      bottom: 8vh;
+      right: 10vw;
+      animation: floatOrb 26s ease-in-out infinite reverse;
+    }
+    .masthead {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      justify-content: space-between;
+      margin-bottom: 2.2rem;
+      position: relative;
+      z-index: 2;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1.3rem;
+    }
+    .brand-logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 1.25rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.45);
+    }
+    .brand-title {
+      font-size: 1.7rem;
+      font-weight: 700;
+      margin-bottom: .2rem;
+    }
+    .brand-subtitle {
+      font-size: .96rem;
+      color: var(--muted);
+    }
+    .nav-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 2.3rem;
+      padding-right: .5rem;
+    }
+    .nav-link {
+      display: inline-block;
+      padding: .55rem 0;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: .01em;
+      color: rgba(226,232,240,.76);
+      text-decoration: none;
+      border-bottom: 2px solid transparent;
+      transition: color .15s ease, border-color .15s ease, opacity .15s ease;
+    }
+    .nav-link:hover,
+    .nav-link:focus-visible {
+      color: #fff;
+      border-bottom-color: var(--accent);
+      opacity: 1;
+    }
+    .nav-link--active {
+      color: #fff;
+      border-bottom-color: var(--accent);
+      opacity: 1;
+    }
+    main.summary-shell {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      position: relative;
+      z-index: 2;
+    }
+    .panel {
+      background: var(--island-bg);
+      border-radius: var(--island-radius);
+      box-shadow: var(--island-shadow);
+      padding: 2.4rem;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.04);
+      position: relative;
+      overflow: hidden;
+    }
+    .panel::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      border: 1px solid rgba(255,255,255,0.04);
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+    .panel header h1,
+    .panel header h2 {
+      margin: 0;
+      font-weight: 700;
+      letter-spacing: .01em;
+    }
+    .panel header h1 { font-size: 1.95rem; }
+    .panel header h2 { font-size: 1.55rem; }
+    .panel header p {
+      margin: .75rem 0 0;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+      gap: 2.1rem;
+      align-items: center;
+    }
+    .hero .lead {
+      font-size: 1.05rem;
+      color: var(--muted);
+      margin: 1.2rem 0 1.9rem;
+      line-height: 1.7;
+    }
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .hero-meta .badge {
+      flex: 0 1 240px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 1.1rem;
+      padding: 1.2rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform .35s ease, border-color .25s ease;
+    }
+    .hero-meta .badge::before {
+      content: "";
+      position: absolute;
+      inset: -40% 35% 15% -35%;
+      background: linear-gradient(120deg, rgba(31,182,184,0.22), rgba(56,189,248,0.18));
+      opacity: 0;
+      transition: opacity .4s ease;
+    }
+    .hero-meta .badge:hover {
+      transform: translateY(-6px);
+      border-color: rgba(31,182,184,0.35);
+    }
+    .hero-meta .badge:hover::before { opacity: 0.75; }
+    .hero-meta .badge strong {
+      display: block;
+      font-size: 1.05rem;
+      margin-bottom: .4rem;
+    }
+    .hero-meta .badge span {
+      font-size: .9rem;
+      color: rgba(226,232,240,0.72);
+    }
+  </style>
+</head>
+<body>
+  <header class="masthead">
+  </header>
+  <main class="summary-shell">
+  </main>
+</body>
+</html>

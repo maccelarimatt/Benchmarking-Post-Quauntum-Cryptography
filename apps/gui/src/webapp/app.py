@@ -1095,6 +1095,19 @@ def index():
     )
 
 
+@app.route("/summary")
+def summary_page():
+    try:
+        return render_template("summary.html")
+    except TemplateNotFound:
+        static_folder = app.static_folder
+        if static_folder:
+            summary_static = Path(static_folder) / "summary.html"
+            if summary_static.exists():
+                return send_from_directory(static_folder, "summary.html")
+    return redirect(url_for("index"))
+
+
 @app.route("/api/indepth/devices")
 def api_indepth_devices():
     devices = _discover_tested_benchmarks()
