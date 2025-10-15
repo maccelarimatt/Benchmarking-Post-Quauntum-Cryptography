@@ -19,6 +19,11 @@ except Exception:  # pragma: no cover - parser availability verified at runtime.
     parse_secret_keys = None  # type: ignore
 
 try:
+    from .bike_secret_parser import parse_bike_secret_keys
+except Exception:  # pragma: no cover - optional parser helpers
+    parse_bike_secret_keys = None  # type: ignore
+
+try:
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric import rsa
 except Exception:  # pragma: no cover - cryptography optional at runtime
@@ -109,6 +114,22 @@ def prepare_keys_for_analysis(
             bundle.context.setdefault("parser", parsed.parser)
             bundle.warnings.extend(parsed.warnings)
             bundle.context.setdefault("parsed_components", "constant_weight_vectors")
+
+    elif fam == "BIKE" and parse_bike_secret_keys is not None:
+        from . import params
+
+        hint = params.find(mechanism) if mechanism else None
+        extras = hint.extras if hint else {}
+        parsed_bike = parse_bike_secret_keys(
+            keys,
+            r_bits=extras.get("r_bits"),
+            weight_per_vector=extras.get("weight_per_vector"),
+            n0=extras.get("n0", 2),
+        )
+        if parsed_bike is not None:
+            bundle.keys = parsed_bike.bitstrings
+            bundle.context.update(parsed_bike.context)
+            bundle.warnings.extend(parsed_bike.warnings)
 
     elif fam == "RSA" and serialization is not None and rsa is not None:
         parsed_keys: List[bytes] = []
@@ -202,6 +223,39 @@ def derive_model(family: Optional[str], hint: Optional["ParamHint"]) -> KeyAnaly
             per_bit_reference=None,
             notes=[
                 "HQC secret expected to be constant-weight, but parameter hint missing (n, w).",
+                "Bit-level stats reported without theoretical expectations.",
+            ],
+        )
+
+    if family and family.upper() == "BIKE":
+        extras = dict((hint.extras or {}) if hint else {})
+        r_bits = extras.get("r_bits")
+        weight = extras.get("weight_per_vector")
+        n0 = extras.get("n0", 2)
+        if isinstance(r_bits, int) and isinstance(weight, int) and isinstance(n0, int) and r_bits > 0 and weight >= 0 and n0 > 0:
+            total_bits = float(r_bits * n0)
+            total_weight = float(weight * n0)
+            p = total_weight / total_bits if total_bits else 0.0
+            expected_hd = 2.0 * p * (1.0 - p) if total_bits else None
+            notes = [
+                f"Sparse BIKE secret (n0={n0}, r={r_bits}, weight {weight} per polynomial).",
+                "Expect constant-weight binary vectors reconstructed from index lists.",
+            ]
+            return KeyAnalysisModel(
+                name="constant_weight",
+                expected_hw_fraction=p if total_bits else None,
+                expected_hd_fraction=expected_hd,
+                per_bit_reference=p if total_bits else None,
+                notes=notes,
+                extras={"r_bits": r_bits, "weight_per_vector": weight, "n0": n0},
+            )
+        return KeyAnalysisModel(
+            name="constant_weight",
+            expected_hw_fraction=None,
+            expected_hd_fraction=None,
+            per_bit_reference=None,
+            notes=[
+                "BIKE secret expected to be constant-weight, but parameter hints missing (r_bits, weight_per_vector).",
                 "Bit-level stats reported without theoretical expectations.",
             ],
         )

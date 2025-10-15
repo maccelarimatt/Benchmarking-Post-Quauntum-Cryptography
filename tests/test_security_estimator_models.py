@@ -19,6 +19,9 @@ from pqcbench.security_estimator import (
     _estimate_mayo_from_name,
     _estimate_sphincs_from_name,
     _estimate_kyber_from_name,
+    _estimate_lattice_like_from_name,
+    _estimate_bike_from_name,
+    _estimate_classic_mceliece_from_name,
     EstimatorOptions,
 )
 
@@ -72,6 +75,11 @@ def test_standardize_security_includes_calculated_range():
     core_details = formatted.get("details", {}).get("module_lwe_core_svp")
     assert core_details and core_details.get("primal")
     assert formatted.get("assumptions", {}).get("module_lwe_model", {}).get("source")
+    standardization = formatted.get("standardization")
+    assert standardization and standardization.get("label") == "FIPS 203"
+    detail_rows = dict(formatted.get("detail_rows") or [])
+    assert "Scheme parameters" in detail_rows
+    assert "Headline β" in detail_rows
 
 
 def test_falcon_bkz_model_present():
@@ -135,6 +143,9 @@ def test_sphincs_sanity_and_structure():
     formatted = _standardize_security(summary, sec_dict)
     estimates = formatted.get("estimates", {})
     assert estimates.get("sanity")
+    detail_rows = dict(formatted.get("detail_rows") or [])
+    assert "Hash suite" in detail_rows
+    assert "Winternitz w" in detail_rows
 
 
 def test_mayo_checks_present():
@@ -170,3 +181,50 @@ def test_rsa_shor_profiles_present():
     assert "factory_utilization_target" in rd
     calib = metrics.extras.get("calibration", {})
     assert calib.get("baseline_delta_pct") is not None
+
+
+def test_bike_isd_details_present():
+    metrics = _estimate_bike_from_name("BIKE-L1")
+    bike_extras = metrics.extras.get("bike", {})
+    assert bike_extras.get("isd") is not None
+    sec_dict = asdict(metrics)
+    sec_dict["extras"] = metrics.extras
+    sec_dict["mechanism"] = "BIKE-L1"
+    summary = SimpleNamespace(algo="bike", kind="KEM", meta={"mechanism": "BIKE-L1"})
+    formatted = _standardize_security(summary, sec_dict)
+    detail_rows = dict(formatted.get("detail_rows") or [])
+    assert "Stern time bits (classical)" in detail_rows
+    assert "Grover factor" in detail_rows
+
+
+def test_classic_mceliece_details_present():
+    metrics = _estimate_classic_mceliece_from_name("Classic-McEliece-348864f")
+    cm_extras = metrics.extras.get("classic_mceliece", {})
+    assert cm_extras.get("curated_estimates") is not None
+    sec_dict = asdict(metrics)
+    sec_dict["extras"] = metrics.extras
+    sec_dict["mechanism"] = "Classic-McEliece-348864f"
+    summary = SimpleNamespace(algo="classic-mceliece", kind="KEM", meta={"mechanism": "Classic-McEliece-348864f"})
+    formatted = _standardize_security(summary, sec_dict)
+    detail_rows = dict(formatted.get("detail_rows") or [])
+    assert "Classical attack" in detail_rows
+    assert "Design classical bits" in detail_rows
+
+
+def test_lattice_like_notes_when_advanced_not_supported():
+    metrics = _estimate_lattice_like_from_name("sntrup761", EstimatorOptions(lattice_use_estimator=True))
+    assert "Advanced estimator requested" in metrics.notes
+    assert "APS modeling is not available" in metrics.notes
+    extras = metrics.extras
+    assert extras.get("estimator_available") is False
+    assert extras.get("estimator_supported") is False
+    assert metrics.classical_bits == 192.0
+    sec_dict = asdict(metrics)
+    sec_dict["extras"] = metrics.extras
+    sec_dict["mechanism"] = "sntrup761"
+    summary = SimpleNamespace(algo="ntruprime", kind="KEM", meta={"mechanism": "sntrup761"})
+    formatted = _standardize_security(summary, sec_dict)
+    headline = formatted["headline"]
+    notes_joined = " ".join(headline.get("notes") or [])
+    assert "APS modeling is not available" in notes_joined
+    assert headline.get("estimator") == "floor (APS unavailable)"

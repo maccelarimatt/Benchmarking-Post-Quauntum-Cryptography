@@ -21,7 +21,7 @@ import threading
 import time
 
 from dataclasses import dataclass, asdict
-from typing import Callable, Dict, Any, List, Tuple, Optional, Sequence
+from typing import Callable, Dict, Any, List, Tuple, Optional, Sequence, Iterable
 from pqcbench import registry
 from pqcbench.runtime_scaling import (
     RuntimeScalingResult,
@@ -63,6 +63,18 @@ _ADAPTER_PATHS = {
     "pqcbench_rsa": _PROJECT_ROOT / "libs" / "adapters" / "rsa" / "src",
     "pqcbench_liboqs": _PROJECT_ROOT / "libs" / "adapters" / "liboqs" / "src",
     "pqcbench_native": _PROJECT_ROOT / "libs" / "adapters" / "native" / "src",
+}
+
+_STANDARDIZATION_BADGES: Dict[str, Dict[str, str]] = {
+    "ML-KEM": {"state": "Final", "label": "FIPS 203", "url": "https://csrc.nist.gov/pubs/fips/203/final"},
+    "ML-DSA": {"state": "Final", "label": "FIPS 204", "url": "https://csrc.nist.gov/pubs/fips/204/final"},
+    "SLH-DSA": {"state": "Final", "label": "FIPS 205", "url": "https://csrc.nist.gov/pubs/fips/205/final"},
+    "Falcon": {"state": "Draft", "label": "FIPS 206 (draft)", "url": "https://csrc.nist.gov/pubs/fips/206/ipd"},
+    "HQC": {"state": "Ongoing", "label": "NIST PQC process", "url": "https://csrc.nist.gov/projects/post-quantum-cryptography"},
+    "BIKE": {"state": "Ongoing", "label": "NIST PQC process", "url": "https://csrc.nist.gov/projects/post-quantum-cryptography"},
+    "Classic McEliece": {"state": "Ongoing", "label": "NIST PQC process", "url": "https://csrc.nist.gov/projects/post-quantum-cryptography"},
+    "NTRU": {"state": "Legacy", "label": "Early standard (IEEE P1363.1)", "url": "https://standards.ieee.org/ieee/1363.1/6215/"},
+    "NTRU Prime": {"state": "Research", "label": "OpenPQ project", "url": "https://ntruprime.cr.yp.to/"},
 }
 
 _RUNTIME_DEVICE_PROFILES = load_device_profiles(os.environ.get("PQCBENCH_DEVICE_PROFILES"))
@@ -975,8 +987,17 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
             "hqc": "HQC",
             "sphincsplus": "SPHINCS+",
             "sphincs+": "SPHINCS+",
+            "slh-dsa": "SLH-DSA",
             "xmssmt": "XMSSMT",
             "mayo": "MAYO",
+            "bike": "BIKE",
+            "classic-mceliece": "Classic McEliece",
+            "frodokem": "FrodoKEM",
+            "ntru": "NTRU",
+            "ntruprime": "NTRU Prime",
+            "cross": "CROSS",
+            "snova": "SNOVA",
+            "uov": "UOV",
         }
         fam = fam_map.get(algo)
 
@@ -1005,6 +1026,8 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
     est_name = extras.get("estimator_model")
     est_profile = extras.get("lattice_profile")
     est_available = extras.get("estimator_available")
+    est_requested = extras.get("estimator_requested")
+    est_supported = extras.get("estimator_supported")
     if est_available is None:
         est_available = bool(est_name) and not str(est_name).startswith("unavailable")
     if est_name or est_profile or extras.get("estimator_reference"):
@@ -1015,6 +1038,14 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         }
         if extras.get("estimator_reference"):
             out["estimator"]["reference"] = extras.get("estimator_reference")
+    elif est_requested is not None or est_supported is not None:
+        out["estimator"] = {
+            "name": "floor",
+            "profile": est_profile,
+            "available": bool(est_available),
+            "requested": bool(est_requested),
+            "supported": bool(est_supported),
+        }
 
     # Parameters per family (best-effort)
     params: Dict[str, Any] | None = None
@@ -1057,6 +1088,11 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
         params.setdefault("sizes_bytes", extras.get("sizes_bytes"))
     if params:
         out["parameters"] = params
+
+    std_key = fam if fam in _STANDARDIZATION_BADGES else algo
+    badge_info = _STANDARDIZATION_BADGES.get(std_key)
+    if badge_info:
+        out["standardization"] = dict(badge_info)
 
     # Resources (RSA-specific)
     if algo in ("rsa-oaep", "rsa-pss"):
@@ -1221,6 +1257,21 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
                 })
         if my.get("checks"):
             estimates["checks"] = my.get("checks")
+    elif algo == "bike":
+        bike_block = extras.get("bike") or {}
+        curated = bike_block.get("curated_estimates")
+        if isinstance(curated, dict):
+            estimates["curated"] = curated
+        if bike_block.get("isd"):
+            estimates["bike_isd"] = bike_block["isd"]
+    elif algo == "classic-mceliece":
+        cm_block = extras.get("classic_mceliece") or {}
+        curated = cm_block.get("curated_estimates")
+        if isinstance(curated, dict):
+            estimates["curated"] = curated
+        attack_model = cm_block.get("attack_model")
+        if attack_model:
+            estimates["attack_model"] = attack_model
 
     # Ensure a standardized "calculated" block for all PQCs so GUI tables can render rows consistently
     if "calculated" not in estimates:
@@ -1307,6 +1358,44 @@ def _standardize_security(summary: AlgoSummary, sec: Dict[str, Any]) -> Dict[str
                         "quantum_bits": best[0],  # no standard quantum speedup model applied here
                         "classical_bits_range": [min(v for v, _ in candidates), max(v for v, _ in candidates)] if len(candidates) >= 2 else None,
                         "quantum_bits_range": None,
+                    }
+            elif algo == "bike":
+                isd = (extras.get("bike") or {}).get("isd") or {}
+                stern = isd.get("stern") or {}
+                bjmm = isd.get("bjmm") or {}
+                candidates = []
+                if isinstance(stern.get("time_bits_classical"), (int, float)):
+                    candidates.append((float(stern["time_bits_classical"]), "stern"))
+                if isinstance(bjmm.get("time_bits_classical"), (int, float)):
+                    candidates.append((float(bjmm["time_bits_classical"]), "bjmm"))
+                if candidates:
+                    best = min(candidates, key=lambda t: t[0])
+                    estimates["calculated"] = {
+                        "profile": "isd",
+                        "attack": best[1],
+                        "classical_bits": best[0],
+                        "quantum_bits": (
+                            float(isd.get(best[1], {}).get("time_bits_quantum_grover"))
+                            if isinstance(isd.get(best[1], {}), dict)
+                            and isinstance(isd.get(best[1], {}).get("time_bits_quantum_grover"), (int, float))
+                            else None
+                        ),
+                        "classical_bits_range": [min(v for v, _ in candidates), max(v for v, _ in candidates)] if len(candidates) >= 2 else None,
+                        "quantum_bits_range": None,
+                        "source": "isd-heuristic",
+                    }
+            elif algo == "classic-mceliece":
+                cm_block = extras.get("classic_mceliece") or {}
+                curated = cm_block.get("curated_estimates") or {}
+                if curated:
+                    estimates["calculated"] = {
+                        "profile": "isd",
+                        "attack": curated.get("attack"),
+                        "classical_bits": curated.get("classical_bits_mid"),
+                        "quantum_bits": curated.get("quantum_bits_mid"),
+                        "classical_bits_range": curated.get("classical_bits_range"),
+                        "quantum_bits_range": curated.get("quantum_bits_range"),
+                        "source": curated.get("source"),
                     }
         except Exception:
             pass
@@ -1460,6 +1549,32 @@ def _build_security_headline(out: Dict[str, Any], extras: Dict[str, Any]) -> Dic
             "attack": target.get("attack") or attack,
             "notes": notes,
         }
+
+    if family in {"FRODOKEM", "NTRU", "NTRU PRIME"}:
+        requested = bool(extras.get("estimator_requested"))
+        available = bool(extras.get("estimator_available"))
+        supported = bool(extras.get("estimator_supported"))
+        reason_parts = [f"{family}: NIST category floor."]
+        if requested:
+            if available:
+                reason_parts.append("APS lattice estimator output applied.")
+            elif supported:
+                reason_parts.append("Advanced estimator requested; APS modeling data unavailable for this mechanism run.")
+            else:
+                reason_parts.append("Advanced estimator requested, but APS modeling is not available for this family.")
+        else:
+            if supported:
+                reason_parts.append("Enable the advanced lattice estimator to attempt APS cost modeling.")
+            else:
+                reason_parts.append("APS lattice estimator not available for this family.")
+        headline = _fallback_floor(" ".join(reason_parts))
+        if requested and not available:
+            headline["estimator"] = "floor (APS unavailable)"
+        elif supported:
+            headline["estimator"] = "floor (APS optional)"
+        else:
+            headline["estimator"] = "floor (no APS support)"
+        return headline
 
     if family == "ML-KEM":
         module = (details.get("module_lwe_core_svp") or {})
@@ -1748,112 +1863,240 @@ def _build_security_details(out: Dict[str, Any], extras: Dict[str, Any]) -> List
     details = out.get("details") or {}
     estimates = out.get("estimates") or {}
     params = out.get("parameters") or {}
+    assumptions = out.get("assumptions") or {}
     rows: List[Tuple[str, str]] = []
 
-    def add(label: str, value: Any, precision: int = 2) -> None:
-        if value in (None, ""):
+    def _add(label: str, value: Any, *, precision: int = 2) -> None:
+        if value in (None, "", [], {}):
             return
-        if isinstance(value, float):
-            fmt = f"{{:.{precision}f}}"
-            rows.append((label, fmt.format(value)))
-        else:
+        if isinstance(value, bool):
+            rows.append((label, "Yes" if value else "No"))
+            return
+        if isinstance(value, (int, float)):
+            if isinstance(value, float):
+                if not math.isfinite(value):
+                    return
+                if abs(value - round(value)) < 1e-6:
+                    value = int(round(value))
+                else:
+                    value = round(value, precision)
             rows.append((label, str(value)))
+            return
+        rows.append((label, str(value)))
+
+    def _add_sizes(sizes: Optional[Dict[str, Any]], label: str = "Spec sizes (bytes)") -> None:
+        if not isinstance(sizes, dict):
+            return
+        ordered = []
+        for key, name in (("public_key", "pk"), ("secret_key", "sk"), ("ciphertext", "ct"), ("signature", "sig"), ("shared_secret", "ss")):
+            if sizes.get(key) not in (None, ""):
+                ordered.append(f"{name}={sizes[key]}")
+        if ordered:
+            _add(label, ", ".join(ordered))
+
+    standardization = out.get("standardization") or {}
+    if standardization:
+        badge_label = standardization.get("label")
+        state = standardization.get("state")
+        if badge_label or state:
+            summary = badge_label if not state else f"{state} – {badge_label}"
+            _add("Standardization", summary)
+
+    estimator_block = out.get("estimator") or {}
+    if estimator_block:
+        name = estimator_block.get("name")
+        profile = estimator_block.get("profile")
+        if name or profile:
+            if name and profile and profile not in (name, None):
+                profile_label = f"{name} ({profile})"
+            else:
+                profile_label = name or profile
+            _add("Estimator profile", profile_label)
+        if estimator_block.get("requested") and not estimator_block.get("available", True):
+            _add("Estimator availability", "Requested but unavailable")
+        elif estimator_block and estimator_block.get("available") is False:
+            _add("Estimator availability", "Not available")
 
     if family == "ML-KEM":
         module_block = (details.get("module_lwe_core_svp") or {})
         headline_entry = module_block.get("headline") or {}
         if headline_entry:
-            add("Headline attack", headline_entry.get("attack"))
-            add("Headline β", headline_entry.get("beta"))
-            add("Headline samples", headline_entry.get("samples"))
-            add("Headline dimension", headline_entry.get("dimension"))
+            _add("Headline attack", headline_entry.get("attack"))
+            _add("Headline β", headline_entry.get("beta"))
+            _add("Headline samples m", headline_entry.get("samples"))
+            _add("Headline dimension", headline_entry.get("dimension"))
         primal = module_block.get("primal") or {}
         if primal:
-            add("BKZ β", primal.get("beta"))
-            add("Samples", primal.get("samples"))
-            add("Dimension", primal.get("dimension"))
-            add("Sieving dimension", primal.get("sieving_dimension"))
-            add("log₂ memory", primal.get("log2_memory"))
+            _add("Primal β", primal.get("beta"))
+            _add("Primal samples m", primal.get("samples"))
+            _add("Primal dimension", primal.get("dimension"))
+            _add("Primal log₂ memory", primal.get("log2_memory"))
+        dual = module_block.get("dual") or {}
+        if dual:
+            _add("Dual attack", dual.get("attack"))
+            _add("Dual β", dual.get("beta"))
+            _add("Dual samples m", dual.get("samples"))
+            _add("Dual dimension", dual.get("dimension"))
+        ref = assumptions.get("module_lwe_reference")
+        if ref:
+            _add("Reference", ref)
         if params:
-            add("Parameters", f"k={params.get('k')}, n={params.get('n')}, q={params.get('q')}")
+            _add("Scheme parameters", f"k={params.get('k')}, n={params.get('n')}, q={params.get('q')}")
+            _add_sizes(params.get("sizes_bytes"))
 
     elif family == "ML-DSA":
         module_block = (details.get("module_lwe_core_svp") or {})
         headline_entry = module_block.get("headline") or {}
         if headline_entry:
-            add("Headline attack", headline_entry.get("attack"))
-            add("Headline β", headline_entry.get("beta"))
-            add("Headline samples", headline_entry.get("samples"))
-            add("Headline dimension", headline_entry.get("dimension"))
+            _add("Headline attack", headline_entry.get("attack"))
+            _add("Headline β", headline_entry.get("beta"))
+            _add("Headline samples m", headline_entry.get("samples"))
+            _add("Headline dimension", headline_entry.get("dimension"))
         primal = module_block.get("primal") or {}
         if primal:
-            add("BKZ β", primal.get("beta"))
-            add("Samples", primal.get("samples"))
-            add("Dimension", primal.get("dimension"))
-            add("log₂ memory", primal.get("log2_memory"))
+            _add("Primal β", primal.get("beta"))
+            _add("Primal samples m", primal.get("samples"))
+            _add("Primal dimension", primal.get("dimension"))
+            _add("Primal log₂ memory", primal.get("log2_memory"))
+        dual = module_block.get("dual") or {}
+        if dual:
+            _add("Dual attack", dual.get("attack"))
+            _add("Dual β", dual.get("beta"))
+            _add("Dual samples m", dual.get("samples"))
+            _add("Dual dimension", dual.get("dimension"))
+        ref = assumptions.get("module_lwe_reference")
+        if ref:
+            _add("Reference", ref)
         if params:
-            add("Parameters", f"k={params.get('k')}, l={params.get('l')}, n={params.get('n')}, q={params.get('q')}")
+            eta = params.get("eta")
+            param_text = f"k={params.get('k')}, l={params.get('l')}, n={params.get('n')}, q={params.get('q')}"
+            if eta is not None:
+                param_text += f", η={eta}"
+            _add("Scheme parameters", param_text)
+            _add_sizes(params.get("sizes_bytes"))
 
     elif family == "FALCON":
         bkz = (details.get("falcon_bkz_model") or {})
         attacks = bkz.get("attacks") if isinstance(bkz, dict) else None
-        best_attack = None
         if attacks:
-            for entry in attacks:
-                if entry.get("success"):
-                    best_attack = entry
-                    break
-        if best_attack:
-            add("BKZ attack", best_attack.get("attack"))
-            add("β success", best_attack.get("beta_success"))
-            curve = best_attack.get("beta_curve") or []
-            if curve:
-                add("Classical bits", curve[0].get("classical_bits"))
-                add("Quantum bits", curve[0].get("quantum_bits"))
+            best = next((entry for entry in attacks if entry.get("success")), attacks[0])
+            if best:
+                _add("BKZ attack", best.get("attack"))
+                _add("β success", best.get("beta_success"))
+                curve = best.get("beta_curve") or []
+                if curve:
+                    first = curve[0]
+                    _add("Classical bits (BKZ)", first.get("classical_bits"))
+                    _add("Quantum bits (BKZ)", first.get("quantum_bits"))
         if params:
-            add("Parameters", f"n={params.get('n')}, q={params.get('q')}")
+            _add("Scheme parameters", f"n={params.get('n')}, q={params.get('q')}")
+            _add_sizes(params.get("sizes_bytes"))
 
     elif family == "HQC":
         isd = estimates.get("hqc_isd") or {}
         stern = isd.get("stern_entropy") or {}
         bjmm = isd.get("bjmm") or {}
-        add("Stern time bits", stern.get("time_bits_classical"))
-        add("Stern memory bits", stern.get("memory_bits_classical"))
-        add("BJMM time bits", bjmm.get("time_bits_classical"))
-        add("Grover factor", isd.get("grover_factor"))
+        _add("Stern time bits (classical)", stern.get("time_bits_classical"))
+        _add("Stern time bits (Grover √)", stern.get("time_bits_quantum_grover"))
+        _add("Stern memory bits", stern.get("memory_bits_classical"))
+        _add("BJMM time bits (classical)", bjmm.get("time_bits_classical"))
+        _add("BJMM time bits (Grover √)", bjmm.get("time_bits_quantum_grover"))
+        _add("BJMM memory bits", bjmm.get("memory_bits_classical"))
+        _add("Grover factor", isd.get("grover_factor"))
         hqc_params = ((extras.get("params") or {}).get("extras")) or {}
         if hqc_params:
-            add("Parameters", f"n={hqc_params.get('n')}, k={hqc_params.get('k')}, w={hqc_params.get('w')}")
+            _add("Scheme parameters", f"n={hqc_params.get('n')}, k={hqc_params.get('k')}, w={hqc_params.get('w')}")
+            _add_sizes(hqc_params.get("sizes_bytes"))
 
-    elif family in {"SPHINCS+", "XMSSMT", "XMSS"}:
-        family_block = (extras.get("sphincs") or extras.get("xmss") or {})
+    elif family == "BIKE":
+        bike_block = (extras.get("bike") or {})
+        isd = bike_block.get("isd") or {}
+        stern = isd.get("stern") or {}
+        bjmm = isd.get("bjmm") or {}
+        if stern:
+            _add("Stern time bits (classical)", stern.get("time_bits_classical"))
+            _add("Stern time bits (Grover √)", stern.get("time_bits_quantum_grover"))
+            _add("Stern memory bits", stern.get("memory_bits_classical"))
+        if bjmm:
+            _add("BJMM time bits (classical)", bjmm.get("time_bits_classical"))
+            _add("BJMM time bits (Grover √)", bjmm.get("time_bits_quantum_grover"))
+            _add("BJMM memory bits", bjmm.get("memory_bits_classical"))
+        if isd.get("grover_factor") is not None:
+            _add("Grover factor", isd.get("grover_factor"))
+        parameters = bike_block.get("parameters") or {}
+        if parameters:
+            _add("Scheme parameters", f"r={parameters.get('r_bits')}, w={parameters.get('weight_per_vector')}, n₀={parameters.get('n0')}")
+            _add_sizes(parameters.get("sizes_bytes"))
+
+    elif family == "CLASSIC MCELIECE":
+        cm_block = (extras.get("classic_mceliece") or {})
+        attack_model = cm_block.get("attack_model") or {}
+        _add("Classical attack", attack_model.get("classical"))
+        _add("Quantum attack", attack_model.get("quantum"))
+        curated = cm_block.get("curated_estimates") or {}
+        _add("Design classical bits", curated.get("classical_bits_mid"))
+        _add("Design quantum bits", curated.get("quantum_bits_mid"))
+        parameters = cm_block.get("parameters") or {}
+        param_parts = []
+        for key, label in (("n", "n"), ("t", "t"), ("m", "m")):
+            val = parameters.get(key)
+            if isinstance(val, (int, float)):
+                param_parts.append(f"{label}={int(val) if float(val).is_integer() else val}")
+        if param_parts:
+            _add("Scheme parameters", ", ".join(param_parts))
+        _add_sizes(parameters.get("sizes_bytes"))
+
+    elif family in {"SPHINCS+", "SLH-DSA"}:
+        family_block = extras.get("sphincs") or {}
         hash_block = family_block.get("hash_costs") or {}
-        add("Hash output bits", family_block.get("hash_output_bits"), precision=0)
-        add("Collision bits", hash_block.get("collision_bits"))
-        add("Quantum collision bits", hash_block.get("quantum_collision_bits"))
-        add("Preimage bits", hash_block.get("preimage_bits"))
+        _add("Hash output bits", family_block.get("hash_output_bits"), precision=0)
+        _add("Collision bits (classical)", hash_block.get("collision_bits"))
+        _add("Collision bits (quantum)", hash_block.get("quantum_collision_bits"))
+        _add("Preimage bits", hash_block.get("preimage_bits"))
+        if family_block.get("family"):
+            _add("Hash suite", family_block.get("family"))
         structure = family_block.get("structure") or {}
         if structure:
-            add("Structure", ", ".join([f"{k}={v}" for k, v in structure.items() if v is not None]))
+            _add("Hypertree height", structure.get("hypertree_height"))
+            _add("Hypertree layers", structure.get("layers"))
+            _add("Winternitz w", structure.get("winternitz_w"))
+            _add("FORS trees", structure.get("fors_trees"))
+            _add("FORS height", structure.get("fors_height"))
+        hint_params = family_block.get("hint_params") or {}
+        if hint_params:
+            _add_sizes(hint_params.get("sizes_bytes"), label="Spec sizes (bytes)")
+
+    elif family == "XMSSMT" or family == "XMSS":
+        family_block = extras.get("xmss") or {}
+        hash_block = family_block.get("hash_costs") or {}
+        _add("Hash output bits", family_block.get("hash_output_bits"), precision=0)
+        _add("Collision bits (classical)", hash_block.get("collision_bits"))
+        _add("Collision bits (quantum)", hash_block.get("quantum_collision_bits"))
+        _add("Preimage bits", hash_block.get("preimage_bits"))
+        structure = family_block.get("structure") or {}
+        if structure:
+            _add("Tree height", structure.get("tree_height"))
+            _add("Layers", structure.get("layers"))
 
     elif family == "MAYO":
         checks = estimates.get("checks") or {}
         rank = (checks.get("rank_attack") or {}).get("bits")
         minrank = (checks.get("minrank") or {}).get("bits")
         oil_guess = checks.get("oil_guess_bits")
-        add("Rank attack bits", rank)
-        add("MinRank bits", minrank)
-        add("Oil guess bits", oil_guess)
+        _add("Rank attack bits", rank)
+        _add("MinRank bits", minrank)
+        _add("Oil guess bits", oil_guess)
         if params:
-            add("Parameters", f"n={params.get('n')}, m={params.get('m')}, oil={params.get('oil')}, vinegar={params.get('vinegar')}, q={params.get('q')}")
+            _add("Scheme parameters", f"n={params.get('n')}, m={params.get('m')}, oil={params.get('oil')}, vinegar={params.get('vinegar')}, q={params.get('q')}")
+            _add_sizes(params.get("sizes_bytes"))
 
     elif family == "RSA":
         logical = extras.get("logical") or {}
-        add("Logical qubits", logical.get("logical_qubits") or logical.get("qubits"))
-        add("Toffoli count", logical.get("toffoli"))
+        _add("Logical qubits", logical.get("logical_qubits") or logical.get("qubits"))
+        _add("Toffoli count", logical.get("toffoli"))
         t_counts = extras.get("t_counts") or {}
-        add("Catalyzed T-count", t_counts.get("catalyzed"))
-        add("Textbook T-count", t_counts.get("textbook"))
+        _add("Catalyzed T-count", t_counts.get("catalyzed"))
+        _add("Textbook T-count", t_counts.get("textbook"))
         shor_profiles = extras.get("shor_profiles") or {}
         scenario_entries = shor_profiles.get("scenarios") or []
         total_scenarios = 0
@@ -1893,9 +2136,24 @@ def _build_security_details(out: Dict[str, Any], extras: Dict[str, Any]) -> List
                     parts.append(f"util≈{util:.2f}")
                 summary = "; ".join(parts) if parts else "n/a"
                 label_bits = f"{label} @{int(mod_bits)}-bit" if isinstance(mod_bits, (int, float)) and mod_bits else label
-                add(label_bits, summary)
+                _add(label_bits, summary)
         if total_scenarios:
-            add("Surface scenarios", total_scenarios)
+            _add("Surface scenarios", total_scenarios)
+
+    else:
+        # Generic parameter exposure for other families (e.g., NTRU, Classic McEliece, CROSS)
+        if params:
+            extras_text = []
+            for key in ("mechanism", "notes"):
+                if params.get(key):
+                    extras_text.append(f"{key}={params.get(key)}")
+            if extras_text:
+                _add("Parameter notes", "; ".join(extras_text))
+            _add_sizes(params.get("sizes_bytes"))
+
+    # Include size information if not already shown and available in extras
+    if not any(label.startswith("Spec sizes") for label, _ in rows):
+        _add_sizes(extras.get("sizes_bytes"))
 
     return rows
 def _build_export_payload(
@@ -2244,6 +2502,18 @@ _SPHINCS_TO_SLH: Dict[str, Tuple[str, str]] = {
     "SPHINCS+-SHA2-128s-simple": ("SLH_DSA_PURE_SHA2_128S", "SLH-DSA-SHA2-128s"),
     "SPHINCS+-SHAKE-128f-simple": ("SLH_DSA_PURE_SHAKE_128F", "SLH-DSA-SHAKE-128f"),
     "SPHINCS+-SHAKE-128s-simple": ("SLH_DSA_PURE_SHAKE_128S", "SLH-DSA-SHAKE-128s"),
+    "SLH_DSA_PURE_SHA2_128S": ("SLH_DSA_PURE_SHA2_128S", "SLH-DSA-SHA2-128s"),
+    "SLH_DSA_PURE_SHA2_128F": ("SLH_DSA_PURE_SHA2_128F", "SLH-DSA-SHA2-128f"),
+    "SLH_DSA_PURE_SHA2_192S": ("SLH_DSA_PURE_SHA2_192S", "SLH-DSA-SHA2-192s"),
+    "SLH_DSA_PURE_SHA2_192F": ("SLH_DSA_PURE_SHA2_192F", "SLH-DSA-SHA2-192f"),
+    "SLH_DSA_PURE_SHA2_256S": ("SLH_DSA_PURE_SHA2_256S", "SLH-DSA-SHA2-256s"),
+    "SLH_DSA_PURE_SHA2_256F": ("SLH_DSA_PURE_SHA2_256F", "SLH-DSA-SHA2-256f"),
+    "SLH_DSA_PURE_SHAKE_128S": ("SLH_DSA_PURE_SHAKE_128S", "SLH-DSA-SHAKE-128s"),
+    "SLH_DSA_PURE_SHAKE_128F": ("SLH_DSA_PURE_SHAKE_128F", "SLH-DSA-SHAKE-128f"),
+    "SLH_DSA_PURE_SHAKE_192S": ("SLH_DSA_PURE_SHAKE_192S", "SLH-DSA-SHAKE-192s"),
+    "SLH_DSA_PURE_SHAKE_192F": ("SLH_DSA_PURE_SHAKE_192F", "SLH-DSA-SHAKE-192f"),
+    "SLH_DSA_PURE_SHAKE_256S": ("SLH_DSA_PURE_SHAKE_256S", "SLH-DSA-SHAKE-256s"),
+    "SLH_DSA_PURE_SHAKE_256F": ("SLH_DSA_PURE_SHAKE_256F", "SLH-DSA-SHAKE-256f"),
 }
 
 
@@ -2419,41 +2689,244 @@ def _run_acvp_slh_dsa(mechanism: str | None) -> Dict[str, Any]:
     return result
 
 
-def _run_kat_falcon(mechanism: str | None) -> Dict[str, Any]:
-    mech = (mechanism or "").strip()
-    if mech not in {"Falcon-512", "Falcon-1024"}:
+_KAT_KEM_SUPPORTED = {
+    "BIKE-L1",
+    "BIKE-L3",
+    "BIKE-L5",
+    "HQC-128",
+    "HQC-192",
+    "HQC-256",
+    "HQC-128-1-CCA2",
+    "HQC-192-1-CCA2",
+    "HQC-256-1-CCA2",
+    "Classic-McEliece-348864",
+    "Classic-McEliece-348864f",
+    "Classic-McEliece-460896",
+    "Classic-McEliece-460896f",
+    "Classic-McEliece-6688128",
+    "Classic-McEliece-6688128f",
+    "Classic-McEliece-6960119",
+    "Classic-McEliece-6960119f",
+    "Classic-McEliece-8192128",
+    "Classic-McEliece-8192128f",
+    "FrodoKEM-640-AES",
+    "FrodoKEM-640-SHAKE",
+    "FrodoKEM-976-AES",
+    "FrodoKEM-976-SHAKE",
+    "FrodoKEM-1344-AES",
+    "FrodoKEM-1344-SHAKE",
+    "NTRU-HPS-2048-509",
+    "NTRU-HPS-2048-677",
+    "NTRU-HPS-4096-821",
+    "NTRU-HPS-4096-1229",
+    "NTRU-HRSS-701",
+    "NTRU-HRSS-1373",
+    "sntrup761",
+}
+
+
+_KAT_SIG_SUPPORTED = {
+    "SPHINCS+-SHA2-128f-simple",
+    "SPHINCS+-SHA2-128s-simple",
+    "SPHINCS+-SHA2-192f-simple",
+    "SPHINCS+-SHA2-192s-simple",
+    "SPHINCS+-SHA2-256f-simple",
+    "SPHINCS+-SHA2-256s-simple",
+    "SPHINCS+-SHAKE-128f-simple",
+    "SPHINCS+-SHAKE-128s-simple",
+    "SPHINCS+-SHAKE-192f-simple",
+    "SPHINCS+-SHAKE-192s-simple",
+    "SPHINCS+-SHAKE-256f-simple",
+    "SPHINCS+-SHAKE-256s-simple",
+    "SPHINCS+-SHA2-128f-robust",
+    "SPHINCS+-SHA2-128s-robust",
+    "SPHINCS+-SHA2-192f-robust",
+    "SPHINCS+-SHA2-192s-robust",
+    "SPHINCS+-SHA2-256f-robust",
+    "SPHINCS+-SHA2-256s-robust",
+    "SPHINCS+-SHAKE-128f-robust",
+    "SPHINCS+-SHAKE-128s-robust",
+    "SPHINCS+-SHAKE-192f-robust",
+    "SPHINCS+-SHAKE-192s-robust",
+    "SPHINCS+-SHAKE-256f-robust",
+    "SPHINCS+-SHAKE-256s-robust",
+    "Falcon-512",
+    "Falcon-1024",
+    "MAYO-1",
+    "MAYO-2",
+    "MAYO-3",
+    "MAYO-5",
+    "cross-rsdp-128-balanced",
+    "cross-rsdp-128-fast",
+    "cross-rsdp-128-small",
+    "cross-rsdp-192-balanced",
+    "cross-rsdp-192-fast",
+    "cross-rsdp-192-small",
+    "cross-rsdp-256-balanced",
+    "cross-rsdp-256-fast",
+    "cross-rsdp-256-small",
+    "cross-rsdpg-128-balanced",
+    "cross-rsdpg-128-fast",
+    "cross-rsdpg-128-small",
+    "cross-rsdpg-192-balanced",
+    "cross-rsdpg-192-fast",
+    "cross-rsdpg-192-small",
+    "cross-rsdpg-256-balanced",
+    "cross-rsdpg-256-fast",
+    "cross-rsdpg-256-small",
+    "OV-Is",
+    "OV-Ip",
+    "OV-III",
+    "OV-V",
+    "OV-Is-pkc",
+    "OV-Ip-pkc",
+    "OV-III-pkc",
+    "OV-V-pkc",
+    "OV-Is-pkc-skc",
+    "OV-Ip-pkc-skc",
+    "OV-III-pkc-skc",
+    "OV-V-pkc-skc",
+    "SNOVA_24_5_5",
+    "SNOVA_25_8_3",
+    "SNOVA_29_6_5",
+    "SNOVA_37_8_4",
+    "SNOVA_37_17_2",
+    "SNOVA_49_11_3",
+    "SNOVA_56_25_2",
+    "SNOVA_60_10_4",
+    "SLH_DSA_PURE_SHA2_128S",
+    "SLH_DSA_PURE_SHA2_128F",
+    "SLH_DSA_PURE_SHA2_192S",
+    "SLH_DSA_PURE_SHA2_192F",
+    "SLH_DSA_PURE_SHA2_256S",
+    "SLH_DSA_PURE_SHA2_256F",
+    "SLH_DSA_PURE_SHAKE_128S",
+    "SLH_DSA_PURE_SHAKE_128F",
+    "SLH_DSA_PURE_SHAKE_192S",
+    "SLH_DSA_PURE_SHAKE_192F",
+    "SLH_DSA_PURE_SHAKE_256S",
+    "SLH_DSA_PURE_SHAKE_256F",
+}
+
+
+_KAT_SIG_STFL_SUPPORTED = {
+    "XMSSMT-SHA2_20/2_256",
+    "XMSSMT-SHA2_20/4_256",
+    "XMSSMT-SHA2_40/2_256",
+    "XMSSMT-SHA2_40/4_256",
+    "XMSSMT-SHA2_40/8_256",
+    "XMSSMT-SHA2_60/3_256",
+    "XMSSMT-SHA2_60/6_256",
+    "XMSSMT-SHA2_60/12_256",
+    "XMSSMT-SHAKE_20/2_256",
+    "XMSSMT-SHAKE_20/4_256",
+    "XMSSMT-SHAKE_40/2_256",
+    "XMSSMT-SHAKE_40/4_256",
+    "XMSSMT-SHAKE_40/8_256",
+    "XMSSMT-SHAKE_60/3_256",
+    "XMSSMT-SHAKE_60/6_256",
+    "XMSSMT-SHAKE_60/12_256",
+}
+
+
+def _normalise_identifier(mechanism: str | None, supported: Iterable[str]) -> str | None:
+    if not mechanism:
+        return None
+    mech = mechanism.strip()
+    if not mech:
+        return None
+    if mech in supported:
+        return mech
+    mech_norm = mech.replace("_", "-").lower()
+    for candidate in supported:
+        if candidate.replace("_", "-").lower() == mech_norm:
+            return candidate
+    return None
+
+
+def _run_liboqs_kat(
+    binary_name: str,
+    mechanism: str | None,
+    *,
+    supported: Iterable[str],
+    unknown_reason: str,
+    vectorset_prefix: str,
+) -> Dict[str, Any]:
+    mech = _normalise_identifier(mechanism, supported)
+    if mech is None:
         return _acvp_skip(
-            "Falcon mechanism not recognised for liboqs KAT fallback",
+            unknown_reason,
             mechanism=mechanism,
+            status="unsupported",
             source="liboqs_kat",
         )
 
-    binary = _liboqs_build_dir() / "tests" / "kat_sig"
+    binary = _liboqs_build_dir() / "tests" / binary_name
     if not binary.exists():
         return _acvp_skip(
-            "liboqs kat_sig binary not available (configure native/ with -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON)",
-            mechanism=mechanism,
+            f"liboqs {binary_name} binary not available (configure native/ with -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON)",
+            mechanism=mech,
             status="missing_binary",
             source="liboqs_kat",
         )
 
     ok, output = _run_acvp_binary(binary, [mech, "--all"])
     tally = _ACVPTally()
-    tally.record(ok, "kat --all", output)
+    tally.record(ok, f"{binary_name} --all", output)
 
     status = "ok" if ok else "failed"
     result = {
         "source": "liboqs_kat",
-        "vectorset": f"kat_sig:{mech}",
-        "mechanism": mechanism,
+        "vectorset": f"{vectorset_prefix}:{mech}",
+        "mechanism": mech,
         "cases": tally.cases,
         "passes": tally.passes,
         "fails": tally.fails,
         "status": status,
     }
-    if not ok:
+    if not ok and tally.fail_examples:
         result["fail_examples"] = tally.fail_examples
     return result
+
+
+def _run_kat_kem(mechanism: str | None) -> Dict[str, Any]:
+    return _run_liboqs_kat(
+        "kat_kem",
+        mechanism,
+        supported=_KAT_KEM_SUPPORTED,
+        unknown_reason="KEM mechanism not recognised for liboqs KAT fallback",
+        vectorset_prefix="kat_kem",
+    )
+
+
+def _run_kat_falcon(mechanism: str | None) -> Dict[str, Any]:
+    return _run_liboqs_kat(
+        "kat_sig",
+        mechanism,
+        supported={"Falcon-512", "Falcon-1024"},
+        unknown_reason="Falcon mechanism not recognised for liboqs KAT fallback",
+        vectorset_prefix="kat_sig",
+    )
+
+
+def _run_kat_sig(mechanism: str | None) -> Dict[str, Any]:
+    return _run_liboqs_kat(
+        "kat_sig",
+        mechanism,
+        supported=_KAT_SIG_SUPPORTED,
+        unknown_reason="Signature mechanism not recognised for liboqs KAT fallback",
+        vectorset_prefix="kat_sig",
+    )
+
+
+def _run_kat_sig_stfl(mechanism: str | None) -> Dict[str, Any]:
+    return _run_liboqs_kat(
+        "kat_sig_stfl",
+        mechanism,
+        supported=_KAT_SIG_STFL_SUPPORTED,
+        unknown_reason="Stateful signature mechanism not recognised for liboqs KAT fallback",
+        vectorset_prefix="kat_sig_stfl",
+    )
 
 
 def _run_kat_rsa_oaep() -> Dict[str, Any]:
@@ -2541,10 +3014,9 @@ def run_acvp_validation(summary: AlgoSummary) -> Tuple[Dict[str, Any], List[str]
         if algo in {"kyber", "ml-kem"} or (mechanism and "ML-KEM" in mechanism):
             result = _run_acvp_ml_kem(mechanism)
         elif algo in {"hqc"}:
-            result = _acvp_skip(
-                "No ACVP vectors published for HQC",
-                mechanism=mechanism,
-            )
+            result = _run_kat_kem(mechanism)
+        elif algo in {"bike", "classic-mceliece", "frodokem", "ntru", "ntruprime"}:
+            result = _run_kat_kem(mechanism)
         elif algo in {"rsa-oaep"}:
             result = _run_kat_rsa_oaep()
         else:
@@ -2559,20 +3031,29 @@ def run_acvp_validation(summary: AlgoSummary) -> Tuple[Dict[str, Any], List[str]
             result = _run_acvp_ml_dsa(mechanism)
         elif algo in {"sphincs+", "sphincsplus"} or (mechanism and mechanism.startswith("SPHINCS+")):
             result = _run_acvp_slh_dsa(mechanism)
+            if result.get("status") == "skipped" and "simple profiles only" in result.get("reason", ""):
+                fallback = _run_kat_sig(mechanism)
+                if fallback.get("status") != "unsupported":
+                    result = fallback
         elif algo == "falcon" or (mechanism and mechanism.startswith("Falcon")):
             result = _run_kat_falcon(mechanism)
         elif algo == "rsa-pss":
             result = _run_kat_rsa_pss()
-        elif algo == "xmssmt":
-            result = _acvp_skip(
-                "No ACVP vectors published for XMSS^MT",
-                mechanism=mechanism,
-            )
         elif algo == "mayo":
-            result = _acvp_skip(
-                "No ACVP vectors published for MAYO",
-                mechanism=mechanism,
-            )
+            result = _run_kat_sig(mechanism)
+        elif algo == "cross":
+            result = _run_kat_sig(mechanism)
+        elif algo == "slh-dsa":
+            if mechanism and mechanism in _SPHINCS_TO_SLH:
+                result = _run_acvp_slh_dsa(mechanism)
+            else:
+                result = _run_kat_sig(mechanism)
+        elif algo == "snova":
+            result = _run_kat_sig(mechanism)
+        elif algo == "uov":
+            result = _run_kat_sig(mechanism)
+        elif algo in {"xmssmt", "xmss"}:
+            result = _run_kat_sig_stfl(mechanism)
         else:
             result = _acvp_skip(
                 "Unsupported signature algorithm for validation",

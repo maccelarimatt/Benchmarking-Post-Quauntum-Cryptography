@@ -116,7 +116,10 @@ if [[ $SKIP_NATIVE -ne 1 ]]; then
   cmake -S native -B native/build -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON
 
   echo "[setup] Building native extension..."
-  cmake --build native/build
+  cmake --build native/build --target pqcbench_native
+
+  echo "[setup] Building liboqs validation helpers (kat_kem/kat_sig/kat_sig_stfl)..."
+  cmake --build native/build --target kat_kem kat_sig kat_sig_stfl vectors_kem vectors_sig >/dev/null
 else
   echo "[setup] Skipping native build (flag set)."
 fi
@@ -124,9 +127,6 @@ fi
 echo "[setup] Installing editable packages..."
 pip install -e libs/core
 pip install -e libs/adapters/native
-
-echo "[setup] Installing development hooks..."
-pre-commit install
 
 cat <<'EOF'
 

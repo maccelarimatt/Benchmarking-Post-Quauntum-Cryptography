@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ label }} - Details</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" sizes="any" />
+  <link rel="mask-icon" href="/static/favicon.svg" color="#1fb6b8" />
+  <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
+  <meta name="theme-color" content="#0b0f14" />
+  <style>
+    /* Dark scrollbar styling */
+    html { scrollbar-width: thin; scrollbar-color: rgba(36, 49, 63, 0.85) rgba(7, 11, 17, 0.92); }
+    html::-webkit-scrollbar { width: 12px; height: 12px; }
+    html::-webkit-scrollbar-track { background: rgba(7, 11, 17, 0.92); }
+    html::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.45);
+      border-radius: 999px; border: 2px solid rgba(7, 11, 17, 0.92);
+    }
+    html::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.65); }
+
+    :root { --island-bg: rgba(38,41,45,.92); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
+    body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
+    .island { background:var(--island-bg); border-radius:var(--island-radius); padding:1.25rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 1.6vh auto; }
+    .btn, button, input[type="submit"], input[type="button"], a.btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow: 0 4px 14px rgba(31,182,184,.25); text-decoration:none; transition: background-color .2s ease, filter .15s ease, box-shadow .2s ease; }
+    .btn:hover, button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover { filter: brightness(0.92); box-shadow: 0 6px 18px rgba(31,182,184,.32); }
+    .badge { font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem; display:inline-block; }
+    .muted { opacity:.9; }
+    h2, h3 { margin: 0 0 .6rem 0; }
+    h2 { font-size:1.25rem; }
+    h3 { font-size:1.05rem; margin-top:1.2rem; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:.45rem .4rem; border-bottom:1px solid rgba(255,255,255,.2); }
+    th { font-weight:600; }
+    .refs li { margin:.35rem 0; }
+    .chip { display:inline-block; font-size:.85rem; padding:.1rem .5rem; border-radius:.4rem; background:rgba(255,255,255,.15); margin-right:.4rem; }
+    .toc a { color:#fff; text-decoration:none; }
+    .toc a:hover { text-decoration:underline; }
+    .note { font-size:.95rem; opacity:.95; }
+    code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
+    ol.refs { list-style: none; margin: 0; padding-left: 0; }
+  </style>
+  <!-- MathJax for LaTeX-style math -->
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <div class="island" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+    <div>
+      <div style="font-size:1.6rem; font-weight:700;">{{ label }}</div>
+      {% if kind %}<div class="badge" title="Kind">{{ kind }}</div>{% endif %}
+    </div>
+    <div><a href="/" class="btn">Back to home</a></div>
+  </div>
+
+  <div class="island">
+    <div style="font-weight:700; margin-bottom:.5rem;">About</div>
+    <p class="muted">
+      {{ about or 'This page explains the FrodoKEM LWE-based KEM: origins, design, math, parameter sets, algorithms, security considerations, and implementation notes—plus references.' }}
+    </p>
+    <div class="toc muted">
+      <span class="chip"><a href="#history">Origins & history</a></span>
+      <span class="chip"><a href="#overview">Design overview</a></span>
+      <span class="chip"><a href="#math">Mathematical setting</a></span>
+      <span class="chip"><a href="#params">Parameter sets</a></span>
+      <span class="chip"><a href="#algorithms">Algorithms</a></span>
+      <span class="chip"><a href="#security">Security</a></span>
+      <span class="chip"><a href="#impl">Implementation notes</a></span>
+      <span class="chip"><a href="#proscons">Pros & cons</a></span>
+      <span class="chip"><a href="#references">References</a></span>
+    </div>
+  </div>
+
+  <div class="island" id="history">
+    <h2>Origins & history</h2>
+    <p class="muted">
+      <strong>FrodoKEM</strong> is a conservative KEM based on plain (unstructured) Learning With Errors (LWE), designed to avoid
+      potential pitfalls of extra algebraic structure found in Ring-/Module-LWE variants. FrodoKEM reached NIST’s
+      Round&nbsp;3 as a finalist; in the March&nbsp;2025 Round-4 status report, NIST proceeded with HQC as the additional KEM,
+      while FrodoKEM remains a well-studied alternative with active drafts and implementations. [1][2]
+    </p>
+  </div>
+
+  <div class="island" id="overview">
+    <h2>Design overview</h2>
+    <p class="muted">
+      FrodoKEM builds a CPA PKE over matrices \( \mathbf{A}\in \mathbb{Z}_q^{n\times n} \) and short secrets, then wraps it in a
+      Fujisaki–Okamoto-style transform for IND-CCA2 security. The public matrix \( \mathbf{A} \) is derived via either AES-CTR
+      or SHAKE; errors follow rounded discrete Gaussians \( \chi \). Encapsulation samples a short seed/message, encrypts it
+      to a ciphertext pair \((\mathbf{c}_1,\mathbf{c}_2)\), and derives the shared key from hashed inputs; decapsulation uses the
+      secret to recover the seed/message and re-derive the key with confirmation. [1]
+    </p>
+  </div>
+
+  <div class="island" id="math">
+    <h2>Mathematical setting</h2>
+    <p class="muted">
+      Work in \( \mathbb{Z}_q \) with dimensions \( n\in\{640,976,1344\} \) and \( m{=}n \). Moduli are \( q{=}2^{15}{=}32768 \) for Frodo-640,
+      and \( q{=}2^{16}{=}65536 \) for Frodo-976/1344. The error distributions \( \chi_{\text{Frodo-}n} \) are rounded discrete Gaussians
+      with parameters tuned per level. [1]
+    </p>
+    <h3>Key relation</h3>
+    <p class="muted">Sample short secrets \( \mathbf{S},\mathbf{E}\in\mathbb{Z}_q^{n\times n} \) and define</p>
+    <p class="mono">\( \mathbf{B}=\mathbf{A}\mathbf{S}+\mathbf{E}. \)</p>
+    <p class="muted">The public key is \( (\text{seed}_A,\mathbf{B}) \) (or \( \mathbf{A} \) explicitly); the secret key stores \( \mathbf{S} \) and the public key hash. [1]</p>
+  </div>
+
+  <div class="island" id="params">
+    <h2>Parameter sets (FrodoKEM-640/976/1344; AES or SHAKE)</h2>
+    <p class="muted note">All sets target IND-CCA2 security; AES/SHAKE variants differ only in how \( \mathbf{A} \) is generated.</p>
+    <div class="grid-2">
+      <div>
+        <table>
+          <thead><tr><th>Set</th><th>Strength</th><th>Security model</th></tr></thead>
+          <tbody>
+            <tr><td>FrodoKEM-640-(AES|SHAKE)</td><td>Cat-1</td><td>IND-CCA2 (FO)</td></tr>
+            <tr><td>FrodoKEM-976-(AES|SHAKE)</td><td>Cat-3</td><td>IND-CCA2 (FO)</td></tr>
+            <tr><td>FrodoKEM-1344-(AES|SHAKE)</td><td>Cat-5</td><td>IND-CCA2 (FO)</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:.5rem;">Core parameters: \(n=\{640,976,1344\}\), \(m{=}n\); \(q=2^{15}\) (640) or \(2^{16}\) (976/1344); error distributions per Table 4 of the spec. [1]</p>
+      </div>
+      <div class="muted">
+        <h3>Sizes (bytes)</h3>
+        <table>
+          <thead><tr><th>Set</th><th>Public key</th><th>Secret key</th><th>Ciphertext</th><th>Shared secret</th></tr></thead>
+          <tbody>
+            <tr><td>FrodoKEM-640-(AES|SHAKE)</td><td>9616</td><td>19888</td><td>9720</td><td>16</td></tr>
+            <tr><td>FrodoKEM-976-(AES|SHAKE)</td><td>15632</td><td>31296</td><td>15744</td><td>24</td></tr>
+            <tr><td>FrodoKEM-1344-(AES|SHAKE)</td><td>21520</td><td>43088</td><td>21632</td><td>32</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:.5rem;">Representative liboqs sizes (spec matches these values). [2][3]</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="algorithms">
+    <h2>Algorithms</h2>
+
+    <h3>Key generation</h3>
+    <p class="muted">
+      Derive \( \mathbf{A} \) from a seed via AES-CTR or SHAKE. Sample short \( \mathbf{S},\mathbf{E} \) from \( \chi \); compute \( \mathbf{B}=\mathbf{A}\mathbf{S}+\mathbf{E} \).
+      Set \( \text{pk}=(\text{seed}_A,\mathbf{B}) \) and \( \text{sk} \) to include \( \mathbf{S} \), a hash of pk, and (per NIST API convention) pk itself. [1]
+    </p>
+
+    <h3>Encapsulation (CPA core + FO)</h3>
+    <p class="muted">
+      From input entropy, derive a message/seed \( \mu \) and ephemeral secrets; encrypt producing \((\mathbf{c}_1,\mathbf{c}_2)\) and
+      compute the shared secret via KDF on authenticated inputs (binding pk and ciphertext). [1]
+    </p>
+
+    <h3>Decapsulation</h3>
+    <p class="muted">
+      Use \( \mathbf{S} \) to recover \( \mu \) from \((\mathbf{c}_1,\mathbf{c}_2)\); recompute and verify the encapsulation hash bindings (key confirmation).
+      Output the agreed key or a fallback if checks fail, ensuring CCA security. [1]
+    </p>
+  </div>
+
+  <div class="island" id="security">
+    <h2>Security at a glance</h2>
+    <ul class="muted">
+      <li><b>Assumptions:</b> Plain LWE over \( \mathbb{Z}_q \) with conservative parameters; proofs in the (Q)ROM via FO-style transform. [1]</li>
+      <li><b>Categories:</b> 640 → Cat-1, 976 → Cat-3, 1344 → Cat-5 (claimed in submission). [1]</li>
+      <li><b>Variants:</b> AES vs SHAKE only affects \( \mathbf{A} \) generation; cryptographic core identical. [1]</li>
+      <li><b>NIST status:</b> Not selected for standardization in Round-4; HQC chosen to augment KEM portfolio (Mar 2025). [2]</li>
+    </ul>
+  </div>
+
+  <div class="island" id="impl">
+    <h2>Implementation notes</h2>
+    <ul class="muted">
+      <li><b>Symmetric:</b> SHAKE-128/256 and/or AES-128-CTR for matrix generation; KDF/PRFs per spec. [1]</li>
+      <li><b>Perf:</b> Cost dominated by large matrix ops; AVX2 and careful memory layout help. Keys/CTs are larger than ML-KEM. [3]</li>
+      <li><b>Side-channels:</b> Constant-time sampling/multiplication; avoid secret-dependent branches; strong input validation and key confirmation. [1]</li>
+      <li><b>Ecosystem:</b> Available in liboqs with OpenSSL provider demos; active IETF Internet-Drafts explore usage contexts. [3][4]</li>
+    </ul>
+  </div>
+
+  <div class="island" id="proscons">
+    <h2>Pros & cons</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Pros</h3>
+        <ul class="muted">
+          <li>Conservative security on unstructured LWE; avoids additional algebraic assumptions. [1]</li>
+          <li>Simple, constant-time friendly operations (matrix adds/mults, SHAKE/AES). [1]</li>
+          <li>Mature reference and optimized (AVX2) implementations; straightforward to reason about. [1][3]</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Cons</h3>
+        <ul class="muted">
+          <li>Larger public keys and ciphertexts than ML-KEM/HQC; higher bandwidth and memory costs. [3]</li>
+          <li>Slower due to big matrix arithmetic; careful engineering needed for constrained devices. [3]</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="references">
+    <h2>References</h2>
+    <ol class="refs muted">
+      <li>[1] FrodoKEM Team, “<i>FrodoKEM Specification</i>,” v2021-06-04. <a target="_blank" rel="noopener" href="https://frodokem.org/files/FrodoKEM-specification-20210604.pdf">frodokem.org</a></li>
+      <li>[2] NIST, “<i>Status Report on the Fourth Round of the NIST PQC Standardization Process (NIST IR 8545)</i>,” Mar. 2025. <a target="_blank" rel="noopener" href="https://csrc.nist.gov/pubs/ir/8545/final">nist.gov</a></li>
+      <li>[3] Open Quantum Safe, “<i>FrodoKEM in liboqs (sizes & profiles)</i>.” <a target="_blank" rel="noopener" href="https://openquantumsafe.org/liboqs/algorithms/kem/frodokem.html">openquantumsafe.org</a></li>
+      <li>[4] IETF CFRG, “<i>FrodoKEM: key encapsulation from learning with errors</i>,” Internet-Draft (2025). <a target="_blank" rel="noopener" href="https://datatracker.ietf.org/doc/draft-longa-cfrg-frodokem/">ietf.org</a></li>
+    </ol>
+  </div>
+</body>
+</html>

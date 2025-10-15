@@ -53,6 +53,31 @@ _ALGO_VARIANTS: Dict[str, Mapping[SecurityCategory, AlgorithmVariant]] = {
         3: AlgorithmVariant("HQC-192"),
         5: AlgorithmVariant("HQC-256"),
     },
+    "bike": {
+        1: AlgorithmVariant("BIKE-L1"),
+        3: AlgorithmVariant("BIKE-L3"),
+        5: AlgorithmVariant("BIKE-L5"),
+    },
+    "classic-mceliece": {
+        1: AlgorithmVariant("Classic-McEliece-348864f"),
+        3: AlgorithmVariant("Classic-McEliece-460896f"),
+        5: AlgorithmVariant("Classic-McEliece-6688128f"),
+    },
+    "frodokem": {
+        1: AlgorithmVariant("FrodoKEM-640-AES"),
+        3: AlgorithmVariant("FrodoKEM-976-AES"),
+        5: AlgorithmVariant("FrodoKEM-1344-AES"),
+    },
+    "ntru": {
+        1: AlgorithmVariant("NTRU-HPS-2048-509"),
+        3: AlgorithmVariant("NTRU-HPS-2048-677"),
+        5: AlgorithmVariant("NTRU-HPS-4096-821"),
+    },
+    "ntruprime": {
+        1: AlgorithmVariant("sntrup653"),
+        3: AlgorithmVariant("sntrup761"),
+        5: AlgorithmVariant("sntrup1277"),
+    },
     "rsa-oaep": {
         1: AlgorithmVariant(3072),
         3: AlgorithmVariant(7680),
@@ -65,6 +90,7 @@ _ALGO_VARIANTS: Dict[str, Mapping[SecurityCategory, AlgorithmVariant]] = {
         5: AlgorithmVariant(15360),
     },
     "dilithium": {
+        1: AlgorithmVariant("ML-DSA-44"),
         3: AlgorithmVariant("ML-DSA-65"),
         5: AlgorithmVariant("ML-DSA-87"),
     },
@@ -78,18 +104,56 @@ _ALGO_VARIANTS: Dict[str, Mapping[SecurityCategory, AlgorithmVariant]] = {
         5: AlgorithmVariant("SPHINCS+-SHAKE-256s-simple", "Using the small-signature (s) SPHINCS+ variants."),
     },
     "xmssmt": {
-        5: AlgorithmVariant("XMSSMT-SHA2_20/2_256", "XMSSMT standardized profiles target Cat-5 only."),
+        1: AlgorithmVariant("XMSSMT-SHA2_20/2_256", "Closest XMSS^MT profile targeting Category 1."),
+        3: AlgorithmVariant("XMSSMT-SHA2_40/4_256", "Closest XMSS^MT profile targeting Category 3."),
+        5: AlgorithmVariant("XMSSMT-SHA2_60/6_256", "Closest XMSS^MT profile targeting Category 5."),
     },
     "mayo": {
         1: AlgorithmVariant("MAYO-1"),
         3: AlgorithmVariant("MAYO-3"),
         5: AlgorithmVariant("MAYO-5"),
     },
+    "cross": {
+        1: AlgorithmVariant("cross-rsdpg-128-balanced"),
+        3: AlgorithmVariant("cross-rsdpg-192-balanced"),
+        5: AlgorithmVariant("cross-rsdpg-256-balanced"),
+    },
+    "slh-dsa": {
+        1: AlgorithmVariant("SLH_DSA_PURE_SHA2_128S"),
+        3: AlgorithmVariant("SLH_DSA_PURE_SHA2_192S"),
+        5: AlgorithmVariant("SLH_DSA_PURE_SHA2_256S"),
+    },
+    "snova": {
+        1: AlgorithmVariant("SNOVA_25_8_3"),
+        3: AlgorithmVariant("SNOVA_37_17_2"),
+        5: AlgorithmVariant("SNOVA_60_10_4"),
+    },
+    "uov": {
+        1: AlgorithmVariant("OV-Is"),
+        3: AlgorithmVariant("OV-III"),
+        5: AlgorithmVariant("OV-V"),
+    },
 }
 
 # Provide aliases so callers can refer to liboqs naming variations.
 _ALGO_ALIASES: Dict[str, str] = {
     "sphincsplus": "sphincs+",
+    "ml-kem": "kyber",
+    "mlkem": "kyber",
+    "ml_kem": "kyber",
+    "ml-dsa": "dilithium",
+    "ml_dsa": "dilithium",
+    "mldsa": "dilithium",
+    "fn-dsa": "falcon",
+    "fn_dsa": "falcon",
+    "fndsa": "falcon",
+    "classicmceliece": "classic-mceliece",
+    "classic_mceliece": "classic-mceliece",
+    "frodo-kem": "frodokem",
+    "frodo_kem": "frodokem",
+    "ntru-prime": "ntruprime",
+    "ntru_prime": "ntruprime",
+    "slh_dsa": "slh-dsa",
 }
 
 # Mapping from algorithm canonical name to the environment variable used by
@@ -97,12 +161,21 @@ _ALGO_ALIASES: Dict[str, str] = {
 _ENV_VARS: Dict[str, str] = {
     "kyber": "PQCBENCH_KYBER_ALG",
     "hqc": "PQCBENCH_HQC_ALG",
+    "bike": "PQCBENCH_BIKE_ALG",
+    "classic-mceliece": "PQCBENCH_CLASSIC_MCELIECE_ALG",
+    "frodokem": "PQCBENCH_FRODOKEM_ALG",
+    "ntru": "PQCBENCH_NTRU_ALG",
+    "ntruprime": "PQCBENCH_NTRUPRIME_ALG",
     "dilithium": "PQCBENCH_DILITHIUM_ALG",
     "falcon": "PQCBENCH_FALCON_ALG",
     "sphincs+": "PQCBENCH_SPHINCS_ALG",
     "sphincsplus": "PQCBENCH_SPHINCS_ALG",  # alias support
     "xmssmt": "PQCBENCH_XMSSMT_ALG",
     "mayo": "PQCBENCH_MAYO_ALG",
+    "cross": "PQCBENCH_CROSS_ALG",
+    "slh-dsa": "PQCBENCH_SLH_DSA_ALG",
+    "snova": "PQCBENCH_SNOVA_ALG",
+    "uov": "PQCBENCH_UOV_ALG",
     "rsa-oaep": "PQCBENCH_RSA_BITS",
     "rsa-pss": "PQCBENCH_RSA_BITS",
 }

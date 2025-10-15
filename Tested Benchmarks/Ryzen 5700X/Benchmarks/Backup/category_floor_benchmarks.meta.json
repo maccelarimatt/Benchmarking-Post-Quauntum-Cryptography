@@ -1,0 +1,521 @@
+{
+  "algorithms": [
+    {
+      "category_floor_bits": 128,
+      "category_label": "cat-1",
+      "category_number": 1,
+      "extras": {
+        "delta": 15,
+        "k": 16,
+        "n": 17669,
+        "n1": 46,
+        "n2": 384,
+        "omega": 66,
+        "omega_e": 75,
+        "omega_r": 75,
+        "sizes_bytes": {
+          "ciphertext": 4433,
+          "public_key": 2249,
+          "secret_key": 2305,
+          "shared_secret": 64
+        },
+        "w": 66
+      },
+      "family": "HQC",
+      "kind": "KEM",
+      "mechanism": "HQC-128",
+      "name": "hqc",
+      "notes": "n=17669; RS n1=46,k=16,delta=15; RM n2=384; omega=66; omega_e=75; omega_r=75"
+    },
+    {
+      "category_floor_bits": 128,
+      "category_label": "cat-1",
+      "category_number": 1,
+      "extras": {
+        "eta1": 3,
+        "eta2": 2,
+        "k": 2,
+        "n": 256,
+        "q": 3329,
+        "sizes_bytes": {
+          "ciphertext": 768,
+          "public_key": 800,
+          "secret_key": 1632,
+          "shared_secret": 32
+        }
+      },
+      "family": "ML-KEM",
+      "kind": "KEM",
+      "mechanism": "ML-KEM-512",
+      "name": "kyber",
+      "notes": "k=2; ring n=256; q=3329; eta1=3, eta2=2"
+    },
+    {
+      "category_floor_bits": 128,
+      "category_label": "cat-1",
+      "category_number": 1,
+      "extras": {
+        "modulus_bits": 3072,
+        "public_exponent": 65537
+      },
+      "family": "RSA",
+      "kind": "KEM",
+      "mechanism": "RSA-3072-OAEP",
+      "name": "rsa-oaep",
+      "notes": "RSA-2048 OAEP baseline; assesses Shor breakability in quantum models"
+    },
+    {
+      "category_floor_bits": 128,
+      "category_label": "cat-1",
+      "category_number": 1,
+      "extras": {
+        "n": 512,
+        "q": 12289,
+        "sizes_bytes": {
+          "public_key": 897,
+          "secret_key": 1281,
+          "signature": 666,
+          "signature_note": "Deterministic padded encoding = 666 bytes; compressed signatures vary ~650-670 bytes; uncompressed ~752 bytes."
+        }
+      },
+      "family": "Falcon",
+      "kind": "SIG",
+      "mechanism": "Falcon-512",
+      "name": "falcon",
+      "notes": "n=512; q=12289; NTRU lattice"
+    },
+    {
+      "category_floor_bits": 128,
+      "category_label": "cat-1",
+      "category_number": 1,
+      "extras": {
+        "k": 10,
+        "m": 78,
+        "n": 86,
+        "oil": 8,
+        "q": 16,
+        "sizes_bytes": {
+          "public_key": 1420,
+          "secret_key": 24,
+          "signature": 454
+        },
+        "vinegar": 78
+      },
+      "family": "MAYO",
+      "kind": "SIG",
+      "mechanism": "MAYO-1",
+      "name": "mayo",
+      "notes": "n=86, m=78, o=8, v=78; k=10; q=16"
+    },
+    {
+      "category_floor_bits": 128,
+      "category_label": "cat-1",
+      "category_number": 1,
+      "extras": {
+        "modulus_bits": 3072,
+        "public_exponent": 65537
+      },
+      "family": "RSA",
+      "kind": "SIG",
+      "mechanism": "RSA-3072-PSS",
+      "name": "rsa-pss",
+      "notes": "RSA-2048 PSS signature baseline; salt length matches hash size"
+    },
+    {
+      "category_floor_bits": 128,
+      "category_label": "cat-1",
+      "category_number": 1,
+      "extras": {
+        "fors_height": 12,
+        "fors_trees": 14,
+        "full_height": 63,
+        "layers": 7,
+        "n": 16,
+        "sizes_bytes": {
+          "public_key": 32,
+          "secret_key": 64,
+          "signature": 7856
+        },
+        "wots_w": 16
+      },
+      "family": "SPHINCS+",
+      "kind": "SIG",
+      "mechanism": "SPHINCS+-SHAKE-128s-simple",
+      "name": "sphincs+",
+      "notes": ""
+    },
+    {
+      "category_floor_bits": 192,
+      "category_label": "cat-3",
+      "category_number": 3,
+      "extras": {
+        "delta": 16,
+        "k": 24,
+        "n": 35851,
+        "n1": 56,
+        "n2": 640,
+        "omega": 100,
+        "omega_e": 114,
+        "omega_r": 114,
+        "sizes_bytes": {
+          "ciphertext": 8978,
+          "public_key": 4522,
+          "secret_key": 4586,
+          "shared_secret": 64
+        },
+        "w": 100
+      },
+      "family": "HQC",
+      "kind": "KEM",
+      "mechanism": "HQC-192",
+      "name": "hqc",
+      "notes": "n=35851; RS n1=56,k=24,delta=16; RM n2=640; omega=100; omega_e=114; omega_r=114"
+    },
+    {
+      "category_floor_bits": 192,
+      "category_label": "cat-3",
+      "category_number": 3,
+      "extras": {
+        "eta1": 2,
+        "eta2": 2,
+        "k": 3,
+        "n": 256,
+        "q": 3329,
+        "sizes_bytes": {
+          "ciphertext": 1088,
+          "public_key": 1184,
+          "secret_key": 2400,
+          "shared_secret": 32
+        }
+      },
+      "family": "ML-KEM",
+      "kind": "KEM",
+      "mechanism": "ML-KEM-768",
+      "name": "kyber",
+      "notes": "k=3; ring n=256; q=3329; eta1=2, eta2=2"
+    },
+    {
+      "category_floor_bits": 192,
+      "category_label": "cat-3",
+      "category_number": 3,
+      "extras": {
+        "modulus_bits": 7680,
+        "public_exponent": 65537
+      },
+      "family": "RSA",
+      "kind": "KEM",
+      "mechanism": "RSA-7680-OAEP",
+      "name": "rsa-oaep",
+      "notes": "RSA-2048 OAEP baseline; assesses Shor breakability in quantum models"
+    },
+    {
+      "category_floor_bits": 192,
+      "category_label": "cat-3",
+      "category_number": 3,
+      "extras": {
+        "eta": 4,
+        "k": 6,
+        "l": 5,
+        "n": 256,
+        "q": 8380417,
+        "sizes_bytes": {
+          "public_key": 1952,
+          "secret_key": 4000,
+          "signature": 3309,
+          "signature_min": 3293
+        }
+      },
+      "family": "ML-DSA",
+      "kind": "SIG",
+      "mechanism": "ML-DSA-65",
+      "name": "dilithium",
+      "notes": "k=6, l=5; n=256; q=8380417; eta=4"
+    },
+    {
+      "category_floor_bits": 192,
+      "category_label": "cat-3",
+      "category_number": 3,
+      "extras": {
+        "k": 11,
+        "m": 108,
+        "n": 118,
+        "oil": 10,
+        "q": 16,
+        "sizes_bytes": {
+          "public_key": 2986,
+          "secret_key": 32,
+          "signature": 681
+        },
+        "vinegar": 108
+      },
+      "family": "MAYO",
+      "kind": "SIG",
+      "mechanism": "MAYO-3",
+      "name": "mayo",
+      "notes": "n=118, m=108, o=10, v=108; k=11; q=16"
+    },
+    {
+      "category_floor_bits": 192,
+      "category_label": "cat-3",
+      "category_number": 3,
+      "extras": {
+        "modulus_bits": 7680,
+        "public_exponent": 65537
+      },
+      "family": "RSA",
+      "kind": "SIG",
+      "mechanism": "RSA-7680-PSS",
+      "name": "rsa-pss",
+      "notes": "RSA-2048 PSS signature baseline; salt length matches hash size"
+    },
+    {
+      "category_floor_bits": 192,
+      "category_label": "cat-3",
+      "category_number": 3,
+      "extras": {
+        "fors_height": 14,
+        "fors_trees": 17,
+        "full_height": 63,
+        "layers": 7,
+        "n": 24,
+        "sizes_bytes": {
+          "public_key": 48,
+          "secret_key": 96,
+          "signature": 16224
+        },
+        "wots_w": 16
+      },
+      "family": "SPHINCS+",
+      "kind": "SIG",
+      "mechanism": "SPHINCS+-SHAKE-192s-simple",
+      "name": "sphincs+",
+      "notes": ""
+    },
+    {
+      "category_floor_bits": 256,
+      "category_label": "cat-5",
+      "category_number": 5,
+      "extras": {
+        "delta": 29,
+        "k": 32,
+        "n": 57637,
+        "n1": 90,
+        "n2": 640,
+        "omega": 131,
+        "omega_e": 149,
+        "omega_r": 149,
+        "sizes_bytes": {
+          "ciphertext": 14421,
+          "public_key": 7245,
+          "secret_key": 7317,
+          "shared_secret": 64
+        },
+        "w": 131
+      },
+      "family": "HQC",
+      "kind": "KEM",
+      "mechanism": "HQC-256",
+      "name": "hqc",
+      "notes": "n=57637; RS n1=90,k=32,delta=29; RM n2=640; omega=131; omega_e=149; omega_r=149"
+    },
+    {
+      "category_floor_bits": 256,
+      "category_label": "cat-5",
+      "category_number": 5,
+      "extras": {
+        "eta1": 2,
+        "eta2": 2,
+        "k": 4,
+        "n": 256,
+        "q": 3329,
+        "sizes_bytes": {
+          "ciphertext": 1568,
+          "public_key": 1568,
+          "secret_key": 3168,
+          "shared_secret": 32
+        }
+      },
+      "family": "ML-KEM",
+      "kind": "KEM",
+      "mechanism": "ML-KEM-1024",
+      "name": "kyber",
+      "notes": "k=4; ring n=256; q=3329; eta1=2, eta2=2"
+    },
+    {
+      "category_floor_bits": 256,
+      "category_label": "cat-5",
+      "category_number": 5,
+      "extras": {
+        "eta": 2,
+        "k": 8,
+        "l": 7,
+        "n": 256,
+        "q": 8380417,
+        "sizes_bytes": {
+          "public_key": 2592,
+          "secret_key": 4864,
+          "signature": 4627
+        }
+      },
+      "family": "ML-DSA",
+      "kind": "SIG",
+      "mechanism": "ML-DSA-87",
+      "name": "dilithium",
+      "notes": "k=8, l=7; n=256; q=8380417; eta=2"
+    },
+    {
+      "category_floor_bits": 256,
+      "category_label": "cat-5",
+      "category_number": 5,
+      "extras": {
+        "n": 1024,
+        "q": 12289,
+        "sizes_bytes": {
+          "public_key": 1793,
+          "secret_key": 2305,
+          "signature": 1280,
+          "signature_note": "Deterministic padded = 1280 bytes; compressed signatures vary; uncompressed ~1536 bytes."
+        }
+      },
+      "family": "Falcon",
+      "kind": "SIG",
+      "mechanism": "Falcon-1024",
+      "name": "falcon",
+      "notes": "n=1024; q=12289; NTRU lattice"
+    },
+    {
+      "category_floor_bits": 256,
+      "category_label": "cat-5",
+      "category_number": 5,
+      "extras": {
+        "k": 12,
+        "m": 142,
+        "n": 154,
+        "oil": 12,
+        "q": 16,
+        "sizes_bytes": {
+          "public_key": 5554,
+          "secret_key": 40,
+          "signature": 964
+        },
+        "vinegar": 142
+      },
+      "family": "MAYO",
+      "kind": "SIG",
+      "mechanism": "MAYO-5",
+      "name": "mayo",
+      "notes": "n=154, m=142, o=12, v=142; k=12; q=16"
+    },
+    {
+      "category_floor_bits": 256,
+      "category_label": "cat-5",
+      "category_number": 5,
+      "extras": {
+        "fors_height": 14,
+        "fors_trees": 22,
+        "full_height": 64,
+        "layers": 8,
+        "n": 32,
+        "sizes_bytes": {
+          "public_key": 64,
+          "secret_key": 128,
+          "signature": 29792
+        },
+        "wots_w": 16
+      },
+      "family": "SPHINCS+",
+      "kind": "SIG",
+      "mechanism": "SPHINCS+-SHAKE-256s-simple",
+      "name": "sphincs+",
+      "notes": ""
+    }
+  ],
+  "categories": [
+    1,
+    3,
+    5
+  ],
+  "environment": {
+    "build_flags": {
+      "native": {
+        "CMAKE_ASM_FLAGS-ADVANCED": "1",
+        "CMAKE_ASM_FLAGS_DEBUG-ADVANCED": "1",
+        "CMAKE_ASM_FLAGS_MINSIZEREL-ADVANCED": "1",
+        "CMAKE_ASM_FLAGS_RELEASE-ADVANCED": "1",
+        "CMAKE_ASM_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_FLAGS": "/DWIN32 /D_WINDOWS",
+        "CMAKE_C_FLAGS-ADVANCED": "1",
+        "CMAKE_C_FLAGS_DEBUG": "/Zi /Ob0 /Od /RTC1",
+        "CMAKE_C_FLAGS_DEBUG-ADVANCED": "1",
+        "CMAKE_C_FLAGS_MINSIZEREL": "/O1 /Ob1 /DNDEBUG",
+        "CMAKE_C_FLAGS_MINSIZEREL-ADVANCED": "1",
+        "CMAKE_C_FLAGS_RELEASE": "/O2 /Ob2 /DNDEBUG",
+        "CMAKE_C_FLAGS_RELEASE-ADVANCED": "1",
+        "CMAKE_C_FLAGS_RELWITHDEBINFO": "/Zi /O2 /Ob1 /DNDEBUG",
+        "CMAKE_C_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+        "CMAKE_EXE_LINKER_FLAGS": "/machine:x64",
+        "CMAKE_EXE_LINKER_FLAGS-ADVANCED": "1",
+        "CMAKE_EXE_LINKER_FLAGS_DEBUG": "/debug /INCREMENTAL",
+        "CMAKE_EXE_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+        "CMAKE_EXE_LINKER_FLAGS_MINSIZEREL": "/INCREMENTAL:NO",
+        "CMAKE_EXE_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+        "CMAKE_EXE_LINKER_FLAGS_RELEASE": "/INCREMENTAL:NO",
+        "CMAKE_EXE_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+        "CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO": "/debug /INCREMENTAL",
+        "CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+        "CMAKE_MODULE_LINKER_FLAGS": "/machine:x64",
+        "CMAKE_MODULE_LINKER_FLAGS-ADVANCED": "1",
+        "CMAKE_MODULE_LINKER_FLAGS_DEBUG": "/debug /INCREMENTAL",
+        "CMAKE_MODULE_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+        "CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL": "/INCREMENTAL:NO",
+        "CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+        "CMAKE_MODULE_LINKER_FLAGS_RELEASE": "/INCREMENTAL:NO",
+        "CMAKE_MODULE_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+        "CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO": "/debug /INCREMENTAL",
+        "CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+        "CMAKE_RC_FLAGS": "-DWIN32",
+        "CMAKE_RC_FLAGS-ADVANCED": "1",
+        "CMAKE_RC_FLAGS_DEBUG": "-D_DEBUG",
+        "CMAKE_RC_FLAGS_DEBUG-ADVANCED": "1",
+        "CMAKE_RC_FLAGS_MINSIZEREL-ADVANCED": "1",
+        "CMAKE_RC_FLAGS_RELEASE-ADVANCED": "1",
+        "CMAKE_RC_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+        "CMAKE_SHARED_LINKER_FLAGS": "/machine:x64",
+        "CMAKE_SHARED_LINKER_FLAGS-ADVANCED": "1",
+        "CMAKE_SHARED_LINKER_FLAGS_DEBUG": "/debug /INCREMENTAL",
+        "CMAKE_SHARED_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+        "CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL": "/INCREMENTAL:NO",
+        "CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+        "CMAKE_SHARED_LINKER_FLAGS_RELEASE": "/INCREMENTAL:NO",
+        "CMAKE_SHARED_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+        "CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO": "/debug /INCREMENTAL",
+        "CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+        "CMAKE_STATIC_LINKER_FLAGS": "/machine:x64",
+        "CMAKE_STATIC_LINKER_FLAGS-ADVANCED": "1",
+        "CMAKE_STATIC_LINKER_FLAGS_DEBUG-ADVANCED": "1",
+        "CMAKE_STATIC_LINKER_FLAGS_MINSIZEREL-ADVANCED": "1",
+        "CMAKE_STATIC_LINKER_FLAGS_RELEASE-ADVANCED": "1",
+        "CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED": "1"
+      }
+    },
+    "cpu_model": "AMD Ryzen 7 5700X 8-Core Processor",
+    "dependencies": {
+      "liboqs_commit": "71a65ef11024bac2d936627201ee62d2009919e5",
+      "pqclean_commit": "1eacfdafc15ddc5d5759d0b85b4cef26627df181"
+    },
+    "os": "Windows-10-10.0.19045-SP0",
+    "python": "3.11.9"
+  },
+  "failures": [],
+  "generated_at": "2025-10-07T09:11:28Z",
+  "includes_warm": false,
+  "memory_interval_seconds": 0.0005,
+  "message_size": 1024,
+  "output_csv": "C:\\Users\\mattm\\Desktop\\Analysis-of-Post-Quauntum-Cryptography\\results\\category_floor_benchmarks.csv",
+  "row_count": 120,
+  "rsa_max_category": 3,
+  "runs": 40,
+  "security_estimation": true,
+  "session_id": "20251007T091128Z"
+}

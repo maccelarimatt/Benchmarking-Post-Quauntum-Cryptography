@@ -191,6 +191,99 @@ _add(["HQC-256-1-CCA2"], family="HQC", category_floor=256,
      notes="alias of HQC-256",
      extras={"n": 57637, "k": 32, "w": 131, "n1": 90, "n2": 640, "omega": 131, "omega_e": 149, "omega_r": 149, "delta": 29})
 
+# BIKE (QC-MDPC) — two sparse polynomials of constant weight D per parameter set
+_add(["BIKE-L1"], family="BIKE", category_floor=128,
+     notes="Round-4 BIKE; r=12323, weight per polynomial D=71",
+     extras={
+         "r_bits": 12323,
+         "weight_per_vector": 71,
+         "n0": 2,
+         "sizes_bytes": {"public_key": 1541, "secret_key": 5223, "ciphertext": 1573, "shared_secret": 32},
+     })
+_add(["BIKE-L3"], family="BIKE", category_floor=192,
+     notes="Round-4 BIKE; r=24659, weight per polynomial D=103",
+     extras={
+         "r_bits": 24659,
+         "weight_per_vector": 103,
+         "n0": 2,
+         "sizes_bytes": {"public_key": 3083, "secret_key": 10105, "ciphertext": 3115, "shared_secret": 32},
+     })
+_add(["BIKE-L5"], family="BIKE", category_floor=256,
+     notes="Round-4 BIKE; r=40973, weight per polynomial D=137",
+     extras={
+         "r_bits": 40973,
+         "weight_per_vector": 137,
+         "n0": 2,
+         "sizes_bytes": {"public_key": 5122, "secret_key": 16494, "ciphertext": 5154, "shared_secret": 32},
+     })
+
+# Classic McEliece (code-based Goppa)
+_add(["Classic-McEliece-348864f"], family="Classic McEliece", category_floor=128,
+     notes="Binary Goppa code; fast (f) variant targeting NIST Cat-1",
+     extras={
+         "sizes_bytes": {"public_key": 261120, "secret_key": 6492, "ciphertext": 96, "shared_secret": 32},
+     })
+_add(["Classic-McEliece-460896f"], family="Classic McEliece", category_floor=192,
+     notes="Binary Goppa code; fast (f) variant targeting NIST Cat-3",
+     extras={
+         "sizes_bytes": {"public_key": 524160, "secret_key": 13608, "ciphertext": 156, "shared_secret": 32},
+     })
+_add(["Classic-McEliece-6688128f"], family="Classic McEliece", category_floor=256,
+     notes="Binary Goppa code; fast (f) variant targeting NIST Cat-5",
+     extras={
+         "sizes_bytes": {"public_key": 1044992, "secret_key": 13932, "ciphertext": 208, "shared_secret": 32},
+     })
+
+# FrodoKEM (LWE with large modulus)
+_add(["FrodoKEM-640-AES"], family="FrodoKEM", category_floor=128,
+     notes="n=640; AES-based sampling; NIST Cat-1",
+     extras={
+         "sizes_bytes": {"public_key": 9616, "secret_key": 19888, "ciphertext": 9720, "shared_secret": 16},
+     })
+_add(["FrodoKEM-976-AES"], family="FrodoKEM", category_floor=192,
+     notes="n=976; AES-based sampling; NIST Cat-3",
+     extras={
+         "sizes_bytes": {"public_key": 15632, "secret_key": 31296, "ciphertext": 15744, "shared_secret": 24},
+     })
+_add(["FrodoKEM-1344-AES"], family="FrodoKEM", category_floor=256,
+     notes="n=1344; AES-based sampling; NIST Cat-5",
+     extras={
+         "sizes_bytes": {"public_key": 21520, "secret_key": 43088, "ciphertext": 21632, "shared_secret": 32},
+     })
+
+# NTRU (HPS/HRSS families)
+_add(["NTRU-HPS-2048-509"], family="NTRU", category_floor=128,
+     notes="HPS Round-3 parameter targeting Cat-1",
+     extras={
+         "sizes_bytes": {"public_key": 699, "secret_key": 935, "ciphertext": 699, "shared_secret": 32},
+     })
+_add(["NTRU-HPS-2048-677"], family="NTRU", category_floor=192,
+     notes="HPS Round-3 parameter targeting Cat-3",
+     extras={
+         "sizes_bytes": {"public_key": 930, "secret_key": 1234, "ciphertext": 930, "shared_secret": 32},
+     })
+_add(["NTRU-HPS-4096-821"], family="NTRU", category_floor=256,
+     notes="HPS Round-3 parameter targeting Cat-5",
+     extras={
+         "sizes_bytes": {"public_key": 1230, "secret_key": 1590, "ciphertext": 1230, "shared_secret": 32},
+     })
+_add(["NTRU-HRSS-701"], family="NTRU", category_floor=192,
+     notes="HRSS alternative Cat-3 parameter",
+     extras={
+         "sizes_bytes": {"public_key": 1138, "secret_key": 1450, "ciphertext": 1138, "shared_secret": 32},
+     })
+
+# NTRU Prime (sntrup family)
+_add(["sntrup653"], family="NTRU Prime", category_floor=128,
+     notes="sntrup653 (prime-degree NTRU) targeting Cat-1")
+_add(["sntrup761"], family="NTRU Prime", category_floor=192,
+     notes="sntrup761 (prime-degree NTRU) targeting Cat-3",
+     extras={
+         "sizes_bytes": {"public_key": 1158, "secret_key": 1763, "ciphertext": 1039, "shared_secret": 32},
+     })
+_add(["sntrup1277"], family="NTRU Prime", category_floor=256,
+     notes="sntrup1277 (prime-degree NTRU) targeting Cat-5")
+
 # SPHINCS+ (hash-based) — many variants; approximate by suffix
 _SPHINCS_EXTRAS = {
     "128s": {"n": 16, "full_height": 63, "layers": 7, "fors_height": 12, "fors_trees": 14, "wots_w": 16},
@@ -307,6 +400,38 @@ _add(["MAYO-5"], family="MAYO", category_floor=256,
          "q": 16,
          "sizes_bytes": {"public_key": 5554, "secret_key": 40, "signature": 964},
      })
+
+# CROSS (rank-based signatures)
+_add(["cross-rsdpg-128-balanced"], family="CROSS", category_floor=128,
+     notes="CROSS RSDPG balanced variant at 128-bit security")
+_add(["cross-rsdpg-192-balanced"], family="CROSS", category_floor=192,
+     notes="CROSS RSDPG balanced variant at 192-bit security")
+_add(["cross-rsdpg-256-balanced"], family="CROSS", category_floor=256,
+     notes="CROSS RSDPG balanced variant at 256-bit security")
+
+# SLH-DSA (stateless hash-based signatures)
+_add(["SLH_DSA_PURE_SHA2_128S"], family="SLH-DSA", category_floor=128,
+     notes="SLH-DSA pure SHA2 128s parameter set (FIPS 205) targeting Cat-1")
+_add(["SLH_DSA_PURE_SHA2_192S"], family="SLH-DSA", category_floor=192,
+     notes="SLH-DSA pure SHA2 192s parameter set (FIPS 205) targeting Cat-3")
+_add(["SLH_DSA_PURE_SHA2_256S"], family="SLH-DSA", category_floor=256,
+     notes="SLH-DSA pure SHA2 256s parameter set (FIPS 205) targeting Cat-5")
+
+# SNOVA (structured oil-and-vinegar)
+_add(["SNOVA_25_8_3"], family="SNOVA", category_floor=128,
+     notes="SNOVA parameter set 25/8/3 targeting Cat-1")
+_add(["SNOVA_37_17_2"], family="SNOVA", category_floor=192,
+     notes="SNOVA parameter set 37/17/2 targeting Cat-3")
+_add(["SNOVA_60_10_4"], family="SNOVA", category_floor=256,
+     notes="SNOVA parameter set 60/10/4 targeting Cat-5")
+
+# UOV (Unbalanced Oil and Vinegar)
+_add(["OV-Is"], family="UOV", category_floor=128,
+     notes="UOV parameter set OV-Is targeting Cat-1")
+_add(["OV-III"], family="UOV", category_floor=192,
+     notes="UOV parameter set OV-III targeting Cat-3")
+_add(["OV-V"], family="UOV", category_floor=256,
+     notes="UOV parameter set OV-V targeting Cat-5")
 
 
 def find(mechanism: Optional[str]) -> Optional[ParamHint]:

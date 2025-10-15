@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ label }} - Details</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" sizes="any" />
+  <link rel="mask-icon" href="/static/favicon.svg" color="#1fb6b8" />
+  <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
+  <meta name="theme-color" content="#0b0f14" />
+  <style>
+    /* Dark scrollbar styling */
+    html { scrollbar-width: thin; scrollbar-color: rgba(36,49,63,.85) rgba(7,11,17,.92); }
+    html::-webkit-scrollbar { width:12px; height:12px; }
+    html::-webkit-scrollbar-track { background: rgba(7,11,17,.92); }
+    html::-webkit-scrollbar-thumb { background: rgba(148,163,184,.45); border-radius:999px; border:2px solid rgba(7,11,17,.92); }
+    html::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,.65); }
+
+    :root { --island-bg: rgba(38,41,45,.92); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
+    body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
+    .island { background:var(--island-bg); border-radius:var(--island-radius); padding:1.25rem; backdrop-filter: blur(4px); max-width:1000px; margin:0 auto 1.6vh auto; }
+    .btn, button, input[type="submit"], input[type="button"], a.btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow:0 4px 14px rgba(31,182,184,.25); text-decoration:none; transition: background-color .2s ease, filter .15s ease, box-shadow .2s ease; }
+    .btn:hover, button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover { filter:brightness(.92); box-shadow:0 6px 18px rgba(31,182,184,.32); }
+    .badge { font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem; display:inline-block; }
+    .muted { opacity:.9; }
+    h2, h3 { margin:0 0 .6rem 0; }
+    h2 { font-size:1.25rem; }
+    h3 { font-size:1.05rem; margin-top:1.2rem; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:.45rem .4rem; border-bottom:1px solid rgba(255,255,255,.2); }
+    th { font-weight:600; }
+    .refs li { margin:.35rem 0; }
+    .chip { display:inline-block; font-size:.85rem; padding:.1rem .5rem; border-radius:.4rem; background:rgba(255,255,255,.15); margin-right:.4rem; }
+    .toc a { color:#fff; text-decoration:none; }
+    .toc a:hover { text-decoration:underline; }
+    .note { font-size:.95rem; opacity:.95; }
+    code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
+    ol.refs { list-style:none; margin:0; padding-left:0; }
+  </style>
+  <!-- MathJax for LaTeX-style math -->
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <div class="island" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+    <div>
+      <div style="font-size:1.6rem; font-weight:700;">{{ label }}</div>
+      {% if kind %}<div class="badge" title="Kind">{{ kind }}</div>{% endif %}
+    </div>
+    <div><a href="/" class="btn">Back to home</a></div>
+  </div>
+
+  <div class="island">
+    <div style="font-weight:700; margin-bottom:.5rem;">About</div>
+    <p class="muted">
+      {{ about or 'This page explains SNOVA — a multivariate (UOV-style) digital signature over a matrix ring with key–randomness alignment — including history, design, math, parameters, algorithms, security, and implementation notes.' }}
+    </p>
+    <div class="toc muted">
+      <span class="chip"><a href="#history">Origins & history</a></span>
+      <span class="chip"><a href="#overview">Design overview</a></span>
+      <span class="chip"><a href="#math">Mathematical setting</a></span>
+      <span class="chip"><a href="#params">Parameter sets</a></span>
+      <span class="chip"><a href="#algorithms">Algorithms</a></span>
+      <span class="chip"><a href="#security">Security</a></span>
+      <span class="chip"><a href="#impl">Implementation notes</a></span>
+      <span class="chip"><a href="#proscons">Pros & cons</a></span>
+      <span class="chip"><a href="#references">References</a></span>
+    </div>
+  </div>
+
+  <div class="island" id="history">
+    <h2>Origins & history</h2>
+    <p class="muted">
+      <strong>SNOVA</strong> (“Simple NOVA”) is a simplified, non-commutative-ring adaptation of UOV with alignment tricks to shrink keys.
+      It entered NIST’s <em>Additional Digital Signatures</em> track in 2023 and was announced as a <strong>Round-2</strong> candidate on
+      <strong>Oct 25, 2024</strong>. Round-2 specs with parameter guidance and KATs were posted in 2025. [1][2][3]
+    </p>
+  </div>
+
+  <div class="island" id="overview">
+    <h2>Design overview</h2>
+    <p class="muted">
+      SNOVA works over a matrix ring \( \mathbb{F}_q^{m\times m} \) and interprets UOV public quadratics with matrix coefficients.
+      A <em>key–randomness alignment</em> compresses the public key by publishing only aligned components (plus a small seed),
+      while signatures commit to hashed message data with a 16-byte salt. Security targets the hardness of solving
+      multivariate quadratic equations over non-commutative rings and resists known MinRank-style shortcuts by parameter choice.
+    </p>
+  </div>
+
+  <div class="island" id="math">
+    <h2>Mathematical setting</h2>
+    <p class="muted">
+      Let \(q=16\) (GF(16)); variables split as vinegar \(v\) and oil \(o\). Public polynomials have coefficients in the matrix
+      ring \( \mathcal{R}=\mathrm{Mat}_m(\mathbb{F}_q) \). With secret affine maps \(S,T\) and central quadratic map \(F\), the public key is
+      \( P = S \circ F \circ T \). Alignment lets the verifier reconstruct needed matrix blocks from a compact seed while keeping
+      non-commutative structure for security. Hashing is done with SHAKE-256; signatures include a 16-byte salt. [2]
+    </p>
+    <h3>Digest</h3>
+    <p class="mono">\( \text{digest} = \mathrm{Hash}(D),\quad \text{hash}_d = \mathrm{SHAKE256}(s_{\text{public}} \parallel \text{digest} \parallel \text{salt}). \)</p>
+  </div>
+
+  <div class="island" id="params">
+    <h2>Parameter sets (Levels I / III / V)</h2>
+    <p class="muted note">
+      Representative Round-2 profiles below (all use \(q{=}16\), salt 16&nbsp;B, seed-type private key = 48&nbsp;B).
+      See the spec for full tables and performance notes. [2]
+    </p>
+    <div class="grid-2">
+      <div>
+        <table>
+          <thead><tr><th>Level</th><th>\((v,o,l)\)</th><th>Example \(m\)</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>I</td><td>(25, 8, 3)</td><td>varies</td><td>Balanced pk/sig; good starting point.</td></tr>
+            <tr><td>I</td><td>(24, 5, 4)</td><td>varies</td><td>Smaller pk; larger sig.</td></tr>
+            <tr><td>III</td><td>(49, 11, 3)</td><td>varies</td><td>Mid-level security.</td></tr>
+            <tr><td>V</td><td>(60, 10, 4)</td><td>varies</td><td>High security; larger sig.</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:.5rem;">Security targets NIST I/III/V gate-count thresholds with margins against direct/collision/forgery attacks. [2]</p>
+      </div>
+      <div class="muted">
+        <h3>Sizes (bytes)</h3>
+        <table>
+          <thead><tr><th>Set</th><th>Public key</th><th>Signature</th><th>Seed-sk</th></tr></thead>
+          <tbody>
+            <tr><td>I (25,8,3)</td><td>2320</td><td>164.5</td><td>48</td></tr>
+            <tr><td>I (24,5,4)</td><td>1016</td><td>248</td><td>48</td></tr>
+            <tr><td>III (49,11,3)</td><td>6005.5</td><td>286</td><td>48</td></tr>
+            <tr><td>III (24,5,5)</td><td>1578.5</td><td>378.5</td><td>48</td></tr>
+            <tr><td>V (60,10,4)</td><td>8016</td><td>576</td><td>48</td></tr>
+            <tr><td>V (29,6,5)</td><td>2716</td><td>453.5</td><td>48</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:.5rem;">All sizes include salt (sig) and seed (pk) when applicable. See Table&nbsp;6 of the spec for the full list. [2]</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="algorithms">
+    <h2>Algorithms</h2>
+
+    <h3>Key generation</h3>
+    <p class="muted">
+      Sample seeds; derive \(S,T,F\) and aligned public matrices from <code>spublic</code>. Compute compact public data and store a
+      seed-type secret key (48&nbsp;B) or an expanded private key if precomputation is desired.
+    </p>
+    <p class="mono">
+      \( \mathrm{pk}=(s_{\text{public}},\, \text{aligned }P'_{ij}),\quad \mathrm{sk}_{\text{seed}} = (s_{\text{public}}, s_{\text{private}})\ (48\text{ B}). \)
+    </p>
+
+    <h3>Signing</h3>
+    <p class="muted">
+      Compute <code>digest</code> of the document, pick 16-byte <code>salt</code>, and hash \(h_d=\mathrm{SHAKE256}(s_{\text{public}}\| \text{digest} \| \text{salt})\).
+      Use aligned structures to produce response values; pack the signature according to \( (n,l,q) \).
+    </p>
+    <p class="mono">
+      \( \sigma = (\text{salt},\ \text{packed responses/aux data}) \), with \( |\sigma| = \tfrac{n\,l}{2}\log_2 q + 16 \) bytes.
+    </p>
+
+    <h3>Verification</h3>
+    <p class="muted">
+      Recompute aligned matrices from <code>spublic</code>, derive \(h_d\) from the message and salt, and run the SNOVA verification
+      hash equations to check acceptance.
+    </p>
+  </div>
+
+  <div class="island" id="security">
+    <h2>Security at a glance</h2>
+    <ul class="muted">
+      <li><b>Assumptions:</b> Hardness of solving multivariate quadratic systems over matrix rings; analyses vs. direct, collision, memoryless collision, and recent forgery attacks. [2]</li>
+      <li><b>Categories:</b> Parameter sets target NIST I / III / V gate-count thresholds with documented margins. [2]</li>
+      <li><b>Cryptanalysis updates:</b> Round-2 materials discuss MinRank distribution and address attacks by Beullens/Cabarcas et&nbsp;al.; continue to track literature. [2][5][6]</li>
+      <li><b>Misuse resistance:</b> 16-byte salt per signature; SHAKE-256 hashing; seed-type keys minimize storage exposure. [2]</li>
+    </ul>
+  </div>
+
+  <div class="island" id="impl">
+    <h2>Implementation notes</h2>
+    <ul class="muted">
+      <li><b>Symmetric core:</b> SHAKE-256 for hashing/PRNG; KATs provided for conformance. [2]</li>
+      <li><b>Packing:</b> Bit-packing over GF(16) dominates size; vectorized matrix ops help throughput (e.g., NEON/AVX2). [3][4]</li>
+      <li><b>Key material:</b> Public keys are seeded; seed-type private key is 48&nbsp;B (expand on demand). [2]</li>
+      <li><b>Constant-time:</b> Avoid secret-dependent branching in evaluation and packing; verify all lengths/indices. [2]</li>
+    </ul>
+  </div>
+
+  <div class="island" id="proscons">
+    <h2>Pros & cons</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Pros</h3>
+        <ul class="muted">
+          <li>Very small seed-type secret keys (48&nbsp;B); compact public keys relative to classic UOV. [2]</li>
+          <li>Hash-and-pack friendly; good parallelism on modern CPUs (matrix ops). [3][4]</li>
+          <li>Active parameter evolution with transparent security analyses. [2][5][6]</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Cons</h3>
+        <ul class="muted">
+          <li>Signatures larger than ML-DSA; packing complexity and careful implementation required. [2]</li>
+          <li>Ongoing cryptanalysis (e.g., MinRank/fault models) requires vigilance and potential countermeasures. [5][7]</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="references">
+    <h2>References</h2>
+    <ol class="refs muted">
+      <li>[1] NIST, “<i>Digital Signature Round-2 Announcement</i>,” Oct. 25, 2024. <a target="_blank" rel="noopener" href="https://csrc.nist.gov/news/2024/pqc-digital-signature-second-round-announcement">csrc.nist.gov</a></li>
+      <li>[2] SNOVA Team, “<i>SNOVA Round-2 Specification</i>,” 2025. <a target="_blank" rel="noopener" href="https://csrc.nist.gov/csrc/media/Projects/pqc-dig-sig/documents/round-2/spec-files/snova-spec-round2-web.pdf">csrc.nist.gov</a></li>
+      <li>[3] SNOVA GitHub (reference/optimized/AVX2 C code & KATs). <a target="_blank" rel="noopener" href="https://github.com/PQCLAB-SNOVA/SNOVA">github.com</a></li>
+      <li>[4] Lee et&nbsp;al., “<i>High- and Low-Rank Optimization of SNOVA on ARMv8</i>,” <i>Electronics</i>, 2025. <a target="_blank" rel="noopener" href="https://www.mdpi.com/2079-9292/14/13/2696">mdpi.com</a></li>
+      <li>[5] Wang, “<i>On the Security of Round-2 SNOVA</i>,” NIST PQC 2025 (slides). <a target="_blank" rel="noopener" href="https://csrc.nist.gov/csrc/media/events/2025/sixth-pqc-standardization-conference/on%20the%20security%20of%20round%202%20snova.pdf">csrc.nist.gov</a></li>
+      <li>[6] Ikematsu et&nbsp;al., “<i>Revisiting the Security Analysis of SNOVA</i>,” 2024. <a target="_blank" rel="noopener" href="https://dl.acm.org/doi/10.1145/3659467.3659900">dl.acm.org</a></li>
+      <li>[7] Banegas &amp; Villanueva-Polanco, “<i>A Fault Analysis on SNOVA</i>,” 2025 (preprint). <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2509.12879">arxiv.org</a></li>
+    </ol>
+  </div>
+</body>
+</html>

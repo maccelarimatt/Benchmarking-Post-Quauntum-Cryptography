@@ -692,6 +692,53 @@ def _apply_quantum_arch_presets(opts: EstimatorOptions | None) -> EstimatorOptio
         opts.cycle_time_s = 1e-5
     return opts
 
+def _quantum_bits_with_offset(floor: int, offset: float = 10.0) -> float:
+    classical = float(floor)
+    quantum = classical - float(offset)
+    # Do not let quantum fall below square-root style bound as a sanity guard
+    sqrt_bound = classical / 2.0
+    if quantum < sqrt_bound:
+        quantum = sqrt_bound
+    return quantum
+
+
+_BIKE_CURATED: Dict[int, Dict[str, Any]] = {
+    128: {
+        "classical_bits_mid": 128.0,
+        "quantum_bits_mid": 118.0,
+        "source": "BIKE Round-4 design rationale (QC-MDPC ISD).",
+    },
+    192: {
+        "classical_bits_mid": 192.0,
+        "quantum_bits_mid": 182.0,
+        "source": "BIKE Round-4 design rationale (QC-MDPC ISD).",
+    },
+    256: {
+        "classical_bits_mid": 256.0,
+        "quantum_bits_mid": 246.0,
+        "source": "BIKE Round-4 design rationale (QC-MDPC ISD).",
+    },
+}
+
+
+_MCE_CURATED: Dict[int, Dict[str, Any]] = {
+    128: {
+        "classical_bits_mid": 128.0,
+        "quantum_bits_mid": 118.0,
+        "source": "Classic McEliece submission (BJMM/Stern analysis).",
+    },
+    192: {
+        "classical_bits_mid": 192.0,
+        "quantum_bits_mid": 182.0,
+        "source": "Classic McEliece submission (BJMM/Stern analysis).",
+    },
+    256: {
+        "classical_bits_mid": 256.0,
+        "quantum_bits_mid": 246.0,
+        "source": "Classic McEliece submission (BJMM/Stern analysis).",
+    },
+}
+
 
 def _get_shor_model(name: Optional[str]) -> ShorModelSpec:
     if not name:
@@ -1131,12 +1178,51 @@ def _estimate_hash_based_from_name(name: str) -> SecMetrics:
     # SPHINCS+/XMSSMT: classical ≈ output bits; quantum ≈ half via Grover-type
     floor = _nist_floor_from_name(name) or 128
     nist_category = {128: 1, 192: 3, 256: 5}.get(int(floor), None)
+    mech_lower = name.lower()
+    if "256" in mech_lower:
+        hash_bits = 256
+    elif "192" in mech_lower:
+        hash_bits = 192
+    else:
+        hash_bits = 128
+    family_label = "SLH-DSA" if "slh" in mech_lower else "Hash-based"
+    variant = "pure"
+    if "shake" in mech_lower:
+        variant = "shake"
+    elif "simple" in mech_lower:
+        variant = "simple"
+
+    hash_block = {
+        "mechanism_hint": name,
+        "family": family_label,
+        "variant": variant,
+        "hash_output_bits": hash_bits,
+        "hash_costs": {
+            "collision_bits": hash_bits / 2.0,
+            "quantum_collision_bits": hash_bits / 3.0,
+            "preimage_bits": hash_bits,
+        },
+    }
+
+    extras = {
+        "category_floor": floor,
+        "nist_category": nist_category,
+        "estimator_model": "hash",
+        "estimator_available": True,
+        "sphincs": hash_block,
+        "params": {
+            "family": family_label,
+            "mechanism": name,
+            "extras": {"hash_output_bits": hash_bits},
+        },
+    }
+
     return SecMetrics(
         classical_bits=float(floor),
         quantum_bits=float(floor) / 2.0,
         shor_breakable=False,
-        notes="Hash-based (SLH-DSA family): Grover/quantum-walk √ speedup assumed.",
-        extras={"category_floor": floor, "nist_category": nist_category},
+        notes=f"{family_label}: hash-based security; Grover/quantum-walk speedup assumed (collision ≈ {hash_bits/2:.0f} bits).",
+        extras=extras,
     )
 
 
@@ -1159,37 +1245,47 @@ def _estimate_lattice_like_from_name(name: str, opts: Optional[EstimatorOptions]
     floor = floor or (_nist_floor_from_name(name) or 128)
     # Baseline metrics: category floors + explicit NIST category label
     nist_category = {128: 1, 192: 3, 256: 5}.get(int(floor), None)
-    metrics = SecMetrics(
-        classical_bits=float(floor),
-        quantum_bits=float(floor),  # conservative floor without Q-Core-SVP modeling
-        shor_breakable=False,
-        notes=(
-            "Lattice-based: floor from NIST category; enable --sec-adv for APS estimator."
-        ),
-        extras={
-            "category_floor": floor,
-            "nist_category": nist_category,
-            # Always surface the selected profile (or None) for UI transparency
-            "lattice_profile": (opts.lattice_profile if opts and opts.lattice_profile else None),
-            **base_extras,
-        },
-    )
-    # Feature-flagged attempt to use external lattice estimator (if available and parameters known)
-    if opts and opts.lattice_use_estimator:
+    family_label = family if family else "Lattice-based"
+    supported_for_adv = bool(family and family in ("ML-KEM", "ML-DSA"))
+    estimator_requested = bool(opts and opts.lattice_use_estimator)
+    notes_parts: List[str] = []
+
+    extras: Dict[str, Any] = {
+        "category_floor": floor,
+        "nist_category": nist_category,
+        "lattice_profile": (opts.lattice_profile if opts and opts.lattice_profile else None),
+        "estimator_supported": supported_for_adv,
+        "estimator_requested": estimator_requested,
+        "estimator_available": False,
+    }
+    if isinstance(base_extras, dict):
+        extras.update(base_extras)
+
+    params_hint = base_extras.get("params") if isinstance(base_extras, dict) else None
+    extras_hint: Dict[str, Any] = {}
+    if params_hint and isinstance(params_hint, dict):
+        extras_hint = params_hint.get("extras") or {}
+
+    classical_bits = float(floor)
+    quantum_bits = float(floor)  # conservative floor without Q-Core-SVP modeling
+
+    # Feature-flagged attempt to use external lattice estimator (if available)
+    if estimator_requested and supported_for_adv:
         est = _try_lattice_estimator_with_params(name, family)
         if est is not None:
-            # Attach estimator outputs when present
             b_class = est.get("bits_classical")
             b_qram = est.get("bits_qram")
             beta = est.get("beta")
             if isinstance(b_class, (int, float)):
-                metrics.classical_bits = float(b_class)
+                classical_bits = float(b_class)
             if isinstance(b_qram, (int, float)):
-                metrics.quantum_bits = float(b_qram)
-            metrics.extras.update({
+                quantum_bits = float(b_qram)
+            profile_label = opts.lattice_profile if opts and opts.lattice_profile else "classical"
+            extras.update({
                 "beta": beta,
                 "estimator_model": est.get("model"),
-                "lattice_profile": (opts.lattice_profile or "classical"),
+                "lattice_profile": profile_label,
+                "estimator_available": True,
                 "qram_assisted": {
                     "bits": b_qram,
                     "assumption": "Q-Core-SVP constant ~0.265; QRAM-assisted sieving",
@@ -1199,8 +1295,289 @@ def _estimate_lattice_like_from_name(name: str, opts: Optional[EstimatorOptions]
                     "assumption": "Core-SVP constant ~0.292",
                 },
             })
-            metrics.notes = "APS Lattice Estimator (best-effort): classical and QRAM-assisted costs."
+            notes_parts.append(f"{family_label}: APS lattice estimator output applied (profile {profile_label}).")
+        else:
+            notes_parts.append(
+                f"{family_label}: Advanced estimator requested, but APS modeling is not available for this mechanism; using NIST category floor."
+            )
+    else:
+        if estimator_requested and not supported_for_adv:
+            notes_parts.append(
+                f"{family_label}: Advanced estimator requested, but APS modeling is not available for this family; using NIST category floor."
+            )
+        elif supported_for_adv:
+            notes_parts.append(
+                f"{family_label}: NIST category floor. Enable the advanced lattice estimator to attempt APS cost modeling."
+            )
+        else:
+            notes_parts.append(
+                f"{family_label}: NIST category floor. APS lattice estimator not available for this family."
+            )
+
+    if extras_hint and "q" in extras_hint:
+        notes_parts.append(f"Parameters: n={extras_hint.get('n')}, q={extras_hint.get('q')}.")
+
+    metrics = SecMetrics(
+        classical_bits=classical_bits,
+        quantum_bits=quantum_bits,
+        shor_breakable=False,
+        notes=" ".join(notes_parts),
+        extras=extras,
+    )
     return metrics
+
+
+def _estimate_bike_from_name(name: str) -> SecMetrics:
+    floor = 128
+    hint_extras: Dict[str, Any] = {}
+    ph_dict: Optional[Dict[str, Any]] = None
+    try:
+        from pqcbench.params import find as find_params  # type: ignore
+        ph = find_params(name)
+        if ph:
+            floor = ph.category_floor
+            if ph.extras:
+                hint_extras = dict(ph.extras)
+            ph_dict = ph.to_dict()
+    except Exception:
+        hint_extras = {}
+    nist_category = {128: 1, 192: 3, 256: 5}.get(int(floor), None)
+    curated = dict(_BIKE_CURATED.get(int(floor)) or {})
+    design_quantum = _quantum_bits_with_offset(floor, offset=10.0)
+    if curated:
+        curated.setdefault("classical_bits_mid", float(floor))
+        curated.setdefault("quantum_bits_mid", float(design_quantum))
+        curated.setdefault("attack", "BJMM (design)")
+        curated.setdefault("source", "BIKE Round-4 security analysis")
+
+    parameters = dict(hint_extras) if hint_extras else None
+    if parameters and parameters.get("sizes_bytes"):
+        sizes = parameters.get("sizes_bytes")
+    else:
+        sizes = None
+
+    attack_model = {
+        "classical": "QC-MDPC information-set decoding",
+        "quantum": "Quadratic speedup ISD (e.g., Guo–Johansson)",
+        "best": "BJMM (design)",
+    }
+
+    extras = {
+        "category_floor": floor,
+        "nist_category": nist_category,
+        "estimator_model": "floor",
+        "estimator_available": False,
+        "sizes_bytes": sizes,
+        "bike": {
+            "mechanism": name,
+            "parameters": parameters,
+            "attack_model": attack_model,
+            "curated_estimates": curated or None,
+        },
+    }
+    if ph_dict:
+        extras["params"] = ph_dict
+
+    notes_parts = [
+        f"BIKE: NIST L{nist_category or '?'} QC-MDPC code-based KEM.",
+        "Estimator: category floor; design targets available in details.",
+    ]
+    bike_isd: Dict[str, Any] | None = None
+    if parameters and parameters.get("r_bits") and parameters.get("weight_per_vector"):
+        r = int(parameters.get("r_bits") or 0)
+        weight = int(parameters.get("weight_per_vector") or 0)
+        n0 = int(parameters.get("n0") or 2)
+        n = max(1, r * max(1, n0))
+        k = max(1, r)
+
+        def _H2(p: float) -> float:
+            if p <= 0.0 or p >= 1.0:
+                return 0.0
+            return -(p * math.log2(p) + (1.0 - p) * math.log2(1.0 - p))
+
+        def _log2_binom(n_val: int, t_val: int) -> float:
+            if t_val < 0 or t_val > n_val or n_val <= 0:
+                return 0.0
+            p_val = float(t_val) / float(n_val)
+            return float(n_val) * _H2(p_val)
+
+        half = max(1, weight // 2)
+        quarter = max(1, weight // 4)
+        logNw = _log2_binom(n, weight)
+        logKh = _log2_binom(k, half)
+        logKq = _log2_binom(k, quarter)
+        stern_time = max(0.0, logNw - logKh)
+        stern_mem = max(0.0, stern_time * 0.5)
+        bjmm_time = max(0.0, logNw - 2.0 * logKh + _log2_binom(n, half) - logKq)
+        bjmm_mem = max(0.0, bjmm_time * 0.35)
+        grover_factor = 0.5
+        bike_isd = {
+            "stern": {
+                "time_bits_classical": stern_time,
+                "memory_bits_classical": stern_mem,
+                "time_bits_quantum_grover": stern_time * grover_factor,
+            },
+            "bjmm": {
+                "time_bits_classical": bjmm_time,
+                "memory_bits_classical": bjmm_mem,
+                "time_bits_quantum_grover": bjmm_time * grover_factor,
+            },
+            "grover_factor": grover_factor,
+        }
+        notes_parts.append(
+            f"Structure: r={r}, w={weight}, n0={n0}."
+        )
+    if curated:
+        notes_parts.append(
+            f"Design target ≈ {curated.get('classical_bits_mid')} classical bits / {curated.get('quantum_bits_mid')} quantum bits (BJMM)."
+        )
+    extras["bike"]["isd"] = bike_isd
+
+    return SecMetrics(
+        classical_bits=float(floor),
+        quantum_bits=float(floor),
+        shor_breakable=False,
+        notes=" ".join(notes_parts),
+        extras=extras,
+    )
+
+
+def _estimate_classic_mceliece_from_name(name: str) -> SecMetrics:
+    floor = 128
+    hint_extras: Dict[str, Any] = {}
+    ph_dict: Optional[Dict[str, Any]] = None
+    try:
+        from pqcbench.params import find as find_params  # type: ignore
+        ph = find_params(name)
+        if ph:
+            floor = ph.category_floor
+            if ph.extras:
+                hint_extras = dict(ph.extras)
+            ph_dict = ph.to_dict()
+    except Exception:
+        hint_extras = {}
+    nist_category = {128: 1, 192: 3, 256: 5}.get(int(floor), None)
+    curated = dict(_MCE_CURATED.get(int(floor)) or {})
+    design_quantum = _quantum_bits_with_offset(floor, offset=10.0)
+    if curated:
+        curated.setdefault("classical_bits_mid", float(floor))
+        curated.setdefault("quantum_bits_mid", float(design_quantum))
+        curated.setdefault("attack", "BJMM (design)")
+        curated.setdefault("source", "Classic McEliece submission (Round 4)")
+
+    attack_model = {
+        "classical": "Binary Goppa ISD (Prange/Stern/BJMM)",
+        "quantum": "Quadratic speedup ISD (projection/Kuperberg-inspired)",
+        "best": "BJMM (design)",
+    }
+
+    parameters = dict(hint_extras) if hint_extras else None
+
+    extras = {
+        "category_floor": floor,
+        "nist_category": nist_category,
+        "estimator_model": "floor",
+        "estimator_available": False,
+        "sizes_bytes": (parameters or {}).get("sizes_bytes"),
+        "classic_mceliece": {
+            "mechanism": name,
+            "parameters": parameters,
+            "attack_model": attack_model,
+            "curated_estimates": curated or None,
+        },
+    }
+    if ph_dict:
+        extras["params"] = ph_dict
+
+    notes_parts = [
+        f"Classic McEliece: NIST L{nist_category or '?'} binary Goppa code-based KEM.",
+        "Estimator: category floor; design targets recorded from submission analysis.",
+    ]
+    if parameters and parameters.get("sizes_bytes"):
+        sizes = parameters.get("sizes_bytes")
+        notes_parts.append(
+            f"Key sizes (bytes): pk={sizes.get('public_key')}, sk={sizes.get('secret_key')}, ct={sizes.get('ciphertext')}."
+        )
+    if curated:
+        notes_parts.append(
+            f"Design target ≈ {curated.get('classical_bits_mid')} classical bits / {curated.get('quantum_bits_mid')} quantum bits (BJMM)."
+        )
+
+    return SecMetrics(
+        classical_bits=float(floor),
+        quantum_bits=float(floor),
+        shor_breakable=False,
+        notes=" ".join(notes_parts),
+        extras=extras,
+    )
+
+
+def _estimate_multivariate_from_name(name: str, family: str) -> SecMetrics:
+    floor = 128
+    hint_extras: Dict[str, Any] = {}
+    ph_dict: Optional[Dict[str, Any]] = None
+    try:
+        from pqcbench.params import find as find_params  # type: ignore
+        ph = find_params(name)
+        if ph:
+            floor = ph.category_floor
+            if ph.extras:
+                hint_extras = dict(ph.extras)
+            ph_dict = ph.to_dict()
+    except Exception:
+        hint_extras = {}
+    nist_category = {128: 1, 192: 3, 256: 5}.get(int(floor), None)
+    quantum_design = _quantum_bits_with_offset(floor, offset=12.0)
+
+    curated = {
+        "classical_bits_mid": float(floor),
+        "quantum_bits_mid": float(quantum_design),
+        "source": "Design targets (submission heuristics)",
+        "attack": "Algebraic (F4/F5/MinRank)",
+    }
+
+    extras = {
+        "category_floor": floor,
+        "nist_category": nist_category,
+        "estimator_model": "floor",
+        "estimator_available": False,
+        "multivariate": {
+            "family": family,
+            "mechanism": name,
+            "parameters": hint_extras or None,
+            "attack_model": {
+                "classical": "Hybrid algebraic (XL/F4/F5, Kipnis–Shamir, MinRank)",
+                "quantum": "Grover/quantum walk speedups over algebraic search",
+                "best": "Algebraic (MinRank) design",
+            },
+            "curated_estimates": curated,
+        },
+    }
+    if ph_dict:
+        extras["params"] = ph_dict
+
+    notes_parts = [
+        f"{family}: NIST L{nist_category or '?'} multivariate scheme.",
+        "Estimator: category floor; design heuristics summarised under details.",
+    ]
+    if hint_extras:
+        desc = []
+        for key in ("oil", "vinegar", "q"):
+            if key in hint_extras:
+                desc.append(f"{key}={hint_extras[key]}")
+        if desc:
+            notes_parts.append("Structure: " + ", ".join(desc) + ".")
+    notes_parts.append(
+        f"Design target ≈ {curated['classical_bits_mid']} classical bits / {curated['quantum_bits_mid']} quantum bits (algebraic heuristics)."
+    )
+
+    return SecMetrics(
+        classical_bits=float(floor),
+        quantum_bits=float(floor),
+        shor_breakable=False,
+        notes=" ".join(notes_parts),
+        extras=extras,
+    )
 
 
 _HQC_CURATED_ESTIMATES: Dict[str, Dict[str, Any]] = {
@@ -1611,8 +1988,9 @@ def estimate_for_summary(summary: Any, options: Optional[EstimatorOptions] = Non
     mech = _get_mechanism_for_algo(name)  # may be None
     meta = dict(summary.meta or {})
 
-    # Prefer a human-readable parameter/mech string when present
-    param_hint = mech or meta.get("parameter", None) or meta.get("mechanism", None) or name
+    # Prefer mechanism hints recorded in the summary metadata (reflects overrides)
+    meta_mech = meta.get("mechanism") or meta.get("parameter")
+    param_hint = meta_mech or mech or name
     metrics: SecMetrics
 
     if name in ("rsa-pss", "rsa-oaep"):
@@ -1624,13 +2002,31 @@ def estimate_for_summary(summary: Any, options: Optional[EstimatorOptions] = Non
     elif name == "falcon":
         metrics = _estimate_falcon_from_name(param_hint, options)
     elif name == "hqc":
-            metrics = _estimate_hqc_from_name(param_hint, options)
+        metrics = _estimate_hqc_from_name(param_hint, options)
+    elif name == "bike":
+        metrics = _estimate_bike_from_name(param_hint)
+    elif name == "classic-mceliece":
+        metrics = _estimate_classic_mceliece_from_name(param_hint)
+    elif name == "frodokem":
+        metrics = _estimate_lattice_like_from_name(param_hint, options)
+    elif name == "ntru":
+        metrics = _estimate_lattice_like_from_name(param_hint, options)
+    elif name == "ntruprime":
+        metrics = _estimate_lattice_like_from_name(param_hint, options)
     elif name in ("sphincsplus", "sphincs+"):
         metrics = _estimate_sphincs_from_name(param_hint)
     elif name == "xmssmt":
         metrics = _estimate_xmss_from_name(param_hint)
     elif name == "mayo":
         metrics = _estimate_mayo_from_name(param_hint)
+    elif name == "slh-dsa":
+        metrics = _estimate_hash_based_from_name(param_hint)
+    elif name == "cross":
+        metrics = _estimate_multivariate_from_name(param_hint, "CROSS")
+    elif name == "snova":
+        metrics = _estimate_multivariate_from_name(param_hint, "SNOVA")
+    elif name == "uov":
+        metrics = _estimate_multivariate_from_name(param_hint, "UOV")
     else:
         metrics = SecMetrics(
             classical_bits=None,

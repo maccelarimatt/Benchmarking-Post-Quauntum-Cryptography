@@ -40,7 +40,7 @@ import shlex
 from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 import psutil
 import tracemalloc
@@ -97,6 +97,46 @@ from pqcbench.security_levels import available_categories, resolve_security_over
 
 DEFAULT_ALGORITHM_EXCLUDE = {"xmssmt"}
 
+_ALGO_NAME_ALIASES = {
+    "ml-kem": "kyber",
+    "mlkem": "kyber",
+    "ml_kem": "kyber",
+    "ml dsa": "dilithium",
+    "ml-dsa": "dilithium",
+    "ml_dsa": "dilithium",
+    "mldsa": "dilithium",
+    "fn-dsa": "falcon",
+    "fn_dsa": "falcon",
+    "fndsa": "falcon",
+    "sphincsplus": "sphincs+",
+    "classicmceliece": "classic-mceliece",
+    "classic_mceliece": "classic-mceliece",
+    "frodo-kem": "frodokem",
+    "frodo_kem": "frodokem",
+    "ntru-prime": "ntruprime",
+    "ntru_prime": "ntruprime",
+    "slh_dsa": "slh-dsa",
+}
+
+_DISPLAY_NAME_OVERRIDES = {
+    "kyber": "ml-kem",
+    "dilithium": "ml-dsa",
+    "falcon": "fn-dsa",
+}
+
+
+def _canonical_algorithm_name(name: Optional[str]) -> Optional[str]:
+    if not name:
+        return name
+    key = name.strip().lower()
+    return _ALGO_NAME_ALIASES.get(key, key)
+
+
+def _display_algorithm_name(canonical_name: str, explicit: Optional[str] = None) -> str:
+    if explicit:
+        return explicit
+    return _DISPLAY_NAME_OVERRIDES.get(canonical_name.lower(), canonical_name)
+
 TVLA_T_THRESHOLD = 4.5
 SIGNIFICANCE_ALPHA = 1e-3
 MI_ALPHA = 1e-3
@@ -123,6 +163,7 @@ class ProbeConfig:
     report_format: str = "markdown"
     report_output: Optional[pathlib.Path] = None
     report_options: str = ""
+    resume_from: Optional[pathlib.Path] = None
 
 
 @dataclass
@@ -135,6 +176,7 @@ class AlgorithmDescriptor:
     security_category: Optional[int] = None
     override_note: Optional[str] = None
     override_env: Dict[str, str] = field(default_factory=dict)
+    pending_scenarios: Optional[Set[str]] = None
 
 
 @dataclass
@@ -812,26 +854,208 @@ def classify_algorithm(key: str, obj: Any) -> Optional[str]:
     return None
 
 
+def _load_completed_probe(path: Optional[pathlib.Path]) -> Dict[Tuple[str, Optional[int]], Set[str]]:
+    if not path:
+        return {}
+    try:
+        if not path.exists():
+            return {}
+    except OSError:
+        return {}
+
+    completed: Dict[Tuple[str, Optional[int]], Set[str]] = defaultdict(set)
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except Exception as exc:  # noqa: BLE001 - resume helper failures should not abort probe
+        print(f"[resume] Failed to load prior probe results from {path}: {exc}", file=sys.stderr)
+        return {}
+
+    for entry in data.get("scenarios", []):
+        if not isinstance(entry, dict):
+            continue
+        algo = (entry.get("algorithm") or "").strip()
+        scenario = (entry.get("scenario") or "").strip()
+        if not algo or not scenario:
+            continue
+        category_raw = entry.get("security_category")
+        category: Optional[int]
+        try:
+            category = int(category_raw)
+        except (TypeError, ValueError):
+            category = None
+        completed[(algo, category)].add(scenario)
+    return {key: set(values) for key, values in completed.items()}
+
+
+def _merge_unique_entries(
+    previous: Optional[Iterable[Dict[str, Any]]],
+    new: Optional[Iterable[Dict[str, Any]]],
+    key_fields: Sequence[str],
+) -> List[Dict[str, Any]]:
+    combined: List[Dict[str, Any]] = []
+    seen: Set[Tuple[Any, ...]] = set()
+
+    def _add(entry: Dict[str, Any]) -> None:
+        key = tuple(entry.get(field) for field in key_fields)
+        if key in seen:
+            return
+        seen.add(key)
+        combined.append(entry)
+
+    if previous:
+        for entry in previous:
+            if isinstance(entry, dict):
+                _add(entry)
+    if new:
+        for entry in new:
+            if isinstance(entry, dict):
+                _add(entry)
+    return combined
+
+
+def _merge_report_artifacts(
+    previous: Optional[Dict[str, Any]],
+    current: Optional[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    if not previous and not current:
+        return None
+    if not previous:
+        return current
+    if not current:
+        return previous
+    merged: Dict[str, Any] = {}
+    merged["csv"] = current.get("csv") or previous.get("csv")
+    merged["captions"] = current.get("captions") or previous.get("captions")
+    previous_plots = previous.get("plots", []) or []
+    current_plots = current.get("plots", []) or []
+    merged["plots"] = sorted({*previous_plots, *current_plots})
+    previous_notes = previous.get("notes", []) or []
+    current_notes = current.get("notes", []) or []
+    merged_notes: List[str] = []
+    for note in previous_notes + current_notes:
+        if note not in merged_notes:
+            merged_notes.append(note)
+    merged["notes"] = merged_notes
+    return merged
+
+
+def _merge_summaries(
+    previous: Dict[str, Any],
+    current: Dict[str, Any],
+    resume_source: Optional[pathlib.Path],
+) -> Dict[str, Any]:
+    merged: Dict[str, Any] = dict(previous)
+
+    merged["scenarios"] = _merge_unique_entries(
+        previous.get("scenarios"), current.get("scenarios"),
+        ("algorithm", "parameter_name", "security_category", "scenario"),
+    )
+    merged["analysis"] = _merge_unique_entries(
+        previous.get("analysis"), current.get("analysis"),
+        ("algorithm", "parameter_name", "security_category", "scenario_name"),
+    )
+
+    config_history = list(previous.get("config_history", []))
+    prev_config = previous.get("config")
+    if isinstance(prev_config, dict):
+        config_history.append(prev_config)
+    merged["config_history"] = config_history
+    merged["config"] = current.get("config")
+
+    host_history = list(previous.get("host_history", []))
+    prev_host = previous.get("host")
+    if isinstance(prev_host, dict):
+        host_history.append(prev_host)
+    merged["host_history"] = host_history
+    merged["host"] = current.get("host")
+
+    merged_report = _merge_report_artifacts(previous.get("report_artifacts"), current.get("report_artifacts"))
+    if merged_report:
+        merged["report_artifacts"] = merged_report
+    else:
+        merged.pop("report_artifacts", None)
+
+    if current.get("forensic_report"):
+        merged["forensic_report"] = current["forensic_report"]
+    elif previous.get("forensic_report"):
+        merged["forensic_report"] = previous["forensic_report"]
+
+    resume_sources = set(previous.get("resume_sources", []))
+    if resume_source:
+        resume_sources.add(str(resume_source))
+    merged["resume_sources"] = sorted(resume_sources)
+
+    return merged
+
+
 def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
     discovered: List[AlgorithmDescriptor] = []
     available = registry.list()
-    include_set = set(config.include_algorithms or [])
-    explicit_include = bool(config.include_algorithms)
-    exclude_set = {key.lower() for key in (config.exclude_algorithms or [])}
+    include_raw = config.include_algorithms or []
+    include_set: Set[str] = set()
+    include_set_lower: Set[str] = set()
+    explicit_display_overrides: Dict[str, str] = {}
+    for name in include_raw:
+        canonical = _canonical_algorithm_name(name)
+        if canonical is None:
+            continue
+        include_set.add(canonical)
+        include_set_lower.add(canonical.lower())
+        explicit_display_overrides.setdefault(canonical, name)
+    explicit_include = bool(include_set)
+
+    exclude_raw = config.exclude_algorithms or []
+    exclude_set: Set[str] = set()
+    exclude_set_lower: Set[str] = set()
+    for name in exclude_raw:
+        canonical = _canonical_algorithm_name(name)
+        if canonical is None:
+            continue
+        exclude_set.add(canonical)
+        exclude_set_lower.add(canonical.lower())
+
     if config.categories:
         categories = sorted({cat for cat in config.categories if cat in (1, 3, 5)})
     else:
         categories = []
 
+    completed_scenarios = _load_completed_probe(config.resume_from)
+    if config.resume_from:
+        if completed_scenarios:
+            scenario_total = sum(len(items) for items in completed_scenarios.values())
+            print(
+                f"[resume] Loaded {len(completed_scenarios)} algorithm/category entries "
+                f"covering {scenario_total} scenarios from {config.resume_from}",
+                flush=True,
+            )
+        else:
+            print(
+                f"[resume] No scenarios found in {config.resume_from}; running full probe.",
+                flush=True,
+            )
+
+    scenario_name_cache: Dict[str, List[str]] = {
+        "kem": [definition.name for definition in build_kem_scenarios(config)],
+        "signature": [definition.name for definition in build_signature_scenarios(config)],
+    }
+    if config.include_scenarios:
+        allowed = {name for name in config.include_scenarios}
+        for kind in scenario_name_cache:
+            scenario_name_cache[kind] = [name for name in scenario_name_cache[kind] if name in allowed]
+
     for key, candidate in sorted(available.items()):
-        key_lower = key.lower()
-        if config.include_algorithms and key not in include_set:
+        canonical_key = _canonical_algorithm_name(key) or key
+        key_lower = canonical_key.lower()
+        display_name = _display_algorithm_name(canonical_key, explicit_display_overrides.get(canonical_key))
+
+        if include_set and canonical_key not in include_set and key_lower not in include_set_lower:
             continue
-        if key_lower in exclude_set:
-            print(f"[forensic_probe] Skipping {key}: excluded via CLI", file=sys.stderr)
+        if canonical_key in exclude_set or key_lower in exclude_set_lower:
+            print(f"[forensic_probe] Skipping {display_name}: excluded via CLI", file=sys.stderr)
             continue
-        if key_lower in DEFAULT_ALGORITHM_EXCLUDE and not (explicit_include and key in include_set):
-            print(f"[forensic_probe] Skipping {key}: excluded by default (unstable)", file=sys.stderr)
+        if key_lower in DEFAULT_ALGORITHM_EXCLUDE and not (explicit_include and (canonical_key in include_set or key_lower in include_set_lower)):
+            print(f"[forensic_probe] Skipping {display_name}: excluded by default (unstable)", file=sys.stderr)
             continue
         if inspect.isclass(candidate):
             base_factory: Callable[[], Any] = candidate
@@ -843,17 +1067,17 @@ def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
         variant_specs: List[Tuple[Dict[str, str], Optional[int], Optional[str]]] = [({}, None, None)]
         if categories:
             variant_specs = []
-            available_for_algo = set(available_categories(key))
+            available_for_algo = set(available_categories(display_name))
             for category in categories:
-                if key_lower in {"rsa-oaep", "rsa-pss"} and category > config.rsa_max_category:
+                if canonical_key in {"rsa-oaep", "rsa-pss"} and category > config.rsa_max_category:
                     print(
-                        f"[forensic_probe] Skipping {key} Cat-{category}: limited by --rsa-max-category={config.rsa_max_category}",
+                        f"[forensic_probe] Skipping {display_name} Cat-{category}: limited by --rsa-max-category={config.rsa_max_category}",
                         file=sys.stderr,
                     )
                     continue
                 if available_for_algo and category not in available_for_algo:
                     continue
-                override = resolve_security_override(key, category)
+                override = resolve_security_override(display_name, category)
                 overrides: Dict[str, str] = {}
                 note = None
                 if override:
@@ -868,7 +1092,7 @@ def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
             try:
                 probe_obj = factory()
             except Exception as exc:
-                label = f"{key} cat-{category}" if category is not None else key
+                label = f"{display_name} cat-{category}" if category is not None else display_name
                 print(f"[forensic_probe] Skipping {label}: instantiation failed ({exc!r})", file=sys.stderr)
                 continue
             kind = classify_algorithm(key, probe_obj)
@@ -877,9 +1101,9 @@ def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
             parameter_name = resolve_mechanism_name(probe_obj)
             if parameter_name is None:
                 parameter_name = getattr(probe_obj, "alg", None)
-            param_hint = find_param_hint(parameter_name or key)
+            param_hint = find_param_hint(parameter_name or canonical_key)
             descriptor = AlgorithmDescriptor(
-                key=key,
+                key=display_name,
                 factory=factory,
                 kind=kind,
                 parameter_name=parameter_name,
@@ -888,6 +1112,36 @@ def discover_algorithms(config: ProbeConfig) -> List[AlgorithmDescriptor]:
                 override_note=note,
                 override_env=dict(overrides),
             )
+            if config.resume_from:
+                expected_names = scenario_name_cache.get(kind, [])
+                expected = set(expected_names)
+                if expected:
+                    completed = completed_scenarios.get((descriptor.key, category), set())
+                    missing = expected - completed
+                    if not missing:
+                        category_suffix = f" Cat-{category}" if category is not None else ""
+                        print(
+                            f"[resume] Skipping {descriptor.key}{category_suffix}: scenarios already present in {config.resume_from}",
+                            flush=True,
+                        )
+                        del probe_obj
+                        continue
+                    descriptor.pending_scenarios = missing
+                    if completed:
+                        skipped = [name for name in expected_names if name in completed]
+                        if skipped:
+                            remaining_ordered = [name for name in expected_names if name in missing]
+                            if not remaining_ordered:
+                                remaining_ordered = sorted(missing)
+                            category_suffix = f" Cat-{category}" if category is not None else ""
+                            resume_note = f" from {config.resume_from}" if config.resume_from else ""
+                            print(
+                                f"[resume] {descriptor.key}{category_suffix}: running remaining scenarios {', '.join(remaining_ordered)}; "
+                                f"skipping {', '.join(skipped)}{resume_note}",
+                                flush=True,
+                            )
+                else:
+                    descriptor.pending_scenarios = None
             discovered.append(descriptor)
             del probe_obj
 
@@ -1021,8 +1275,11 @@ def collect_results(config: ProbeConfig, descriptors: List[AlgorithmDescriptor])
         variant_text = f" [{' | '.join(variant_tokens)}]" if variant_tokens else ""
         print(f"[forensic_probe] Running scenarios for {descriptor.key}{variant_text} ({descriptor.kind})")
         scenarios = build_kem_scenarios(config) if descriptor.kind == "kem" else build_signature_scenarios(config)
+        pending_names = set(descriptor.pending_scenarios) if descriptor.pending_scenarios else None
         for definition in scenarios:
             if config.include_scenarios and definition.name not in config.include_scenarios:
+                continue
+            if pending_names is not None and definition.name not in pending_names:
                 continue
             print(f"    -> Scenario {definition.name}: {definition.description}")
             result = run_scenario(config, descriptor, definition, rng)
@@ -1392,6 +1649,8 @@ def summarise_results(scenario_results: List[ScenarioResult], analysis_results: 
     config_dict = dataclasses.asdict(config)
     if config_dict.get("output_path") is not None:
         config_dict["output_path"] = str(config_dict["output_path"])
+    if config_dict.get("resume_from") is not None:
+        config_dict["resume_from"] = str(config_dict["resume_from"])
     if config_dict.get("include_algorithms") is not None:
         config_dict["include_algorithms"] = list(config_dict["include_algorithms"])
     if config_dict.get("include_scenarios") is not None:
@@ -1493,9 +1752,13 @@ def generate_visual_report(analysis_results: List[AnalysisResult], report_dir: p
         "cpu_leak_flag",
         "rss_leak_flag",
     ]
-    with csv_path.open("w", newline="", encoding="utf-8") as csv_file:
+    csv_exists = csv_path.exists()
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    mode = "a" if csv_exists else "w"
+    with csv_path.open(mode, newline="", encoding="utf-8") as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        writer.writeheader()
+        if not csv_exists or csv_file.tell() == 0:
+            writer.writeheader()
         for entry in analysis_results:
             metrics = entry.metrics
             writer.writerow(
@@ -1618,10 +1881,12 @@ def generate_visual_report(analysis_results: List[AnalysisResult], report_dir: p
         friendly_name = scenario_name.replace(":", " — ")
         ax.set_title(f"{algorithm} — {friendly_name}")
         ax.grid(True, axis="y", linestyle="--", alpha=0.3)
-        ymax = max(
-            [max(category_map.get(cat, {}).values(), default=0.0) for cat in categories] + [TVLA_T_THRESHOLD]
-        )
-        ax.set_ylim(0, max(ymax * 1.15, TVLA_T_THRESHOLD * 1.1))
+        sample_values = [v for cat in categories for v in category_map.get(cat, {}).values() if v is not None]
+        if sample_values:
+            ymax = max(sample_values + [TVLA_T_THRESHOLD])
+            ax.set_ylim(0, max(ymax * 1.15, TVLA_T_THRESHOLD * 1.1))
+        else:
+            ax.set_ylim(0, TVLA_T_THRESHOLD * 1.1)
         ax.axhline(
             TVLA_T_THRESHOLD,
             color="#d62728",
@@ -1671,6 +1936,11 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> ProbeConfig:
     parser.add_argument("--iterations", type=int, default=800, help="Iterations per scenario (default: 800)")
     parser.add_argument("--seed", type=int, default=991239, help="Seed for deterministic helper randomness")
     parser.add_argument("--output", type=pathlib.Path, help="Optional output JSON path")
+    parser.add_argument(
+        "--resume-from",
+        type=pathlib.Path,
+        help="Path to an existing forensic_probe JSON file; scenarios already present there are skipped",
+    )
     parser.add_argument("--keep-artifacts", action="store_true", help="Retain temporary artifacts generated during scenarios")
     parser.add_argument("--alg", nargs="*", help="Limit to specific registry keys")
     parser.add_argument("--scenario", nargs="*", help="Limit to specific scenario names")
@@ -1754,11 +2024,22 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> ProbeConfig:
         report_output=args.report_output,
         report_options=args.report_options,
         rsa_max_category=max(1, min(args.rsa_max_category, 5)),
+        resume_from=args.resume_from,
     )
 
 
 def main(argv: Optional[Iterable[str]] = None) -> int:
     config = parse_args(argv)
+    existing_summary: Optional[Dict[str, Any]] = None
+    if config.resume_from:
+        try:
+            with config.resume_from.open("r", encoding="utf-8") as fh:
+                existing_summary = json.load(fh)
+        except FileNotFoundError:
+            existing_summary = None
+        except Exception as exc:
+            print(f"[resume] Failed to load existing summary from {config.resume_from}: {exc}", file=sys.stderr)
+            existing_summary = None
     descriptors = discover_algorithms(config)
     if not descriptors:
         print("[forensic_probe] No algorithms discovered. Ensure adapters are available.", file=sys.stderr)
@@ -1781,6 +2062,8 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             print(f"[forensic_probe] Wrote plot captions to {report_artifacts['captions']}")
         for note in report_artifacts.get("notes", []):
             print(f"[forensic_probe] {note}")
+    if existing_summary:
+        summary = _merge_summaries(existing_summary, summary, config.resume_from)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     def _write_summary() -> None:
         with output_path.open("w", encoding="utf-8") as fh:

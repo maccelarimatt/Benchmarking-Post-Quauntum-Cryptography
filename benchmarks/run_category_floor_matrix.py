@@ -12,7 +12,8 @@ from dataclasses import asdict, dataclass, is_dataclass
 import contextlib
 import os
 import copy
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from collections import defaultdict
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 from pqcbench import registry
 from pqcbench.params import ParamHint, find as find_param_hint
@@ -172,6 +173,35 @@ def _resolve_mechanism(candidate: Any, fallback_name: str) -> str | None:
     return fallback_name
 
 
+def _supports_category(algo: str, category: int, override) -> bool:
+    """Return True if applying the security override selects a distinct mechanism."""
+
+    if override is None:
+        return False
+    try:
+        value = override.value
+    except AttributeError:
+        value = None
+    if value is None:
+        return False
+    if not isinstance(value, str):
+        return True  # RSA-sized overrides
+    env_var = override.env_var
+    desired = value.strip().lower()
+    if not desired:
+        return False
+    with _temporary_env({env_var: str(value)}):
+        reset_adapter_cache(algo)
+        try:
+            candidate = registry.get(algo)()
+        except Exception:
+            return False
+    mechanism = _resolve_mechanism(candidate, algo)
+    if not mechanism:
+        return False
+    return mechanism.strip().lower() == desired
+
+
 def _clone_hint_for_category(hint: ParamHint, category: int, override_value: Any) -> ParamHint:
     extras = copy.deepcopy(hint.extras) if hint.extras else {}
     category_floor = _CATEGORY_DEFAULT_FLOOR.get(category, hint.category_floor)
@@ -183,6 +213,54 @@ def _clone_hint_for_category(hint: ParamHint, category: int, override_value: Any
         mechanism=hint.mechanism,
         category_floor=category_floor,
         notes=hint.notes,
+        extras=extras,
+    )
+
+
+def _load_completed_passes(csv_path: Optional[pathlib.Path]) -> Dict[Tuple[str, int], Set[str]]:
+    if not csv_path:
+        return {}
+    try:
+        if not csv_path.exists():
+            return {}
+    except OSError:
+        return {}
+
+    completed: Dict[Tuple[str, int], Set[str]] = defaultdict(set)
+    try:
+        with csv_path.open("r", newline="", encoding="utf-8") as handle:
+            reader = csv.DictReader(handle)
+            for row in reader:
+                algo = (row.get("algo") or "").strip()
+                pass_name = (row.get("measurement_pass") or "").strip().lower()
+                if not algo or not pass_name:
+                    continue
+                try:
+                    category = int(row.get("category_number", "") or 0)
+                except (TypeError, ValueError):
+                    continue
+                completed[(algo, category)].add(pass_name)
+    except Exception as exc:  # noqa: BLE001 - resume helper errors are non-fatal
+        print(f"[resume] Failed to load prior results from {csv_path}: {exc}", file=sys.stderr)
+        return {}
+    return {key: set(passes) for key, passes in completed.items()}
+
+
+def _fallback_hint(name: str, mechanism: Optional[str], category: int, override_value: Any) -> ParamHint:
+    fallback_bits = _CATEGORY_DEFAULT_FLOOR.get(category, _CATEGORY_DEFAULT_FLOOR.get(1, 0))
+    mechanism_label: str = (
+        str(override_value)
+        if isinstance(override_value, str)
+        else (mechanism or name)
+    )
+    extras: Dict[str, Any] | None = None
+    if isinstance(override_value, int):
+        extras = {"modulus_bits": int(override_value)}
+    return ParamHint(
+        family=name.replace("_", "-").upper(),
+        mechanism=mechanism_label,
+        category_floor=fallback_bits,
+        notes="Fallback hint (add pqcbench.params entry for richer metadata).",
         extras=extras,
     )
 
@@ -200,8 +278,6 @@ def discover_algorithms(categories: Iterable[int], *, rsa_max_category: int = 5)
             continue
         mechanism = _resolve_mechanism(adapter, name)
         hint = find_param_hint(mechanism) or find_param_hint(name)
-        if not hint:
-            continue
         available = set(available_categories(name))
         for category in desired:
             if available and category not in available:
@@ -209,7 +285,21 @@ def discover_algorithms(categories: Iterable[int], *, rsa_max_category: int = 5)
             override = resolve_security_override(name, category)
             if name in {"rsa-oaep", "rsa-pss"} and int(category) > int(rsa_max_category):
                 continue
-            hint_for_cat = _clone_hint_for_category(hint, category, override.value if override else None)
+            if not _supports_category(name, category, override):
+                continue
+            if hint:
+                hint_for_cat = _clone_hint_for_category(
+                    hint,
+                    category,
+                    override.value if override else None,
+                )
+            else:
+                hint_for_cat = _fallback_hint(
+                    name,
+                    mechanism,
+                    category,
+                    override.value if override else None,
+                )
             label = f"cat-{category}"
             specs.append(
                 AlgorithmSpec(
@@ -417,6 +507,12 @@ def parse_args() -> argparse.Namespace:
         help="Append to existing CSV instead of overwriting",
     )
     parser.add_argument(
+        "--resume-from",
+        type=pathlib.Path,
+        default=None,
+        help="Existing category floor CSV to reuse; skip passes already recorded there.",
+    )
+    parser.add_argument(
         "--no-security",
         action="store_true",
         help="Skip security estimator (speeds up large batches).",
@@ -500,20 +596,63 @@ def main() -> None:
 
     security_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
     category_spec_map: Dict[int, List[AlgorithmSpec]] = {}
+    pending_pass_lookup: Dict[Tuple[int, str], Set[str]] = {}
+
+    pass_names = [name for name, _, _ in passes]
+
+    completed_passes: Dict[Tuple[str, int], Set[str]] = _load_completed_passes(args.resume_from)
+    if args.resume_from:
+        if completed_passes:
+            completed_total = sum(len(done) for done in completed_passes.values())
+            print(
+                f"[resume] Loaded {len(completed_passes)} algorithm/category entries "
+                f"covering {completed_total} passes from {args.resume_from}",
+                flush=True,
+            )
+        else:
+            print(
+                f"[resume] No completed passes found in {args.resume_from}; running full benchmark set.",
+                flush=True,
+            )
+
     total_steps = 0
     for category in sorted(selected_categories):
         overrides = _variant_env_for_category(category)
         with _temporary_env(overrides):
             reset_adapter_cache()
             specs_for_cat = discover_algorithms({category}, rsa_max_category=args.rsa_max_category)
-        category_spec_map[category] = specs_for_cat
-        total_steps += len(specs_for_cat) * len(passes)
+        filtered_specs: List[AlgorithmSpec] = []
+        for spec in specs_for_cat:
+            done_passes = completed_passes.get((spec.name, spec.category_number), set())
+            remaining_passes = {name for name in pass_names if name not in done_passes}
+            if not remaining_passes:
+                if args.resume_from and done_passes:
+                    print(
+                        f"[resume] Skipping Cat-{category} :: {spec.name} — all passes already present in {args.resume_from}",
+                        flush=True,
+                    )
+                continue
+            if args.resume_from and done_passes:
+                skip_list = [name for name in pass_names if name not in remaining_passes]
+                if skip_list:
+                    run_list = [name for name in pass_names if name in remaining_passes]
+                    print(
+                        f"[resume] Cat-{category} :: {spec.name} — running missing passes "
+                        f"{', '.join(run_list)}; skipping {', '.join(skip_list)}",
+                        flush=True,
+                    )
+            pending_pass_lookup[(spec.category_number, spec.name)] = remaining_passes
+            filtered_specs.append(spec)
+            total_steps += len(remaining_passes)
+        category_spec_map[category] = filtered_specs
     reset_adapter_cache()
     print(
         f"[progress] Prepared {total_steps} measurement tasks "
         f"across {len(selected_categories)} categories and {len(passes)} passes.",
         flush=True,
     )
+    if total_steps == 0 and args.resume_from:
+        print("[resume] No pending passes to execute; skipping measurement phase.", flush=True)
     progress_done = 0
 
     for category in sorted(selected_categories):
@@ -533,8 +672,14 @@ def main() -> None:
                 )
                 continue
             for spec in category_specs:
-                collected_specs.append(spec)
+                spec_key = (spec.category_number, spec.name)
+                pending_passes = pending_pass_lookup.get(spec_key, set(pass_names))
+                if not pending_passes:
+                    continue
+                spec_started = False
                 for pass_name, capture_memory, cold in passes:
+                    if pass_name not in pending_passes:
+                        continue
                     progress_done += 1
                     print(
                         f"[{progress_done}/{max(total_steps, 1)}] "
@@ -542,6 +687,9 @@ def main() -> None:
                         flush=True,
                     )
                     try:
+                        if not spec_started:
+                            collected_specs.append(spec)
+                            spec_started = True
                         summary = _run_summary(
                             spec,
                             args.runs,
@@ -599,7 +747,7 @@ def main() -> None:
 
     output_path = args.output
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    mode = "a" if args.append and output_path.exists() else "w"
+    mode = "a" if (args.append or (args.resume_from and output_path.exists())) else "w"
     with output_path.open(mode, newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=_FIELDNAMES)
         if mode == "w":
@@ -646,6 +794,9 @@ def main() -> None:
         "failures": failures,
         "environment": env_meta,
     }
+
+    if args.resume_from:
+        meta_payload["resume_from_csv"] = str(args.resume_from)
 
     if args.jsonl_output:
         meta_payload["output_jsonl"] = str(args.jsonl_output)

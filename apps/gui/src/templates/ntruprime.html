@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ label }} - Details</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" sizes="any" />
+  <link rel="mask-icon" href="/static/favicon.svg" color="#1fb6b8" />
+  <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
+  <meta name="theme-color" content="#0b0f14" />
+  <style>
+    /* Dark scrollbar styling */
+    html { scrollbar-width: thin; scrollbar-color: rgba(36, 49, 63, 0.85) rgba(7, 11, 17, 0.92); }
+    html::-webkit-scrollbar { width: 12px; height: 12px; }
+    html::-webkit-scrollbar-track { background: rgba(7, 11, 17, 0.92); }
+    html::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.45);
+      border-radius: 999px; border: 2px solid rgba(7, 11, 17, 0.92);
+    }
+    html::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.65); }
+
+    :root { --island-bg: rgba(38,41,45,.92); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
+    body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
+    .island { background:var(--island-bg); border-radius:var(--island-radius); padding:1.25rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 1.6vh auto; }
+    .btn, button, input[type="submit"], input[type="button"], a.btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow: 0 4px 14px rgba(31,182,184,.25); text-decoration:none; transition: background-color .2s ease, filter .15s ease, box-shadow .2s ease; }
+    .btn:hover, button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover { filter: brightness(0.92); box-shadow: 0 6px 18px rgba(31,182,184,.32); }
+    .badge { font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem; display:inline-block; }
+    .muted { opacity:.9; }
+    h2, h3 { margin: 0 0 .6rem 0; }
+    h2 { font-size:1.25rem; }
+    h3 { font-size:1.05rem; margin-top:1.2rem; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:.45rem .4rem; border-bottom:1px solid rgba(255,255,255,.2); }
+    th { font-weight:600; }
+    .refs li { margin:.35rem 0; }
+    .chip { display:inline-block; font-size:.85rem; padding:.1rem .5rem; border-radius:.4rem; background:rgba(255,255,255,.15); margin-right:.4rem; }
+    .toc a { color:#fff; text-decoration:none; }
+    .toc a:hover { text-decoration:underline; }
+    .note { font-size:.95rem; opacity:.95; }
+    code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
+    ol.refs { list-style: none; margin: 0; padding-left: 0; }
+  </style>
+  <!-- MathJax for LaTeX-style math -->
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <div class="island" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+    <div>
+      <div style="font-size:1.6rem; font-weight:700;">{{ label }}</div>
+      {% if kind %}<div class="badge" title="Kind">{{ kind }}</div>{% endif %}
+    </div>
+    <div><a href="/" class="btn">Back to home</a></div>
+  </div>
+
+  <div class="island">
+    <div style="font-weight:700; margin-bottom:.5rem;">About</div>
+    <p class="muted">
+      {{ about or 'This page explains the NTRU-Prime lattice-based KEM (sntrup family): origins, design overview, math, parameter sets, algorithms, security considerations, and implementation notes—plus references.' }}
+    </p>
+    <div class="toc muted">
+      <span class="chip"><a href="#history">Origins & history</a></span>
+      <span class="chip"><a href="#overview">Design overview</a></span>
+      <span class="chip"><a href="#math">Mathematical setting</a></span>
+      <span class="chip"><a href="#params">Parameter sets</a></span>
+      <span class="chip"><a href="#algorithms">Algorithms</a></span>
+      <span class="chip"><a href="#security">Security</a></span>
+      <span class="chip"><a href="#impl">Implementation notes</a></span>
+      <span class="chip"><a href="#proscons">Pros & cons</a></span>
+      <span class="chip"><a href="#references">References</a></span>
+    </div>
+  </div>
+
+  <div class="island" id="history">
+    <h2>Origins & history</h2>
+    <p class="muted">
+      <strong>NTRU-Prime</strong> (Bernstein <em>et&nbsp;al.</em>) refines NTRU by using a prime-degree, non-cyclotomic ring to avoid subfield/cyclotomic attacks. It advanced to NIST Round-3 as a finalist. In Mar&nbsp;2025, NIST standardized ML-KEM (Kyber) and later selected HQC as an additional KEM; NTRU-Prime remains a well-studied alternative with active implementations. [1][2]
+    </p>
+  </div>
+
+  <div class="island" id="overview">
+    <h2>Design overview</h2>
+    <p class="muted">
+      The scheme operates in \( R_q=\mathbb{Z}_q[x]/(x^p-x-1) \) with small ternary secrets. The public key is \( h=g * f_q^{-1}\bmod q \).
+      Encapsulation samples a short polynomial \( r \), forms a ciphertext using convolutions with \( h \) and small noise, and derives a key via a KDF; decapsulation uses \( f \) to lift/reduce and recover the message seed. IND-CCA2 security is obtained via a Fujisaki–Okamoto-style transform (sntrup). [1]
+    </p>
+  </div>
+
+  <div class="island" id="math">
+    <h2>Mathematical setting</h2>
+    <p class="muted">
+      Work in \( R_q=\mathbb{Z}_q[x]/(x^p-x-1) \) for prime \(p\) and suitable \(q\). Secrets \(f,g\) are small (coefficients in \(\{-1,0,1\}\)) with inverses modulo \(q\) and modulo a small prime \(p_0\) used in reconciliation.
+    </p>
+    <h3>Key relation</h3>
+    <p class="mono">\( \text{sk}=(f,g),\qquad h \equiv g * f_q^{-1} \pmod q,\qquad \text{pk}=h. \)</p>
+    <p class="muted">Decryption computes a centered lift of \(f*c\) modulo \(q\), then reduces modulo \(p_0\) to recover the encoded message. [1]</p>
+  </div>
+
+  <div class="island" id="params">
+    <h2>Parameter sets (sntrup)</h2>
+    <p class="muted note">Common profiles and claimed strengths. Sizes are representative of liboqs/benchmark sources.</p>
+    <div class="grid-2">
+      <div>
+        <table>
+          <thead><tr><th>Set</th><th>Prime \(p\)</th><th>Modulus \(q\)</th><th>Claimed level</th></tr></thead>
+          <tbody>
+            <tr><td>sntrup653</td><td>653</td><td>4621</td><td>Cat-1</td></tr>
+            <tr><td>sntrup761</td><td>761</td><td>4591</td><td>Cat-3</td></tr>
+            <tr><td>sntrup857</td><td>857</td><td>5167</td><td>Cat-5</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:.5rem;">See submission package for additional (953/1013/1277) sets. [1]</p>
+      </div>
+      <div class="muted">
+        <h3>Sizes (bytes)</h3>
+        <table>
+          <thead><tr><th>Set</th><th>Public key</th><th>Secret key</th><th>Ciphertext</th><th>Shared secret</th></tr></thead>
+          <tbody>
+            <tr><td>sntrup653</td><td>994</td><td>1518</td><td>897</td><td>32</td></tr>
+            <tr><td>sntrup761</td><td>1158</td><td>1763</td><td>1039</td><td>32</td></tr>
+            <tr><td>sntrup857</td><td>1322</td><td>1463</td><td>1184</td><td>32</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:.5rem;">sntrup761 sizes per liboqs; 653/857 from a GMU benchmarking table (Round-3 profiles). [2][3]</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="algorithms">
+    <h2>Algorithms</h2>
+
+    <h3>Key generation</h3>
+    <p class="muted">
+      Sample small \(f,g\) with invertibility checks; compute \(h=g*f_q^{-1}\bmod q\). Store \(f\) (and helper inverses) in the secret key; publish \(h\). [1]
+    </p>
+
+    <h3>Encapsulation (CPA core + FO)</h3>
+    <p class="muted">
+      Derive randomness; sample small \(r\). Compute ciphertext using cyclic convolutions with \(h\) and encode a message seed; hash authenticated inputs to derive the shared secret (FO transform). [1]
+    </p>
+
+    <h3>Decapsulation</h3>
+    <p class="muted">
+      Compute \(f*c\bmod q\), center-lift and reduce modulo the small prime to recover the message; re-encapsulate to verify (key confirmation) and output the agreed secret or a fallback. [1]
+    </p>
+  </div>
+
+  <div class="island" id="security">
+    <h2>Security at a glance</h2>
+    <ul class="muted">
+      <li><b>Assumptions:</b> NTRU-type hardness over a non-cyclotomic prime-degree ring; no subfield structure. [1]</li>
+      <li><b>Categories:</b> sntrup653 → Cat-1; sntrup761 → Cat-3; sntrup857 → Cat-5 (claimed). [1][2]</li>
+      <li><b>Security model:</b> IND-CCA2 via Fujisaki–Okamoto wrapping. [1]</li>
+      <li><b>NIST status:</b> Not standardized (Round-3 finalist). March&nbsp;2025 report standardized HQC as the additional KEM. [4]</li>
+    </ul>
+  </div>
+
+  <div class="island" id="impl">
+    <h2>Implementation notes</h2>
+    <ul class="muted">
+      <li><b>Symmetric:</b> SHAKE-256 for hashing/KDF; deterministic packing/unpacking. [1]</li>
+      <li><b>Arithmetic:</b> Cyclic polynomial multiplication (schoolbook/Karatsuba); no NTT required. [1]</li>
+      <li><b>Performance:</b> Small keys/CTs (~1 KB) and fast operations; portable C and AVX2-optimized builds available. [2]</li>
+      <li><b>Hardening:</b> Constant-time loops, masked sampling, strict input validation, FO key-confirmation. [1]</li>
+      <li><b>Ecosystem:</b> liboqs support and interop demos (OpenSSL provider) for experiments and benchmarking. [2]</li>
+    </ul>
+  </div>
+
+  <div class="island" id="proscons">
+    <h2>Pros & cons</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Pros</h3>
+        <ul class="muted">
+          <li>Prime-degree non-cyclotomic ring reduces attack surface compared to cyclotomic variants. [1]</li>
+          <li>Compact keys/ciphertexts with strong practical performance. [2][3]</li>
+          <li>Simple constant-time friendly design; mature ref/optimized code. [1][2]</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Cons</h3>
+        <ul class="muted">
+          <li>Not standardized by NIST (as of 2025), so fewer turnkey deployments than ML-KEM/HQC. [4]</li>
+          <li>No NTT-style speedups; gains come from bit-slicing/Karatsuba and careful memory layout. [1]</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="references">
+    <h2>References</h2>
+    <ol class="refs muted">
+      <li>[1] Bernstein et&nbsp;al., “<i>NTRU Prime: Round-3 submission</i>” and follow-ups (spec & docs). <a target="_blank" rel="noopener" href="https://ntruprime.cr.yp.to/nist.html">ntruprime.cr.yp.to</a></li>
+      <li>[2] Open Quantum Safe, “<i>NTRU-Prime (sntrup) in liboqs</i>.” <a target="_blank" rel="noopener" href="https://openquantumsafe.org/liboqs/algorithms/kem/ntruprime.html">openquantumsafe.org</a></li>
+      <li>[3] GMU PQC benchmarking report (Round-2/3 candidates), 2020 — sizing table with sntrup653/761/857. <a target="_blank" rel="noopener" href="https://cryptography.gmu.edu/athena/PQC/GMU_PQC_2020_SW_HW_with_line_numbers.pdf">cryptography.gmu.edu</a></li>
+      <li>[4] NIST, “<i>Status Report on the Fourth Round of the NIST PQC Standardization Process (NIST IR 8545)</i>,” Mar. 2025. <a target="_blank" rel="noopener" href="https://csrc.nist.gov/pubs/ir/8545/final">nist.gov</a></li>
+    </ol>
+  </div>
+</body>
+</html>

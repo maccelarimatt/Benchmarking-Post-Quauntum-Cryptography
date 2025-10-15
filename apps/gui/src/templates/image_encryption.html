@@ -471,18 +471,100 @@
           <div>
             <label for="kem-select">KEM</label>
             <select id="kem-select">
-              <option value="Kyber512">Kyber512 (ML-KEM-512)</option>
-              <option value="Kyber768">Kyber768 (ML-KEM-768)</option>
-              <option value="HQC-128">HQC-128</option>
-              <option value="HQC-192">HQC-192</option>
+              <optgroup label="ML-KEM (Kyber)">
+                <option value="Kyber512">Kyber512 (ML-KEM-512)</option>
+                <option value="Kyber768">Kyber768 (ML-KEM-768)</option>
+              </optgroup>
+              <optgroup label="HQC">
+                <option value="HQC-128">HQC-128</option>
+                <option value="HQC-192">HQC-192</option>
+                <option value="HQC-256">HQC-256</option>
+              </optgroup>
+              <optgroup label="BIKE">
+                <option value="BIKE-L1">BIKE-L1 (Level 1)</option>
+                <option value="BIKE-L3">BIKE-L3 (Level 3)</option>
+                <option value="BIKE-L5">BIKE-L5 (Level 5)</option>
+              </optgroup>
+              <optgroup label="Classic McEliece">
+                <option value="Classic-McEliece-348864f">Classic McEliece 348864f (Level 1)</option>
+                <option value="Classic-McEliece-460896f">Classic McEliece 460896f (Level 3)</option>
+                <option value="Classic-McEliece-6688128f">Classic McEliece 6688128f (Level 5)</option>
+              </optgroup>
+              <optgroup label="FrodoKEM">
+                <option value="FrodoKEM-640-AES">FrodoKEM-640-AES (Level 1)</option>
+                <option value="FrodoKEM-976-AES">FrodoKEM-976-AES (Level 3)</option>
+                <option value="FrodoKEM-1344-AES">FrodoKEM-1344-AES (Level 5)</option>
+              </optgroup>
+              <optgroup label="NTRU">
+                <option value="NTRU-HPS-2048-509">NTRU-HPS-2048-509 (Level 1)</option>
+                <option value="NTRU-HPS-2048-677">NTRU-HPS-2048-677 (Level 3)</option>
+                <option value="NTRU-HPS-4096-821">NTRU-HPS-4096-821 (Level 4/5)</option>
+                <option value="NTRU-HRSS-701">NTRU-HRSS-701 (Level 3)</option>
+              </optgroup>
+              <optgroup label="NTRU Prime">
+                <option value="sntrup653">sntrup653 (Level 1)</option>
+                <option value="sntrup761">sntrup761 (Level 3)</option>
+                <option value="sntrup1277">sntrup1277 (Level 5)</option>
+                <option value="ntrulpr761">ntrulpr761 (Level 3)</option>
+              </optgroup>
             </select>
           </div>
           <div>
             <label for="sig-select">Signature</label>
             <select id="sig-select">
-              <option value="Dilithium2">Dilithium2 (ML-DSA-44)</option>
-              <option value="Falcon-512">Falcon-512</option>
-              <option value="SPHINCS+-SHA2-128s">SPHINCS+-SHA2-128s</option>
+              <optgroup label="ML-DSA (Dilithium)">
+                <option value="ML-DSA-44">ML-DSA-44 (≈ Dilithium2, Level 1)</option>
+                <option value="ML-DSA-65">ML-DSA-65 (≈ Dilithium3, Level 3)</option>
+                <option value="ML-DSA-87">ML-DSA-87 (≈ Dilithium5, Level 4)</option>
+                <option value="ML-DSA-110">ML-DSA-110 (Level 5)</option>
+                <option value="Dilithium2">Dilithium2 (Legacy Level 2)</option>
+                <option value="Dilithium3">Dilithium3 (Legacy Level 3)</option>
+                <option value="Dilithium5">Dilithium5 (Legacy Level 5)</option>
+              </optgroup>
+              <optgroup label="Falcon">
+                <option value="Falcon-512">Falcon-512 (Level 1)</option>
+                <option value="Falcon-1024">Falcon-1024 (Level 5)</option>
+              </optgroup>
+              <optgroup label="SPHINCS+">
+                <option value="SPHINCS+-SHA2-128s-simple">SPHINCS+-SHA2-128s-simple (Level 1)</option>
+                <option value="SPHINCS+-SHA2-128f-simple">SPHINCS+-SHA2-128f-simple (Level 3)</option>
+                <option value="SPHINCS+-SHA2-128f-robust">SPHINCS+-SHA2-128f-robust (Level 3)</option>
+                <option value="SPHINCS+-SHAKE-128s-simple">SPHINCS+-SHAKE-128s-simple (Level 1)</option>
+                <option value="SPHINCS+-SHAKE-128f-simple">SPHINCS+-SHAKE-128f-simple (Level 3)</option>
+              </optgroup>
+              <optgroup label="CROSS">
+                <option value="cross-rsdpg-256-balanced">CROSS RSDPG 256 Balanced (Level 5)</option>
+                <option value="cross-rsdpg-192-balanced">CROSS RSDPG 192 Balanced (Level 3)</option>
+                <option value="cross-rsdpg-128-balanced">CROSS RSDPG 128 Balanced (Level 1)</option>
+              </optgroup>
+              <optgroup label="SLH-DSA (FIPS 205)">
+                <option value="SLH_DSA_PURE_SHA2_256S">SLH-DSA SHA2-256s (Level 5)</option>
+                <option value="SLH_DSA_PURE_SHA2_192S">SLH-DSA SHA2-192s (Level 3)</option>
+                <option value="SLH_DSA_PURE_SHA2_128S">SLH-DSA SHA2-128s (Level 1)</option>
+                <option value="SLH_DSA_PURE_SHAKE_256S">SLH-DSA SHAKE-256s (Alt Level 5)</option>
+              </optgroup>
+              <optgroup label="SNOVA">
+                <option value="SNOVA_60_10_4">SNOVA 60/10/4 (Level 5)</option>
+                <option value="SNOVA_37_17_2">SNOVA 37/17/2 (Level 3)</option>
+                <option value="SNOVA_25_8_3">SNOVA 25/8/3 (Level 1)</option>
+              </optgroup>
+              <optgroup label="UOV">
+                <option value="OV-V-pkc-skc">UOV OV-V pkc+skc (Level 5)</option>
+                <option value="OV-III-pkc">UOV OV-III pkc (Level 3)</option>
+                <option value="OV-Is">UOV OV-Is (Level 1)</option>
+              </optgroup>
+              <optgroup label="XMSS / XMSSMT">
+                <option value="XMSS-SHA2_20_256">XMSS-SHA2_20_256 (Stateful Level 1)</option>
+                <option value="XMSSMT-SHA2_20/2_256">XMSSMT-SHA2_20/2_256 (Stateful Level 1/2)</option>
+                <option value="XMSSMT-SHA2_40/4_256">XMSSMT-SHA2_40/4_256 (Stateful Level 3)</option>
+                <option value="XMSSMT-SHA2_60/6_256">XMSSMT-SHA2_60/6_256 (Stateful Level 5)</option>
+              </optgroup>
+              <optgroup label="MAYO">
+                <option value="MAYO-2">MAYO-2 (Level 2)</option>
+                <option value="MAYO-1">MAYO-1 (Level 1)</option>
+                <option value="MAYO-3">MAYO-3 (Level 3)</option>
+                <option value="MAYO-5">MAYO-5 (Level 5)</option>
+              </optgroup>
             </select>
           </div>
           <div class="toggle-row">
@@ -671,4 +753,3 @@
   <script src="/static/js/pqc-image-app.js" defer></script>
 </body>
 </html>
-

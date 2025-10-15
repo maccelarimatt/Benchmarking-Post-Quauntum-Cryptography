@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ label }} - Details</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" sizes="any" />
+  <link rel="mask-icon" href="/static/favicon.svg" color="#1fb6b8" />
+  <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
+  <meta name="theme-color" content="#0b0f14" />
+  <style>
+    /* Dark scrollbar styling */
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(36, 49, 63, 0.85) rgba(7, 11, 17, 0.92);
+    }
+    html::-webkit-scrollbar { width: 12px; height: 12px; }
+    html::-webkit-scrollbar-track { background: rgba(7, 11, 17, 0.92); }
+    html::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.45);
+      border-radius: 999px; border: 2px solid rgba(7, 11, 17, 0.92);
+    }
+    html::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.65); }
+
+    :root { --island-bg: rgba(38,41,45,.92); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
+    body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
+    .island { background:var(--island-bg); border-radius:var(--island-radius); padding:1.25rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 1.6vh auto; }
+    .btn, button, input[type="submit"], input[type="button"], a.btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow: 0 4px 14px rgba(31,182,184,.25); text-decoration:none; transition: background-color .2s ease, filter .15s ease, box-shadow .2s ease; }
+    .btn:hover, button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover { filter: brightness(0.92); box-shadow: 0 6px 18px rgba(31,182,184,.32); }
+    .badge { font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem; display:inline-block; }
+    .muted { opacity:.9; }
+    h2, h3 { margin: 0 0 .6rem 0; }
+    h2 { font-size:1.25rem; }
+    h3 { font-size:1.05rem; margin-top:1.2rem; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:.45rem .4rem; border-bottom:1px solid rgba(255,255,255,.2); }
+    th { font-weight:600; }
+    .refs li { margin:.35rem 0; }
+    .chip { display:inline-block; font-size:.85rem; padding:.1rem .5rem; border-radius:.4rem; background:rgba(255,255,255,.15); margin-right:.4rem; }
+    .toc a { color:#fff; text-decoration:none; }
+    .toc a:hover { text-decoration:underline; }
+    .note { font-size:.95rem; opacity:.95; }
+    code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
+    ol.refs { list-style: none; margin: 0; padding-left: 0; }
+  </style>
+  <!-- MathJax for LaTeX-style math -->
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <div class="island" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+    <div>
+      <div style="font-size:1.6rem; font-weight:700;">{{ label }}</div>
+      {% if kind %}<div class="badge" title="Kind">{{ kind }}</div>{% endif %}
+    </div>
+    <div><a href="/" class="btn">Back to home</a></div>
+  </div>
+
+  <div class="island">
+    <div style="font-weight:700; margin-bottom:.5rem;">About</div>
+    <p class="muted">
+      {{ about or 'This page explains the Classic McEliece code-based KEM: origins, design, mathematics, parameter sets, algorithms, security considerations, and implementation notes—plus references.' }}
+    </p>
+    <div class="toc muted">
+      <span class="chip"><a href="#history">Origins & history</a></span>
+      <span class="chip"><a href="#overview">Design overview</a></span>
+      <span class="chip"><a href="#math">Mathematical setting</a></span>
+      <span class="chip"><a href="#params">Parameter sets</a></span>
+      <span class="chip"><a href="#algorithms">Algorithms</a></span>
+      <span class="chip"><a href="#security">Security</a></span>
+      <span class="chip"><a href="#impl">Implementation notes</a></span>
+      <span class="chip"><a href="#proscons">Pros & cons</a></span>
+      <span class="chip"><a href="#references">References</a></span>
+    </div>
+  </div>
+
+  <div class="island" id="history">
+    <h2>Origins & history</h2>
+    <p class="muted">
+      <strong>Classic McEliece</strong> is a code-based KEM using binary Goppa codes and a Niederreiter-style construction.
+      It progressed through NIST’s PQC process as a Round-4 candidate. In March&nbsp;2025, NIST selected HQC
+      for standardization; Classic McEliece was not selected, though NIST noted strong use-cases where
+      caching a large public key and benefiting from small ciphertexts and fast decapsulation is practical. [1][2][3]
+    </p>
+  </div>
+
+  <div class="island" id="overview">
+    <h2>Design overview</h2>
+    <p class="muted">
+      The KEM is built from the <em>Niederreiter</em> cryptosystem instantiated with binary Goppa codes. A public parity-check
+      matrix \(H\) (derived from a hidden structured code) defines a syndrome map. Encapsulation samples a small-weight
+      error vector \( \mathbf{e} \) and outputs its syndrome as the ciphertext; decapsulation uses a fast algebraic decoder to
+      recover \( \mathbf{e} \). A Fujisaki–Okamoto-style transform wraps the CPA core to achieve IND-CCA2 security. [4]
+    </p>
+  </div>
+
+  <div class="island" id="math">
+    <h2>Mathematical setting</h2>
+    <p class="muted">
+      Work over \( \mathbb{F}_2^n \) with a binary Goppa code \( \mathcal{C} \subset \mathbb{F}_2^n \) of length \(n\), dimension \(k\), and
+      designed error-correction capacity \(t\). The secret key encodes a support set and a Goppa polynomial \(g(x)\) of degree \(m\)
+      defining \( \mathcal{C} \); the public key is a permuted parity-check matrix \(H\) that hides this structure. [4]
+    </p>
+    <h3>Public/secret relation</h3>
+    <p class="mono">
+      \( \text{sk}=(\text{support}, g(x), \text{permutation}),\qquad \text{pk}=H\in\mathbb{F}_2^{(n-k)\times n}. \)
+    </p>
+    <h3>Syndrome & decoding</h3>
+    <p class="muted">
+      Ciphertexts are syndromes \( \mathbf{s}=H\mathbf{e}^T \) for weight-\(t\) errors \( \mathbf{e} \). Decapsulation applies an
+      algebraic decoder exploiting the secret Goppa structure to recover \( \mathbf{e} \) if the weight is within capacity. [4]
+    </p>
+  </div>
+
+  <div class="island" id="params">
+    <h2>Parameter sets (selected, IND-CCA2)</h2>
+    <p class="muted note">
+      Classic McEliece offers several high-security sets. Below are common liboqs profiles with representative sizes. [5]
+    </p>
+    <div class="grid-2">
+      <div>
+        <table>
+          <thead><tr><th>Set</th><th>Strength</th><th>Security model</th></tr></thead>
+          <tbody>
+            <tr><td>Classic-McEliece-6688128 / 6688128f</td><td>≈Cat-5</td><td>IND-CCA2 (FO-style)</td></tr>
+            <tr><td>Classic-McEliece-6960119 / 6960119f</td><td>≈Cat-5</td><td>IND-CCA2 (FO-style)</td></tr>
+            <tr><td>Classic-McEliece-8192128 / 8192128f</td><td>≈Cat-5</td><td>IND-CCA2 (FO-style)</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:.5rem;">Variants with “f” trade decoding behavior/performance while keeping the same I/O sizes. [5]</p>
+      </div>
+      <div class="muted">
+        <h3>Sizes (bytes)</h3>
+        <table>
+          <thead><tr><th>Set</th><th>Public key</th><th>Secret key</th><th>Ciphertext</th><th>Shared secret</th></tr></thead>
+          <tbody>
+            <tr><td>Classic-McEliece-6688128</td><td>1044992</td><td>13932</td><td>208</td><td>32</td></tr>
+            <tr><td>Classic-McEliece-6688128f</td><td>1044992</td><td>13932</td><td>208</td><td>32</td></tr>
+            <tr><td>Classic-McEliece-6960119</td><td>1047319</td><td>13948</td><td>194</td><td>32</td></tr>
+            <tr><td>Classic-McEliece-6960119f</td><td>1047319</td><td>13948</td><td>194</td><td>32</td></tr>
+            <tr><td>Classic-McEliece-8192128</td><td>1357824</td><td>14120</td><td>208</td><td>32</td></tr>
+            <tr><td>Classic-McEliece-8192128f</td><td>1357824</td><td>14120</td><td>208</td><td>32</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:.5rem;">Representative liboqs sizes (see linked OQS page). [5]</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="algorithms">
+    <h2>Algorithms</h2>
+
+    <h3>Key generation</h3>
+    <p class="muted">
+      Generate a binary Goppa polynomial \(g(x)\) over \( \mathbb{F}_{2^m} \), a support set of size \(n\), and a secret permutation.
+      Derive a public parity-check matrix \(H\) hiding the structure. Optionally precompute decoding tables for speed. [4]
+    </p>
+
+    <h3>Encapsulation (CPA core + transform)</h3>
+    <p class="muted">
+      Sample a weight-\(t\) error vector \( \mathbf{e} \) and compute the ciphertext syndrome \( \mathbf{s}=H\mathbf{e}^T \).
+      Derive the KDF input (e.g., hash of \( \mathbf{e} \) and \( \mathbf{s} \)) and output the shared secret. Apply a
+      Fujisaki–Okamoto transform to achieve IND-CCA2 security. [4]
+    </p>
+
+    <h3>Decapsulation</h3>
+    <p class="muted">
+      Decode \( \mathbf{s} \) using the secret Goppa structure to recover \( \mathbf{e} \) with negligible decryption-failure rate.
+      Recompute/verify the transform bindings; output the shared secret or a fallback key if checks fail. [4]
+    </p>
+  </div>
+
+  <div class="island" id="security">
+    <h2>Security at a glance</h2>
+    <ul class="muted">
+      <li><b>Assumptions:</b> Hardness of decoding random binary Goppa codes at the chosen parameters. [4]</li>
+      <li><b>Security model:</b> IND-CCA2 via FO-style transform around the Niederreiter core. [4]</li>
+      <li><b>Status:</b> Not selected for NIST standardization in Round-4 (HQC selected, Mar&nbsp;2025). [1][2][3]</li>
+      <li><b>Deployment fit:</b> Favorable when public keys can be cached/transmitted infrequently (e.g., VPNs, file-encryption scenarios) thanks to small ciphertexts and fast decapsulation. [1]</li>
+    </ul>
+  </div>
+
+  <div class="island" id="impl">
+    <h2>Implementation notes</h2>
+    <ul class="muted">
+      <li><b>Symmetric:</b> SHAKE/SHA-2 depending on build; KDF per spec. [4]</li>
+      <li><b>liboqs integration:</b> Multiple Classic McEliece variants are available with standard KEM APIs and OpenSSL provider demos. [5]</li>
+      <li><b>Performance:</b> Very fast decapsulation; public keys are large (≈1.0–1.35&nbsp;MB), suggesting streaming/caching strategies on constrained devices. [5][6]</li>
+      <li><b>Hardening:</b> Constant-time decoding, careful key handling, and validation of ciphertext structure to avoid side-channels. [4][6]</li>
+    </ul>
+  </div>
+
+  <div class="island" id="proscons">
+    <h2>Pros & cons</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Pros</h3>
+        <ul class="muted">
+          <li>Small ciphertexts (≈194–208&nbsp;B) and very fast decapsulation. [5]</li>
+          <li>Mature algebraic decoding with decades of analysis on Goppa codes. [4]</li>
+          <li>Good fit when public keys can be distributed once and reused many times. [1]</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Cons</h3>
+        <ul class="muted">
+          <li>Large public keys (≈1.0–1.35&nbsp;MB) can stress storage/transport if frequently rotated. [5]</li>
+          <li>Not standardized by NIST (as of Mar&nbsp;2025); fewer turnkey ecosystems than ML-KEM/HQC. [1][2]</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="island" id="references">
+    <h2>References</h2>
+    <ol class="refs muted">
+      <li>[1] NIST, “<i>Status Report on the Fourth Round of the NIST PQC Standardization Process (NIST IR 8545)</i>,” Mar. 2025. <a target="_blank" rel="noopener" href="https://csrc.nist.gov/pubs/ir/8545/final">nist.gov</a></li>
+      <li>[2] NIST News, “<i>NIST Selects HQC as Fifth Algorithm for Post-Quantum Encryption</i>,” Mar. 11, 2025. <a target="_blank" rel="noopener" href="https://www.nist.gov/news-events/news/2025/03/nist-selects-hqc-fifth-algorithm-post-quantum-encryption">nist.gov</a></li>
+      <li>[3] NIST News (summary page), “<i>PQC Standardization Process: HQC Announced as a 4th Round Selection</i>,” Mar. 2025. <a target="_blank" rel="noopener" href="https://www.nist.gov/news-events/news/2025/03/nist-pqc-standardization-process-hqc-announced-4th-round-selection">nist.gov</a></li>
+      <li>[4] Classic McEliece Team, “<i>Classic McEliece Specification</i>,” Oct. 23, 2022. <a target="_blank" rel="noopener" href="https://classic.mceliece.org/mceliece-spec-20221023.pdf">classic.mceliece.org</a></li>
+      <li>[5] Open Quantum Safe, “<i>Classic McEliece in liboqs (sizes & profiles)</i>.” <a target="_blank" rel="noopener" href="https://openquantumsafe.org/liboqs/algorithms/kem/classic_mceliece.html">openquantumsafe.org</a></li>
+      <li>[6] NIST PQC Seminars / CHES-adjacent talks (e.g., Cortex-M4 feasibility & memory trade-offs), slides 2019–2024. Example: <a target="_blank" rel="noopener" href="https://csrc.nist.gov/csrc/media/Projects/post-quantum-cryptography/documents/pqc-seminars/presentations/18-classic-mceliece-09172024.pdf">csrc.nist.gov</a></li>
+      <li>[7] Project timeline & implementations, <i>classic.mceliece.org/impl.html</i>. <a target="_blank" rel="noopener" href="https://classic.mceliece.org/impl.html">classic.mceliece.org</a></li>
+    </ol>
+  </div>
+</body>
+</html>

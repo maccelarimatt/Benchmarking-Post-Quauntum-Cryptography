@@ -10,6 +10,7 @@ dist/
 build/
 .venv311-hqcxmss/
 liboqs/
+liboqs-python/
 
 # Editors/OS
 .vscode/
@@ -28,5 +29,5 @@ node_modules/
 .build/
 .liboqs-python/
 .local/
-.pre-commit-config.yaml
 patch.diff
+Tested Benchmarks/i9 9880h/Benchmarks/forensic_probe_1759964680.json

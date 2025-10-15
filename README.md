@@ -3,7 +3,7 @@
 This repository is a modular, multi-package workspace for benchmarking and analyzing classical and post-quantum cryptography. It brings together reusable libraries, algorithm adapters, a Typer-based CLI, a Flask GUI, ACVP tooling, and native extensions so you can evaluate RSA-OAEP, RSA-PSS, ML-KEM (Kyber), HQC, ML-DSA (Dilithium), Falcon, SPHINCS+, XMSSMT, and MAYO under a single workflow.
 
 ## Highlights
-- Editable multi-package layout (`libs/core`, `libs/adapters/*`, `apps/cli`, `apps/gui`) with shared pytest, linting, and pre-commit tooling.
+- Editable multi-package layout (`libs/core`, `libs/adapters/*`, `apps/cli`, `apps/gui`) with shared pytest and linting tooling.
 - Benchmark runners capture latency, memory, key sizes, and security estimates with reproducible JSON exports.
 - Flask GUI demonstrates the image-encryption pipeline, entropy analytics, and optional LLM-backed commentary for benchmark comparisons.
 - Security estimator models classical and quantum costs, produces runtime scaling projections, and performs secret-key sanity checks.
@@ -27,7 +27,7 @@ Prerequisites:
 
 ### One-command bootstrap
 
-If you prefer an automated setup, the helper scripts clone the Open Quantum Safe repositories, create the virtual environment, install dependencies, run the native CMake build, and register development hooks in a single run.
+If you prefer an automated setup, the helper scripts clone the Open Quantum Safe repositories, create the virtual environment, install dependencies, run the native CMake build, and configure development tooling in a single run.
 
 Windows PowerShell:
 ```powershell
@@ -74,10 +74,9 @@ Manual steps remain documented below for reference.
 
    The helper scripts `scripts/setup_dev.sh` and `scripts/setup_dev.ps1` perform the same steps if you prefer a single command.
 
-3. Enable git hooks and run smoke tests.
+3. Run smoke tests.
 
    ```bash
-   pre-commit install
    pytest -q
    pqcbench run-tests
    ```
@@ -250,7 +249,6 @@ If the shared library is not discovered automatically, point `PQCBENCH_NATIVE_LI
 ## Testing and quality gates
 - `pytest` at the repository root exercises the core libraries, CLI runners, and GUI utilities (via `tests/` and `tests/gui/`).
 - `pqcbench run-tests --skip-liboqs` runs the same suite without probing liboqs; drop the flag once `oqs` is installed to include `liboqs-python/tests`.
-- `pre-commit run --all-files` enforces formatting and lint rules defined in `.pre-commit-config.yaml`.
 - Optional: enable native vector checks via `cmake -S native -B native/build -DPQCBENCH_ENABLE_LIBOQS_TESTS=ON`.
 - Optional: run side-channel skeletons documented in `tools/sidechannel/` to generate dudect t-scores for result bundles.
 
