@@ -51,6 +51,64 @@
     /* Brand header styles are defined near the end of the style block */
     .two-col { display:grid; grid-template-columns: minmax(360px, 1fr) 1fr; gap: 1.25rem; }
     @media (max-width: 960px) { .two-col { grid-template-columns: 1fr; } }
+    .mode-toggle { display:flex; justify-content:flex-end; align-items:center; gap:0.6rem; width:100%; max-width:1200px; margin:0 0 1rem; }
+    .mode-button { border-radius:999px; padding:0.5rem 1.4rem; border:1px solid rgba(31,182,184,0.25); background: rgba(31,182,184,0.18); color:#fff; font-weight:600; cursor:pointer; transition: background-color .18s ease, box-shadow .18s ease, opacity .18s ease; }
+    .mode-button.mode-button--active { background: var(--accent); border-color: var(--accent); box-shadow: 0 6px 18px rgba(31,182,184,.32); }
+    .mode-button:disabled { cursor:not-allowed; opacity:0.55; background: rgba(148,163,184,0.24); border-color: rgba(148,163,184,0.25); box-shadow:none; }
+    .mode-note { margin-left:auto; font-size:0.85rem; opacity:0.78; }
+    .indepth-shell { padding:1.25rem; }
+    .indepth-grid { display:grid; grid-template-columns: minmax(240px, 280px) 1fr; gap:1.25rem; margin-top:1rem; }
+    @media (max-width: 960px) { .indepth-grid { grid-template-columns: 1fr; } }
+    .indepth-sidebar { display:flex; flex-direction:column; gap:0.75rem; }
+    .indepth-device-list { display:flex; flex-direction:column; gap:0.4rem; }
+    .indepth-device { display:block; width:100%; text-align:left; background: rgba(0,0,0,.25); border:1px solid rgba(255,255,255,0.08); border-radius:.8rem; padding:0.75rem 0.9rem; color:inherit; cursor:pointer; transition: border-color .18s ease, background-color .18s ease, transform .18s ease; }
+    .indepth-device:hover { background: rgba(0,0,0,.32); transform: translateX(2px); }
+    .indepth-device.is-active { background: rgba(31,182,184,0.18); border-color: var(--accent); box-shadow: 0 6px 18px rgba(31,182,184,.24); transform: translateX(0); }
+    .indepth-device:focus-visible { outline: 2px solid var(--accent); outline-offset:2px; }
+    .indepth-device-title { font-weight:700; font-size:1rem; }
+    .indepth-device-meta { font-size:0.82rem; opacity:0.8; margin-top:0.25rem; }
+    .indepth-empty, .indepth-loading, .indepth-error { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.5rem; text-align:center; font-size:0.95rem; border:1px dashed rgba(255,255,255,0.12); }
+    .indepth-error { border-color: rgba(239,68,68,0.45); color:#fecaca; }
+    .indepth-loading { border-color: rgba(148,163,184,0.25); color:#e0f2f1; }
+    .indepth-detail { display:flex; flex-direction:column; gap:1.25rem; }
+    .indepth-content { display:flex; flex-direction:column; gap:1.25rem; }
+    .indepth-section { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.25rem; border:1px solid rgba(255,255,255,0.05); }
+    .indepth-section h3 { margin:0 0 0.75rem; font-size:1.1rem; }
+    .indepth-section p.section-hint { font-size:0.9rem; opacity:0.82; margin:0 0 0.8rem; }
+    .indepth-session { background: rgba(7,11,17,0.45); border-radius:.8rem; border:1px solid rgba(255,255,255,0.08); margin-top:0.8rem; overflow:hidden; }
+    .indepth-session summary { cursor:pointer; list-style:none; padding:0.9rem 1rem; font-weight:600; display:flex; align-items:center; justify-content:space-between; gap:1rem; background: rgba(255,255,255,0.02); }
+    .indepth-session summary::-webkit-details-marker { display:none; }
+    .indepth-session[open] summary { border-bottom:1px solid rgba(255,255,255,0.08); }
+    .session-summary-meta { font-size:0.82rem; opacity:0.75; }
+    .indepth-session-body { padding:1rem; display:flex; flex-direction:column; gap:1rem; }
+    .indepth-meta-grid { display:grid; gap:0.75rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+    .meta-item { background: rgba(0,0,0,.25); border-radius:.6rem; padding:0.6rem 0.75rem; border:1px solid rgba(255,255,255,0.05); }
+    .meta-label { font-size:0.72rem; letter-spacing:0.08em; text-transform:uppercase; opacity:0.7; display:block; margin-bottom:0.25rem; }
+    .meta-value { font-size:0.95rem; word-break:break-word; }
+    .indepth-table { width:100%; border-collapse:collapse; margin-top:0.75rem; }
+    .indepth-table thead th { font-size:0.78rem; text-transform:uppercase; letter-spacing:0.05em; opacity:0.75; padding:0 0 0.5rem; text-align:left; border-bottom:1px solid rgba(255,255,255,0.12); }
+    .indepth-table tbody td { padding:0.65rem 0.5rem; border-bottom:1px solid rgba(255,255,255,0.08); vertical-align:top; font-size:0.9rem; }
+    .indepth-table tbody tr:last-child td { border-bottom:none; }
+    .algo-name { font-weight:600; }
+    .algo-sub { font-size:0.78rem; opacity:0.75; margin-top:0.2rem; }
+    .algo-notes { margin-top:0.35rem; font-size:0.78rem; opacity:0.7; }
+    .session-files { display:flex; flex-wrap:wrap; gap:0.6rem; }
+    .session-files a { background: rgba(31,182,184,0.18); border-radius:999px; padding:0.4rem 0.85rem; font-size:0.85rem; border:1px solid rgba(31,182,184,0.4); text-decoration:none; color:#fff; transition: background .18s ease, border-color .18s ease; }
+    .session-files a:hover { background: var(--accent); border-color: var(--accent); }
+    .asset-group { background: rgba(7,11,17,0.45); border-radius:.8rem; border:1px solid rgba(255,255,255,0.07); padding:1rem; margin-top:0.75rem; }
+    .asset-group h4 { margin:0 0 0.6rem; font-size:1rem; }
+    .asset-gallery { display:grid; gap:0.75rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+    .asset-figure { background: rgba(0,0,0,0.25); border-radius:.6rem; padding:0.55rem; display:flex; flex-direction:column; }
+    .asset-figure a { display:block; }
+    .asset-figure img { width:100%; border-radius:.45rem; display:block; background: rgba(15,22,29,0.5); }
+    .asset-figure figcaption { margin-top:0.45rem; font-size:0.8rem; opacity:0.8; word-break:break-word; }
+    .asset-documents { list-style:none; margin:0.75rem 0 0; padding:0; display:flex; flex-direction:column; gap:0.4rem; }
+    .asset-documents a { color:#cffafe; font-size:0.85rem; text-decoration:none; }
+    .asset-documents a:hover { text-decoration:underline; }
+    .asset-caption-block { margin-top:0.65rem; background: rgba(255,255,255,0.04); border-radius:0.6rem; border:1px solid rgba(255,255,255,0.08); padding:0.5rem 0.75rem; }
+    .asset-caption-block summary { cursor:pointer; font-size:0.85rem; font-weight:600; list-style:none; }
+    .asset-caption-block summary::-webkit-details-marker { display:none; }
+    .asset-caption-block pre { margin:0.55rem 0 0; white-space:pre-wrap; font-size:0.82rem; line-height:1.4; color:#e0f2f1; }
     .form-card { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.2rem; border: 1px solid rgba(0, 0, 0, 0.18); box-shadow: 0 8px 30px rgba(0,0,0,.25) inset; }
     .form-grid { display:grid; grid-template-columns: repeat(12, 1fr); gap: .9rem; align-items:start; }
     .field { grid-column: span 6; }
@@ -274,58 +332,663 @@ input[type="checkbox"]:checked::after { opacity: 1; }
     </div>
   </header>
 
-  <div class="island two-col" style="margin-bottom:2vh;">
-    <div class="form-card">
-      <div class="title" style="font-size:1.2rem;">Run Benchmarks</div>
-      <div class="hint" style="text-align:left; margin-bottom:0.8rem;">Choose an algorithm type, select algorithms to benchmark, set parameters, then run.</div>
-      {% include '_main_form.html' %}
-    </div>
-    <div>
-      <div class="alg-section" style="margin-bottom:1rem;">
-        <div class="title" style="font-size:1.1rem; margin-bottom:.5rem;">Key Encapsulation (KEM)</div>
-        <div class="alg-list">
-          {% for name in algos %}
-            {% if kinds[name] == 'KEM' %}
-            <div class="alg-item" data-algo="{{ name }}">
-              <div style="display:flex; align-items:center; justify-content:space-between;">
-                <div style="font-weight:700;">{{ display_names.get(name, name) }}</div>
-                <div class="alg-kind">{{ kinds[name] }}</div>
+  <div class="mode-toggle">
+    <button type="button" class="mode-button mode-button--active" data-mode="standard">Benchmark Setup</button>
+    <button type="button" class="mode-button" data-mode="indepth" {% if not indepth_available %}disabled{% endif %}>In-Depth Results</button>
+    {% if not indepth_available %}
+    <div class="mode-note">Add curated exports to <em>Tested Benchmarks</em> to enable this view.</div>
+    {% endif %}
+  </div>
+
+  <div id="standard-mode">
+    <div class="island two-col" style="margin-bottom:2vh;">
+      <div class="form-card">
+        <div class="title" style="font-size:1.2rem;">Run Benchmarks</div>
+        <div class="hint" style="text-align:left; margin-bottom:0.8rem;">Choose an algorithm type, select algorithms to benchmark, set parameters, then run.</div>
+        {% include '_main_form.html' %}
+      </div>
+      <div>
+        <div class="alg-section" style="margin-bottom:1rem;">
+          <div class="title" style="font-size:1.1rem; margin-bottom:.5rem;">Key Encapsulation (KEM)</div>
+          <div class="alg-list">
+            {% for name in algos %}
+              {% if kinds[name] == 'KEM' %}
+              <div class="alg-item" data-algo="{{ name }}">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                  <div style="font-weight:700;">{{ display_names.get(name, name) }}</div>
+                  <div class="alg-kind">{{ kinds[name] }}</div>
+                </div>
+                <div style="margin-top:.4rem; opacity:.9; font-size:.95rem;">{{ (algo_info.get(name, {}) or {}).get('about', 'No description available.') }}</div>
               </div>
-              <div style="margin-top:.4rem; opacity:.9; font-size:.95rem;">{{ (algo_info.get(name, {}) or {}).get('about', 'No description available.') }}</div>
-            </div>
-            {% endif %}
-          {% endfor %}
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        <div class="alg-section">
+          <div class="title" style="font-size:1.1rem; margin-bottom:.5rem;">Signatures (SIG)</div>
+          <div class="alg-list">
+            {% for name in algos %}
+              {% if kinds[name] == 'SIG' %}
+              <div class="alg-item" data-algo="{{ name }}">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                  <div style="font-weight:700;">{{ display_names.get(name, name) }}</div>
+                  <div class="alg-kind">{{ kinds[name] }}</div>
+                </div>
+                <div style="margin-top:.4rem; opacity:.9; font-size:.95rem;">{{ (algo_info.get(name, {}) or {}).get('about', 'No description available.') }}</div>
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
         </div>
       </div>
-      <div class="alg-section">
-        <div class="title" style="font-size:1.1rem; margin-bottom:.5rem;">Signatures (SIG)</div>
-        <div class="alg-list">
-          {% for name in algos %}
-            {% if kinds[name] == 'SIG' %}
-            <div class="alg-item" data-algo="{{ name }}">
-              <div style="display:flex; align-items:center; justify-content:space-between;">
-                <div style="font-weight:700;">{{ display_names.get(name, name) }}</div>
-                <div class="alg-kind">{{ kinds[name] }}</div>
-              </div>
-              <div style="margin-top:.4rem; opacity:.9; font-size:.95rem;">{{ (algo_info.get(name, {}) or {}).get('about', 'No description available.') }}</div>
-            </div>
+    </div>
+  </div>
+
+  <div id="indepth-mode" hidden>
+    <div class="island indepth-shell">
+      <div class="title" style="font-size:1.2rem;">In-Depth Benchmarks</div>
+      <div class="hint" style="text-align:left; margin-bottom:0.8rem;">Browse curated multi-run datasets and generated charts from Tested Benchmarks.</div>
+      <div class="indepth-grid">
+        <aside class="indepth-sidebar">
+          <div id="indepth-device-list" class="indepth-device-list"></div>
+        </aside>
+        <section class="indepth-detail">
+          <div id="indepth-empty-state" class="indepth-empty">
+            {% if indepth_available %}
+            Select a tested system to explore its benchmark results.
+            {% else %}
+            Drop curated exports into the <em>Tested Benchmarks</em> folder to populate this view.
             {% endif %}
-          {% endfor %}
-        </div>
+          </div>
+          <div id="indepth-content" class="indepth-content" hidden></div>
+        </section>
       </div>
     </div>
   </div>
 
 
   <script>
-    (function(){
+    (function () {
       var cards = document.querySelectorAll('.alg-section .alg-item[data-algo]');
-      for (var i=0; i<cards.length; i++){
-        cards[i].addEventListener('click', function(){
+      for (var i = 0; i < cards.length; i++) {
+        cards[i].addEventListener('click', function () {
           var n = this.getAttribute('data-algo');
-          if (n) window.location.href = '/algo/' + encodeURIComponent(n);
+          if (n) {
+            window.location.href = '/algo/' + encodeURIComponent(n);
+          }
         });
       }
+
+      const indepthAvailable = {{ indepth_available | tojson }};
+      const escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
+      const standardSection = document.getElementById('standard-mode');
+      const indepthSection = document.getElementById('indepth-mode');
+      const modeButtons = document.querySelectorAll('.mode-button[data-mode]');
+      const deviceListEl = document.getElementById('indepth-device-list');
+      const contentEl = document.getElementById('indepth-content');
+      const emptyStateEl = document.getElementById('indepth-empty-state');
+
+      const state = {
+        indepthLoaded: false,
+        devices: [],
+        activeDeviceId: null
+      };
+
+      modeButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+          const mode = button.getAttribute('data-mode');
+          if (mode === 'indepth' && !indepthAvailable) {
+            return;
+          }
+          activateMode(mode);
+        });
+      });
+
+      function activateMode(mode) {
+        if (mode === 'indepth' && !indepthAvailable) {
+          return;
+        }
+        if (standardSection) {
+          standardSection.hidden = mode !== 'standard';
+        }
+        if (indepthSection) {
+          indepthSection.hidden = mode !== 'indepth';
+        }
+        modeButtons.forEach(function (btn) {
+          btn.classList.toggle('mode-button--active', btn.getAttribute('data-mode') === mode);
+        });
+        if (mode === 'indepth' && !state.indepthLoaded) {
+          loadDeviceList();
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+          return escapeMap[ch] || ch;
+        });
+      }
+
+      function formatNumber(value, decimals) {
+        if (value === null || value === undefined) {
+          return '';
+        }
+        const num = Number(value);
+        if (!isFinite(num)) {
+          return '';
+        }
+        return num
+          .toFixed(decimals)
+          .replace(/\.0+$/, '')
+          .replace(/(\.[0-9]*?)0+$/, '$1');
+      }
+
+      function formatTiming(timing) {
+        if (!timing) {
+          return '—';
+        }
+        const mean = formatNumber(timing.mean_ms, 3);
+        const std = formatNumber(timing.stddev_ms, 3);
+        if (mean && std) {
+          return mean + ' +/- ' + std;
+        }
+        return mean || '—';
+      }
+
+      function formatMemory(memory) {
+        if (!memory) {
+          return '—';
+        }
+        const mean = formatNumber(memory.mean_kb, 2);
+        const std = formatNumber(memory.stddev_kb, 2);
+        if (mean && std) {
+          return mean + ' +/- ' + std;
+        }
+        return mean || '—';
+      }
+
+      function formatCategory(row) {
+        const label = row.category_label || '';
+        const bits = row.category_floor_bits;
+        if (label && bits) {
+          return label + ' (' + bits + ' bits)';
+        }
+        if (label) {
+          return label;
+        }
+        if (bits != null) {
+          return bits + ' bits';
+        }
+        return '—';
+      }
+
+      function formatDate(value) {
+        if (!value) {
+          return '';
+        }
+        try {
+          const date = new Date(value);
+          if (!isNaN(date.getTime())) {
+            return date.toLocaleString();
+          }
+        } catch (err) {
+          // ignore parsing errors
+        }
+        return String(value);
+      }
+
+      function formatSize(bytes) {
+        if (bytes === null || bytes === undefined) {
+          return '';
+        }
+        const num = Number(bytes);
+        if (!isFinite(num) || num <= 0) {
+          return '';
+        }
+        if (num >= 1024 * 1024) {
+          return (num / (1024 * 1024)).toFixed(1).replace(/\.0$/, '') + ' MB';
+        }
+        if (num >= 1024) {
+          return (num / 1024).toFixed(1).replace(/\.0$/, '') + ' KB';
+        }
+        return num + ' B';
+      }
+
+      function handleFetch(resp) {
+        if (!resp.ok) {
+          return resp.json().catch(function () { return {}; }).then(function (body) {
+            const message = body && body.error ? body.error : resp.statusText;
+            throw new Error(message || 'Request failed');
+          });
+        }
+        return resp.json();
+      }
+
+      function loadDeviceList() {
+        if (!deviceListEl) {
+          return;
+        }
+        deviceListEl.innerHTML = '<div class="indepth-loading">Loading curated datasets…</div>';
+        state.indepthLoaded = true;
+        fetch('/api/indepth/devices')
+          .then(handleFetch)
+          .then(function (data) {
+            state.devices = Array.isArray(data.devices) ? data.devices : [];
+            renderDeviceList();
+          })
+          .catch(function (err) {
+            state.indepthLoaded = false;
+            deviceListEl.innerHTML = '<div class="indepth-error">' + escapeHtml(err.message || 'Unable to load datasets.') + '</div>';
+          });
+      }
+
+      function buildDeviceMeta(device) {
+        const sessions = Number(device.session_count || 0);
+        const parts = [];
+        parts.push(sessions === 1 ? '1 session' : sessions + ' sessions');
+        if (device.latest_generated_at) {
+          parts.push(formatDate(device.latest_generated_at));
+        }
+        return parts.join(' | ');
+      }
+
+      function renderDeviceList() {
+        if (!deviceListEl) {
+          return;
+        }
+        deviceListEl.innerHTML = '';
+        if (!state.devices.length) {
+          deviceListEl.innerHTML = '<div class="indepth-empty">No curated runs detected.</div>';
+          if (contentEl) {
+            contentEl.hidden = true;
+            contentEl.innerHTML = '';
+          }
+          if (emptyStateEl) {
+            emptyStateEl.hidden = false;
+          }
+          return;
+        }
+        state.devices.forEach(function (device) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'indepth-device';
+          button.setAttribute('data-device-id', device.id);
+          const name = document.createElement('div');
+          name.className = 'indepth-device-title';
+          name.textContent = device.label || device.id;
+          const meta = document.createElement('div');
+          meta.className = 'indepth-device-meta';
+          meta.textContent = buildDeviceMeta(device);
+          button.appendChild(name);
+          button.appendChild(meta);
+          button.addEventListener('click', function () {
+            selectDevice(device.id);
+          });
+          deviceListEl.appendChild(button);
+        });
+        const ids = state.devices.map(function (item) { return item.id; });
+        const preferred = state.activeDeviceId && ids.indexOf(state.activeDeviceId) !== -1
+          ? state.activeDeviceId
+          : ids[0];
+        if (preferred) {
+          state.activeDeviceId = null;
+          selectDevice(preferred);
+        }
+      }
+
+      function updateActiveDevice(deviceId) {
+        if (!deviceListEl) {
+          return;
+        }
+        const buttons = deviceListEl.querySelectorAll('.indepth-device');
+        buttons.forEach(function (btn) {
+          btn.classList.toggle('is-active', btn.getAttribute('data-device-id') === deviceId);
+        });
+      }
+
+      function selectDevice(deviceId) {
+        if (!deviceId) {
+          return;
+        }
+        if (state.activeDeviceId === deviceId && contentEl && contentEl.childElementCount > 0) {
+          updateActiveDevice(deviceId);
+          return;
+        }
+        state.activeDeviceId = deviceId;
+        updateActiveDevice(deviceId);
+        loadDeviceDetail(deviceId);
+      }
+
+      function loadDeviceDetail(deviceId) {
+        if (!contentEl) {
+          return;
+        }
+        contentEl.hidden = false;
+        contentEl.innerHTML = '<div class="indepth-loading">Loading results…</div>';
+        if (emptyStateEl) {
+          emptyStateEl.hidden = true;
+        }
+        fetch('/api/indepth/devices/' + encodeURIComponent(deviceId))
+          .then(handleFetch)
+          .then(function (data) {
+            renderDeviceDetail(data);
+          })
+          .catch(function (err) {
+            contentEl.innerHTML = '<div class="indepth-error">' + escapeHtml(err.message || 'Unable to load results.') + '</div>';
+          });
+      }
+
+      function buildSessionSummary(session) {
+        const parts = [];
+        if (session.runs != null) {
+          parts.push(session.runs + ' runs');
+        }
+        if (session.message_size != null) {
+          parts.push(session.message_size + ' bytes');
+        }
+        if (session.generated_at) {
+          parts.push(formatDate(session.generated_at));
+        }
+        return parts.join(' | ');
+      }
+
+      function createMetaItem(label, value) {
+        const item = document.createElement('div');
+        item.className = 'meta-item';
+        const labelEl = document.createElement('span');
+        labelEl.className = 'meta-label';
+        labelEl.textContent = label;
+        const valueEl = document.createElement('span');
+        valueEl.className = 'meta-value';
+        const hasValue = value !== undefined && value !== null && value !== '';
+        valueEl.textContent = hasValue ? String(value) : '—';
+        item.appendChild(labelEl);
+        item.appendChild(valueEl);
+        return item;
+      }
+
+      function createFileChip(url, label, detail) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = detail ? label + ' (' + detail + ')' : label;
+        return link;
+      }
+
+      function renderSessionTable(rows) {
+        const table = document.createElement('table');
+        table.className = 'indepth-table';
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        ['Algorithm', 'Operation', 'Timing (ms)', 'Memory (KB)', 'Runs', 'Category'].forEach(function (label) {
+          const th = document.createElement('th');
+          th.textContent = label;
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+        const tbody = document.createElement('tbody');
+        rows.forEach(function (row) {
+          const tr = document.createElement('tr');
+          const algoCell = document.createElement('td');
+          const name = document.createElement('div');
+          name.className = 'algo-name';
+          name.textContent = row.display || row.mechanism || row.algo || '—';
+          algoCell.appendChild(name);
+          const subParts = [];
+          if (row.family) {
+            subParts.push(row.family);
+          }
+          if (row.mechanism && (!row.display || row.display.toLowerCase() !== row.mechanism.toLowerCase())) {
+            subParts.push(row.mechanism);
+          }
+          if (row.kind) {
+            subParts.push(row.kind);
+          }
+          if (subParts.length) {
+            const sub = document.createElement('div');
+            sub.className = 'algo-sub';
+            sub.textContent = subParts.join(' | ');
+            algoCell.appendChild(sub);
+          }
+          if (row.parameter_notes) {
+            const notes = document.createElement('div');
+            notes.className = 'algo-notes';
+            notes.textContent = row.parameter_notes;
+            algoCell.appendChild(notes);
+          }
+          tr.appendChild(algoCell);
+
+          const opCell = document.createElement('td');
+          opCell.textContent = row.operation || '—';
+          tr.appendChild(opCell);
+
+          const timingCell = document.createElement('td');
+          timingCell.textContent = formatTiming(row.timing);
+          tr.appendChild(timingCell);
+
+          const memoryCell = document.createElement('td');
+          memoryCell.textContent = formatMemory(row.memory);
+          tr.appendChild(memoryCell);
+
+          const runsCell = document.createElement('td');
+          runsCell.textContent = row.runs != null ? String(row.runs) : '—';
+          tr.appendChild(runsCell);
+
+          const categoryCell = document.createElement('td');
+          categoryCell.textContent = formatCategory(row);
+          tr.appendChild(categoryCell);
+
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        return table;
+      }
+
+      function renderSession(session, isFirst) {
+        const details = document.createElement('details');
+        details.className = 'indepth-session';
+        if (isFirst) {
+          details.open = true;
+        }
+        const summary = document.createElement('summary');
+        const label = document.createElement('span');
+        label.textContent = session.label || 'Session';
+        summary.appendChild(label);
+        const summaryMeta = document.createElement('span');
+        summaryMeta.className = 'session-summary-meta';
+        summaryMeta.textContent = buildSessionSummary(session);
+        summary.appendChild(summaryMeta);
+        details.appendChild(summary);
+
+        const body = document.createElement('div');
+        body.className = 'indepth-session-body';
+
+        const metaGrid = document.createElement('div');
+        metaGrid.className = 'indepth-meta-grid';
+        metaGrid.appendChild(createMetaItem('Generated', session.generated_at ? formatDate(session.generated_at) : '—'));
+        metaGrid.appendChild(createMetaItem('Runs', session.runs != null ? session.runs : '—'));
+        if (session.message_size != null) {
+          metaGrid.appendChild(createMetaItem('Message Size', session.message_size + ' bytes'));
+        }
+        metaGrid.appendChild(createMetaItem('Includes Warm Runs', session.includes_warm ? 'Yes' : 'No'));
+        if (session.row_count != null) {
+          metaGrid.appendChild(createMetaItem('CSV Rows', session.row_count));
+        }
+        const env = session.environment || {};
+        if (env.cpu_model) {
+          metaGrid.appendChild(createMetaItem('CPU', env.cpu_model));
+        }
+        if (env.os) {
+          metaGrid.appendChild(createMetaItem('OS', env.os));
+        }
+        if (env.python) {
+          metaGrid.appendChild(createMetaItem('Python', env.python));
+        }
+        body.appendChild(metaGrid);
+
+        if (Array.isArray(session.benchmarks) && session.benchmarks.length) {
+          body.appendChild(renderSessionTable(session.benchmarks));
+        } else {
+          const noData = document.createElement('div');
+          noData.className = 'indepth-empty';
+          noData.textContent = 'No benchmark rows were found in the CSV export.';
+          body.appendChild(noData);
+        }
+
+        if (session.csv || session.meta) {
+          const files = document.createElement('div');
+          files.className = 'session-files';
+          if (session.csv && session.csv.url) {
+            files.appendChild(createFileChip(session.csv.url, 'CSV export', session.csv.rows ? session.csv.rows + ' rows' : null));
+          }
+          if (session.meta && session.meta.url) {
+            files.appendChild(createFileChip(session.meta.url, 'Meta file', null));
+          }
+          body.appendChild(files);
+        }
+
+        details.appendChild(body);
+        return details;
+      }
+
+      function renderImageFigure(image) {
+        const figure = document.createElement('figure');
+        figure.className = 'asset-figure';
+        const link = document.createElement('a');
+        link.href = image.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        const img = document.createElement('img');
+        img.loading = 'lazy';
+        img.src = image.url;
+        img.alt = image.filename || 'Benchmark graph';
+        link.appendChild(img);
+        figure.appendChild(link);
+        const caption = document.createElement('figcaption');
+        const size = image.size_bytes ? ' (' + formatSize(image.size_bytes) + ')' : '';
+        caption.textContent = (image.filename || 'asset') + size;
+        figure.appendChild(caption);
+        return figure;
+      }
+
+      function renderAssetGroups(groups, heading) {
+        if (!groups || !groups.length) {
+          return null;
+        }
+        const section = document.createElement('section');
+        section.className = 'indepth-section';
+        const title = document.createElement('h3');
+        title.textContent = heading;
+        section.appendChild(title);
+        groups.forEach(function (group) {
+          const card = document.createElement('article');
+          card.className = 'asset-group';
+          const label = document.createElement('h4');
+          label.textContent = group.label || heading;
+          card.appendChild(label);
+
+          if (Array.isArray(group.images) && group.images.length) {
+            const gallery = document.createElement('div');
+            gallery.className = 'asset-gallery';
+            group.images.forEach(function (image) {
+              gallery.appendChild(renderImageFigure(image));
+            });
+            card.appendChild(gallery);
+          }
+
+          if (Array.isArray(group.documents) && group.documents.length) {
+            const list = document.createElement('ul');
+            list.className = 'asset-documents';
+            group.documents.forEach(function (doc) {
+              const li = document.createElement('li');
+              const link = document.createElement('a');
+              link.href = doc.url;
+              link.target = '_blank';
+              link.rel = 'noopener';
+              const size = doc.size_bytes ? ' (' + formatSize(doc.size_bytes) + ')' : '';
+              link.textContent = (doc.filename || 'document') + size;
+              li.appendChild(link);
+              list.appendChild(li);
+            });
+            card.appendChild(list);
+          }
+
+          if (group.caption) {
+            const details = document.createElement('details');
+            details.className = 'asset-caption-block';
+            const summary = document.createElement('summary');
+            summary.textContent = 'Captions / Notes';
+            details.appendChild(summary);
+            const pre = document.createElement('pre');
+            pre.textContent = group.caption;
+            details.appendChild(pre);
+            card.appendChild(details);
+          }
+
+          section.appendChild(card);
+        });
+        return section;
+      }
+
+      function renderDeviceDetail(data) {
+        if (!contentEl) {
+          return;
+        }
+        contentEl.innerHTML = '';
+        const device = data && data.device ? data.device : {};
+        const sessions = Array.isArray(data && data.sessions) ? data.sessions : [];
+        const graphs = Array.isArray(data && data.graphs) ? data.graphs : [];
+        const extras = Array.isArray(data && data.extras) ? data.extras : [];
+
+        const overview = document.createElement('section');
+        overview.className = 'indepth-section';
+        const heading = document.createElement('h3');
+        heading.textContent = device.label || 'Curated Device';
+        overview.appendChild(heading);
+        if (device.base_path) {
+          const note = document.createElement('p');
+          note.className = 'section-hint';
+          note.textContent = 'Folder: ' + device.base_path;
+          overview.appendChild(note);
+        }
+        const metaGrid = document.createElement('div');
+        metaGrid.className = 'indepth-meta-grid';
+        metaGrid.appendChild(createMetaItem('Benchmark Sessions', sessions.length));
+        metaGrid.appendChild(createMetaItem('Graph Groups', graphs.length));
+        metaGrid.appendChild(createMetaItem('Extras', extras.length));
+        overview.appendChild(metaGrid);
+        contentEl.appendChild(overview);
+
+        if (sessions.length) {
+          const sessionsSection = document.createElement('section');
+          sessionsSection.className = 'indepth-section';
+          const title = document.createElement('h3');
+          title.textContent = 'Benchmark Sessions';
+          sessionsSection.appendChild(title);
+          sessions.forEach(function (session, index) {
+            sessionsSection.appendChild(renderSession(session, index === 0));
+          });
+          contentEl.appendChild(sessionsSection);
+        } else {
+          const noSessions = document.createElement('div');
+          noSessions.className = 'indepth-empty';
+          noSessions.textContent = 'No benchmark sessions were found for this device.';
+          contentEl.appendChild(noSessions);
+        }
+
+        const graphSection = renderAssetGroups(graphs, 'Graphs');
+        if (graphSection) {
+          contentEl.appendChild(graphSection);
+        }
+        const extrasSection = renderAssetGroups(extras, 'Forensics & Extras');
+        if (extrasSection) {
+          contentEl.appendChild(extrasSection);
+        }
+      }
+
+      activateMode('standard');
     })();
   </script>
 </body>

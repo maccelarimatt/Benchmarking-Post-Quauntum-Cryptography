@@ -7,8 +7,11 @@ Provides simple single-run traces and JSON summaries in the browser.
 """
 import sys
 import os
+import csv
+import json
 import logging
 import importlib.util
+import re
 from types import ModuleType
 from pathlib import Path
 
@@ -18,7 +21,7 @@ from flask import Flask, render_template, request, redirect, url_for, send_from_
 from jinja2 import TemplateNotFound
 from dataclasses import asdict
 import base64
-from typing import Dict, Any, Mapping, Optional
+from typing import Dict, Any, Mapping, Optional, List
 import threading
 import time
 import uuid
@@ -239,6 +242,217 @@ def _display_names(names: list[str]) -> Dict[str, str]:
                 label = n.replace("-", "-").title()
         out[n] = label
     return out
+
+
+_SLUG_RE = re.compile(r"[^a-z0-9]+")
+_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
+_DOCUMENT_EXTENSIONS = {".csv", ".json", ".md", ".txt"}
+
+
+def _tested_benchmarks_root() -> Path:
+    """Return the root directory containing curated benchmark exports."""
+    return _PROJECT_ROOT / "Tested Benchmarks"
+
+
+def _slugify(value: str, fallback: str = "item") -> str:
+    slug = _SLUG_RE.sub("-", value.lower()).strip("-")
+    return slug or fallback
+
+
+def _safe_float(value: Any) -> Optional[float]:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_int(value: Any) -> Optional[int]:
+    if value in (None, ""):
+        return None
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def _discover_tested_benchmarks() -> Dict[str, Dict[str, Any]]:
+    """Enumerate curated benchmark folders and their metadata."""
+    root = _tested_benchmarks_root()
+    if not root.exists():
+        return {}
+    devices: Dict[str, Dict[str, Any]] = {}
+    for device_path in sorted(root.iterdir(), key=lambda p: p.name.lower()):
+        if not device_path.is_dir():
+            continue
+        slug_base = _slugify(device_path.name, fallback="device")
+        slug = slug_base
+        counter = 2
+        while slug in devices:
+            slug = f"{slug_base}-{counter}"
+            counter += 1
+        bench_dir = device_path / "Benchmarks"
+        meta_entries: List[Dict[str, Any]] = []
+        if bench_dir.exists():
+            for meta_path in sorted(bench_dir.glob("*.meta.json")):
+                try:
+                    meta_data = json.loads(meta_path.read_text(encoding="utf-8"))
+                except Exception as exc:
+                    log.warning("Failed to parse benchmark meta %s: %s", meta_path, exc)
+                    continue
+                csv_name = meta_path.name.replace(".meta.json", ".csv")
+                csv_path = meta_path.with_name(csv_name)
+                meta_entries.append(
+                    {
+                        "path": meta_path,
+                        "csv_path": csv_path,
+                        "data": meta_data,
+                        "generated_at": meta_data.get("generated_at"),
+                        "session_id": meta_data.get("session_id"),
+                    }
+                )
+        meta_entries.sort(key=lambda m: m.get("generated_at") or "", reverse=True)
+        extras = [
+            child
+            for child in device_path.iterdir()
+            if child.is_dir() and child.name != "Benchmarks"
+        ]
+        devices[slug] = {
+            "id": slug,
+            "name": device_path.name,
+            "path": device_path,
+            "benchmarks": meta_entries,
+            "extras": extras,
+        }
+    return devices
+
+
+def _build_benchmark_summary(
+    csv_path: Path, display_names: Dict[str, str]
+) -> List[Dict[str, Any]]:
+    """Condense the raw CSV into per-operation timing and memory stats."""
+    if not csv_path.exists():
+        log.warning("Benchmark CSV missing: %s", csv_path)
+        return []
+    summary: Dict[tuple[str, str, str, str], Dict[str, Any]] = {}
+    try:
+        with csv_path.open("r", encoding="utf-8", newline="") as fh:
+            reader = csv.DictReader(fh)
+            for row in reader:
+                algo = (row.get("algo") or "").strip()
+                mechanism = (row.get("mechanism") or "").strip()
+                operation = (row.get("operation") or "").strip()
+                kind = (row.get("kind") or "").strip()
+                key = (algo, mechanism, operation, kind)
+                entry = summary.get(key)
+                if entry is None:
+                    entry = {
+                        "algo": algo,
+                        "display": display_names.get(algo, algo or mechanism or "Unknown"),
+                        "mechanism": mechanism,
+                        "family": (row.get("family") or "").strip(),
+                        "kind": kind,
+                        "operation": operation,
+                        "category_label": (row.get("category_label") or "").strip(),
+                        "category_floor_bits": _safe_int(row.get("category_floor_bits")),
+                        "runs": _safe_int(row.get("runs")) or 0,
+                        "parameter_notes": row.get("parameter_notes") or "",
+                        "security": {
+                            "classical_bits": _safe_int(row.get("security_classical_bits")),
+                            "quantum_bits": _safe_int(row.get("security_quantum_bits")),
+                            "shor_breakable": row.get("security_shor_breakable"),
+                            "notes": row.get("security_notes"),
+                        },
+                    }
+                    summary[key] = entry
+                measurement = (row.get("measurement_pass") or "").strip().lower()
+                if measurement == "timing":
+                    entry["timing"] = {
+                        "mean_ms": _safe_float(row.get("mean_ms")),
+                        "median_ms": _safe_float(row.get("median_ms")),
+                        "stddev_ms": _safe_float(row.get("stddev_ms")),
+                        "min_ms": _safe_float(row.get("min_ms")),
+                        "max_ms": _safe_float(row.get("max_ms")),
+                        "ci95_low_ms": _safe_float(row.get("ci95_low_ms")),
+                        "ci95_high_ms": _safe_float(row.get("ci95_high_ms")),
+                    }
+                elif measurement == "memory":
+                    entry["memory"] = {
+                        "mean_kb": _safe_float(row.get("mem_mean_kb")),
+                        "median_kb": _safe_float(row.get("mem_median_kb")),
+                        "stddev_kb": _safe_float(row.get("mem_stddev_kb")),
+                        "min_kb": _safe_float(row.get("mem_min_kb")),
+                        "max_kb": _safe_float(row.get("mem_max_kb")),
+                        "ci95_low_kb": _safe_float(row.get("mem_ci95_low_kb")),
+                        "ci95_high_kb": _safe_float(row.get("mem_ci95_high_kb")),
+                    }
+                entry["runs"] = max(entry.get("runs") or 0, _safe_int(row.get("runs")) or 0)
+    except Exception as exc:
+        log.warning("Failed to read benchmark CSV %s: %s", csv_path, exc)
+        return []
+    rows = list(summary.values())
+    rows.sort(
+        key=lambda entry: (entry["kind"], entry["family"], entry["mechanism"], entry["operation"])
+    )
+    return rows
+
+
+def _collect_media_groups(base_dir: Path, root: Path, kind: str) -> List[Dict[str, Any]]:
+    """Collect image/document assets under a directory tree."""
+    groups: List[Dict[str, Any]] = []
+    if not base_dir.exists():
+        return groups
+    for dirpath, _, filenames in os.walk(base_dir):
+        directory = Path(dirpath)
+        images: List[Dict[str, Any]] = []
+        documents: List[Dict[str, Any]] = []
+        caption_text: Optional[str] = None
+        for filename in sorted(filenames):
+            if filename == "captions.md":
+                try:
+                    caption_text = (directory / filename).read_text(encoding="utf-8")
+                except Exception as exc:
+                    log.warning("Failed to read captions %s: %s", directory / filename, exc)
+                continue
+            ext = Path(filename).suffix.lower()
+            full_path = directory / filename
+            try:
+                rel_path = full_path.relative_to(root).as_posix()
+            except ValueError:
+                continue
+            size_bytes: Optional[int]
+            try:
+                size_bytes = full_path.stat().st_size
+            except OSError:
+                size_bytes = None
+            entry = {"path": rel_path, "filename": filename}
+            if size_bytes is not None:
+                entry["size_bytes"] = size_bytes
+            if ext in _IMAGE_EXTENSIONS:
+                images.append(entry)
+            elif ext in _DOCUMENT_EXTENSIONS:
+                documents.append(entry)
+        if not images and not documents and not caption_text:
+            continue
+        try:
+            relative_dir = directory.relative_to(base_dir).as_posix()
+        except ValueError:
+            relative_dir = directory.name
+        label = relative_dir or base_dir.name
+        groups.append(
+            {
+                "id": _slugify(f"{kind}-{label}", fallback=kind),
+                "kind": kind,
+                "label": label,
+                "relative_dir": directory.relative_to(root).as_posix(),
+                "images": images,
+                "documents": documents,
+                "caption": caption_text,
+            }
+        )
+    groups.sort(key=lambda item: item["label"])
+    return groups
 
 
 ALGO_INFO = {
@@ -877,7 +1091,143 @@ def index():
         last_export=None,
         compare_kind="KEM",
         compare_mode="pair",
+        indepth_available=bool(_discover_tested_benchmarks()),
     )
+
+
+@app.route("/api/indepth/devices")
+def api_indepth_devices():
+    devices = _discover_tested_benchmarks()
+    items: List[Dict[str, Any]] = []
+    for device in devices.values():
+        benchmarks = device.get("benchmarks", [])
+        latest_generated = benchmarks[0].get("generated_at") if benchmarks else None
+        items.append(
+            {
+                "id": device["id"],
+                "label": device["name"],
+                "session_count": len(benchmarks),
+                "latest_generated_at": latest_generated,
+                "has_benchmarks": bool(benchmarks),
+                "has_graphs": (device["path"] / "Benchmarks" / "graphs").exists(),
+                "has_extras": any(device.get("extras", [])),
+            }
+        )
+    items.sort(key=lambda item: item["label"])
+    return jsonify({"devices": items, "count": len(items)})
+
+
+@app.route("/api/indepth/devices/<device_id>")
+def api_indepth_device_detail(device_id: str):
+    devices = _discover_tested_benchmarks()
+    device = devices.get(device_id)
+    if device is None:
+        return jsonify({"error": "unknown-device", "device_id": device_id}), 404
+
+    _ensure_adapters_loaded()
+    display_names = _display_names(list(registry.list().keys()))
+    root = _tested_benchmarks_root()
+
+    sessions: List[Dict[str, Any]] = []
+    for entry in device.get("benchmarks", []):
+        data = entry.get("data") or {}
+        csv_path = entry.get("csv_path")
+        meta_path = entry.get("path")
+        csv_summary: List[Dict[str, Any]] = []
+        csv_url = None
+        csv_rel_path = None
+        if isinstance(csv_path, Path) and csv_path.exists():
+            csv_summary = _build_benchmark_summary(csv_path, display_names)
+            try:
+                csv_rel_path = csv_path.relative_to(root).as_posix()
+                csv_url = url_for("serve_tested_benchmark_file", resource=csv_rel_path)
+            except ValueError:
+                csv_rel_path = None
+        meta_rel_path = None
+        meta_url = None
+        if isinstance(meta_path, Path) and meta_path.exists():
+            try:
+                meta_rel_path = meta_path.relative_to(root).as_posix()
+                meta_url = url_for("serve_tested_benchmark_file", resource=meta_rel_path)
+            except ValueError:
+                meta_rel_path = None
+        environment = data.get("environment") or {}
+        sessions.append(
+            {
+                "id": entry.get("session_id"),
+                "label": data.get("session_id")
+                or (csv_path.stem if isinstance(csv_path, Path) else "session"),
+                "generated_at": data.get("generated_at"),
+                "runs": data.get("runs"),
+                "message_size": data.get("message_size"),
+                "includes_warm": bool(data.get("includes_warm")),
+                "row_count": data.get("row_count"),
+                "csv": (
+                    {
+                        "path": csv_rel_path,
+                        "url": csv_url,
+                        "rows": data.get("row_count"),
+                    }
+                    if csv_rel_path and csv_url
+                    else None
+                ),
+                "meta": (
+                    {
+                        "path": meta_rel_path,
+                        "url": meta_url,
+                    }
+                    if meta_rel_path and meta_url
+                    else None
+                ),
+                "environment": {
+                    "cpu_model": environment.get("cpu_model"),
+                    "cpu_count": environment.get("cpu_count"),
+                    "os": environment.get("os"),
+                    "python": environment.get("python"),
+                },
+                "benchmarks": csv_summary,
+            }
+        )
+
+    graph_groups = _collect_media_groups(device["path"] / "Benchmarks" / "graphs", root, "benchmarks")
+    extra_groups: List[Dict[str, Any]] = []
+    for extra_dir in device.get("extras", []):
+        extra_groups.extend(_collect_media_groups(extra_dir, root, "forensics"))
+
+    def _with_urls(groups: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        out: List[Dict[str, Any]] = []
+        for group in groups:
+            group_copy = dict(group)
+            group_copy["images"] = [
+                {**item, "url": url_for("serve_tested_benchmark_file", resource=item["path"])}
+                for item in group.get("images", [])
+            ]
+            group_copy["documents"] = [
+                {**item, "url": url_for("serve_tested_benchmark_file", resource=item["path"])}
+                for item in group.get("documents", [])
+            ]
+            out.append(group_copy)
+        return out
+
+    response = {
+        "device": {
+            "id": device["id"],
+            "label": device["name"],
+            "base_path": device["path"].relative_to(root).as_posix()
+            if device["path"].exists()
+            else device["name"],
+        },
+        "sessions": sessions,
+        "graphs": _with_urls(graph_groups),
+        "extras": _with_urls(extra_groups),
+    }
+    return jsonify(response)
+
+
+@app.route("/tested-benchmarks/<path:resource>")
+def serve_tested_benchmark_file(resource: str):
+    directory = _tested_benchmarks_root()
+    return send_from_directory(directory, resource, as_attachment=False)
 
 
 @app.route("/run", methods=["POST"])
