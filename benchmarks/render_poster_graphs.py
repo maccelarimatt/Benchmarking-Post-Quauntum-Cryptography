@@ -204,7 +204,7 @@ def plot_latency_combined(records: Sequence[Record], png_dir: pathlib.Path, pdf_
 
 
 def plot_shor_runtime(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir: pathlib.Path) -> None:
-    entries: List[Tuple[str, float]] = []
+    entries: List[Tuple[int, float]] = []  # (modulus_bits, runtime_seconds)
     for rec in records:
         if rec.algo.lower() != "rsa-oaep" or rec.security_extras is None:
             continue
@@ -218,44 +218,52 @@ def plot_shor_runtime(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir:
             for scenario in group.get("scenarios", []) or []:
                 if not isinstance(scenario, dict):
                     continue
-                calibrated = scenario.get("calibrated_against") or ""
-                if "ge" not in calibrated.lower():
+                calibrated = (scenario.get("calibrated_against") or "").lower()
+                if "ge" not in calibrated:  # keep only the GE baseline scenarios
                     continue
                 runtime = scenario.get("runtime_seconds")
-                if runtime is None:
+                if runtime is None or modulus_bits is None:
                     continue
-                label = scenario.get("label") or f"{calibrated}"
-                if modulus_bits:
-                    label = f"{label} ({modulus_bits}-bit)"
-                entries.append((label, float(runtime)))
+                try:
+                    bits = int(float(modulus_bits))  # handles "2048", 2048, "2048.0"
+                    rt = float(runtime)
+                except (TypeError, ValueError):
+                    continue
+                entries.append((bits, rt))
 
     if not entries:
         return
 
-    labels = [label for label, _ in entries]
-    runtime_days = [value / 86400.0 for _, value in entries]
+    # Sort by numeric modulus bits
+    entries.sort(key=lambda x: x[0])
+
+    labels = [str(bits) for bits, _ in entries]                  # "2048", "3072", ...
+    runtime_days = [rt / 86400.0 for _, rt in entries]
 
     fig, ax = plt.subplots(figsize=(11, 7))
-    ax.set_title("Shor Runtime (Ge Baseline) — RSA OAEP")
-    ax.bar(labels, runtime_days, color="#6c5ce7")
+    #ax.set_title("Shor Runtime (Ge Baseline) — RSA OAEP")        # old title restored
+    bars = ax.bar(labels, runtime_days, color="#6c5ce7")         # purple colour restored
+    ax.set_xlabel("RSA modulus (bits)")
     ax.set_ylabel("Runtime to factor (days)")
     ax.grid(True, axis="y", linestyle="--", alpha=0.3)
-    ax.tick_params(axis="x", rotation=45)
-    for tick in ax.get_xticklabels():
-        tick.set_horizontalalignment("right")
+    ax.tick_params(axis="x", rotation=0)
 
-    for xpos, value in enumerate(runtime_days):
-        hours = value * 24.0
+    for bar, days in zip(bars, runtime_days):
+        hours = days * 24.0
         ax.text(
-            xpos,
-            value,
+            bar.get_x() + bar.get_width() / 2.0,
+            bar.get_height(),
             f"{hours:.1f} h",
             ha="center",
             va="bottom",
             fontsize=14,
+            clip_on=True,
         )
 
+    # Keep the old filename too so it overwrites the previous chart
     _save_figure(fig, "poster_shor_runtime_rsa_ge", png_dir, pdf_dir)
+
+
 
 
 def _place_labels(
