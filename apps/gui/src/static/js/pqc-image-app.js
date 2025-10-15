@@ -46,6 +46,9 @@
     heatmapOnlyButtons: {},
   };
 
+  const DEFAULT_IMAGE_PATH = "/static/test%20images/Capture1.JPG";
+  const DEFAULT_IMAGE_NAME = "Capture1.JPG";
+
   function qs(id) {
     const el = document.getElementById(id);
     if (!el) {
@@ -620,6 +623,48 @@
     }
   }
 
+  async function selectDefaultImage() {
+    try {
+      const response = await fetch(DEFAULT_IMAGE_PATH, { cache: "no-cache" });
+      if (!response.ok) {
+        console.warn(`Default image fetch failed (${response.status}).`);
+        return false;
+      }
+      const blob = await response.blob();
+      const file = new File([blob], DEFAULT_IMAGE_NAME, { type: blob.type || "image/jpeg" });
+      if (typeof DataTransfer !== "undefined") {
+        try {
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(file);
+          dom.fileInput.files = dataTransfer.files;
+          await handleFileChange({ target: dom.fileInput });
+          return true;
+        } catch (assignErr) {
+          console.warn("Failed to populate file input via DataTransfer.", assignErr);
+        }
+      }
+      if (typeof ClipboardEvent !== "undefined") {
+        try {
+          const clipboardEvent = new ClipboardEvent("");
+          const clipboardData = clipboardEvent.clipboardData;
+          if (clipboardData) {
+            clipboardData.items.add(file);
+            dom.fileInput.files = clipboardData.files;
+            await handleFileChange({ target: dom.fileInput });
+            return true;
+          }
+        } catch (assignErr) {
+          console.warn("Failed to populate file input via ClipboardEvent.", assignErr);
+        }
+      }
+      await handleFileChange({ target: { files: [file] } });
+      return true;
+    } catch (err) {
+      console.warn("Failed to preload default image.", err);
+      return false;
+    }
+  }
+
   async function handleFileChange(event) {
     const file = event.target.files && event.target.files[0];
     clearStatus();
@@ -935,7 +980,10 @@
     updateBadge();
     updateInfoPanel();
     updateEntropyPanels();
-    await updateRandomPad();
+    const loaded = await selectDefaultImage();
+    if (!loaded) {
+      await updateRandomPad();
+    }
   }
 
   function start() {
