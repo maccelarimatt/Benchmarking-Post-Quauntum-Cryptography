@@ -22,3 +22,4 @@ scipy==1.16.2
 cryptography==46.0.2
 requests==2.32.5
 matplotlib==3.10.7
+adjustText==1.17.0

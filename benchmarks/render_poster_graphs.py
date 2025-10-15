@@ -8,6 +8,7 @@ import csv
 import json
 import math
 import pathlib
+import io, contextlib
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -17,6 +18,16 @@ except ImportError as exc:  # pragma: no cover
     raise SystemExit(
         "matplotlib is required for poster graph rendering. Install it via 'pip install matplotlib'."
     ) from exc
+
+import matplotlib.lines as mlines
+
+try:
+    from adjustText import adjust_text  # pip install adjustText
+except Exception:
+    adjust_text = None
+
+
+
 
 
 # Poster styling: larger fonts, consistent grid visibility
@@ -310,20 +321,12 @@ def _place_labels(
 def plot_security_vs_latency(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir: pathlib.Path) -> None:
     points: List[Tuple[float, float, str, str, Optional[int]]] = []
     for rec in records:
-        if rec.measurement_pass != "timing":
-            continue
-        if rec.operation != "keygen":
+        if rec.measurement_pass != "timing" or rec.operation != "keygen":
             continue
         if rec.mean_ms is None or rec.security_quantum_bits is None:
             continue
         points.append(
-            (
-                rec.security_quantum_bits,
-                rec.mean_ms,
-                rec.kind.upper(),
-                _friendly_label(rec.algo),
-                rec.category_number,
-            )
+            (rec.security_quantum_bits, rec.mean_ms, rec.kind.upper(), _friendly_label(rec.algo), rec.category_number)
         )
     if not points:
         return
@@ -336,7 +339,7 @@ def plot_security_vs_latency(records: Sequence[Record], png_dir: pathlib.Path, p
 
     label_specs: List[Tuple[float, float, str, str]] = []
     kem_idx = sig_idx = 0
-    for security_bits, latency, kind, label, category in points:
+    for qbits, latency, kind, label, category in points:
         if kind == "KEM":
             color = kem_palette[kem_idx % len(kem_palette)]
             kem_idx += 1
@@ -345,24 +348,79 @@ def plot_security_vs_latency(records: Sequence[Record], png_dir: pathlib.Path, p
             color = sig_palette[sig_idx % len(sig_palette)]
             sig_idx += 1
             marker = "^"
-        ax.scatter(
-            security_bits,
-            latency,
-            color=color,
-            marker=marker,
-            s=110,
-            edgecolors="#222222",
-            linewidths=0.6,
-        )
-        label_specs.append((security_bits, latency, f"{label} ({category})", color))
 
-    _place_labels(ax, label_specs)
+        ax.scatter(
+            qbits, latency,
+            color=color, marker=marker, s=110,
+            edgecolors="#222222", linewidths=0.6, zorder=3,
+        )
+        label_specs.append((qbits, latency, f"{label} ({category})", color))
+
+    # Give a touch of margin so labels have space to move
+    ax.margins(x=0.05, y=0.12)
+    _place_labels_smart(ax, label_specs, base_offset=24, max_iter=400)
+
+
 
     ax.set_xlabel("Quantum security bits")
     ax.set_ylabel("Key generation mean latency (ms)")
-    ax.grid(True, linestyle="--", alpha=0.3)
+    ax.grid(True, linestyle="--", alpha=0.3, zorder=0)
 
     _save_figure(fig, "poster_security_vs_latency", png_dir, pdf_dir)
+
+
+def plot_security_vs_latency_by_category(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir: pathlib.Path) -> None:
+    by_category: Dict[int, List[Tuple[float, float, str, str]]] = {}
+    for rec in records:
+        if rec.measurement_pass != "timing" or rec.operation != "keygen":
+            continue
+        if rec.mean_ms is None or rec.security_quantum_bits is None:
+            continue
+        if rec.category_number not in (1, 3, 5):
+            continue
+        by_category.setdefault(rec.category_number, []).append(
+            (rec.security_quantum_bits, rec.mean_ms, rec.kind.upper(), _friendly_label(rec.algo))
+        )
+
+    for category, entries in sorted(by_category.items()):
+        if not entries:
+            continue
+        kem_palette = ["#264653", "#2a9d8f", "#1d3557", "#457b9d", "#0a9396"]
+        sig_palette = ["#e63946", "#f77f00", "#a01a58", "#b56576", "#ef6351"]
+
+        fig, ax = plt.subplots(figsize=(12, 8))
+        ax.set_title(f"Quantum Security vs Latency (Key Generation) — Cat {category}")
+
+        label_specs: List[Tuple[float, float, str, str]] = []
+        kem_idx = sig_idx = 0
+        for qbits, latency, kind, label in entries:
+            if kind == "KEM":
+                color = kem_palette[kem_idx % len(kem_palette)]
+                kem_idx += 1
+                marker = "o"
+            else:
+                color = sig_palette[sig_idx % len(sig_palette)]
+                sig_idx += 1
+                marker = "^"
+            ax.scatter(
+                qbits,
+                latency,
+                color=color,
+                marker=marker,
+                s=110,
+                edgecolors="#222222",
+                linewidths=0.6,
+                zorder=3,
+            )
+            label_specs.append((qbits, latency, label, color))
+
+        ax.margins(x=0.05, y=0.12)
+        _place_labels_smart(ax, label_specs, base_offset=24, max_iter=300, max_distance_px=70.0)
+        ax.set_xlabel("Quantum security bits")
+        ax.set_ylabel("Key generation mean latency (ms)")
+        ax.grid(True, linestyle="--", alpha=0.3, zorder=0)
+        _save_figure(fig, f"poster_security_vs_latency_cat{category}", png_dir, pdf_dir)
+
 
 
 def plot_security_bits(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir: pathlib.Path) -> None:
@@ -385,7 +443,7 @@ def plot_security_bits(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir
     quantum = [r.security_quantum_bits or 0.0 for r in entries]
 
     fig, ax = plt.subplots(figsize=(13, 8))
-    ax.set_title("Security Bits — Classical vs Quantum (All Algorithms)")
+    #ax.set_title("Security Bits — Classical vs Quantum (All Algorithms)")
     positions = range(len(entries))
     ax.bar([p - 0.225 for p in positions], classical, width=0.35, label="Classical bits", color="#1f77b4")
     ax.bar([p + 0.225 for p in positions], quantum, width=0.35, label="Quantum bits", color="#d62728")
@@ -525,6 +583,114 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _place_labels_smart(
+    ax: plt.Axes,
+    specs: Sequence[Tuple[float, float, str, str]],
+    base_offset: int = 24,
+    max_iter: int = 300,
+    max_distance_px: float = 80.0,
+) -> None:
+    ring = [
+        ( base_offset,  base_offset),
+        (-base_offset,  base_offset),
+        ( base_offset, -base_offset),
+        (-base_offset, -base_offset),
+        (0,  int(base_offset * 1.4)),
+        (0, -int(base_offset * 1.4)),
+        ( int(base_offset * 1.7), 0),
+        (-int(base_offset * 1.7), 0),
+    ]
+
+    trans = ax.transData
+    inv = trans.inverted()
+    texts: List[plt.Text] = []
+    points: List[Tuple[float, float]] = []
+    colors: List[str] = []
+
+    for idx, (x, y, label, color) in enumerate(specs):
+        dx, dy = ring[idx % len(ring)]
+        disp = trans.transform((x, y)) + (dx, dy)
+        data_pos = inv.transform(disp)
+        txt = ax.text(
+            data_pos[0],
+            data_pos[1],
+            label,
+            fontsize=13,
+            ha="center",
+            va="center",
+            zorder=5,
+        )
+        texts.append(txt)
+        points.append((x, y))
+        colors.append(color)
+
+    xs = [x for x, _ in points]
+    ys = [y for _, y in points]
+
+    if adjust_text is not None:
+        with contextlib.redirect_stdout(io.StringIO()):
+            adjust_text(
+                texts,
+                x=xs,
+                y=ys,
+                ax=ax,
+                only_move={'points': 'y', 'text': 'xy'},
+                expand_points=(1.15, 1.25),
+                expand_text=(1.1, 1.2),
+                force_points=0.2,
+                force_text=0.4,
+                ensure_inside_axes=True,
+                precision=0.02,
+            )
+    else:
+        fig = ax.figure
+        for _ in range(max_iter):
+            fig.canvas.draw()
+            renderer = fig.canvas.get_renderer()
+            bbs = [text.get_window_extent(renderer=renderer).expanded(1.05, 1.08) for text in texts]
+            moved = False
+            for i in range(len(texts)):
+                for j in range(i + 1, len(texts)):
+                    if bbs[i].overlaps(bbs[j]):
+                        moved = True
+                        for idx_text, direction in ((i, 1), (j, -1)):
+                            tx, ty = texts[idx_text].get_position()
+                            disp = trans.transform((tx, ty))
+                            disp = (disp[0], disp[1] + direction * base_offset * 0.6)
+                            texts[idx_text].set_position(inv.transform(disp))
+            if not moved:
+                break
+
+    max_px = max_distance_px
+    lines: List[mlines.Line2D] = []
+    for text, (x, y), color in zip(texts, points, colors):
+        tx, ty = text.get_position()
+        point_disp = trans.transform((x, y))
+        text_disp = trans.transform((tx, ty))
+        dx = text_disp[0] - point_disp[0]
+        dy = text_disp[1] - point_disp[1]
+        dist = math.hypot(dx, dy)
+        if dist > max_px:
+            scale = max_px / dist
+            limited = (point_disp[0] + dx * scale, point_disp[1] + dy * scale)
+            new_pos = inv.transform(limited)
+            text.set_position(new_pos)
+            tx, ty = new_pos
+            dist = max_px
+
+        if dist > 6.0:
+            line = mlines.Line2D(
+                [x, tx],
+                [y, ty],
+                color=color,
+                lw=0.8,
+                alpha=0.6,
+                zorder=3,
+            )
+            lines.append(line)
+            ax.add_line(line)
+
+
 def main() -> None:
     args = parse_args()
     records = load_records(args.csv)
@@ -535,6 +701,7 @@ def main() -> None:
     plot_latency_combined(records, png_dir, pdf_dir)
     plot_shor_runtime(records, png_dir, pdf_dir)
     plot_security_vs_latency(records, png_dir, pdf_dir)
+    plot_security_vs_latency_by_category(records, png_dir, pdf_dir)
     plot_security_bits(records, png_dir, pdf_dir)
     plot_memory_combined(records, png_dir, pdf_dir)
     plot_size_by_scheme(records, png_dir, pdf_dir)
