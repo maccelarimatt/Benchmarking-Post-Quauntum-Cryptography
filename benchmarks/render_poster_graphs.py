@@ -8,6 +8,8 @@ import csv
 import json
 import math
 import pathlib
+# near your imports
+import matplotlib.patheffects as pe
 import io, contextlib
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -234,46 +236,109 @@ def _format_scientific(value: Optional[float]) -> str:
 
 
 def plot_shor_runtime(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir: pathlib.Path) -> None:
-    entries: List[Tuple[int, float, Optional[float]]] = []  # (modulus_bits, runtime_seconds, classical_core_years)
+    # Aggregate one entry per modulus_bits; prefer per-bit classical values if available.
+    agg: Dict[int, Dict[str, Optional[float]]] = {}  # bits -> {'runtime_s': float, 'classical_core_years': float}
+    global_classical_values: List[float] = []  # in case only a single (global) classical was provided
+
     for rec in records:
-        if rec.algo.lower() != "rsa-oaep" or rec.security_extras is None:
+        if rec.algo.lower() != "rsa-oaep" or not isinstance(rec.security_extras, dict):
             continue
+
+        # Try to find a dictionary of per-bit classical values in common locations
+        per_bit_maps = []
+        for key in ("classical_by_bits", "gnfs_by_bits", "rsa_classical", "gnfs", "classical"):
+            m = rec.security_extras.get(key)
+            if isinstance(m, dict):
+                # support keys as str or int
+                per_bit_maps.append(m)
+
         profiles = rec.security_extras.get("shor_profiles")
         if not isinstance(profiles, dict):
             continue
-        for group in profiles.get("scenarios", []):
+
+        for group in profiles.get("scenarios", []) or []:
             if not isinstance(group, dict):
                 continue
-            modulus_bits = group.get("modulus_bits")
+            bits_raw = group.get("modulus_bits")
+            try:
+                bits = int(float(bits_raw))
+            except (TypeError, ValueError):
+                continue
+
+            # Fastest GE-baseline runtime for this bit size
+            best_runtime = None
             for scenario in group.get("scenarios", []) or []:
                 if not isinstance(scenario, dict):
                     continue
-                calibrated = (scenario.get("calibrated_against") or "").lower()
-                if "ge" not in calibrated:
+                if "ge" not in str(scenario.get("calibrated_against", "")).lower():
                     continue
-                runtime = scenario.get("runtime_seconds")
-                if runtime is None or modulus_bits is None:
+                rt = scenario.get("runtime_seconds")
+                if rt is None:
                     continue
-                try:
-                    bits = int(float(modulus_bits))
-                    rt = float(runtime)
-                except (TypeError, ValueError):
-                    continue
-                classical = None
-                bruteforce = rec.security_extras.get("bruteforce")
-                if isinstance(bruteforce, dict):
-                    core_years = bruteforce.get("core_years")
-                    if isinstance(core_years, (int, float)):
-                        classical = float(core_years)
-                entries.append((bits, rt, classical))
+                rt = float(rt)
+                best_runtime = rt if best_runtime is None else min(best_runtime, rt)
+            if best_runtime is None:
+                continue
 
-    if not entries:
+            # Per-bit classical (if present)
+            classical: Optional[float] = None
+            # (a) group-level classical (occasionally available)
+            for k in ("classical_core_years",):
+                v = group.get(k)
+                if isinstance(v, (int, float)) and v > 0:
+                    classical = float(v)
+                    break
+            # (b) any collected per-bit maps (keys may be '2048' or 2048)
+            if classical is None:
+                for m in per_bit_maps:
+                    if str(bits) in m and isinstance(m[str(bits)], (int, float)) and m[str(bits)] > 0:
+                        classical = float(m[str(bits)])
+                        break
+                    if bits in m and isinstance(m[bits], (int, float)) and m[bits] > 0:
+                        classical = float(m[bits])
+                        break
+
+            # (c) if only a single global 'bruteforce.core_years' exists, store for GNFS scaling later
+            bruteforce = rec.security_extras.get("bruteforce")
+            if classical is None and isinstance(bruteforce, dict):
+                cy = bruteforce.get("core_years")
+                if isinstance(cy, (int, float)) and cy > 0:
+                    global_classical_values.append(float(cy))
+
+            entry = agg.setdefault(bits, {"runtime_s": None, "classical_core_years": None})
+            if entry["runtime_s"] is None or best_runtime < (entry["runtime_s"] or float("inf")):
+                entry["runtime_s"] = best_runtime
+            if classical is not None:
+                entry["classical_core_years"] = classical
+
+    if not agg:
         return
 
-    entries.sort(key=lambda x: x[0])
+    # If any bit sizes lack classical values, and we only have a single global classical number,
+    # scale it per-bit using GNFS relative to a reference size we DO have (prefer the largest bit-size).
+    missing_bits = [b for b, d in agg.items() if d["classical_core_years"] is None]
+    if missing_bits and global_classical_values:
+        # Pick a reference: if any bit-size already has a classical value, use that pair;
+        # else use the largest bit-size with the global number as the reference.
+        bits_sorted = sorted(agg)
+        ref_bits = None
+        ref_core_years = None
+        for b in bits_sorted[::-1]:
+            if agg[b]["classical_core_years"] is not None:
+                ref_bits = b
+                ref_core_years = agg[b]["classical_core_years"]
+                break
+        if ref_bits is None:
+            ref_bits = bits_sorted[-1]  # largest available
+            ref_core_years = max(global_classical_values)  # conservative
+        # Fill in missing per-bit classical via GNFS scaling
+        for b in missing_bits:
+            agg[b]["classical_core_years"] = _gnfs_scale_core_years(b, ref_bits, ref_core_years)
 
-    labels = [str(bits) for bits, _, _ in entries]
-    runtime_days = [rt / 86400.0 for _, rt, _ in entries]
+    bits_sorted = sorted(agg)
+    labels = [str(b) for b in bits_sorted]
+    runtime_days = [(agg[b]["runtime_s"] or 0.0) / 86400.0 for b in bits_sorted]
+    classical_vals = [agg[b]["classical_core_years"] for b in bits_sorted]
 
     fig, ax = plt.subplots(figsize=(11, 7))
     bars = ax.bar(labels, runtime_days, color="#6c5ce7")
@@ -282,37 +347,82 @@ def plot_shor_runtime(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir:
     ax.grid(True, axis="y", linestyle="--", alpha=0.3)
     ax.tick_params(axis="x", rotation=0)
 
-    for (bar, days, (_, _, classical)) in zip(bars, runtime_days, entries):
-        hours = days * 24.0
+    # Headroom so labels never clip
+    ymax = max(runtime_days) if runtime_days else 1.0
+    ax.set_ylim(0, ymax * 1.28)
+
+    outline = [pe.withStroke(linewidth=3, foreground="white")]
+
+    # Extra separation between Shor and Classical labels
+    gap = max(0.04 * ymax, 0.45)         # base gap above the bar for Shor
+    extra_classical_gap = max(0.06 * ymax, 0.70)  # extra gap above Shor for classical (when above)
+
+    for bar, days, bits, classical in zip(bars, runtime_days, bits_sorted, classical_vals):
+        x = bar.get_x() + bar.get_width() / 2.0
+        h = bar.get_height()
+
+        # Shor label (black) just above the bar
+        shor_y = h + gap
         ax.text(
-            bar.get_x() + bar.get_width() / 2.0,
-            bar.get_height(),
-            f"Shor: {hours:.1f} h",
-            ha="center",
-            va="bottom",
-            fontsize=14,
-            color="black",
-            clip_on=True,
+            x, shor_y, f"Shor: {days*24.0:.1f} h",
+            ha="center", va="bottom", fontsize=14, color="black", clip_on=False, zorder=5
         )
-        if classical:
-            ax.text(
-                bar.get_x() + bar.get_width() / 2.0,
-                bar.get_height() + max(days * 0.1, 0.6),
-                f"Classical: {_format_scientific(classical)} core-years",
-                ha="center",
-                va="bottom",
-                fontsize=12,
-                color="red",
-                clip_on=True,
-            )
+
+        if classical and classical > 0:
+            txt = f"Classical:\n{_format_scientific(classical)}\ncore-years"
+
+            very_tall = h > 0.8 * ymax or bits >= 7680
+            if very_tall:
+                # Inside tall bars: place slightly below top, ensure it stays below Shor label
+                inside_offset = max(0.06 * h, 0.7)
+                classical_y = h - inside_offset
+                if classical_y >= shor_y - gap * 0.5:
+                    classical_y = shor_y - gap * 0.5
+                ax.text(
+                    x, classical_y, txt,
+                    ha="center", va="top", fontsize=14, color="black",
+                    linespacing=1.10, clip_on=False, zorder=6, path_effects=outline
+                )
+            else:
+                # Above short bars: sit comfortably above Shor label
+                classical_y = shor_y + extra_classical_gap
+                ax.text(
+                    x, classical_y, txt,
+                    ha="center", va="bottom", fontsize=14, color="black",
+                    linespacing=1.10, clip_on=False, zorder=6
+                )
 
     legend_handles = [
-        mlines.Line2D([], [], color="black", marker="|", linestyle="None", markersize=12, label="Shor runtime (text in black)"),
-        mlines.Line2D([], [], color="red", marker="|", linestyle="None", markersize=12, label="Classical GNFS estimate (red text)"),
+        mlines.Line2D([], [], color="black", linestyle="None", markersize=8,
+                      label="Shor (GE baseline): ~20 M physical qubits, \nsurface-code EC (p≈1e-3, ~1 µs cycle)."),
+        mlines.Line2D([], [], color="black", linestyle="None", markersize=8,
+                      label="GNFS (classical): General Number Field Sieve\n — fastest classical factoring (heuristic Ln[1/3])."),
     ]
-    ax.legend(handles=legend_handles, loc="upper left")
+    ax.legend(
+    handles=legend_handles,
+    loc="upper left", bbox_to_anchor=(0, 1),
+    frameon=True, framealpha=0.85, fancybox=True,
+    handlelength=0, handletextpad=0, borderaxespad=0.5, labelspacing=0.6,
+    alignment="left",  # needs Matplotlib ≥ 3.7; remove if on older version
+    )
 
     _save_figure(fig, "poster_shor_runtime_rsa_ge", png_dir, pdf_dir)
+
+def _gnfs_scale_core_years(bits_target: int, ref_bits: int, ref_core_years: float) -> float:
+    """
+    Scale a reference GNFS core-years from ref_bits -> bits_target using the
+    L_n[1/3, c] complexity with c = (64/9)^(1/3) ≈ 1.923.
+    Absolute constants are unknown; we preserve the reference value exactly
+    and scale other sizes relative to it.
+    """
+    c = (64.0 / 9.0) ** (1.0 / 3.0)
+    # n ≈ 2^bits  => ln n = bits * ln 2
+    def L(bits: int) -> float:
+        ln_n = bits * math.log(2.0)
+        return math.exp(c * (ln_n ** (1.0 / 3.0)) * (math.log(ln_n) ** (2.0 / 3.0)))
+    L_ref = L(ref_bits)
+    L_tgt = L(bits_target)
+    return ref_core_years * (L_tgt / L_ref)
 
 
 
