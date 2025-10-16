@@ -227,8 +227,14 @@ def plot_latency_combined(records: Sequence[Record], png_dir: pathlib.Path, pdf_
     _save_figure(fig, "poster_latency_timing_top", png_dir, pdf_dir)
 
 
+def _format_scientific(value: Optional[float]) -> str:
+    if value is None or value <= 0:
+        return "N/A"
+    return f"{value:.2e}"
+
+
 def plot_shor_runtime(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir: pathlib.Path) -> None:
-    entries: List[Tuple[int, float]] = []  # (modulus_bits, runtime_seconds)
+    entries: List[Tuple[int, float, Optional[float]]] = []  # (modulus_bits, runtime_seconds, classical_core_years)
     for rec in records:
         if rec.algo.lower() != "rsa-oaep" or rec.security_extras is None:
             continue
@@ -243,48 +249,69 @@ def plot_shor_runtime(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir:
                 if not isinstance(scenario, dict):
                     continue
                 calibrated = (scenario.get("calibrated_against") or "").lower()
-                if "ge" not in calibrated:  # keep only the GE baseline scenarios
+                if "ge" not in calibrated:
                     continue
                 runtime = scenario.get("runtime_seconds")
                 if runtime is None or modulus_bits is None:
                     continue
                 try:
-                    bits = int(float(modulus_bits))  # handles "2048", 2048, "2048.0"
+                    bits = int(float(modulus_bits))
                     rt = float(runtime)
                 except (TypeError, ValueError):
                     continue
-                entries.append((bits, rt))
+                classical = None
+                bruteforce = rec.security_extras.get("bruteforce")
+                if isinstance(bruteforce, dict):
+                    core_years = bruteforce.get("core_years")
+                    if isinstance(core_years, (int, float)):
+                        classical = float(core_years)
+                entries.append((bits, rt, classical))
 
     if not entries:
         return
 
-    # Sort by numeric modulus bits
     entries.sort(key=lambda x: x[0])
 
-    labels = [str(bits) for bits, _ in entries]                  # "2048", "3072", ...
-    runtime_days = [rt / 86400.0 for _, rt in entries]
+    labels = [str(bits) for bits, _, _ in entries]
+    runtime_days = [rt / 86400.0 for _, rt, _ in entries]
 
     fig, ax = plt.subplots(figsize=(11, 7))
-    #ax.set_title("Shor Runtime (Ge Baseline) — RSA OAEP")        # old title restored
-    bars = ax.bar(labels, runtime_days, color="#6c5ce7")         # purple colour restored
+    bars = ax.bar(labels, runtime_days, color="#6c5ce7")
     ax.set_xlabel("RSA modulus (bits)")
     ax.set_ylabel("Runtime to factor (days)")
     ax.grid(True, axis="y", linestyle="--", alpha=0.3)
     ax.tick_params(axis="x", rotation=0)
 
-    for bar, days in zip(bars, runtime_days):
+    for (bar, days, (_, _, classical)) in zip(bars, runtime_days, entries):
         hours = days * 24.0
         ax.text(
             bar.get_x() + bar.get_width() / 2.0,
             bar.get_height(),
-            f"{hours:.1f} h",
+            f"Shor: {hours:.1f} h",
             ha="center",
             va="bottom",
             fontsize=14,
+            color="black",
             clip_on=True,
         )
+        if classical:
+            ax.text(
+                bar.get_x() + bar.get_width() / 2.0,
+                bar.get_height() + max(days * 0.1, 0.6),
+                f"Classical: {_format_scientific(classical)} core-years",
+                ha="center",
+                va="bottom",
+                fontsize=12,
+                color="red",
+                clip_on=True,
+            )
 
-    # Keep the old filename too so it overwrites the previous chart
+    legend_handles = [
+        mlines.Line2D([], [], color="black", marker="|", linestyle="None", markersize=12, label="Shor runtime (text in black)"),
+        mlines.Line2D([], [], color="red", marker="|", linestyle="None", markersize=12, label="Classical GNFS estimate (red text)"),
+    ]
+    ax.legend(handles=legend_handles, loc="upper left")
+
     _save_figure(fig, "poster_shor_runtime_rsa_ge", png_dir, pdf_dir)
 
 
@@ -371,31 +398,48 @@ def plot_security_vs_latency(records: Sequence[Record], png_dir: pathlib.Path, p
     _save_figure(fig, "poster_security_vs_latency", png_dir, pdf_dir)
 
 
-def plot_security_vs_latency_by_category(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir: pathlib.Path) -> None:
-    by_category: Dict[int, List[Tuple[float, float, str, str]]] = {}
+def plot_security_vs_latency_by_category(
+    records: Sequence[Record],
+    png_dir: pathlib.Path,
+    pdf_dir: pathlib.Path,
+    csv_dir: pathlib.Path,
+) -> None:
+    aggregator: Dict[Tuple[str, str, int], Dict[str, Any]] = {}
     for rec in records:
-        if rec.measurement_pass != "timing" or rec.operation != "keygen":
+        if rec.measurement_pass != "timing" or rec.mean_ms is None:
             continue
-        if rec.mean_ms is None or rec.security_quantum_bits is None:
-            continue
-        if rec.category_number not in (1, 3, 5):
-            continue
-        by_category.setdefault(rec.category_number, []).append(
-            (rec.security_quantum_bits, rec.mean_ms, rec.kind.upper(), _friendly_label(rec.algo))
-        )
+        key = (rec.kind.upper(), rec.algo, rec.category_number)
+        info = aggregator.setdefault(key, {"ops": {}, "quantum": rec.security_quantum_bits})
+        info["ops"][rec.operation] = rec.mean_ms
+        if info.get("quantum") is None and rec.security_quantum_bits is not None:
+            info["quantum"] = rec.security_quantum_bits
 
-    for category, entries in sorted(by_category.items()):
+    categories: Dict[int, List[Tuple[str, str, int, float, float, Dict[str, float]]]] = {1: [], 3: [], 5: []}
+    for (kind, algo, category), info in aggregator.items():
+        if category not in categories:
+            continue
+        if info.get("quantum") is None:
+            continue
+        required_ops = KEM_OPERATIONS if kind == "KEM" else SIG_OPERATIONS
+        ops = info["ops"]
+        if any(op not in ops for op in required_ops):
+            continue
+        total_latency = sum(ops[op] for op in required_ops if ops[op] is not None)
+        categories[category].append((kind, algo, category, info["quantum"], total_latency, ops))
+
+    _ensure_dir(csv_dir)
+    for category, entries in sorted(categories.items()):
         if not entries:
             continue
         kem_palette = ["#264653", "#2a9d8f", "#1d3557", "#457b9d", "#0a9396"]
         sig_palette = ["#e63946", "#f77f00", "#a01a58", "#b56576", "#ef6351"]
 
         fig, ax = plt.subplots(figsize=(12, 8))
-        #ax.set_title(f"Quantum Security vs Latency (Key Generation) — Cat {category}")
+        ax.set_title(f"Quantum Security vs Total Latency — Cat {category}")
 
         label_specs: List[Tuple[float, float, str, str]] = []
         kem_idx = sig_idx = 0
-        for qbits, latency, kind, label in entries:
+        for kind, algo, _, quantum, total_latency, ops in entries:
             if kind == "KEM":
                 color = kem_palette[kem_idx % len(kem_palette)]
                 kem_idx += 1
@@ -405,8 +449,8 @@ def plot_security_vs_latency_by_category(records: Sequence[Record], png_dir: pat
                 sig_idx += 1
                 marker = "^"
             ax.scatter(
-                qbits,
-                latency,
+                quantum,
+                total_latency,
                 color=color,
                 marker=marker,
                 s=110,
@@ -414,17 +458,49 @@ def plot_security_vs_latency_by_category(records: Sequence[Record], png_dir: pat
                 linewidths=0.6,
                 zorder=3,
             )
-            label_specs.append((qbits, latency, label, color))
+            label_specs.append((quantum, total_latency, _friendly_label(algo), color))
 
         ax.margins(x=0.05, y=0.12)
         _place_labels_smart(ax, label_specs, base_offset=32, max_iter=340, max_distance_px=110.0)
         ax.set_xlabel("Quantum security bits")
-        ax.set_ylabel("Key generation mean latency (ms)")
+        ax.set_ylabel("Total mean latency (ms)")
         ax.grid(True, linestyle="--", alpha=0.3, zorder=0)
         kem_marker = plt.Line2D([], [], marker="o", color="w", markerfacecolor="#264653", markeredgecolor="#222222", markersize=10, label="KEM")
         sig_marker = plt.Line2D([], [], marker="^", color="w", markerfacecolor="#e63946", markeredgecolor="#222222", markersize=10, label="Signature")
         ax.legend(handles=[kem_marker, sig_marker], loc="upper left")
         _save_figure(fig, f"poster_security_vs_latency_cat{category}", png_dir, pdf_dir)
+
+        csv_path = csv_dir / f"poster_security_vs_latency_cat{category}.csv"
+        fieldnames = [
+            "algorithm",
+            "kind",
+            "category",
+            "quantum_bits",
+            "total_latency_ms",
+            "keygen_ms",
+            "encapsulate_ms",
+            "decapsulate_ms",
+            "sign_ms",
+            "verify_ms",
+        ]
+        with csv_path.open("w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=fieldnames)
+            writer.writeheader()
+            for kind, algo, _, quantum, total_latency, ops in entries:
+                writer.writerow(
+                    {
+                        "algorithm": _friendly_label(algo),
+                        "kind": kind,
+                        "category": category,
+                        "quantum_bits": quantum,
+                        "total_latency_ms": total_latency,
+                        "keygen_ms": ops.get("keygen"),
+                        "encapsulate_ms": ops.get("encapsulate"),
+                        "decapsulate_ms": ops.get("decapsulate"),
+                        "sign_ms": ops.get("sign"),
+                        "verify_ms": ops.get("verify"),
+                    }
+                )
 
 
 
@@ -702,11 +778,12 @@ def main() -> None:
     poster_root = args.output_dir / "PosterGraphs"
     png_dir = poster_root / "png"
     pdf_dir = poster_root / "pdf"
+    csv_dir = poster_root / "csv"
 
     plot_latency_combined(records, png_dir, pdf_dir)
     plot_shor_runtime(records, png_dir, pdf_dir)
     plot_security_vs_latency(records, png_dir, pdf_dir)
-    plot_security_vs_latency_by_category(records, png_dir, pdf_dir)
+    plot_security_vs_latency_by_category(records, png_dir, pdf_dir, csv_dir)
     plot_security_bits(records, png_dir, pdf_dir)
     plot_memory_combined(records, png_dir, pdf_dir)
     plot_size_by_scheme(records, png_dir, pdf_dir)
