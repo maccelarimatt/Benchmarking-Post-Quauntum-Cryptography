@@ -472,10 +472,12 @@ def plot_security_vs_latency(records: Sequence[Record], png_dir: pathlib.Path, p
     sig_palette = ["#e63946", "#f77f00", "#a01a58", "#b56576", "#ef6351"]
 
     fig, ax = plt.subplots(figsize=(12, 8))
-    #ax.set_title("Quantum Security vs Latency (Key Generation)")
+    # ax.set_title("Quantum Security vs Latency (Key Generation)")
 
     label_specs: List[Tuple[float, float, str, str]] = []
     kem_idx = sig_idx = 0
+    latencies: List[float] = []
+
     for qbits, latency, kind, label, category in points:
         if kind == "KEM":
             color = kem_palette[kem_idx % len(kem_palette)]
@@ -492,13 +494,24 @@ def plot_security_vs_latency(records: Sequence[Record], png_dir: pathlib.Path, p
             edgecolors="#222222", linewidths=0.6, zorder=3,
         )
         label_specs.append((qbits, latency, f"{label} ({category})", color))
+        if latency is not None:
+            latencies.append(latency)
 
-    # Give a touch of margin so labels have space to move
+    # --- Log scale on Y (guard against non-positive values) ---
+    eps = 1e-3
+    if latencies:
+        ymin = max(eps, min(l for l in latencies if l is not None) * 0.8)
+    else:
+        ymin = eps
+    ax.set_yscale("log")
+    ax.set_ylim(bottom=ymin)
+
+    # Give a touch of margin so labels have space to move (works fine with log scale)
     ax.margins(x=0.05, y=0.12)
     _place_labels_smart(ax, label_specs, base_offset=34, max_iter=370, max_distance_px=110.0)
 
     ax.set_xlabel("Quantum security bits")
-    ax.set_ylabel("Key generation mean latency (ms)")
+    ax.set_ylabel("Key generation mean latency (ms, log scale)")
     ax.grid(True, linestyle="--", alpha=0.3, zorder=0)
 
     kem_marker = plt.Line2D([], [], marker="o", color="w", markerfacecolor="#264653", markeredgecolor="#222222", markersize=10, label="KEM")
@@ -506,6 +519,7 @@ def plot_security_vs_latency(records: Sequence[Record], png_dir: pathlib.Path, p
     ax.legend(handles=[kem_marker, sig_marker], loc="upper left")
 
     _save_figure(fig, "poster_security_vs_latency", png_dir, pdf_dir)
+
 
 
 def plot_security_vs_latency_by_category(
@@ -545,10 +559,12 @@ def plot_security_vs_latency_by_category(
         sig_palette = ["#e63946", "#f77f00", "#a01a58", "#b56576", "#ef6351"]
 
         fig, ax = plt.subplots(figsize=(12, 8))
-        ax.set_title(f"Quantum Security vs Total Latency — Cat {category}")
+        #ax.set_title(f"Quantum Security vs Total Latency — Cat {category}")
 
         label_specs: List[Tuple[float, float, str, str]] = []
         kem_idx = sig_idx = 0
+        latencies: List[float] = []
+
         for kind, algo, _, quantum, total_latency, ops in entries:
             if kind == "KEM":
                 color = kem_palette[kem_idx % len(kem_palette)]
@@ -569,11 +585,22 @@ def plot_security_vs_latency_by_category(
                 zorder=3,
             )
             label_specs.append((quantum, total_latency, _friendly_label(algo), color))
+            if total_latency is not None:
+                latencies.append(total_latency)
+
+        # --- Log scale on Y per category (guard against non-positive values) ---
+        eps = 1e-3
+        if latencies:
+            ymin = max(eps, min(l for l in latencies if l is not None) * 0.8)
+        else:
+            ymin = eps
+        ax.set_yscale("log")
+        ax.set_ylim(bottom=ymin)
 
         ax.margins(x=0.05, y=0.12)
         _place_labels_smart(ax, label_specs, base_offset=32, max_iter=340, max_distance_px=110.0)
         ax.set_xlabel("Quantum security bits")
-        ax.set_ylabel("Total mean latency (ms)")
+        ax.set_ylabel("Total mean latency (ms, log scale)")
         ax.grid(True, linestyle="--", alpha=0.3, zorder=0)
         kem_marker = plt.Line2D([], [], marker="o", color="w", markerfacecolor="#264653", markeredgecolor="#222222", markersize=10, label="KEM")
         sig_marker = plt.Line2D([], [], marker="^", color="w", markerfacecolor="#e63946", markeredgecolor="#222222", markersize=10, label="Signature")
@@ -611,6 +638,7 @@ def plot_security_vs_latency_by_category(
                         "verify_ms": ops.get("verify"),
                     }
                 )
+
 
 
 
