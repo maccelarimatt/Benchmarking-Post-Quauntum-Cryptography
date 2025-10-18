@@ -23,12 +23,12 @@ expected runtime at optimistic throughputs.
   - space_bits: ≈ modulus_bits / 2 (trial divide up to √n)
   - note: purely illustrative; real 2048-bit RSA would require 2^1024 trials.
     RSA has realistic sub-exponential (NFS) and quantum (Shor) attacks instead.
-- **KEMs (Kyber, HQC)**
+- **KEMs (ML-KEM/Kyber, HQC, BIKE, Classic McEliece, FrodoKEM, NTRU, NTRU Prime)**
   - model: `guess_shared_secret`
   - space_bits: category floor (Cat 1/3/5 → 128/192/256 bits)
   - rationale: brute-force shared secrets until confirmation succeeds; reduces
     to a 2^b search.
-- **Signatures (Dilithium, Falcon, SPHINCS+/XMSS-MT, MAYO)**
+- **Signatures (ML-DSA/Dilithium, Falcon, SPHINCS+/XMSS-MT, SLH-DSA, CROSS, MAYO, SNOVA, UOV)**
   - model: `random_forgery`
   - space_bits: category floor
   - rationale: submit random signatures until the verifier accepts; acceptance

@@ -1,6 +1,6 @@
 ﻿# Analysis of Post-Quantum Cryptography (PQC Investigation)
 
-This repository is a modular, multi-package workspace for benchmarking and analyzing classical and post-quantum cryptography. It brings together reusable libraries, algorithm adapters, a Typer-based CLI, a Flask GUI, ACVP tooling, and native extensions so you can evaluate RSA-OAEP, RSA-PSS, ML-KEM (Kyber), HQC, ML-DSA (Dilithium), Falcon, SPHINCS+, XMSSMT, and MAYO under a single workflow.
+This repository is a modular, multi-package workspace for benchmarking and analyzing classical and post-quantum cryptography. It brings together reusable libraries, algorithm adapters, a Typer-based CLI, a Flask GUI, ACVP tooling, and native extensions so you can evaluate RSA-OAEP, RSA-PSS, lattice/code KEMs (ML-KEM/Kyber, HQC, BIKE, Classic McEliece, FrodoKEM, NTRU, NTRU Prime) and signature families (ML-DSA/Dilithium, Falcon, SPHINCS+, SLH-DSA, XMSSMT, CROSS, MAYO, SNOVA, UOV) under a single workflow.
 
 ## Highlights
 - Editable multi-package layout (`libs/core`, `libs/adapters/*`, `apps/cli`, `apps/gui`) with shared pytest and linting tooling.
@@ -105,15 +105,24 @@ The Typer CLI shipped by `apps/cli` exposes these top-level commands:
 After installing the editable packages you also get dedicated benchmark runners:
 
 ```bash
-run-kyber       # KEM
-run-hqc         # KEM
-run-rsa-oaep    # KEM-style wrapper over RSA-OAEP
-run-rsa-pss     # Signature (RSA-PSS)
-run-dilithium   # Signature (ML-DSA / Dilithium)
-run-falcon      # Signature
-run-sphincsplus # Signature
-run-xmssmt      # Stateful signature family
-run-mayo        # Signature (MAYO)
+run-kyber            # KEM (ML-KEM / Kyber)
+run-hqc              # KEM (HQC)
+run-bike             # KEM (BIKE)
+run-classic-mceliece # KEM (Classic McEliece)
+run-frodokem         # KEM (FrodoKEM)
+run-ntru             # KEM (NTRU)
+run-ntruprime        # KEM (NTRU Prime / sntrup761)
+run-rsa-oaep         # Baseline KEM wrapper over RSA-OAEP
+run-dilithium        # Signature (ML-DSA / Dilithium)
+run-falcon           # Signature (Falcon)
+run-sphincsplus      # Signature (SPHINCS+)
+run-slh-dsa          # Signature (SLH-DSA / SPHINCS+ profiles)
+run-cross            # Signature (CROSS RSDP/RSDPG)
+run-snova            # Signature (SNOVA)
+run-uov              # Signature (UOV / OV)
+run-xmssmt           # Stateful signature family
+run-mayo             # Signature (MAYO)
+run-rsa-pss          # Baseline signature (RSA-PSS)
 ```
 
 Each runner accepts `--runs`, `--tests` (to include known-answer tests), `--message-size` for signatures, and `--export results/<file>.json` for structured output. PowerShell wrappers live under `scripts\run_*.ps1` for convenience on Windows.
@@ -137,13 +146,8 @@ Each runner accepts `--runs`, `--tests` (to include known-answer tests), `--mess
 ### Selecting parameter sets
 
 The liboqs-backed adapters auto-detect supported mechanisms. Override them with environment variables before launching the CLI or GUI:
-- `PQCBENCH_KYBER_ALG` (for example `ML-KEM-768` or `Kyber1024`)
-- `PQCBENCH_HQC_ALG` (for example `HQC-192`)
-- `PQCBENCH_DILITHIUM_ALG`
-- `PQCBENCH_FALCON_ALG`
-- `PQCBENCH_SPHINCS_ALG`
-- `PQCBENCH_XMSSMT_ALG`
-- `PQCBENCH_MAYO_ALG`
+- KEMs: `PQCBENCH_KYBER_ALG`, `PQCBENCH_HQC_ALG`, `PQCBENCH_BIKE_ALG`, `PQCBENCH_CLASSIC_MCELIECE_ALG`, `PQCBENCH_FRODOKEM_ALG`, `PQCBENCH_NTRU_ALG`, `PQCBENCH_NTRUPRIME_ALG`
+- Signatures: `PQCBENCH_DILITHIUM_ALG`, `PQCBENCH_FALCON_ALG`, `PQCBENCH_SPHINCS_ALG`, `PQCBENCH_SLH_DSA_ALG`, `PQCBENCH_XMSSMT_ALG`, `PQCBENCH_CROSS_ALG`, `PQCBENCH_MAYO_ALG`, `PQCBENCH_SNOVA_ALG`, `PQCBENCH_UOV_ALG`
 
 Example:
 
