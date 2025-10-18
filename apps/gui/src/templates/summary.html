@@ -173,7 +173,7 @@
 
     main.summary-shell {
       width: 100%;
-      max-width: 1200px;
+      max-width: 1100px;
       display: flex;
       flex-direction: column;
       gap: 2rem;
@@ -562,69 +562,69 @@
 
     .timeline {
       position: relative;
-      padding-left: 1.8rem;
-      margin-top: 1.8rem;
+      margin: 2rem auto 0;
       display: flex;
       flex-direction: column;
-      gap: 1.6rem;
+      align-items: center;
+      gap: 2.4rem;
+      padding: 1.6rem 0 2.8rem;
+      width: min(100%, 760px);
     }
-    .timeline::before {
-      content: "";
-      position: absolute;
-      top: 0.4rem;
-      bottom: 0.4rem;
-      left: 0.55rem;
-      width: 2px;
-      background: linear-gradient(180deg, rgba(31,182,184,0.65), rgba(148,163,184,0.25));
-    }
+    .timeline::before { display: none; }
     .timeline-step {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 1.4rem;
-      align-items: flex-start;
       position: relative;
-      padding-left: 0.4rem;
+      width: 100%;
+      padding: 2.4rem 2.6rem 2rem;
+      border-radius: 1.25rem;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(12,18,27,0.62);
+      box-shadow: 0 18px 38px rgba(7,13,22,0.28);
+      backdrop-filter: blur(6px);
       opacity: 0;
       transform: translateY(25px);
+      transition: transform 0.35s ease, border-color 0.25s ease, box-shadow 0.35s ease, background 0.35s ease;
+      text-align: center;
+      z-index: 1;
+    }
+    .timeline-step::before {
+      content: attr(data-step);
+      position: absolute;
+      top: -1.2rem;
+      left: 50%;
+      width: 2.2rem;
+      height: 2.2rem;
+      border-radius: 999px;
+      border: 2px solid rgba(111,227,240,0.92);
+      background: rgba(9,14,22,0.96);
+      color: rgba(214,245,247,0.94);
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 18px rgba(31,182,184,0.58);
+      transform: translate(-50%, 0);
     }
     .timeline-step.is-visible {
       opacity: 1;
       transform: translateY(0);
-      transition: opacity 0.5s ease, transform 0.5s ease;
     }
-    .timeline-step::before {
-      content: attr(data-step);
-      font-size: 0.8rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: rgba(148,163,184,0.7);
-      display: inline-block;
-      min-width: 3ch;
-      text-align: right;
-      margin-top: 0.2rem;
-    }
-    .timeline-step::after {
-      content: "";
-      position: absolute;
-      left: -0.9rem;
-      top: 0.55rem;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      border: 2px solid rgba(31,182,184,0.75);
-      background: rgba(12,17,25,1);
-      box-shadow: 0 0 12px rgba(31,182,184,0.55);
+    .timeline-step:hover,
+    .timeline-step:focus-within {
+      border-color: rgba(31,182,184,0.45);
+      box-shadow: 0 24px 44px rgba(9,20,30,0.36);
+      background: rgba(15,24,35,0.72);
     }
     .timeline-step h4 {
       margin: 0 0 0.4rem;
-      font-size: 1.08rem;
+      font-size: 1.12rem;
     }
     .timeline-step p {
       margin: 0;
-      color: rgba(226,232,240,0.8);
+      color: rgba(226,232,240,0.82);
       line-height: 1.6;
-      font-size: 0.92rem;
+      font-size: 0.95rem;
     }
 
     .callouts {
@@ -751,6 +751,7 @@
       .nav-actions { margin-left: 0; padding-right: 0; gap: 1.2rem; flex-wrap: wrap; }
       .hero { grid-template-columns: 1fr; }
       .feature-explorer { grid-template-columns: 1fr; }
+      .timeline-step { width: min(100%, 560px); }
     }
     @media (max-width: 720px) {
       .header-strip-inner { flex-direction: column; align-items: flex-start; gap: 1rem; }
@@ -759,6 +760,7 @@
       .hero header h1 { font-size: 1.8rem; }
       .feature-detail { padding: 1.6rem; }
       .sparkline-canvas { height: 160px; }
+      .timeline-step { width: 100%; padding: 2.4rem 1.6rem 1.8rem; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -930,32 +932,20 @@
       </header>
       <div class="timeline">
         <div class="timeline-step" data-step="01">
-          <div></div>
-          <div>
-            <h4>Assemble Your Scenario</h4>
-            <p>Select algorithms, modes, and optional AI analysis. Defaults keep newcomers safe while experts fine-tune depth.</p>
-          </div>
+          <h4>Assemble Your Scenario</h4>
+          <p>Select algorithms, modes, and optional AI analysis. Defaults keep newcomers safe while experts fine-tune depth.</p>
         </div>
         <div class="timeline-step" data-step="02">
-          <div></div>
-          <div>
-            <h4>Execute &amp; Monitor</h4>
-            <p>Job progress surfaces percent, stage, and diagnostics. Measurements stream without blocking the UI.</p>
-          </div>
+          <h4>Execute &amp; Monitor</h4>
+          <p>Job progress surfaces percent, stage, and diagnostics. Measurements stream without blocking the UI.</p>
         </div>
         <div class="timeline-step" data-step="03">
-          <div></div>
-          <div>
-            <h4>Interrogate the Results</h4>
-            <p>Compare view turns latency, memory, and security priors into charts, matrices, and exportable reports.</p>
-          </div>
+          <h4>Interrogate the Results</h4>
+          <p>Compare view turns latency, memory, and security priors into charts, matrices, and exportable reports.</p>
         </div>
         <div class="timeline-step" data-step="04">
-          <div></div>
-          <div>
-            <h4>Export, Share, Repeat</h4>
-            <p>Trace bundles, poster graphics, JSON summaries, and CLI invocations keep findings reproducible.</p>
-          </div>
+          <h4>Export, Share, Repeat</h4>
+          <p>Trace bundles, poster graphics, JSON summaries, and CLI invocations keep findings reproducible.</p>
         </div>
       </div>
     </section>
