@@ -464,6 +464,16 @@ input[type="checkbox"]:checked::after { opacity: 1; }
         }
       }
 
+      (function initializeModeFromQuery() {
+        const params = new URLSearchParams(window.location.search);
+        const requestedMode = params.get('mode');
+        if (requestedMode === 'indepth' && indepthAvailable) {
+          activateMode('indepth');
+        } else {
+          activateMode('standard');
+        }
+      })();
+
       function escapeHtml(value) {
         return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
           return escapeMap[ch] || ch;
