@@ -22,6 +22,7 @@ except ImportError as exc:  # pragma: no cover
     ) from exc
 
 import matplotlib.lines as mlines
+from matplotlib.patches import Patch
 
 try:
     from adjustText import adjust_text  # pip install adjustText
@@ -855,6 +856,110 @@ def plot_category_top_metric(
             _save_figure(fig, output_name, png_dir, pdf_dir)
 
 
+def plot_category_operation_breakdown(
+    records: Sequence[Record],
+    png_dir: pathlib.Path,
+    pdf_dir: pathlib.Path,
+    top_n: int,
+    pass_name: str = "timing",
+) -> None:
+    top_n = max(int(top_n or 0), 0)
+    if top_n <= 0:
+        return
+
+    pass_key = pass_name.lower()
+    if pass_key not in {"timing", "memory"}:
+        raise ValueError("pass_name must be 'timing' or 'memory'")
+
+    attr_name = "mean_ms" if pass_key == "timing" else "mem_mean_kb"
+    ylabel = "Mean latency (ms)" if pass_key == "timing" else "Mean peak memory (KB)"
+    file_stub = "latency_ops" if pass_key == "timing" else "memory_ops"
+
+    op_map = {
+        "KEM": list(KEM_OPERATIONS),
+        "SIG": list(SIG_OPERATIONS),
+    }
+    op_labels = {
+        "keygen": "Keygen",
+        "encapsulate": "Encap",
+        "decapsulate": "Decap",
+        "sign": "Sign",
+        "verify": "Verify",
+    }
+    op_colors = {
+        "keygen": "#1f77b4",
+        "encapsulate": "#2ca02c",
+        "decapsulate": "#d62728",
+        "sign": "#ff7f0e",
+        "verify": "#9467bd",
+    }
+
+    aggregates: Dict[Tuple[str, str, int], Dict[str, float]] = {}
+    for rec in records:
+        if rec.measurement_pass != pass_key:
+            continue
+        if rec.category_number not in (1, 3, 5):
+            continue
+        value = getattr(rec, attr_name, None)
+        if value is None:
+            continue
+        key = (rec.kind.upper(), rec.algo, rec.category_number)
+        bucket = aggregates.setdefault(key, {})
+        bucket[rec.operation] = float(value)
+
+    for kind in ("KEM", "SIG"):
+        required_ops = op_map[kind]
+        for category in (1, 3, 5):
+            entries: List[Tuple[str, float, Dict[str, float]]] = []
+            for (agg_kind, algo, cat), ops in aggregates.items():
+                if agg_kind != kind or cat != category:
+                    continue
+                if any(op not in ops for op in required_ops):
+                    continue
+                total = sum(ops[op] for op in required_ops)
+                entries.append((algo, total, ops))
+            if not entries:
+                continue
+
+            entries.sort(key=lambda item: item[1])
+            top_entries = entries[:min(top_n, len(entries))]
+            if not top_entries:
+                continue
+
+            num_ops = len(required_ops)
+            width = 0.18 if num_ops >= 3 else 0.25
+            indices = list(range(len(top_entries)))
+
+            fig, ax = plt.subplots(figsize=(11, 7))
+            ax.set_title(f"{ylabel.split(' (')[0]} by Operation — Cat {category} {kind}s")
+
+            for idx_op, op in enumerate(required_ops):
+                offsets = [i + (idx_op - (num_ops - 1) / 2) * width for i in indices]
+                values = [ops[op] for _, _, ops in top_entries]
+                ax.bar(
+                    offsets,
+                    values,
+                    width=width * 0.92,
+                    color=op_colors.get(op, "#888888"),
+                    label=None,
+                )
+
+            if required_ops:
+                legend_handles = [
+                    Patch(facecolor=op_colors.get(op, "#888888"), label=op_labels.get(op, op.title()))
+                    for op in required_ops
+                ]
+                ax.legend(handles=legend_handles, loc="upper left")
+
+            ax.set_ylabel(ylabel)
+            ax.set_xticks(indices)
+            ax.set_xticklabels([_friendly_label(algo) for algo, _, _ in top_entries], rotation=45, ha="right")
+            ax.grid(True, axis="y", linestyle="--", alpha=0.3)
+
+            output_name = f"poster_{file_stub}_cat{category}_{kind.lower()}_ops"
+            _save_figure(fig, output_name, png_dir, pdf_dir)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Render poster graphs.")
     parser.add_argument(
@@ -1002,6 +1107,8 @@ def main() -> None:
     plot_memory_combined(records, png_dir, pdf_dir)
     plot_category_top_metric(records, png_dir, pdf_dir, args.top_n, "latency")
     plot_category_top_metric(records, png_dir, pdf_dir, args.top_n, "memory")
+    plot_category_operation_breakdown(records, png_dir, pdf_dir, args.top_n, pass_name="timing")
+    plot_category_operation_breakdown(records, png_dir, pdf_dir, args.top_n, pass_name="memory")
     plot_size_by_scheme(records, png_dir, pdf_dir)
 
     print(f"Poster graphs written to {poster_root}")
