@@ -42,7 +42,7 @@
     }
     body {
       margin: 0;
-      padding: 5vh 5vw;
+      padding: 0 5vw 5vh;
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
       color: var(--text);
       background-image: url('/static/Images/background.gif');
@@ -96,57 +96,66 @@
       100% { transform: translateX(200%); }
     }
 
-    .masthead {
+    .header-strip {
       width: 100%;
-      max-width: 1200px;
-      display: flex;
-      align-items: center;
-      gap: 2rem;
-      justify-content: space-between;
-      margin-bottom: 2.2rem;
+      background: #060a0f;
+      color: var(--text);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding: 0.7rem 0;
+      margin-bottom: 2vh;
       position: relative;
       z-index: 2;
+    }
+    .header-strip-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      width: 100%;
     }
     .brand {
       display: flex;
       align-items: center;
-      gap: 1.3rem;
+      gap: 1.25rem;
     }
     .brand-logo {
-      width: 72px;
-      height: 72px;
-      border-radius: 1.25rem;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+      height: 56px;
+      width: auto;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
+    }
+    .brand-text {
+      display: flex;
+      flex-direction: column;
     }
     .brand-title {
-      font-size: 1.7rem;
-      font-weight: 700;
-      margin-bottom: 0.2rem;
+      font-size: 1.6rem;
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: 0.2px;
     }
     .brand-subtitle {
-      font-size: 0.96rem;
-      color: var(--muted);
+      font-size: 0.98rem;
+      opacity: 0.85;
     }
     .nav-actions {
       margin-left: auto;
       display: flex;
       align-items: center;
-      gap: 2.3rem;
+      gap: 2.4rem;
       padding-right: 0.5rem;
     }
     .nav-link {
       display: inline-block;
       padding: 0.55rem 0;
-      font-size: 1rem;
-      font-weight: 600;
-      letter-spacing: 0.01em;
-      color: rgba(226, 232, 240, 0.76);
+      color: rgba(255,255,255,0.92);
       text-decoration: none;
+      font-weight: 600;
+      letter-spacing: 0.2px;
       border-bottom: 2px solid transparent;
       transition: color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
     }
-    .nav-link:hover,
-    .nav-link:focus-visible {
+    .nav-link:hover {
       color: #fff;
       border-bottom-color: var(--accent);
       opacity: 1;
@@ -155,6 +164,11 @@
       color: #fff;
       border-bottom-color: var(--accent);
       opacity: 1;
+    }
+    .nav-link:focus-visible {
+      outline: none;
+      border-bottom-color: var(--accent);
+      box-shadow: 0 1px 0 var(--accent);
     }
 
     main.summary-shell {
@@ -732,14 +746,14 @@
     }
 
     @media (max-width: 1100px) {
-      body { padding: 4vh 4vw; }
-      .masthead { flex-direction: column; align-items: flex-start; gap: 1.4rem; }
+      .header-strip-inner { flex-direction: column; align-items: flex-start; gap: 1.4rem; }
       .nav-actions { margin-left: 0; padding-right: 0; gap: 1.2rem; flex-wrap: wrap; }
       .hero { grid-template-columns: 1fr; }
       .feature-explorer { grid-template-columns: 1fr; }
     }
     @media (max-width: 720px) {
-      body { padding: 3.5vh 1.8rem; }
+      .header-strip-inner { flex-direction: column; align-items: flex-start; gap: 1rem; }
+      .nav-actions { margin-left: 0; gap: 1.6rem; flex-wrap: wrap; }
       .panel { padding: 1.8rem; }
       .hero header h1 { font-size: 1.8rem; }
       .feature-detail { padding: 1.6rem; }
@@ -762,19 +776,21 @@
   </style>
 </head>
 <body>
-  <header class="masthead">
-    <div class="brand">
-      <img src="/static/Images/pqc-bench-logo.png" alt="Post-Quantum Cryptography Bench" class="brand-logo" />
-      <div class="brand-text">
-        <div class="brand-title"><strong>Post-Quantum Cryptography Benchmarking</strong></div>
-        <div class="brand-subtitle">Explore the toolkit in an interactive overview</div>
+  <header class="header-strip">
+    <div class="header-strip-inner">
+      <div class="brand">
+        <img src="/static/Images/pqc-bench-logo.png" alt="Post-Quantum Cryptography Bench" class="brand-logo" />
+        <div class="brand-text">
+          <div class="brand-title"><strong>Post-Quantum Cryptography Benchmarking</strong></div>
+          <div class="brand-subtitle">Explore the toolkit in an interactive overview</div>
+        </div>
       </div>
+      <nav class="nav-actions">
+        <a href="/" class="nav-link" title="Benchmark cryptographic algorithms">Benchmarking</a>
+        <a href="/image-encryption" class="nav-link" title="Encrypt an image using PQCs">Image Encryption</a>
+        <a href="/summary" class="nav-link nav-link--active" aria-current="page" title="View benchmark summaries">Summary</a>
+      </nav>
     </div>
-    <nav class="nav-actions">
-      <a href="/" class="nav-link" title="Benchmark cryptographic algorithms">Benchmarking</a>
-      <a href="/image-encryption" class="nav-link" title="Encrypt an image using PQCs">Image Encryption</a>
-      <a href="/summary" class="nav-link nav-link--active" aria-current="page" title="View benchmark summaries">Summary</a>
-    </nav>
   </header>
   <main class="summary-shell">
     <section class="panel hero" id="hero">
