@@ -245,9 +245,10 @@
     .hero-meta .badge::before {
       content: "";
       position: absolute;
-      inset: -40% 35% 15% -35%;
-      background: linear-gradient(120deg, rgba(31,182,184,0.25), rgba(56,189,248,0.18));
+      inset: 0;
+      background: linear-gradient(135deg, rgba(31,182,184,0.24), rgba(56,189,248,0.16));
       opacity: 0;
+      pointer-events: none;
       transition: opacity 0.4s ease;
     }
     .hero-meta .badge strong {
@@ -267,7 +268,7 @@
       box-shadow: 0 12px 28px rgba(15, 60, 80, 0.35);
     }
     .hero-meta .badge:hover::before,
-    .hero-meta .badge:focus-visible::before { opacity: 0.8; }
+    .hero-meta .badge:focus-visible::before { opacity: 1; }
 
     .sparkline-card {
       background: linear-gradient(135deg, rgba(13,19,29,0.92), rgba(18,27,39,0.92));
@@ -872,6 +873,7 @@
           <span>KEM &amp; SIG catalog</span>
           <span>Contextual defaults</span>
           <span>Live progress</span>
+          
         </div>
       </article>
     </section>
@@ -1047,7 +1049,9 @@
           points: [
             'Choose from lattice, hash-based, and code-based KEM/signature adapters with rich metadata.',
             'Tune repetitions, warm or cold mode, message lengths, and security category overrides without leaving the panel.',
-            'Live telemetry cards mirror CLI progress and link directly into the Compare workspace.'
+            'Live telemetry cards mirror CLI progress and link directly into the Compare workspace.',
+            'Inline helper panels explain security categories, parameter defaulting, and hardware caveats while you configure.',
+            'Preset bundles let you spin up recommended suites (e.g., NIST finalists) and tweak them before launch.'
           ],
           tags: ['KEM & SIG catalog', 'Contextual defaults', 'Live progress']
         },
@@ -1056,7 +1060,9 @@
           description: 'Stack multiple runs and study timing, memory, and success ratios across algorithms.',
           points: [
             'Interactive charts highlight latency and memory with NIST category context in the tooltips.',
-            'Matrix statistics track spreads, best performers, and regression deltas at a glance.',
+            'Matrix statistics track spreads, best performers, regression deltas, and statistical quartiles at a glance.',
+            'Compare view layers min/median/max bars, confidence hints, and success ratios for each operation stage.',
+            'Jump between timing, memory, throughput, and success rate views without leaving the panel.',
             'Export JSON summaries and CSV pivot tables, plus optional AI commentary when configured.'
           ],
           tags: ['Latency vs memory charts', 'Matrix stats', 'AI-assisted notes']
@@ -1067,7 +1073,9 @@
           points: [
             'Organized by device (i9-9880H, Ryzen 5700X, and more as they land) with compiler and OS metadata.',
             'Every archive ships graphs, CSVs, manifests, and supporting extras for each run.',
-            'Perfect starting point for validating new releases or comparing with your local results.'
+            'Perfect starting point for validating new releases or comparing with your local results.',
+            'Poster-ready dashboards include latency, memory, throughput, and security overlays for quick sharing.',
+            'Direct download links expose raw traces, screenshots, and notebook-friendly data slices.'
           ],
           tags: ['Device archives', 'Poster graphics', 'Replay guidance']
         },
@@ -1077,7 +1085,9 @@
           points: [
             'Upload an image, derive shared keys via Kyber, and sign payloads using Dilithium.',
             'Real-time entropy diagnostics and histograms showcase the quality of the encrypted output.',
-            'Download artefacts and detailed logs to audit every operation.'
+            'Download artefacts and detailed logs to audit every operation.',
+            'Visual diff modes compare original vs encrypted imagery with adjustable zoom and color channels.',
+            'Batch scripts let you replay the same pipeline on multiple assets for reproducibility tests.'
           ],
           tags: ['Hybrid PQC pipeline', 'Entropy heatmaps', 'Downloadable artefacts']
         },
@@ -1087,7 +1097,9 @@
           points: [
             'Trigger ACVP-style validation checks using the same runners that power benchmarks.',
             'Capture JSON traces, device manifests, and security metadata alongside timing data.',
-            'Automatic warnings highlight mismatched security categories or parameter anomalies.'
+            'Automatic warnings highlight mismatched security categories or parameter anomalies.',
+            'Forensic bundles bundle stdout, stderr, entropy diagnostics, and config snapshots for audits.',
+            'Built-in viewers surface anomalies such as outlier latencies or signature verification failures.'
           ],
           tags: ['ACVP probes', 'Trace bundles', 'Security annotations']
         },
@@ -1097,9 +1109,11 @@
           points: [
             'CLI runners reuse the same configuration schema as the GUI so automation stays in sync.',
             'Python helpers in the repository seed CI pipelines and notebooks.',
-            'Exported compare jobs can be rehydrated locally or on remote agents for regression testing.'
+            'Exported compare jobs can be rehydrated locally or on remote agents for regression testing.',
+            'Scheduler-ready JSON payloads drop into GitHub Actions, GitLab, or cron jobs without translation.',
+            'Progress webhooks and status files let you monitor headless runs from dashboards or chat ops.'
           ],
-          tags: ['Shared config', 'Python tooling', 'CI friendly']
+          tags: ['Shared config', 'Python tooling', 'CI friendly', 'Reliable Benchmarking']
         }
       };
 
