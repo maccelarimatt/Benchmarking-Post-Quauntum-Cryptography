@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PQC Bench – Experience Overview</title>
+  <title>Post-Quantum Cryptography Bench - Experience Overview</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" sizes="any" />
   <link rel="mask-icon" href="/static/favicon.svg" color="#1fb6b8" />
   <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
@@ -21,25 +21,24 @@
       border: 2px solid rgba(7, 11, 17, 0.92);
     }
     html::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.65); }
+
     * { box-sizing: border-box; }
     :root {
       --island-bg: rgba(25, 30, 38, 0.92);
       --island-radius: 1.6rem;
       --island-shadow: 0 28px 60px rgba(9, 12, 18, 0.55);
       --accent: #1fb6b8;
-      --accent-soft: rgba(31,182,184,0.18);
-      --accent-glow: rgba(31,182,184,0.45);
-      --text: #ffffff;
-      --muted: rgba(226,232,240,0.76);
+      --accent-soft: rgba(31, 182, 184, 0.18);
+      --accent-glow: rgba(31, 182, 184, 0.47);
+      --accent-strong: rgba(14, 165, 233, 0.85);
+      --text: #f8fafc;
+      --muted: rgba(226, 232, 240, 0.78);
       --divider: rgba(148, 163, 184, 0.12);
-      --card-bg: rgba(15, 22, 34, 0.82);
+      --card-bg: rgba(14, 20, 29, 0.88);
       --card-border: rgba(255, 255, 255, 0.08);
       --success: #34d399;
       --warn: #f59e0b;
       --danger: #ef4444;
-      --gradient-1: rgba(31, 182, 184, 0.35);
-      --gradient-2: rgba(56, 189, 248, 0.28);
-      --gradient-3: rgba(196, 181, 253, 0.32);
     }
     body {
       margin: 0;
@@ -66,23 +65,37 @@
       height: 420px;
       border-radius: 50%;
       filter: blur(120px);
-      opacity: 0.65;
+      opacity: 0.6;
       pointer-events: none;
       z-index: 0;
       mix-blend-mode: screen;
     }
     body::before {
-      background: var(--gradient-1);
-      top: 6vh;
-      left: 12vw;
+      background: linear-gradient(145deg, rgba(31, 182, 184, 0.35), rgba(56, 189, 248, 0.25));
+      top: 5vh;
+      left: 10vw;
       animation: floatOrb 22s ease-in-out infinite;
     }
     body::after {
-      background: var(--gradient-3);
-      bottom: 8vh;
-      right: 10vw;
+      background: linear-gradient(145deg, rgba(196, 181, 253, 0.32), rgba(148, 163, 184, 0.2));
+      bottom: 12vh;
+      right: 12vw;
       animation: floatOrb 26s ease-in-out infinite reverse;
     }
+
+    @keyframes floatOrb {
+      0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.58; }
+      50% { transform: translate3d(30px, -35px, 0) scale(1.08); opacity: 0.72; }
+    }
+    @keyframes badgeFloat {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      50% { transform: translate3d(0, -8px, 0); }
+    }
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(200%); }
+    }
+
     .masthead {
       width: 100%;
       max-width: 1200px;
@@ -103,15 +116,15 @@
       width: 72px;
       height: 72px;
       border-radius: 1.25rem;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.45);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
     }
     .brand-title {
       font-size: 1.7rem;
       font-weight: 700;
-      margin-bottom: .2rem;
+      margin-bottom: 0.2rem;
     }
     .brand-subtitle {
-      font-size: .96rem;
+      font-size: 0.96rem;
       color: var(--muted);
     }
     .nav-actions {
@@ -119,18 +132,18 @@
       display: flex;
       align-items: center;
       gap: 2.3rem;
-      padding-right: .5rem;
+      padding-right: 0.5rem;
     }
     .nav-link {
       display: inline-block;
-      padding: .55rem 0;
+      padding: 0.55rem 0;
       font-size: 1rem;
       font-weight: 600;
-      letter-spacing: .01em;
-      color: rgba(226,232,240,.76);
+      letter-spacing: 0.01em;
+      color: rgba(226, 232, 240, 0.76);
       text-decoration: none;
       border-bottom: 2px solid transparent;
-      transition: color .15s ease, border-color .15s ease, opacity .15s ease;
+      transition: color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
     }
     .nav-link:hover,
     .nav-link:focus-visible {
@@ -143,6 +156,7 @@
       border-bottom-color: var(--accent);
       opacity: 1;
     }
+
     main.summary-shell {
       width: 100%;
       max-width: 1200px;
@@ -158,7 +172,7 @@
       box-shadow: var(--island-shadow);
       padding: 2.4rem;
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.04);
+      border: 1px solid rgba(255, 255, 255, 0.05);
       position: relative;
       overflow: hidden;
     }
@@ -167,7 +181,7 @@
       position: absolute;
       inset: 0;
       border-radius: inherit;
-      border: 1px solid rgba(255,255,255,0.04);
+      border: 1px solid rgba(255, 255, 255, 0.04);
       pointer-events: none;
       mix-blend-mode: screen;
     }
@@ -175,20 +189,24 @@
     .panel header h2 {
       margin: 0;
       font-weight: 700;
-      letter-spacing: .01em;
+      letter-spacing: 0.01em;
     }
     .panel header h1 { font-size: 1.95rem; }
     .panel header h2 { font-size: 1.55rem; }
     .panel header p {
-      margin: .75rem 0 0;
+      margin: 0.75rem 0 0;
       color: var(--muted);
       line-height: 1.65;
     }
+
     .hero {
       display: grid;
-      grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
       gap: 2.1rem;
       align-items: center;
+    }
+    .hero header h1 {
+      font-size: 2.15rem;
     }
     .hero .lead {
       font-size: 1.05rem;
@@ -197,48 +215,1142 @@
       line-height: 1.7;
     }
     .hero-meta {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 1rem;
     }
     .hero-meta .badge {
-      flex: 0 1 240px;
       background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
-      border: 1px solid rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
       border-radius: 1.1rem;
-      padding: 1.2rem;
+      padding: 1.25rem;
       position: relative;
       overflow: hidden;
-      transition: transform .35s ease, border-color .25s ease;
+      transition: transform 0.35s ease, border-color 0.25s ease, box-shadow 0.35s ease;
     }
     .hero-meta .badge::before {
       content: "";
       position: absolute;
       inset: -40% 35% 15% -35%;
-      background: linear-gradient(120deg, rgba(31,182,184,0.22), rgba(56,189,248,0.18));
+      background: linear-gradient(120deg, rgba(31,182,184,0.25), rgba(56,189,248,0.18));
       opacity: 0;
-      transition: opacity .4s ease;
+      transition: opacity 0.4s ease;
     }
-    .hero-meta .badge:hover {
-      transform: translateY(-6px);
-      border-color: rgba(31,182,184,0.35);
-    }
-    .hero-meta .badge:hover::before { opacity: 0.75; }
     .hero-meta .badge strong {
       display: block;
       font-size: 1.05rem;
-      margin-bottom: .4rem;
+      margin-bottom: 0.4rem;
     }
     .hero-meta .badge span {
-      font-size: .9rem;
-      color: rgba(226,232,240,0.72);
+      font-size: 0.9rem;
+      color: rgba(226, 232, 240, 0.72);
+      line-height: 1.55;
+    }
+    .hero-meta .badge:hover,
+    .hero-meta .badge:focus-visible {
+      transform: translateY(-6px);
+      border-color: rgba(31, 182, 184, 0.35);
+      box-shadow: 0 12px 28px rgba(15, 60, 80, 0.35);
+    }
+    .hero-meta .badge:hover::before,
+    .hero-meta .badge:focus-visible::before { opacity: 0.8; }
+
+    .sparkline-card {
+      background: linear-gradient(135deg, rgba(13,19,29,0.92), rgba(18,27,39,0.92));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 1.35rem;
+      padding: 1.9rem;
+      box-shadow: 0 35px 60px rgba(9, 12, 18, 0.55);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      overflow: hidden;
+    }
+    .sparkline-card::before {
+      content: "";
+      position: absolute;
+      top: -60%;
+      left: -30%;
+      width: 80%;
+      height: 220%;
+      background: radial-gradient(circle at 30% 20%, rgba(31, 182, 184, 0.28), transparent 65%);
+      opacity: 0.6;
+      mix-blend-mode: screen;
+      animation: shimmer 12s linear infinite;
+    }
+    .sparkline-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      border: 1px solid rgba(255,255,255,0.06);
+      pointer-events: none;
+    }
+    .sparkline-card h3 {
+      margin: 0;
+      font-size: 1.25rem;
+      position: relative;
+      z-index: 1;
+    }
+    .sparkline-card p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: rgba(226,232,240,0.75);
+      position: relative;
+      z-index: 1;
+    }
+    .sparkline-legend {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+      font-size: 0.82rem;
+      color: rgba(226,232,240,0.82);
+      position: relative;
+      z-index: 1;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 0.35rem;
+    }
+    .legend-dot--kem { background: var(--accent); box-shadow: 0 0 12px rgba(31,182,184,0.55); }
+    .legend-dot--sig { background: rgba(196,181,253,0.85); box-shadow: 0 0 12px rgba(196,181,253,0.55); }
+    .sparkline-canvas {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: 180px;
+    }
+    .sparkline-canvas canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      filter: drop-shadow(0 12px 30px rgba(20, 120, 160, 0.35));
+    }
+
+    .feature-explorer {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+      gap: 2.2rem;
+      align-items: start;
+    }
+    .feature-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-top: 1.6rem;
+    }
+    .feature-button {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      padding: 1.1rem 1rem;
+      border-radius: 1rem;
+      text-align: left;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.28s ease, border-color 0.22s ease, box-shadow 0.28s ease, background 0.22s ease;
+    }
+    .feature-button::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(135deg, rgba(31,182,184,0.22), rgba(56,189,248,0.15));
+      opacity: 0;
+      transition: opacity 0.28s ease;
+    }
+    .feature-button .label {
+      font-size: 1.02rem;
+      font-weight: 600;
+      position: relative;
+      z-index: 1;
+    }
+    .feature-button .hint {
+      font-size: 0.85rem;
+      color: rgba(226,232,240,0.75);
+      line-height: 1.45;
+      position: relative;
+      z-index: 1;
+    }
+    .feature-button:hover,
+    .feature-button:focus-visible {
+      transform: translateY(-6px);
+      border-color: rgba(31,182,184,0.35);
+      box-shadow: 0 18px 32px rgba(12, 62, 82, 0.35);
+    }
+    .feature-button:hover::after,
+    .feature-button:focus-visible::after {
+      opacity: 0.7;
+    }
+    .feature-button.is-active {
+      border-color: rgba(31,182,184,0.45);
+      box-shadow: 0 20px 36px rgba(12, 62, 82, 0.4);
+      background: linear-gradient(135deg, rgba(31, 182, 184, 0.32), rgba(56, 189, 248, 0.12));
+    }
+    .feature-button.is-active::after { opacity: 1; }
+    .feature-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+    .feature-detail {
+      background: rgba(9, 13, 19, 0.55);
+      border-radius: 1.35rem;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 2rem;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-detail::before {
+      content: "";
+      position: absolute;
+      top: -20%;
+      right: -30%;
+      width: 70%;
+      height: 70%;
+      background: radial-gradient(circle at center, rgba(31,182,184,0.25), transparent 70%);
+      opacity: 0.7;
+      pointer-events: none;
+    }
+    .feature-detail h3 {
+      margin: 0;
+      font-size: 1.35rem;
+    }
+    .feature-detail p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 0.98rem;
+    }
+    .feature-points {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+    .feature-points li {
+      position: relative;
+      padding-left: 1.4rem;
+      font-size: 0.95rem;
+      line-height: 1.55;
+      color: rgba(234, 236, 244, 0.9);
+    }
+    .feature-points li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.6rem;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px rgba(31,182,184,0.55);
+    }
+    .feature-extra {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+    .feature-extra span {
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      letter-spacing: 0.2px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(31,182,184,0.18);
+      color: rgba(240, 255, 255, 0.88);
+      text-transform: uppercase;
+    }
+
+    .system-map header {
+      margin-bottom: 1.8rem;
+    }
+    .system-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.4rem;
+    }
+    .system-card {
+      background: rgba(10, 14, 21, 0.55);
+      border-radius: 1.2rem;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 1.6rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s ease, border-color 0.2s ease, box-shadow 0.3s ease;
+    }
+    .system-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(31,182,184,0.12), transparent 60%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .system-card h4 {
+      margin: 0 0 0.6rem;
+      font-size: 1.08rem;
+    }
+    .system-card p {
+      margin: 0 0 1rem;
+      font-size: 0.9rem;
+      color: rgba(226,232,240,0.78);
+      line-height: 1.6;
+    }
+    .system-card ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+    .system-card li {
+      font-size: 0.86rem;
+      color: rgba(234,236,244,0.88);
+      padding-left: 1.2rem;
+      position: relative;
+      line-height: 1.45;
+    }
+    .system-card li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.45rem;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: rgba(31,182,184,0.75);
+    }
+    .system-card:hover,
+    .system-card:focus-visible {
+      transform: translateY(-6px);
+      border-color: rgba(31, 182, 184, 0.4);
+      box-shadow: 0 16px 32px rgba(10, 35, 48, 0.32);
+    }
+    .system-card:hover::before,
+    .system-card:focus-visible::before { opacity: 1; }
+    .system-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+    .timeline {
+      position: relative;
+      padding-left: 1.8rem;
+      margin-top: 1.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.6rem;
+    }
+    .timeline::before {
+      content: "";
+      position: absolute;
+      top: 0.4rem;
+      bottom: 0.4rem;
+      left: 0.55rem;
+      width: 2px;
+      background: linear-gradient(180deg, rgba(31,182,184,0.65), rgba(148,163,184,0.25));
+    }
+    .timeline-step {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 1.4rem;
+      align-items: flex-start;
+      position: relative;
+      padding-left: 0.4rem;
+      opacity: 0;
+      transform: translateY(25px);
+    }
+    .timeline-step.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .timeline-step::before {
+      content: attr(data-step);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(148,163,184,0.7);
+      display: inline-block;
+      min-width: 3ch;
+      text-align: right;
+      margin-top: 0.2rem;
+    }
+    .timeline-step::after {
+      content: "";
+      position: absolute;
+      left: -0.9rem;
+      top: 0.55rem;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid rgba(31,182,184,0.75);
+      background: rgba(12,17,25,1);
+      box-shadow: 0 0 12px rgba(31,182,184,0.55);
+    }
+    .timeline-step h4 {
+      margin: 0 0 0.4rem;
+      font-size: 1.08rem;
+    }
+    .timeline-step p {
+      margin: 0;
+      color: rgba(226,232,240,0.8);
+      line-height: 1.6;
+      font-size: 0.92rem;
+    }
+
+    .callouts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.3rem;
+      margin-top: 1.8rem;
+    }
+    .callout-card {
+      background: rgba(9, 14, 22, 0.6);
+      border-radius: 1.2rem;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      position: relative;
+      overflow: hidden;
+      transform: translateY(20px);
+      opacity: 0;
+      transition: transform 0.6s ease, opacity 0.6s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+    .callout-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(145deg, rgba(31,182,184,0.12), transparent 65%);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .callout-card.is-visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    .callout-card:hover,
+    .callout-card:focus-visible {
+      border-color: rgba(31,182,184,0.35);
+      box-shadow: 0 18px 32px rgba(12, 40, 56, 0.32);
+    }
+    .callout-card:hover::before,
+    .callout-card:focus-visible::before { opacity: 1; }
+    .callout-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(31,182,184,0.18);
+      border: 1px solid rgba(31,182,184,0.4);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(230, 250, 255, 0.88);
+    }
+    .callout-card h5 {
+      margin: 0;
+      font-size: 1rem;
+    }
+    .callout-card p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: rgba(226,232,240,0.78);
+      line-height: 1.6;
+    }
+
+    .resources-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-top: 1.4rem;
+    }
+    .resource-link {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      padding: 1.3rem 1.4rem;
+      border-radius: 1.1rem;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(12,19,28,0.6);
+      color: inherit;
+      text-decoration: none;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s ease, border-color 0.2s ease, box-shadow 0.3s ease;
+    }
+    .resource-link strong {
+      font-size: 1.02rem;
+    }
+    .resource-link span {
+      font-size: 0.88rem;
+      color: rgba(226,232,240,0.78);
+      line-height: 1.5;
+    }
+    .resource-link::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(31,182,184,0.18), transparent 70%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .resource-link:hover,
+    .resource-link:focus-visible {
+      transform: translateY(-6px);
+      border-color: rgba(31,182,184,0.35);
+      box-shadow: 0 16px 26px rgba(12,40,56,0.3);
+    }
+    .resource-link:hover::after,
+    .resource-link:focus-visible::after { opacity: 1; }
+    .resource-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+    [data-animate] {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    [data-animate].is-visible {
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    @media (max-width: 1100px) {
+      body { padding: 4vh 4vw; }
+      .masthead { flex-direction: column; align-items: flex-start; gap: 1.4rem; }
+      .nav-actions { margin-left: 0; padding-right: 0; gap: 1.2rem; flex-wrap: wrap; }
+      .hero { grid-template-columns: 1fr; }
+      .feature-explorer { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 720px) {
+      body { padding: 3.5vh 1.8rem; }
+      .panel { padding: 1.8rem; }
+      .hero header h1 { font-size: 1.8rem; }
+      .feature-detail { padding: 1.6rem; }
+      .sparkline-canvas { height: 160px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      body::before,
+      body::after,
+      .hero-meta .badge,
+      .sparkline-card::before,
+      [data-animate],
+      .timeline-step,
+      .callout-card {
+        animation: none !important;
+        transition: none !important;
+        transform: none !important;
+      }
     }
   </style>
 </head>
 <body>
   <header class="masthead">
+    <div class="brand">
+      <img src="/static/Images/pqc-bench-logo.png" alt="Post-Quantum Cryptography Bench" class="brand-logo" />
+      <div class="brand-text">
+        <div class="brand-title"><strong>Post-Quantum Cryptography Benchmarking</strong></div>
+        <div class="brand-subtitle">Explore the toolkit in an interactive overview</div>
+      </div>
+    </div>
+    <nav class="nav-actions">
+      <a href="/" class="nav-link" title="Benchmark cryptographic algorithms">Benchmarking</a>
+      <a href="/image-encryption" class="nav-link" title="Encrypt an image using PQCs">Image Encryption</a>
+      <a href="/summary" class="nav-link nav-link--active" aria-current="page" title="View benchmark summaries">Summary</a>
+    </nav>
   </header>
   <main class="summary-shell">
+    <section class="panel hero" id="hero">
+      <div class="hero-copy">
+        <header>
+          <h1>The Control Tower for Post-Quantum Performance</h1>
+          <p class="lead">PQC Bench unifies real hardware benchmarks, forensic tooling, and an image-encryption lab in a single workspace. Understand trade-offs, share reproducible reports, and experiment with hybrid workflows without leaving the browser.</p>
+        </header>
+        <div class="hero-meta">
+          <div class="badge" data-animate="slide">
+            <strong>Catalogued Algorithms</strong>
+            <span>Kyber, Dilithium, Classic McEliece, BIKE, SPHINCS+, RSA hybrids, and more.</span>
+          </div>
+          <div class="badge" data-animate="slide">
+            <strong>Multi-Modal Analytics</strong>
+            <span>Latency, memory, entropy, and security metadata streamed from every run.</span>
+          </div>
+          <div class="badge" data-animate="slide">
+            <strong>Reproducible by Design</strong>
+            <span>CLI parity, trace exports, ACVP probes, curated device archives.</span>
+          </div>
+        </div>
+      </div>
+      <aside class="sparkline-card" data-animate="slide">
+        <h3>Session Pulse</h3>
+        <p class="sparkline-caption">Animated projection of throughput trends across a benchmark session.</p>
+        <div class="sparkline-canvas">
+          <canvas id="summary-sparkline" width="420" height="180" aria-hidden="true"></canvas>
+        </div>
+        <div class="sparkline-legend">
+          <span><span class="legend-dot legend-dot--kem"></span>KEM ops/s</span>
+          <span><span class="legend-dot legend-dot--sig"></span>Signature ops/s</span>
+        </div>
+      </aside>
+    </section>
+
+    <section class="panel feature-explorer" id="features">
+      <div class="feature-list-shell">
+        <header>
+          <h2>Feature Explorer</h2>
+          <p>Tap through the core modules of PQC Bench. The detail panel updates live with context, highlights, and what to try next.</p>
+        </header>
+        <div class="feature-list" role="tablist" aria-label="Feature Explorer">
+          <button class="feature-button is-active" type="button" role="tab" aria-selected="true" id="feature-tab-benchmarking" data-feature="benchmarking">
+            <span class="label">Benchmark Studio</span>
+            <span class="hint">Configure KEM/SIG adapters, warm or cold runs, message sizes, and category overrides.</span>
+          </button>
+          <button class="feature-button" type="button" role="tab" aria-selected="false" id="feature-tab-compare" data-feature="compare">
+            <span class="label">Compare Workspace</span>
+            <span class="hint">Overlay latency and memory charts, read AI summaries, and export structured reports.</span>
+          </button>
+          <button class="feature-button" type="button" role="tab" aria-selected="false" id="feature-tab-tests" data-feature="tests">
+            <span class="label">Tested Benchmarks Library</span>
+            <span class="hint">Browse archived sessions by device, with poster-ready graphs and CSVs.</span>
+          </button>
+          <button class="feature-button" type="button" role="tab" aria-selected="false" id="feature-tab-image" data-feature="image">
+            <span class="label">Image Encryption Lab</span>
+            <span class="hint">Hybrid Kyber and Dilithium pipeline with entropy diagnostics and artefact downloads.</span>
+          </button>
+          <button class="feature-button" type="button" role="tab" aria-selected="false" id="feature-tab-forensics" data-feature="forensics">
+            <span class="label">Forensics &amp; Validation</span>
+            <span class="hint">Trace exports, ACVP probes, and security metadata alongside each benchmark.</span>
+          </button>
+          <button class="feature-button" type="button" role="tab" aria-selected="false" id="feature-tab-automation" data-feature="automation">
+            <span class="label">Automation &amp; CLI Parity</span>
+            <span class="hint">Headless runners mirror the UI so CI jobs and notebooks stay in sync.</span>
+          </button>
+        </div>
+      </div>
+      <article class="feature-detail" id="feature-panel" role="tabpanel" aria-live="polite" aria-labelledby="feature-title">
+        <h3 id="feature-title">Benchmark Studio</h3>
+        <p id="feature-description">Launch experiments from the Home screen with synchronized forms for lattice-based and hash-based algorithms. Tailor runs without losing contextual help.</p>
+        <ul class="feature-points" id="feature-points">
+          <li>Browse algorithm metadata from the adapter registry before you run.</li>
+          <li>Apply security category overrides while the UI surfaces safe defaults.</li>
+          <li>Live job telemetry streams into Compare so insights are one click away.</li>
+        </ul>
+        <div class="feature-extra" id="feature-tags">
+          <span>KEM &amp; SIG catalog</span>
+          <span>Contextual defaults</span>
+          <span>Live progress</span>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel system-map" id="system">
+      <header>
+        <h2>End-to-End Capabilities</h2>
+        <p>Each module builds on the same adapters and data model, so you can move from an idea to reproducible evidence in minutes.</p>
+      </header>
+      <div class="system-grid">
+        <div class="system-card" data-animate="rise">
+          <h4>Hardware-Aware Benchmarking</h4>
+          <p>Run on laptops, servers, or embedded devices using the liboqs-backed adapter suite.</p>
+          <ul>
+            <li>Toggle cold or warm runs with repeat counts for stable averages.</li>
+            <li>Security category guardrails and RSA equivalence hints.</li>
+            <li>Progress cards stream stdout and diagnostic notes in real time.</li>
+          </ul>
+        </div>
+        <div class="system-card" data-animate="rise">
+          <h4>Visual Analytics &amp; Compare</h4>
+          <p>Transform raw measurements into charts, tables, and prompts guided insights.</p>
+          <ul>
+            <li>Latency and memory matrices with deltas and variance callouts.</li>
+            <li>Interactive tooltips include security category context.</li>
+            <li>Optional AI commentary when an LLM provider is configured.</li>
+          </ul>
+        </div>
+        <div class="system-card" data-animate="rise">
+          <h4>Poster &amp; Archive Builder</h4>
+          <p>Share sessions with teammates using curated poster graphics and CSV bundles.</p>
+          <ul>
+            <li>Device-labelled archives in <code>tested benchmarks/</code> with manifests.</li>
+            <li>Poster-ready PNGs for latency, memory, and security trade-offs.</li>
+            <li>Direct links from the Summary page into the public archives.</li>
+          </ul>
+        </div>
+        <div class="system-card" data-animate="rise">
+          <h4>Security &amp; Forensics</h4>
+          <p>Validate and interrogate runs with metadata that survives audits.</p>
+          <ul>
+            <li>ACVP probes and verification hooks share the same adapters.</li>
+            <li>Trace bundles package JSON telemetry, entropy snapshots, and manifests.</li>
+            <li>Mismatch alerts surface when expected categories drift.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="journey">
+      <header>
+        <h2>Workflow in Motion</h2>
+        <p>From a blank session to a fully documented report - auditable and streamlined.</p>
+      </header>
+      <div class="timeline">
+        <div class="timeline-step" data-step="01">
+          <div></div>
+          <div>
+            <h4>Assemble Your Scenario</h4>
+            <p>Select algorithms, modes, and optional AI analysis. Defaults keep newcomers safe while experts fine-tune depth.</p>
+          </div>
+        </div>
+        <div class="timeline-step" data-step="02">
+          <div></div>
+          <div>
+            <h4>Execute &amp; Monitor</h4>
+            <p>Job progress surfaces percent, stage, and diagnostics. Measurements stream without blocking the UI.</p>
+          </div>
+        </div>
+        <div class="timeline-step" data-step="03">
+          <div></div>
+          <div>
+            <h4>Interrogate the Results</h4>
+            <p>Compare view turns latency, memory, and security priors into charts, matrices, and exportable reports.</p>
+          </div>
+        </div>
+        <div class="timeline-step" data-step="04">
+          <div></div>
+          <div>
+            <h4>Export, Share, Repeat</h4>
+            <p>Trace bundles, poster graphics, JSON summaries, and CLI invocations keep findings reproducible.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="callouts">
+      <header>
+        <h2>Highlights Worth Noting</h2>
+        <p>Micro-interactions keep complex PQC concepts approachable.</p>
+      </header>
+      <div class="callouts">
+        <div class="callout-card" data-animate="rise">
+          <span class="callout-chip">Entropy Visuals</span>
+          <h5>Image Encryption Diagnostics</h5>
+          <p>Run Kyber encapsulation and Dilithium signing while entropy heatmaps update live.</p>
+        </div>
+        <div class="callout-card" data-animate="rise">
+          <span class="callout-chip">Security Grades</span>
+          <h5>Category-Aware Overrides</h5>
+          <p>Projected categories, RSA bit-length hints, and mismatch warnings appear beside results.</p>
+        </div>
+        <div class="callout-card" data-animate="rise">
+          <span class="callout-chip">Curated Archives</span>
+          <h5>Tested Benchmark Browser</h5>
+          <p>Navigate recorded sessions by device with graphs, manifests, and reproducible CSVs.</p>
+        </div>
+        <div class="callout-card" data-animate="rise">
+          <span class="callout-chip">Traceability</span>
+          <h5>Export &amp; Forensic Hooks</h5>
+          <p>Generate JSON artefacts, ACVP transcripts, and timing traces from the same runners.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel resources-panel" id="resources">
+      <header>
+        <h2>Jump Straight Into the Action</h2>
+        <p>Deep links mirroring the navigation ribbon.</p>
+      </header>
+      <div class="resources-grid">
+        <a class="resource-link" href="/" title="Launch the benchmarking workspace">
+          <strong>Benchmarking Studio</strong>
+          <span>Configure experiments and launch compare-ready jobs.</span>
+        </a>
+        <a class="resource-link" href="/compare/run" title="Trigger a comparison run">
+          <strong>Compare Controller</strong>
+          <span>Kick off a comparison run directly and revisit past telemetry.</span>
+        </a>
+        <a class="resource-link" href="/image-encryption" title="Open the image encryption lab">
+          <strong>Image Encryption Lab</strong>
+          <span>Encrypt or decrypt imagery, review entropy charts, and download artefacts.</span>
+        </a>
+        <a class="resource-link" href="/tested-benchmarks/latest" title="Browse archived benchmark sessions">
+          <strong>Tested Benchmark Archive</strong>
+          <span>Curated device results, poster graphics, CSVs, and forensic manifests.</span>
+        </a>
+      </div>
+    </section>
   </main>
+
+  <script>
+    (() => {
+      const prefersReducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+      let reduceMotion = prefersReducedMotionQuery.matches;
+      let heroBadges = null;
+
+      function applyBadgeMotion(enabled) {
+        if (!heroBadges) {
+          return;
+        }
+        heroBadges.forEach((badge, index) => {
+          badge.style.animation = enabled ? `badgeFloat 6.5s ease-in-out ${index * 0.6}s infinite` : 'none';
+        });
+      }
+
+      prefersReducedMotionQuery.addEventListener('change', event => {
+        reduceMotion = event.matches;
+        applyBadgeMotion(!reduceMotion);
+        if (reduceMotion) {
+          stopFeatureCycle();
+          stopSparkline();
+        } else {
+          startFeatureCycle();
+          startSparkline();
+        }
+      });
+
+      const featureData = {
+        benchmarking: {
+          title: 'Benchmark Studio',
+          description: 'Run interactive benchmarking sessions on supported devices with guardrails that mirror the Home workspace.',
+          points: [
+            'Choose from lattice, hash-based, and code-based KEM/signature adapters with rich metadata.',
+            'Tune repetitions, warm or cold mode, message lengths, and security category overrides without leaving the panel.',
+            'Live telemetry cards mirror CLI progress and link directly into the Compare workspace.'
+          ],
+          tags: ['KEM & SIG catalog', 'Contextual defaults', 'Live progress']
+        },
+        compare: {
+          title: 'Compare Workspace',
+          description: 'Stack multiple runs and study timing, memory, and success ratios across algorithms.',
+          points: [
+            'Interactive charts highlight latency and memory with NIST category context in the tooltips.',
+            'Matrix statistics track spreads, best performers, and regression deltas at a glance.',
+            'Export JSON summaries and CSV pivot tables, plus optional AI commentary when configured.'
+          ],
+          tags: ['Latency vs memory charts', 'Matrix stats', 'AI-assisted notes']
+        },
+        tests: {
+          title: 'Tested Benchmarks Library',
+          description: 'Browse curated archives of benchmark sessions recorded on real hardware.',
+          points: [
+            'Organized by device (i9-9880H, Ryzen 5700X, and more as they land) with compiler and OS metadata.',
+            'Every archive ships graphs, CSVs, manifests, and supporting extras for each run.',
+            'Perfect starting point for validating new releases or comparing with your local results.'
+          ],
+          tags: ['Device archives', 'Poster graphics', 'Replay guidance']
+        },
+        image: {
+          title: 'Image Encryption Lab',
+          description: 'Experiment with a hybrid Kyber encapsulation and Dilithium signature workflow for images.',
+          points: [
+            'Upload an image, derive shared keys via Kyber, and sign payloads using Dilithium.',
+            'Real-time entropy diagnostics and histograms showcase the quality of the encrypted output.',
+            'Download artefacts and detailed logs to audit every operation.'
+          ],
+          tags: ['Hybrid PQC pipeline', 'Entropy heatmaps', 'Downloadable artefacts']
+        },
+        forensics: {
+          title: 'Forensics & Validation',
+          description: 'Deep integrations for ACVP, trace exports, and reproducible reporting.',
+          points: [
+            'Trigger ACVP-style validation checks using the same runners that power benchmarks.',
+            'Capture JSON traces, device manifests, and security metadata alongside timing data.',
+            'Automatic warnings highlight mismatched security categories or parameter anomalies.'
+          ],
+          tags: ['ACVP probes', 'Trace bundles', 'Security annotations']
+        },
+        automation: {
+          title: 'Automation & CLI Parity',
+          description: 'Everything in the UI mirrors command-line adapters for headless workflows.',
+          points: [
+            'CLI runners reuse the same configuration schema as the GUI so automation stays in sync.',
+            'Python helpers in the repository seed CI pipelines and notebooks.',
+            'Exported compare jobs can be rehydrated locally or on remote agents for regression testing.'
+          ],
+          tags: ['Shared config', 'Python tooling', 'CI friendly']
+        }
+      };
+
+      const featureButtons = Array.from(document.querySelectorAll('.feature-button'));
+      const featureTitle = document.getElementById('feature-title');
+      const featureDescription = document.getElementById('feature-description');
+      const featurePoints = document.getElementById('feature-points');
+      const featureTags = document.getElementById('feature-tags');
+      let featureCycleTimer = null;
+      let featureCycleIndex = 0;
+      let holdTimeout = null;
+
+      function renderFeature(key, options = {}) {
+        const data = featureData[key];
+        if (!data) {
+          return;
+        }
+
+        featureButtons.forEach((button, index) => {
+          const isActive = button.dataset.feature === key;
+          button.classList.toggle('is-active', isActive);
+          button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+          if (isActive) {
+            featureCycleIndex = index;
+          }
+        });
+
+        featureTitle.textContent = data.title;
+        featureDescription.textContent = data.description;
+
+        featurePoints.innerHTML = '';
+        data.points.forEach(point => {
+          const li = document.createElement('li');
+          li.textContent = point;
+          featurePoints.appendChild(li);
+        });
+
+        featureTags.innerHTML = '';
+        data.tags.forEach(tag => {
+          const span = document.createElement('span');
+          span.textContent = tag;
+          featureTags.appendChild(span);
+        });
+
+        if (options.manual) {
+          stopFeatureCycle();
+          window.clearTimeout(holdTimeout);
+          holdTimeout = window.setTimeout(() => {
+            if (!reduceMotion) {
+              startFeatureCycle();
+            }
+          }, 12000);
+        }
+      }
+
+      featureButtons.forEach((button, index) => {
+        button.addEventListener('click', () => {
+          renderFeature(button.dataset.feature, { manual: true });
+        });
+
+        button.addEventListener('keydown', event => {
+          if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+            event.preventDefault();
+            const direction = event.key === 'ArrowRight' ? 1 : -1;
+            const nextIndex = (index + direction + featureButtons.length) % featureButtons.length;
+            featureButtons[nextIndex].focus();
+          }
+        });
+      });
+
+      const featureList = document.querySelector('.feature-list');
+      if (featureList) {
+        featureList.addEventListener('pointerenter', stopFeatureCycle);
+        featureList.addEventListener('pointerleave', () => {
+          if (!reduceMotion) {
+            startFeatureCycle();
+          }
+        });
+      }
+
+      function startFeatureCycle() {
+        if (reduceMotion || featureButtons.length <= 1) {
+          return;
+        }
+        stopFeatureCycle();
+        featureCycleTimer = window.setInterval(() => {
+          if (document.hidden) {
+            return;
+          }
+          featureCycleIndex = (featureCycleIndex + 1) % featureButtons.length;
+          const nextButton = featureButtons[featureCycleIndex];
+          renderFeature(nextButton.dataset.feature);
+        }, 6500);
+      }
+
+      function stopFeatureCycle() {
+        if (featureCycleTimer) {
+          window.clearInterval(featureCycleTimer);
+          featureCycleTimer = null;
+        }
+      }
+
+      const initialFeature = featureButtons[0]?.dataset.feature;
+      if (initialFeature) {
+        renderFeature(initialFeature);
+      }
+      if (!reduceMotion) {
+        startFeatureCycle();
+      }
+      document.addEventListener('visibilitychange', () => {
+        if (reduceMotion) {
+          return;
+        }
+        if (document.hidden) {
+          stopFeatureCycle();
+        } else {
+          startFeatureCycle();
+        }
+      });
+
+      if ('IntersectionObserver' in window) {
+        const revealTargets = document.querySelectorAll('[data-animate], .timeline-step, .callout-card');
+        const observer = new IntersectionObserver(entries => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('is-visible');
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.25 });
+
+        revealTargets.forEach(target => observer.observe(target));
+      } else {
+        document.querySelectorAll('[data-animate], .timeline-step, .callout-card').forEach(target => target.classList.add('is-visible'));
+      }
+
+      heroBadges = document.querySelectorAll('.hero-meta .badge');
+      applyBadgeMotion(!reduceMotion);
+
+      const sparklineCanvas = document.getElementById('summary-sparkline');
+      let sparklineFrame = null;
+      const sparklineState = {
+        width: 0,
+        height: 0
+      };
+
+      function resizeSparkline() {
+        if (!sparklineCanvas) {
+          return;
+        }
+        const dpr = window.devicePixelRatio || 1;
+        const rect = sparklineCanvas.getBoundingClientRect();
+        sparklineState.width = rect.width;
+        sparklineState.height = rect.height;
+        sparklineCanvas.width = rect.width * dpr;
+        sparklineCanvas.height = rect.height * dpr;
+        const ctx = sparklineCanvas.getContext('2d');
+        if (ctx) {
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+      }
+
+      function drawSparkline(time = 0) {
+        if (!sparklineCanvas) {
+          return;
+        }
+        const ctx = sparklineCanvas.getContext('2d');
+        if (!ctx) {
+          return;
+        }
+
+        const width = sparklineState.width;
+        const height = sparklineState.height;
+        if (!width || !height) {
+          return;
+        }
+
+        ctx.clearRect(0, 0, width, height);
+        const baseline = height * 0.66;
+        const amplitude = height * 0.22;
+        const travel = width;
+        const step = Math.max(2, width / 120);
+        const phase = time * 0.00065;
+
+        const computeY = x => {
+          const norm = x / travel;
+          const wave = Math.sin(norm * Math.PI * 2 * 1.6 + phase) * amplitude;
+          const overtone = Math.sin(norm * Math.PI * 2 * 3.2 + phase * 1.4) * amplitude * 0.4;
+          const slow = Math.sin(norm * Math.PI * 2 * 0.9 + phase * 0.8) * amplitude * 0.18;
+          return baseline - wave - overtone - slow;
+        };
+
+        const gradient = ctx.createLinearGradient(0, baseline - amplitude, 0, height);
+        gradient.addColorStop(0, 'rgba(31, 182, 184, 0.32)');
+        gradient.addColorStop(1, 'rgba(12, 32, 52, 0.05)');
+
+        ctx.beginPath();
+        ctx.moveTo(0, computeY(0));
+        for (let x = step; x <= width; x += step) {
+          ctx.lineTo(x, computeY(x));
+        }
+        ctx.lineTo(width, height);
+        ctx.lineTo(0, height);
+        ctx.closePath();
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(0, computeY(0));
+        for (let x = step; x <= width; x += step) {
+          ctx.lineTo(x, computeY(x));
+        }
+        ctx.strokeStyle = 'rgba(111, 227, 240, 0.86)';
+        ctx.lineWidth = 1.8;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        const markerX = (time * 0.08) % width;
+        const markerY = computeY(markerX);
+
+        ctx.beginPath();
+        ctx.arc(markerX, markerY, 3.4, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(markerX, markerY, 7.2, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(111, 227, 240, 0.35)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        sparklineFrame = window.requestAnimationFrame(drawSparkline);
+      }
+
+      function startSparkline() {
+        if (reduceMotion || !sparklineCanvas) {
+          return;
+        }
+        stopSparkline();
+        resizeSparkline();
+        sparklineFrame = window.requestAnimationFrame(drawSparkline);
+      }
+
+      function stopSparkline() {
+        if (sparklineFrame) {
+          window.cancelAnimationFrame(sparklineFrame);
+          sparklineFrame = null;
+        }
+      }
+
+      if (sparklineCanvas) {
+        startSparkline();
+        window.addEventListener('resize', () => {
+          resizeSparkline();
+        });
+        document.addEventListener('visibilitychange', () => {
+          if (!sparklineCanvas) {
+            return;
+          }
+          if (document.hidden) {
+            stopSparkline();
+          } else if (!reduceMotion) {
+            startSparkline();
+          }
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
