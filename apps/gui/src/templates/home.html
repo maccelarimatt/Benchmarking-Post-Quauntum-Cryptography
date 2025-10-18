@@ -149,15 +149,27 @@
       font-size: 0.95rem;
       box-shadow: inset 0 1px 3px rgba(0,0,0,0.35);
       outline:none;
-      transition: border-color .18s ease, box-shadow .18s ease;
+      transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
     }
     .field input::placeholder { color: #6b7280; opacity:.9; }
     .field input:not([type="checkbox"]):focus,
-    .field select:focus,
     .field textarea:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 3px rgba(31,182,184,.25);
       background: linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.96));
+    }
+    .field select {
+      color-scheme: dark;
+    }
+    .field select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(31,182,184,.25);
+      background: rgba(15,23,42,0.78);
+    }
+    .field select option,
+    .field select optgroup {
+      background: rgba(13,19,32,0.95);
+      color: var(--text);
     }
     /* Prevent teal focus ring and white fill on custom checkboxes */
     input[type="checkbox"]:focus { box-shadow: none; outline: none; background: rgba(255,255,255,.12); }
