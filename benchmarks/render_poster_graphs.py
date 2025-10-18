@@ -806,8 +806,8 @@ def plot_category_top_metric(
     file_stub = "latency" if metric == "latency" else "memory"
     title_label = "Latency" if metric == "latency" else "Memory"
 
-    palette_kem = ["#1f77b4", "#14796d", "#33539e", "#209fb5", "#14a44d"]
-    palette_sig = ["#d62839", "#f77f00", "#b56576", "#6d597a", "#ef6351"]
+    palette_kem = ["#0072B2", "#56B4E9", "#009E73", "#CC79A7", "#E69F00"]
+    palette_sig = ["#D55E00", "#E69F00", "#999999", "#009E73", "#56B4E9"]
 
     aggregates: Dict[Tuple[str, str, int], List[float]] = {}
     for rec in records:
@@ -845,9 +845,10 @@ def plot_category_top_metric(
             colors = [palette[idx % len(palette)] for idx in range(len(top_entries))]
 
             ax.bar(labels, values, color=colors)
-            ax.set_ylabel(ylabel)
+            ax.set_ylabel(ylabel, fontsize=20)
             ax.grid(True, axis="y", linestyle="--", alpha=0.3)
-            ax.tick_params(axis="x", rotation=45)
+            ax.tick_params(axis="x", rotation=45, labelsize=18)
+            ax.tick_params(axis="y", labelsize=18)
             for tick in ax.get_xticklabels():
                 tick.set_horizontalalignment("right")
 
@@ -886,11 +887,11 @@ def plot_category_operation_breakdown(
         "verify": "Verify",
     }
     op_colors = {
-        "keygen": "#1f77b4",
-        "encapsulate": "#2ca02c",
-        "decapsulate": "#d62728",
-        "sign": "#ff7f0e",
-        "verify": "#9467bd",
+        "keygen": "#0072B2",
+        "encapsulate": "#009E73",
+        "decapsulate": "#E69F00",
+        "sign": "#D55E00",
+        "verify": "#CC79A7",
     }
 
     aggregates: Dict[Tuple[str, str, int], Dict[str, float]] = {}
@@ -947,11 +948,12 @@ def plot_category_operation_breakdown(
                     Patch(facecolor=op_colors.get(op, "#888888"), label=op_labels.get(op, op.title()))
                     for op in required_ops
                 ]
-                ax.legend(handles=legend_handles, loc="upper left")
+                ax.legend(handles=legend_handles, loc="upper left", fontsize=18)
 
-            ax.set_ylabel(ylabel)
+            ax.set_ylabel(ylabel, fontsize=20)
             ax.set_xticks(indices)
-            ax.set_xticklabels([_friendly_label(algo) for algo, _, _ in top_entries], rotation=45, ha="right")
+            ax.set_xticklabels([_friendly_label(algo) for algo, _, _ in top_entries], rotation=45, ha="right", fontsize=18)
+            ax.tick_params(axis="y", labelsize=18)
             ax.grid(True, axis="y", linestyle="--", alpha=0.3)
 
             output_name = f"poster_{file_stub}_cat{category}_{kind.lower()}_ops"
