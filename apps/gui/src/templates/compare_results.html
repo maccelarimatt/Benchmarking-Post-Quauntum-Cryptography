@@ -5,7 +5,7 @@
   {% from '_background_effects.html' import background_layer, background_rules %}
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PQC Bench – Compare Results</title>
+  <title>PQC Bench - Compare Results</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" sizes="any" />
   <link rel="mask-icon" href="/static/favicon.svg" color="#1fb6b8" />
   <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
@@ -32,45 +32,123 @@
       background: rgba(148, 163, 184, 0.65);
     }
 
-    :root { --island-bg: rgba(38,41,45,.92); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
-    /* Reduce top padding so header sits closer to top */
+    * { box-sizing: border-box; }
+
+    :root {
+      --island-bg: rgba(25, 30, 38, 0.92);
+      --island-radius: 1.6rem;
+      --island-shadow: 0 28px 60px rgba(9, 12, 18, 0.55);
+      --accent: #1fb6b8;
+      --accent-soft: rgba(31, 182, 184, 0.18);
+      --accent-glow: rgba(31, 182, 184, 0.47);
+      --accent-strong: rgba(14, 165, 233, 0.85);
+      --text: #f8fafc;
+      --muted: rgba(226, 232, 240, 0.78);
+      --divider: rgba(148, 163, 184, 0.12);
+      --card-bg: rgba(14, 20, 29, 0.88);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --success: #34d399;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+    }
+
     body {
-      margin:0;
-      padding:0.1vh 5vw 5vh;
-      color:var(--text);
+      margin: 0;
+      padding: 0 5vw 6vh;
+      color: var(--text);
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
       background:
         radial-gradient(circle at 15% 20%, rgba(31, 182, 184, 0.16), transparent 55%),
         radial-gradient(circle at 80% 15%, rgba(77, 157, 255, 0.12), transparent 60%),
         linear-gradient(180deg, #070b11 0%, #04070c 60%, #020408 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
       position: relative;
+      overflow-x: hidden;
     }
-    .island { background:var(--island-bg); border-radius:var(--island-radius); padding:1.25rem; backdrop-filter: blur(4px); max-width:1200px; margin:0 auto 1.6vh auto; }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      width: 420px;
+      height: 420px;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.6;
+      pointer-events: none;
+      z-index: 0;
+      mix-blend-mode: screen;
+    }
+
+    body::before {
+      background: linear-gradient(145deg, rgba(31, 182, 184, 0.35), rgba(56, 189, 248, 0.25));
+      top: 5vh;
+      left: 10vw;
+      animation: floatOrb 22s ease-in-out infinite;
+    }
+
+    body::after {
+      background: linear-gradient(145deg, rgba(196, 181, 253, 0.32), rgba(148, 163, 184, 0.2));
+      bottom: 12vh;
+      right: 12vw;
+      animation: floatOrb 26s ease-in-out infinite reverse;
+    }
+
+    @keyframes floatOrb {
+      0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.58; }
+      50% { transform: translate3d(30px, -35px, 0) scale(1.08); opacity: 0.72; }
+    }
+
+    @keyframes badgeFloat {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      50% { transform: translate3d(0, -8px, 0); }
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(200%); }
+    }
+
+    main.results-shell {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-direction: column;
+      gap: 2.25rem;
+      position: relative;
+      z-index: 2;
+    }
+
+    main.results-shell > * {
+      width: 100%;
+    }
+
+    .island {
+      background: var(--island-bg);
+      border-radius: var(--island-radius);
+      box-shadow: var(--island-shadow);
+      padding: 2.2rem;
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .island::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+
     .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; }
-    .card { background: rgba(0,0,0,.25); border-radius:.75rem; padding:1rem; }
-    table { width:100%; border-collapse: collapse; }
-    th, td { padding:.45rem .35rem; border-bottom: 1px dashed rgba(255,255,255,.2); }
-    /* Vertical lines between columns for comparison tables */
-    table.vlines th:not(:last-child),
-    table.vlines td:not(:last-child) { border-right: 1px solid rgba(255,255,255,.25); }
-    table.vlines thead th { border-bottom: 1px solid rgba(255,255,255,.35); }
-    /* Hide default disclosure arrow markers on <summary> to avoid stray arrows */
-    summary { list-style: none; }
-    summary::marker { content: none; }
-    details > summary::marker { content: none; }
-    /* WebKit/Blink */
-    summary::-webkit-details-marker { display: none; }
-    details > summary::-webkit-details-marker { display: none; }
-    /* Defensive: suppress any stray pseudo-element arrows injected by defaults */
-    body::before, body::after,
-    header::before, header::after,
-    .island::before, .island::after,
-    details > summary::before, details > summary::after {
-      content: none !important;
- position: relative;
-    }
-    /* As a last resort on this page only, clear before/after on all descendants */
-    :where(body) *::before, :where(body) *::after { content: none !important; }
 
     /* Refined details layout */
     /* Layout: fewer cards per row for better readability */
@@ -102,15 +180,256 @@
     /* Unified stats grid for all six tables */
     .stats-grid { display:grid; grid-template-columns: 1fr; gap:1.25rem; }
     @media (min-width: 900px) { .stats-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
-    .card { margin: 0; }
+    .card {
+      margin: 0;
+      background: rgba(9, 14, 22, 0.62);
+      border-radius: 1.15rem;
+      padding: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 22px 44px rgba(4, 7, 14, 0.38);
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(135deg, rgba(31, 182, 184, 0.2), rgba(56, 189, 248, 0.08));
+      opacity: 0.38;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+    .card > * { position: relative; z-index: 1; }
     /* Avoid inner cards touching the outer island outline */
-    .card--full { width: auto; margin: .75rem; }
+    .card--full {
+      width: 100%;
+      margin: 0;
+      padding: 1.8rem 2rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border-spacing: 0;
+      border-radius: 1rem;
+      overflow: hidden;
+      background: rgba(9, 14, 22, 0.4);
+    }
+    thead th {
+      text-align: left;
+      font-size: 0.78rem;
+      letter-spacing: 0.24px;
+      text-transform: uppercase;
+      padding: 0.68rem 0.75rem;
+      background: rgba(15, 23, 32, 0.88);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      color: rgba(248, 250, 252, 0.85);
+    }
+    tbody tr:nth-child(even) { background: rgba(15, 22, 33, 0.35); }
+    th, td {
+      padding: 0.68rem 0.75rem;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+      color: rgba(241, 245, 249, 0.92);
+    }
+    tr:last-child td { border-bottom: none; }
+    table.vlines th:not(:last-child),
+    table.vlines td:not(:last-child) { border-right: 1px solid rgba(148, 163, 184, 0.16); }
+    table.vlines thead th { border-bottom: 1px solid rgba(255, 255, 255, 0.18); }
+    summary {
+      list-style: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      font-weight: 600;
+      letter-spacing: 0.28px;
+      color: rgba(248, 250, 252, 0.9);
+      position: relative;
+      padding: 0.3rem 0;
+      transition: color 0.2s ease;
+    }
+    summary:hover { color: #fff; }
+    summary::marker,
+    details > summary::marker { display: none; }
+    summary::-webkit-details-marker,
+    details > summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: '>';
+      font-size: 0.8rem;
+      opacity: 0.7;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    details[open] > summary::after {
+      transform: rotate(90deg);
+      opacity: 1;
+    }
+    .details-grid { display:grid; grid-template-columns: 1fr; gap:1.6rem; }
+    @media (min-width: 900px) { .details-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (min-width: 1500px) { .details-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    .details-card {
+      background: rgba(8, 14, 22, 0.74);
+      border-radius: 1.2rem;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      padding: 1.6rem;
+      display:flex;
+      flex-direction:column;
+      gap:1rem;
+      box-shadow: 0 28px 52px rgba(3, 8, 18, 0.4);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+    }
+    .details-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(circle at top right, rgba(31, 182, 184, 0.42), transparent 65%);
+      opacity: 0.45;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+    .details-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 32px 60px rgba(3, 10, 20, 0.45);
+      border-color: rgba(31, 182, 184, 0.28);
+    }
+    .details-card > * { position: relative; z-index: 1; }
+    .details-header { display:flex; align-items:center; justify-content:space-between; gap:0.75rem; margin-bottom:1rem; }
+    .details-title { font-size:1.08rem; font-weight:700; letter-spacing:0.24px; }
+    .badges { display:flex; gap:0.5rem; flex-wrap:wrap; }
+    .badge {
+      font-size:0.72rem;
+      padding:0.2rem 0.65rem;
+      border-radius:999px;
+      border:1px solid rgba(148, 229, 255, 0.35);
+      background: linear-gradient(135deg, rgba(31, 182, 184, 0.26), rgba(148, 163, 184, 0.18));
+      text-transform:uppercase;
+      letter-spacing:0.32px;
+      color: rgba(248, 250, 252, 0.9);
+      box-shadow: 0 12px 26px rgba(2, 10, 18, 0.35);
+      animation: badgeFloat 7s ease-in-out infinite;
+    }
+    .badge:nth-child(even) { animation-delay: 1.4s; }
+    table.kv {
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      table-layout:fixed;
+      background: transparent;
+      margin-top:0.45rem;
+    }
+    table.kv col.kv-label { width:48%; }
+    table.kv col.kv-value { width:52%; }
+    table.kv td {
+      padding:0.48rem 0.5rem;
+      border-bottom:1px dashed rgba(148, 163, 184, 0.2);
+      vertical-align:top;
+    }
+    table.kv tr:last-child td { border-bottom:none; }
+    .kv-label { color: rgba(226, 232, 240, 0.88); font-size:0.88rem; }
+    .kv-value { color:#fff; font-weight:600; font-size:0.96rem; }
+    .island--hero {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:1.5rem;
+      padding:2.6rem 2.8rem;
+      background: linear-gradient(135deg, rgba(31, 182, 184, 0.16), rgba(56, 189, 248, 0.08));
+    }
+    .island--hero::before {
+      content:"";
+      position:absolute;
+      inset:-12% -32% 48% 38%;
+      background: radial-gradient(circle at top left, rgba(31, 182, 184, 0.48), transparent 70%);
+      opacity:0.6;
+      pointer-events:none;
+      mix-blend-mode:screen;
+    }
+    .hero-title {
+      font-size:1.75rem;
+      font-weight:800;
+      letter-spacing:0.35px;
+      margin:0 0 0.45rem 0;
+    }
+    .hero-subline {
+      opacity:0.85;
+      font-size:1rem;
+      color: var(--muted);
+    }
+    .hero-subline strong { color: var(--text); font-weight:600; }
+    .hero-category {
+      margin-top:0.4rem;
+      font-size:0.95rem;
+      color: var(--muted);
+    }
+    .hero-category span { color: var(--text); font-weight:600; }
+    .hero-actions { display:flex; align-items:center; justify-content:flex-end; }
+    .island--alert {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(15, 19, 25, 0.82));
+      border: 1px solid rgba(239, 68, 68, 0.42);
+      box-shadow: 0 24px 46px rgba(127, 29, 29, 0.35);
+    }
+    .export-grid {
+      margin-top:0.6rem;
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap:1rem;
+    }
+    .export-link-card {
+      background: rgba(9, 14, 22, 0.58);
+      padding:1.05rem;
+      border-radius:0.85rem;
+      border:1px solid rgba(255,255,255,0.08);
+      text-align:left;
+      box-shadow:0 18px 36px rgba(4, 9, 18, 0.32);
+      transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+    }
+    .export-link-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(31, 182, 184, 0.28);
+      box-shadow:0 24px 48px rgba(4, 9, 18, 0.4);
+    }
+    .export-link-card a {
+      color: rgba(166, 238, 255, 0.92);
+      text-decoration:underline;
+      font-weight:600;
+    }
+    .export-link-card a:hover { color:#fff; }
+    @media (max-width: 720px) {
+      .island--hero {
+        flex-direction:column;
+        align-items:flex-start;
+        padding:2.2rem 1.9rem;
+      }
+      .hero-title { font-size:1.5rem; }
+    }
     /* Unified button styling (match main page "Run") */
     .btn, button, input[type="submit"], input[type="button"], a.btn {
-      display:inline-block; padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; text-decoration:none; box-shadow: 0 4px 14px rgba(31,182,184,.25); transition: background-color .2s ease, filter .15s ease, box-shadow .2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.7rem 1.65rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: linear-gradient(135deg, rgba(31, 182, 184, 0.92), rgba(56, 189, 248, 0.68));
+      color: #fff;
+      font-weight: 600;
+      letter-spacing: 0.24px;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 16px 32px rgba(31, 182, 184, 0.36);
+      transition: transform 0.18s ease, box-shadow 0.22s ease, filter 0.18s ease;
     }
     .btn:hover, button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover {
-      filter: brightness(0.92); box-shadow: 0 6px 18px rgba(31,182,184,.32);
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+      box-shadow: 0 22px 42px rgba(31, 182, 184, 0.42);
+    }
+    .btn:active, button:active, input[type="submit"]:active, input[type="button"]:active, a.btn:active {
+      transform: translateY(0);
+      filter: brightness(0.95);
     }
     {{ header_styles() | safe }}
     /* Header strip (reuse from home) */
@@ -154,34 +473,79 @@
   {{ background_layer() }}
   {% from '_header.html' import render_header %}
   {{ render_header(title='Post-Quantum Cryptography Benchmarking', subtitle='Run and Compare Different Cryptographic Algorithms', active='benchmarking') }}
-  <div class="island" style="display:flex; justify-content:space-between; align-items:center;">
-    <div>
-      <div style="font-size:1.6rem; font-weight:700;">Compare Results – {{ compare.kind }}</div>
-      <div style="opacity:.9;">Runs: {{ compare.runs }}{% if compare.kind=='SIG' %}, Message size: {{ compare.message_size }} B{% endif %} • Mode: {{ (compare.mode or 'cold')|capitalize }}</div>
-      {% if compare.security_category is not none %}
-        {% set cat_hint = {1:'≈ AES-128', 3:'≈ AES-192', 5:'≈ AES-256'} %}
-        <div style="opacity:.85; font-size:.95rem;">Requested NIST Category {{ compare.security_category }} {{ cat_hint.get(compare.security_category, '') }}</div>
-      {% endif %}
+  <main class="results-shell">
+    <div class="island island--hero">
+      <div>
+        <div class="hero-title">Compare Results - {{ compare.kind }}</div>
+        <div class="hero-subline">Runs: {{ compare.runs }}{% if compare.kind=='SIG' %}, Message size: {{ compare.message_size }} B{% endif %} | Mode: {{ (compare.mode or 'cold')|capitalize }}</div>
+        {% if compare.security_category is not none %}
+          {% set cat_hint = {1:'~ AES-128', 3:'~ AES-192', 5:'~ AES-256'} %}
+          <div class="hero-category">Requested NIST Category {{ compare.security_category }} <span>{{ cat_hint.get(compare.security_category, '') }}</span></div>
+        {% endif %}
+      </div>
+      <div class="hero-actions">
+        <a href="/" class="btn">Back to setup</a>
+      </div>
     </div>
-    <div>
-      <a href="/" class="btn">Back to setup</a>
-  </div>
-  </div>
-  
+
   <style>
     /* Hide legacy LLM block/modal */
     #llm-modal { display:none !important; }
-    .llm-fab { position: fixed; right: 22px; bottom: 22px; z-index: 1100; display: inline-flex; align-items: center; gap:.5rem; background: var(--accent); color: #fff; padding:.6rem .9rem; border: none; border-radius: 999px; box-shadow: 0 10px 24px rgba(0,0,0,.35); cursor: pointer; }
-    .llm-fab:hover { filter: brightness(.95); }
-    .llm-panel { position: fixed; right: 22px; bottom: 84px; width: min(90vw, 420px); height: min(75vh, 520px); z-index: 1100; display:none; background: rgba(0,0,0,.82); border: 1px solid rgba(255,255,255,.15); border-radius: .9rem; box-shadow: 0 16px 36px rgba(0,0,0,.45); backdrop-filter: blur(6px); overflow: hidden; }
+    .llm-fab {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      z-index: 1100;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      background: linear-gradient(135deg, rgba(31, 182, 184, 0.92), rgba(56, 189, 248, 0.68));
+      color: #fff;
+      padding: 0.65rem 1.25rem;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 999px;
+      box-shadow: 0 22px 42px rgba(2, 8, 14, 0.6);
+      cursor: pointer;
+      font-weight: 600;
+      letter-spacing: 0.24px;
+      transition: transform 0.18s ease, box-shadow 0.22s ease, filter 0.18s ease;
+    }
+    .llm-fab:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: 0 30px 56px rgba(2, 8, 14, 0.65); }
+    .llm-panel {
+      position: fixed;
+      right: 22px;
+      bottom: 84px;
+      width: min(90vw, 420px);
+      height: min(75vh, 520px);
+      z-index: 1100;
+      display:none;
+      background: rgba(6, 11, 18, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 1.1rem;
+      box-shadow: 0 32px 60px rgba(2, 5, 12, 0.6);
+      backdrop-filter: blur(18px);
+      overflow: hidden;
+    }
+    .llm-panel::before {
+      content: "";
+      position: absolute;
+      inset: -40% 10% auto -20%;
+      width: 120%;
+      height: 140%;
+      background: radial-gradient(circle at center, rgba(31, 182, 184, 0.35), transparent 70%);
+      opacity: 0.55;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
     .llm-panel.open { display:flex; flex-direction: column; }
-    .llm-head { display:flex; align-items:center; justify-content:space-between; padding:.6rem .8rem; border-bottom:1px solid rgba(255,255,255,.12); }
-    .llm-title { font-weight:700; }
-    .llm-hint { font-size:.85rem; opacity:.9; }
-    .llm-body { flex: 1; overflow: auto; padding:.75rem .85rem; line-height:1.45; }
-    .llm-input { display:flex; gap:.5rem; padding:.55rem .6rem; border-top:1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.35); }
-    .llm-input textarea { flex:1; resize:none; min-height:42px; max-height:110px; padding:.5rem .6rem; border-radius:.5rem; border:1px solid rgba(255,255,255,.2); background: rgba(0,0,0,.25); color:#fff; }
-    .llm-btn { padding:.55rem .9rem; border:none; border-radius:.55rem; background: var(--accent); color:#fff; cursor:pointer; }
+    .llm-head { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; border-bottom:1px solid rgba(255,255,255,0.14); position:relative; z-index:1; }
+    .llm-title { font-weight:700; letter-spacing:0.25px; }
+    .llm-hint { font-size:0.85rem; opacity:0.85; color: var(--muted); }
+    .llm-body { flex: 1; overflow: auto; padding:1rem 1.1rem; line-height:1.5; background: rgba(5, 10, 18, 0.55); position:relative; z-index:1; }
+    .llm-input { display:flex; gap:0.5rem; padding:0.7rem 0.9rem; border-top:1px solid rgba(255,255,255,0.14); background: rgba(5, 10, 18, 0.68); position:relative; z-index:1; }
+    .llm-input textarea { flex:1; resize:none; min-height:42px; max-height:110px; padding:0.6rem 0.7rem; border-radius:0.65rem; border:1px solid rgba(255,255,255,0.18); background: rgba(9, 16, 26, 0.9); color:#fff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); }
+    .llm-btn { padding:0.6rem 1.05rem; border:none; border-radius:0.65rem; background: linear-gradient(135deg, rgba(31, 182, 184, 0.88), rgba(56, 189, 248, 0.58)); color:#fff; font-weight:600; cursor:pointer; box-shadow: 0 14px 28px rgba(2, 8, 14, 0.45); transition: filter 0.18s ease, transform 0.18s ease; }
+    .llm-btn:hover { filter: brightness(1.05); transform: translateY(-1px); }
   </style>
   <div id="llm-widget">
     <button id="llm-fab" class="llm-fab">AI Summary Report</button>
@@ -302,7 +666,7 @@
 
 
   {% if errors and errors|length %}
-  <div class="island" style="background: rgba(128,0,0,.35);">
+  <div class="island island--alert">
     <div style="font-weight:700; margin-bottom:.5rem;">Some algorithms were skipped:</div>
     <ul>
     {% for name, msg in errors.items() %}
@@ -1596,7 +1960,7 @@
           const model = (data.model || '');
           const usedFallback = !!data.used_fallback;
           if (hint) {
-            hint.textContent = 'Provider: ' + provider + (model ? (' • ' + model) : '') + (usedFallback ? ' (fallback)' : '');
+            hint.textContent = 'Provider: ' + provider + (model ? (' | ' + model) : '') + (usedFallback ? ' (fallback)' : '');
           }
           const text = (data.analysis || '').trim();
           if (text) {
@@ -1619,7 +1983,7 @@
             err.style.display = 'block';
             let msg = 'Provider error: ' + String(data.error);
             if (data.meta && data.meta.endpoint) {
-              msg += ' • endpoint: ' + String(data.meta.endpoint);
+              msg += ' | endpoint: ' + String(data.meta.endpoint);
             }
             err.textContent = msg;
           } else {
@@ -1700,13 +2064,13 @@
       <div style="font-weight:700; margin-bottom:.5rem;">Raw Exports</div>
       <details style="margin-top:.25rem;">
         <summary style="cursor:pointer;">View raw JSON</summary>
-        <div style="margin-top:.6rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1rem;">
+        <div class="export-grid">
           {% for a in compare.algos %}
-          <div style="background:rgba(0,0,0,.25); padding:1rem; border-radius:.5rem; text-align:left;">
+          <div class="export-link-card">
             <div style="font-weight:700; margin-bottom:.35rem;">{{ a.label }}</div>
             {% set ex = a.exports if a.exports else (a.meta.exports if a.meta and a.meta.exports else None) %}
             {% if ex and ex.json %}
-              <div><a href="/{{ ex.json }}" target="_blank" style="color:#aee; text-decoration:underline;">Open JSON summary</a></div>
+              <div><a href="/{{ ex.json }}" target="_blank">Open JSON summary</a></div>
             {% else %}
               <div style="opacity:.8;">No JSON export available.</div>
             {% endif %}
@@ -1717,13 +2081,13 @@
 
       <details style="margin-top:1rem;">
         <summary style="cursor:pointer;">View raw data (one run)</summary>
-        <div style="margin-top:.6rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1rem;">
+        <div class="export-grid">
           {% for a in compare.algos %}
-          <div style="background:rgba(0,0,0,.25); padding:1rem; border-radius:.5rem; text-align:left;">
+          <div class="export-link-card">
             <div style="font-weight:700; margin-bottom:.35rem;">{{ a.label }}</div>
             {% set ex = a.exports if a.exports else (a.meta.exports if a.meta and a.meta.exports else None) %}
             {% if ex and ex.trace %}
-              <div><a href="/{{ ex.trace }}" target="_blank" style="color:#aee; text-decoration:underline;">Open raw trace</a></div>
+              <div><a href="/{{ ex.trace }}" target="_blank">Open raw trace</a></div>
             {% else %}
               <div style="opacity:.8;">No trace export available.</div>
             {% endif %}
@@ -1733,5 +2097,6 @@
       </details>
     </div>
   </div>
+  </main>
 </body>
 </html>
