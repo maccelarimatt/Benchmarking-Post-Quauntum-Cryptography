@@ -426,6 +426,9 @@
       gap: 1.2rem;
       position: relative;
       overflow: hidden;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.35s ease, transform 0.35s ease;
     }
     .feature-detail::before {
       content: "";
@@ -447,6 +450,10 @@
       color: var(--muted);
       line-height: 1.6;
       font-size: 0.98rem;
+    }
+    .feature-detail.is-active {
+      opacity: 1;
+      transform: translateY(0);
     }
     .feature-points {
       margin: 0;
@@ -950,35 +957,6 @@
       </div>
     </section>
 
-    <section class="panel" id="callouts">
-      <header>
-        <h2>Highlights Worth Noting</h2>
-        <p>Micro-interactions keep complex PQC concepts approachable.</p>
-      </header>
-      <div class="callouts">
-        <div class="callout-card" data-animate="rise">
-          <span class="callout-chip">Entropy Visuals</span>
-          <h5>Image Encryption Diagnostics</h5>
-          <p>Run Kyber encapsulation and Dilithium signing while entropy heatmaps update live.</p>
-        </div>
-        <div class="callout-card" data-animate="rise">
-          <span class="callout-chip">Security Grades</span>
-          <h5>Category-Aware Overrides</h5>
-          <p>Projected categories, RSA bit-length hints, and mismatch warnings appear beside results.</p>
-        </div>
-        <div class="callout-card" data-animate="rise">
-          <span class="callout-chip">Curated Archives</span>
-          <h5>Tested Benchmark Browser</h5>
-          <p>Navigate recorded sessions by device with graphs, manifests, and reproducible CSVs.</p>
-        </div>
-        <div class="callout-card" data-animate="rise">
-          <span class="callout-chip">Traceability</span>
-          <h5>Export &amp; Forensic Hooks</h5>
-          <p>Generate JSON artefacts, ACVP transcripts, and timing traces from the same runners.</p>
-        </div>
-      </div>
-    </section>
-
     <section class="panel resources-panel" id="resources">
       <header>
         <h2>Jump Straight Into the Action</h2>
@@ -1035,12 +1013,12 @@
       const featureData = {
         benchmarking: {
           title: 'Benchmark Studio',
-          description: 'Run interactive benchmarking sessions on supported devices with guardrails that mirror the Home workspace.',
+          description: 'Run benchmarking sessions on supported devices with guardrails that mirror the Home workspace.',
           points: [
-            'Choose from lattice, hash-based, and code-based KEM/signature adapters with rich metadata.',
-            'Tune repetitions, warm or cold mode, message lengths, and security category overrides without leaving the panel.',
+            'Choose from various KEM/signature schemes with a C backend and a Python fallback.',
+            'Tune repetitions, warm or cold mode, message lengths, and security category overrides.',
             'Live telemetry cards mirror CLI progress and link directly into the Compare workspace.',
-            'Inline helper panels explain security categories, parameter defaulting, and hardware caveats while you configure.',
+            'Inline helper panels explain security categories, parameter defaulting, and hardware constraints.',
             'Preset bundles let you spin up recommended suites (e.g., NIST finalists) and tweak them before launch.'
           ],
           tags: ['KEM & SIG catalog', 'Contextual defaults', 'Live progress']
@@ -1050,8 +1028,8 @@
           description: 'Stack multiple runs and study timing, memory, and success ratios across algorithms.',
           points: [
             'Interactive charts highlight latency and memory with NIST category context in the tooltips.',
-            'Matrix statistics track spreads, best performers, regression deltas, and statistical quartiles at a glance.',
-            'Compare view layers min/median/max bars, confidence hints, and success ratios for each operation stage.',
+            'Matrix statistics track spreads, best performers, regression deltas, and statistical quartiles.',
+            'Compare view layers min/median/max bars, confidence hints, and success ratios for each stage.',
             'Jump between timing, memory, throughput, and success rate views without leaving the panel.',
             'Export JSON summaries and CSV pivot tables, plus optional AI commentary when configured.'
           ],
@@ -1131,22 +1109,39 @@
           }
         });
 
-        featureTitle.textContent = data.title;
-        featureDescription.textContent = data.description;
+        const detailPanel = document.getElementById('feature-panel');
+        if (detailPanel) {
+          detailPanel.classList.remove('is-active');
+        }
 
-        featurePoints.innerHTML = '';
-        data.points.forEach(point => {
-          const li = document.createElement('li');
-          li.textContent = point;
-          featurePoints.appendChild(li);
-        });
+        const applyContent = () => {
+          featureTitle.textContent = data.title;
+          featureDescription.textContent = data.description;
 
-        featureTags.innerHTML = '';
-        data.tags.forEach(tag => {
-          const span = document.createElement('span');
-          span.textContent = tag;
-          featureTags.appendChild(span);
-        });
+          featurePoints.innerHTML = '';
+          data.points.forEach(point => {
+            const li = document.createElement('li');
+            li.textContent = point;
+            featurePoints.appendChild(li);
+          });
+
+          featureTags.innerHTML = '';
+          data.tags.forEach(tag => {
+            const span = document.createElement('span');
+            span.textContent = tag;
+            featureTags.appendChild(span);
+          });
+
+          if (detailPanel) {
+            requestAnimationFrame(() => detailPanel.classList.add('is-active'));
+          }
+        };
+
+        if (detailPanel) {
+          setTimeout(applyContent, 160);
+        } else {
+          applyContent();
+        }
 
         if (options.manual) {
           stopFeatureCycle();
