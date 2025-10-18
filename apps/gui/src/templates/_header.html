@@ -1,0 +1,73 @@
+{% macro header_styles() -%}
+.header-strip {
+  width: calc(100% + 10vw);
+  background: #060a0f;
+  color: var(--text);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  padding: .7rem 0;
+  margin: 0 -5vw 2vh;
+}
+.header-strip-inner {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:1rem;
+  width:100%;
+  margin:0;
+  padding:0 5vw;
+}
+.brand { display:flex; align-items:center; gap: 1.25rem; }
+.brand-logo { height: 56px; width:auto; object-fit:contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
+.brand-text { display:flex; flex-direction:column; }
+.brand-title { font-size:1.6rem; font-weight:900; line-height:1.1; letter-spacing:.2px; white-space:nowrap; }
+.brand-subtitle { opacity:.85; font-size:.98rem; }
+.nav-actions { margin-left:auto; display:flex; align-items:center; gap:2.4rem; padding-right:.5rem; flex-wrap:nowrap; white-space:nowrap; }
+.nav-link {
+  display:inline-block;
+  padding:.55rem 0;
+  color: rgba(255,255,255,.92);
+  text-decoration:none;
+  font-weight:600;
+  letter-spacing:.2px;
+  border-bottom: 2px solid transparent;
+  transition: color .15s ease, border-color .15s ease, opacity .15s ease;
+}
+.nav-link:hover {
+  color:#fff;
+  border-bottom-color: var(--accent);
+  opacity:1;
+}
+.nav-link--active {
+  color:#fff;
+  border-bottom-color: var(--accent);
+  opacity:1;
+}
+.nav-link:focus-visible {
+  outline:none;
+  border-bottom-color: var(--accent);
+  box-shadow: 0 1px 0 var(--accent);
+}
+@media (max-width: 720px) {
+  .header-strip-inner { flex-direction: column; align-items: flex-start; gap: 1rem; padding:0 8vw; }
+  .nav-actions { margin-left: 0; gap: 1.6rem; flex-wrap: wrap; white-space:normal; padding-right:0; }
+}
+{%- endmacro %}
+
+{% macro render_header(title='Post-Quantum Cryptography Benchmarking', subtitle='Run and Compare Different Cryptographic Algorithms', active='') -%}
+<header class="header-strip">
+  <div class="header-strip-inner">
+    <div class="brand">
+      <img src="/static/Images/pqc-bench-logo.png" alt="Post-Quantum Cryptography Bench" class="brand-logo" />
+      <div class="brand-text">
+        <div class="brand-title"><strong>{{ title }}</strong></div>
+        <div class="brand-subtitle">{{ subtitle }}</div>
+      </div>
+    </div>
+    <nav class="nav-actions">
+      <a href="/" class="nav-link{% if active == 'benchmarking' %} nav-link--active{% endif %}" {% if active == 'benchmarking' %}aria-current="page"{% endif %} title="Benchmark cryptographic algorithms">Benchmarking</a>
+      <a href="/image-encryption" class="nav-link{% if active == 'image' %} nav-link--active{% endif %}" {% if active == 'image' %}aria-current="page"{% endif %} title="Encrypt an image using PQCs">Image Encryption</a>
+      <a href="/summary" class="nav-link{% if active == 'summary' %} nav-link--active{% endif %}" {% if active == 'summary' %}aria-current="page"{% endif %} title="View benchmark summaries">Summary</a>
+    </nav>
+  </div>
+</header>
+{%- endmacro %}
