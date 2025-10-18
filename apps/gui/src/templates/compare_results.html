@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  {% from '_header.html' import header_styles %}
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PQC Bench – Compare Results</title>
@@ -101,14 +102,8 @@
     .btn:hover, button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover {
       filter: brightness(0.92); box-shadow: 0 6px 18px rgba(31,182,184,.32);
     }
+    {{ header_styles() | safe }}
     /* Header strip (reuse from home) */
-    .header-strip { width: 100%; background: #060a0f; color: var(--text); border-bottom: 1px solid rgba(255,255,255,.08); padding: .7rem 0; margin-bottom: 2vh; }
-    .brand { display:flex; align-items:center; gap: 1.25rem; }
-    .brand-logo { height: 56px; width:auto; object-fit:contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
-    .brand-text { display:flex; flex-direction:column; }
-    .brand-title { font-size:1.6rem; font-weight:900 !important; font-variation-settings: "wght" 900; line-height:1.1; letter-spacing:.2px; }
-    .brand-title strong { font-weight:900 !important; font-variation-settings: "wght" 900; }
-    .brand-subtitle { opacity:.85; font-size:.98rem; }
     .security-model-card { display:flex; flex-direction:column; gap:1.1rem; }
     .security-model-header { display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:.75rem; }
     .security-model-title { font-size:1.15rem; font-weight:700; letter-spacing:.24px; }
@@ -145,15 +140,8 @@
   </style>
 </head>
 <body>
-  <header class="header-strip">
-    <div class="brand">
-      <img src="/static/Images/pqc-bench-logo.png" alt="Post-Quantum Cryptography Bench" class="brand-logo" />
-      <div class="brand-text">
-        <div class="brand-title"><strong>Post-Quantum Cryptography Benchmarking</strong></div>
-        <div class="brand-subtitle">Run and Compare Different Cryptographic Algorithms</div>
-  </div>
-  </div>
-  </header>
+  {% from '_header.html' import render_header %}
+  {{ render_header(title='Post-Quantum Cryptography Benchmarking', subtitle='Run and Compare Different Cryptographic Algorithms', active='benchmarking') }}
   <div class="island" style="display:flex; justify-content:space-between; align-items:center;">
     <div>
       <div style="font-size:1.6rem; font-weight:700;">Compare Results – {{ compare.kind }}</div>
