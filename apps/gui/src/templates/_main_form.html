@@ -3,13 +3,42 @@
 {% set compare_kind = (compare_kind or 'KEM') %}
 {% set compare_mode = (compare_mode or 'pair') %}
 <style>
-  /* Crossfade between KEM and SIG checkbox grids */
+  /* Algorithm tiles */
   #cmp_algo_list { border-top: 1px solid rgba(255,255,255,.22); border-bottom: 1px solid rgba(255,255,255,.18); }
   .algo-lists { position: relative; transition: height 200ms ease; }
   .fade-layer { position: absolute; inset: 0; opacity: 0; transition: opacity 180ms ease; pointer-events: none; }
   .fade-layer.is-active { opacity: 1; pointer-events: auto; }
   /* Keep checkbox card sizes constant by fixing item width */
   .algo-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:.6rem; justify-content: stretch; align-content: start; }
+  .algo-option {
+    position: relative;
+    display:flex;
+    align-items:center;
+    gap:.55rem;
+    background: rgba(10,14,21,0.55);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius:.9rem;
+    padding:.65rem .8rem;
+    cursor:pointer;
+    overflow:hidden;
+    transition: transform .28s ease, border-color .2s ease, box-shadow .3s ease;
+  }
+  .algo-option::after {
+    content:"";
+    position:absolute;
+    inset:0;
+    background: linear-gradient(135deg, rgba(31,182,184,0.18), transparent 60%);
+    opacity:0;
+    transition: opacity .3s ease;
+    pointer-events:none;
+  }
+  .algo-option:hover {
+    border-color: rgba(31,182,184,0.4);
+    box-shadow: 0 14px 26px rgba(12,40,56,0.28);
+  }
+  .algo-option:hover::after { opacity:1; }
+  .algo-option input[type="checkbox"] { flex:0 0 auto; }
+  .algo-option span { position: relative; z-index: 1; }
   /* Inline form error for selection validation */
   .form-error { display:none; margin-top:.5rem; color:#ffdddd; background:#902; padding:.5rem .7rem; border-radius:.5rem; }
   /* Run button tooltip shown only when disabled and hovered */
@@ -86,7 +115,7 @@
         <div id="cmp_algos_kem" class="fade-layer is-active algo-grid">
           {% for name in algos %}
             {% if kinds[name] == 'KEM' %}
-            <label style="display:flex; gap:.5rem; align-items:center; background: rgba(0,0,0,.20); padding:.5rem .6rem; border-radius:.5rem;">
+            <label class="algo-option">
               <input type="checkbox" name="algos" value="{{name}}" />
               <span>{{ display_names.get(name, name) }}</span>
             </label>
@@ -96,7 +125,7 @@
         <div id="cmp_algos_sig" class="fade-layer algo-grid">
           {% for name in algos %}
             {% if kinds[name] == 'SIG' %}
-            <label style="display:flex; gap:.5rem; align-items:center; background: rgba(0,0,0,.20); padding:.5rem .6rem; border-radius:.5rem;">
+            <label class="algo-option">
               <input type="checkbox" name="algos" value="{{name}}" />
               <span>{{ display_names.get(name, name) }}</span>
             </label>
