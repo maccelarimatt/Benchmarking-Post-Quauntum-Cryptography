@@ -370,15 +370,7 @@
       background: linear-gradient(135deg, rgba(31, 182, 184, 0.16), rgba(56, 189, 248, 0.08));
     }
     .island--hero > :first-child { flex: 1 1 auto; min-width: 0; }
-    .island--hero::before {
-      content:"";
-      position:absolute;
-      inset:-12% -32% 48% 38%;
-      background: radial-gradient(circle at top left, rgba(31, 182, 184, 0.48), transparent 70%);
-      opacity:0.6;
-      pointer-events:none;
-      mix-blend-mode:screen;
-    }
+    .island--hero::before { content: none; }
     .hero-title {
       font-size:1.75rem;
       font-weight:800;
