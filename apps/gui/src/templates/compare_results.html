@@ -136,6 +136,7 @@
       position: relative;
       overflow: hidden;
       isolation: isolate;
+      transition: transform 0.25s ease, border-color 0.3s ease, box-shadow 0.35s ease;
     }
 
     .island::after {
@@ -146,6 +147,20 @@
       border: 1px solid rgba(255, 255, 255, 0.04);
       pointer-events: none;
       mix-blend-mode: screen;
+      transition: border-color 0.3s ease, opacity 0.3s ease;
+    }
+
+    .island:hover,
+    .island:focus-within {
+      border-color: rgba(31, 182, 184, 0.35);
+      box-shadow: 0 32px 70px rgba(6, 20, 28, 0.55);
+      transform: translateY(-3px);
+    }
+
+    .island:hover::after,
+    .island:focus-within::after {
+      border-color: rgba(31, 182, 184, 0.45);
+      opacity: 0.9;
     }
 
     .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; }
