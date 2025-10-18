@@ -163,6 +163,23 @@
       opacity: 0.9;
     }
 
+    [data-animate] {
+      opacity: 0;
+      transform: translateY(28px);
+    }
+    [data-animate].is-visible {
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      [data-animate] {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+      }
+    }
+
     .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; }
 
     /* Refined details layout */
@@ -352,6 +369,7 @@
       padding:2.6rem 2.8rem;
       background: linear-gradient(135deg, rgba(31, 182, 184, 0.16), rgba(56, 189, 248, 0.08));
     }
+    .island--hero > :first-child { flex: 1 1 auto; min-width: 0; }
     .island--hero::before {
       content:"";
       position:absolute;
@@ -379,7 +397,15 @@
       color: var(--muted);
     }
     .hero-category span { color: var(--text); font-weight:600; }
-    .hero-actions { display:flex; align-items:center; justify-content:flex-end; }
+    .hero-actions {
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:1rem;
+      flex-wrap:wrap;
+      flex:0 0 auto;
+    }
+    .hero-actions .btn { white-space:nowrap; }
     .island--alert {
       background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(15, 19, 25, 0.82));
       border: 1px solid rgba(239, 68, 68, 0.42);
@@ -567,7 +593,7 @@
   {% from '_header.html' import render_header %}
   {{ render_header(title='Post-Quantum Cryptography Benchmarking', subtitle='Run and Compare Different Cryptographic Algorithms', active='benchmarking') }}
   <main class="results-shell">
-    <div class="island island--hero">
+    <div class="island island--hero" data-animate>
       <div>
         <div class="hero-title">Compare Results - {{ compare.kind }}</div>
         <div class="hero-subline">Runs: {{ compare.runs }}{% if compare.kind=='SIG' %}, Message size: {{ compare.message_size }} B{% endif %} | Mode: {{ (compare.mode or 'cold')|capitalize }}</div>
@@ -657,6 +683,39 @@
       </div>
     </div>
   </div>
+
+  <script>
+    (function () {
+      function bootIslandAnimations () {
+        const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const animatedIslands = document.querySelectorAll('.island[data-animate]');
+        if (!animatedIslands.length) {
+          return;
+        }
+
+        if (!reduceMotion && 'IntersectionObserver' in window) {
+          const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                observer.unobserve(entry.target);
+              }
+            });
+          }, { threshold: 0.25 });
+
+          animatedIslands.forEach(el => observer.observe(el));
+        } else {
+          animatedIslands.forEach(el => el.classList.add('is-visible'));
+        }
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootIslandAnimations, { once: true });
+      } else {
+        bootIslandAnimations();
+      }
+    })();
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -759,7 +818,7 @@
 
 
   {% if errors and errors|length %}
-  <div class="island island--alert">
+  <div class="island island--alert" data-animate>
     <div style="font-weight:700; margin-bottom:.5rem;">Some algorithms were skipped:</div>
     <ul>
     {% for name, msg in errors.items() %}
@@ -771,7 +830,7 @@
 
   <!-- Algorithm Details -->
   <!-- Previously hidden by inline style. Make visible again. -->
-  <div class="island" id="llm-block">
+  <div class="island" id="llm-block" data-animate>
     <div style="font-weight:700; margin-bottom:.75rem;">Algorithm Details</div>
     <div class="details-grid">
       {% for a in compare.algos %}
@@ -967,7 +1026,7 @@
     </div>
   </div>
 
-  <div class="island">
+  <div class="island" data-animate>
     <div class="row-grid-2">
       <div class="card">
         <div style="font-weight:700; margin-bottom:.5rem;">Timing (ms)</div>
@@ -983,7 +1042,7 @@
   
 
   <!-- Explicit Timing and Memory tables -->
-  <div class="island">
+  <div class="island" data-animate>
     <div class="stats-grid">
       <div class="card">
         <div style="font-weight:700; margin-bottom:.5rem;">Timing Comparison Table (ms)</div>
@@ -1338,7 +1397,7 @@
   </div>
 
   <!-- Confidence Intervals and Min/Max tables -->
-  <div class="island">
+  <div class="island" data-animate>
     <div class="stats-grid">
       <div class="card">
         <div style="font-weight:700; margin-bottom:.5rem;">Timing 95% CI (ms)</div>
@@ -1460,7 +1519,7 @@
   </div>
 
   <!-- Benchmark Environment summary (from first algorithm) -->
-  <div class="island">
+  <div class="island" data-animate>
     <div class="card card--full">
       <div style="font-weight:700; margin-bottom:.5rem;">Benchmark Environment</div>
       {% set ns = namespace(env=None, done=false) %}
@@ -1609,7 +1668,7 @@
   </script>
 
   <!-- Secret-Key Hamming Distance section (between tables and AI) -->
-  <div class="island">
+  <div class="island" data-animate>
     <div class="row-grid-2">
       <div class="card">
         <div style="font-weight:700; margin-bottom:.5rem;">Secret-Key Hamming Distance (HD)</div>
@@ -1662,7 +1721,7 @@
   </div>
 
   <!-- Secret-Key Hamming Weight section -->
-  <div class="island">
+  <div class="island" data-animate>
     <div class="row-grid-2">
       <div class="card">
         <div style="font-weight:700; margin-bottom:.5rem;">Secret-Key Hamming Weight (HW)</div>
@@ -1711,7 +1770,7 @@
     </div>
   </div>
 
-  <div class="island">
+  <div class="island" data-animate>
     <div class="card" style="margin-top:1.25rem;">
       <div style="font-weight:700; margin-bottom:.5rem;">Security Summary</div>
       <div style="display:flex; align-items:center; gap:.75rem; margin:.35rem 0 .75rem 0;">
@@ -1918,7 +1977,7 @@
   </script>
 
   <!-- Projected runtimes (runtime scaling) -->
-  <div class="island">
+  <div class="island" data-animate>
     <div class="card card--full">
       <div style="font-weight:700; margin-bottom:.5rem;">Projected Runtimes (by device)</div>
       <div id="runtime-charts" class="grid"></div>
@@ -2002,7 +2061,7 @@
   </script>
 
   <!-- Brute-Force Baseline (educational) -->
-  <div class="island">
+  <div class="island" data-animate>
     <div class="card card--full">
       <div style="font-weight:700; margin-bottom:.5rem;">Brute-Force Baseline (educational)</div>
       <div class="grid">
@@ -2344,7 +2403,7 @@
   </script>
 
   <!-- Raw exports section -->
-  <div class="island">
+  <div class="island" data-animate>
     <div class="card card--full">
       <div style="font-weight:700; margin-bottom:.5rem;">Raw Exports</div>
       <details style="margin-top:.25rem;">
