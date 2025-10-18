@@ -396,6 +396,84 @@
       font-weight:600;
     }
     .export-link-card a:hover { color:#fff; }
+    .hamming-card {
+      overflow-x: auto;
+    }
+    .hamming-card .hamming-table {
+      width: 100%;
+      table-layout: fixed;
+      font-size: 0.82rem;
+    }
+    .hamming-card .hamming-table th,
+    .hamming-card .hamming-table td {
+      padding: 0.48rem 0.35rem;
+      white-space: nowrap;
+    }
+    .hamming-card .hamming-table th:first-child,
+    .hamming-card .hamming-table td:first-child {
+      width: 24%;
+    }
+    .hamming-card .hamming-table th:nth-child(2),
+    .hamming-card .hamming-table td:nth-child(2) {
+      width: 16%;
+    }
+    .hamming-card .hamming-table th:not(:first-child):not(:nth-child(2)),
+    .hamming-card .hamming-table td:not(:first-child):not(:nth-child(2)) {
+      width: calc((100% - 40%) / 5);
+    }
+    @media (max-width: 900px) {
+      .hamming-card .hamming-table th,
+      .hamming-card .hamming-table td { font-size: 0.78rem; padding: 0.42rem 0.3rem; }
+    }
+    @keyframes metricBestPulse {
+      0%, 100% { box-shadow: 0 0 0 rgba(34, 197, 94, 0); }
+      50% { box-shadow: 0 0 18px rgba(34, 197, 94, 0.45); }
+    }
+    @keyframes metricWorstPulse {
+      0%, 100% { box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+      50% { box-shadow: 0 0 18px rgba(239, 68, 68, 0.42); }
+    }
+    .metric-best,
+    .metric-worst {
+      position: relative;
+      overflow: hidden;
+      font-weight: 600;
+      letter-spacing: 0.18px;
+      border-width: 1px;
+    }
+    .metric-best {
+      background: radial-gradient(circle at 25% 25%, rgba(34, 197, 94, 0.35), transparent 70%) rgba(8, 20, 16, 0.85);
+      color: #d1fae5;
+      border-color: rgba(34, 197, 94, 0.55);
+      animation: metricBestPulse 3.6s ease-in-out infinite;
+      outline: 1px solid rgba(34, 197, 94, 0.6);
+      outline-offset: -2px;
+      text-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+    }
+    .metric-worst {
+      background: radial-gradient(circle at 25% 25%, rgba(239, 68, 68, 0.32), transparent 70%) rgba(28, 8, 12, 0.85);
+      color: #fee2e2;
+      border-color: rgba(239, 68, 68, 0.52);
+      animation: metricWorstPulse 3.6s ease-in-out infinite;
+      outline: 1px solid rgba(239, 68, 68, 0.55);
+      outline-offset: -2px;
+      text-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+    }
+    .metric-best::before,
+    .metric-worst::before {
+      content: "";
+      position: absolute;
+      inset: -140% -30%;
+      background: conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.4) 120deg, transparent 240deg);
+      opacity: 0.45;
+      animation: shimmer 4.8s linear infinite;
+      pointer-events: none;
+      z-index: -1;
+      mix-blend-mode: screen;
+    }
+    .metric-best::after { box-shadow: inset 0 0 22px rgba(34, 197, 94, 0.25); }
+    .metric-worst::after { box-shadow: inset 0 0 22px rgba(239, 68, 68, 0.22); }
+    }
     @media (max-width: 720px) {
       .island--hero {
         flex-direction:column;
@@ -904,12 +982,46 @@
               {% endfor %}
             </tr>
           </thead>
+          {% set extrema = namespace(bests=[], worsts=[]) %}
+          {% for op in ops %}
+            {% set values = [] %}
+            {% for a in compare.algos %}
+              {% if a.ops.get(op) and a.ops[op].mean_ms is not none %}
+                {% set values = values + [a.ops[op].mean_ms] %}
+              {% endif %}
+            {% endfor %}
+            {% if values %}
+              {% set extrema.bests = extrema.bests + [values|min] %}
+              {% set extrema.worsts = extrema.worsts + [values|max] %}
+            {% else %}
+              {% set extrema.bests = extrema.bests + [None] %}
+              {% set extrema.worsts = extrema.worsts + [None] %}
+            {% endif %}
+          {% endfor %}
+          {% set bests = extrema.bests %}
+          {% set worsts = extrema.worsts %}
           <tbody>
             {% for a in compare.algos %}
             <tr>
               <td>{{ a.label }}</td>
               {% for op in ops %}
-                <td>{% if a.ops.get(op) %}{{ '%.3f'|format(a.ops[op].mean_ms) }}{% else %}-{% endif %}</td>
+                {% set idx = loop.index0 %}
+                {% set op_data = a.ops.get(op) %}
+                {% if op_data and op_data.mean_ms is not none %}
+                  {% set val = op_data.mean_ms %}
+                  {% set key = '%.6f'|format(val) %}
+                  {% set classes = [] %}
+                  {% if bests[idx] is not none and key == '%.6f'|format(bests[idx]) %}
+                    {% set classes = classes + ['metric-best'] %}
+                  {% endif %}
+                  {% if worsts[idx] is not none and key == '%.6f'|format(worsts[idx]) %}
+                    {% set classes = classes + ['metric-worst'] %}
+                  {% endif %}
+                  {% set class_attr = classes|join(' ') %}
+                  <td{% if class_attr %} class="{{ class_attr }}"{% endif %}>{{ '%.3f'|format(val) }}</td>
+                {% else %}
+                  <td>-</td>
+                {% endif %}
               {% endfor %}
             </tr>
             {% endfor %}
@@ -929,16 +1041,46 @@
               {% endfor %}
             </tr>
           </thead>
+          {% set mem_extrema = namespace(bests=[], worsts=[]) %}
+          {% for op in ops %}
+            {% set values = [] %}
+            {% for a in compare.algos %}
+              {% if a.ops.get(op) and a.ops[op].mem_mean_kb is not none %}
+                {% set values = values + [a.ops[op].mem_mean_kb] %}
+              {% endif %}
+            {% endfor %}
+            {% if values %}
+              {% set mem_extrema.bests = mem_extrema.bests + [values|min] %}
+              {% set mem_extrema.worsts = mem_extrema.worsts + [values|max] %}
+            {% else %}
+              {% set mem_extrema.bests = mem_extrema.bests + [None] %}
+              {% set mem_extrema.worsts = mem_extrema.worsts + [None] %}
+            {% endif %}
+          {% endfor %}
+          {% set mem_bests = mem_extrema.bests %}
+          {% set mem_worsts = mem_extrema.worsts %}
           <tbody>
             {% for a in compare.algos %}
             <tr>
               <td>{{ a.label }}</td>
               {% for op in ops %}
-                <td>
-                  {% if a.ops.get(op) and a.ops[op].mem_mean_kb is not none %}
-                    {{ '%.2f'|format(a.ops[op].mem_mean_kb) }}
-                  {% else %}-{% endif %}
-                </td>
+                {% set idx = loop.index0 %}
+                {% set op_data = a.ops.get(op) %}
+                {% if op_data and op_data.mem_mean_kb is not none %}
+                  {% set val = op_data.mem_mean_kb %}
+                  {% set key = '%.6f'|format(val) %}
+                  {% set classes = [] %}
+                  {% if mem_bests[idx] is not none and key == '%.6f'|format(mem_bests[idx]) %}
+                    {% set classes = classes + ['metric-best'] %}
+                  {% endif %}
+                  {% if mem_worsts[idx] is not none and key == '%.6f'|format(mem_worsts[idx]) %}
+                    {% set classes = classes + ['metric-worst'] %}
+                  {% endif %}
+                  {% set class_attr = classes|join(' ') %}
+                  <td{% if class_attr %} class="{{ class_attr }}"{% endif %}>{{ '%.2f'|format(val) }}</td>
+                {% else %}
+                  <td>-</td>
+                {% endif %}
               {% endfor %}
             </tr>
             {% endfor %}
@@ -957,12 +1099,46 @@
               {% endfor %}
             </tr>
           </thead>
+          {% set std_extrema = namespace(bests=[], worsts=[]) %}
+          {% for op in ops %}
+            {% set values = [] %}
+            {% for a in compare.algos %}
+              {% if a.ops.get(op) and a.ops[op].stddev_ms is not none %}
+                {% set values = values + [a.ops[op].stddev_ms] %}
+              {% endif %}
+            {% endfor %}
+            {% if values %}
+              {% set std_extrema.bests = std_extrema.bests + [values|min] %}
+              {% set std_extrema.worsts = std_extrema.worsts + [values|max] %}
+            {% else %}
+              {% set std_extrema.bests = std_extrema.bests + [None] %}
+              {% set std_extrema.worsts = std_extrema.worsts + [None] %}
+            {% endif %}
+          {% endfor %}
+          {% set std_bests = std_extrema.bests %}
+          {% set std_worsts = std_extrema.worsts %}
           <tbody>
             {% for a in compare.algos %}
             <tr>
               <td>{{ a.label }}</td>
               {% for op in ops %}
-                <td>{% if a.ops.get(op) %}{{ '%.3f'|format(a.ops[op].stddev_ms) }}{% else %}-{% endif %}</td>
+                {% set idx = loop.index0 %}
+                {% set op_data = a.ops.get(op) %}
+                {% if op_data and op_data.stddev_ms is not none %}
+                  {% set val = op_data.stddev_ms %}
+                  {% set key = '%.6f'|format(val) %}
+                  {% set classes = [] %}
+                  {% if std_bests[idx] is not none and key == '%.6f'|format(std_bests[idx]) %}
+                    {% set classes = classes + ['metric-best'] %}
+                  {% endif %}
+                  {% if std_worsts[idx] is not none and key == '%.6f'|format(std_worsts[idx]) %}
+                    {% set classes = classes + ['metric-worst'] %}
+                  {% endif %}
+                  {% set class_attr = classes|join(' ') %}
+                  <td{% if class_attr %} class="{{ class_attr }}"{% endif %}>{{ '%.3f'|format(val) }}</td>
+                {% else %}
+                  <td>-</td>
+                {% endif %}
               {% endfor %}
             </tr>
             {% endfor %}
@@ -981,16 +1157,46 @@
               {% endfor %}
             </tr>
           </thead>
+          {% set mem_std_extrema = namespace(bests=[], worsts=[]) %}
+          {% for op in ops %}
+            {% set values = [] %}
+            {% for a in compare.algos %}
+              {% if a.ops.get(op) and a.ops[op].mem_stddev_kb is not none %}
+                {% set values = values + [a.ops[op].mem_stddev_kb] %}
+              {% endif %}
+            {% endfor %}
+            {% if values %}
+              {% set mem_std_extrema.bests = mem_std_extrema.bests + [values|min] %}
+              {% set mem_std_extrema.worsts = mem_std_extrema.worsts + [values|max] %}
+            {% else %}
+              {% set mem_std_extrema.bests = mem_std_extrema.bests + [None] %}
+              {% set mem_std_extrema.worsts = mem_std_extrema.worsts + [None] %}
+            {% endif %}
+          {% endfor %}
+          {% set mem_std_bests = mem_std_extrema.bests %}
+          {% set mem_std_worsts = mem_std_extrema.worsts %}
           <tbody>
             {% for a in compare.algos %}
             <tr>
               <td>{{ a.label }}</td>
               {% for op in ops %}
-                <td>
-                  {% if a.ops.get(op) and a.ops[op].mem_stddev_kb is not none %}
-                    {{ '%.2f'|format(a.ops[op].mem_stddev_kb) }}
-                  {% else %}-{% endif %}
-                </td>
+                {% set idx = loop.index0 %}
+                {% set op_data = a.ops.get(op) %}
+                {% if op_data and op_data.mem_stddev_kb is not none %}
+                  {% set val = op_data.mem_stddev_kb %}
+                  {% set key = '%.6f'|format(val) %}
+                  {% set classes = [] %}
+                  {% if mem_std_bests[idx] is not none and key == '%.6f'|format(mem_std_bests[idx]) %}
+                    {% set classes = classes + ['metric-best'] %}
+                  {% endif %}
+                  {% if mem_std_worsts[idx] is not none and key == '%.6f'|format(mem_std_worsts[idx]) %}
+                    {% set classes = classes + ['metric-worst'] %}
+                  {% endif %}
+                  {% set class_attr = classes|join(' ') %}
+                  <td{% if class_attr %} class="{{ class_attr }}"{% endif %}>{{ '%.2f'|format(val) }}</td>
+                {% else %}
+                  <td>-</td>
+                {% endif %}
               {% endfor %}
             </tr>
             {% endfor %}
@@ -1009,12 +1215,46 @@
               {% endfor %}
             </tr>
           </thead>
+          {% set median_extrema = namespace(bests=[], worsts=[]) %}
+          {% for op in ops %}
+            {% set values = [] %}
+            {% for a in compare.algos %}
+              {% if a.ops.get(op) and a.ops[op].median_ms is not none %}
+                {% set values = values + [a.ops[op].median_ms] %}
+              {% endif %}
+            {% endfor %}
+            {% if values %}
+              {% set median_extrema.bests = median_extrema.bests + [values|min] %}
+              {% set median_extrema.worsts = median_extrema.worsts + [values|max] %}
+            {% else %}
+              {% set median_extrema.bests = median_extrema.bests + [None] %}
+              {% set median_extrema.worsts = median_extrema.worsts + [None] %}
+            {% endif %}
+          {% endfor %}
+          {% set median_bests = median_extrema.bests %}
+          {% set median_worsts = median_extrema.worsts %}
           <tbody>
             {% for a in compare.algos %}
             <tr>
               <td>{{ a.label }}</td>
               {% for op in ops %}
-                <td>{% if a.ops.get(op) %}{{ '%.3f'|format(a.ops[op].median_ms) }}{% else %}-{% endif %}</td>
+                {% set idx = loop.index0 %}
+                {% set op_data = a.ops.get(op) %}
+                {% if op_data and op_data.median_ms is not none %}
+                  {% set val = op_data.median_ms %}
+                  {% set key = '%.6f'|format(val) %}
+                  {% set classes = [] %}
+                  {% if median_bests[idx] is not none and key == '%.6f'|format(median_bests[idx]) %}
+                    {% set classes = classes + ['metric-best'] %}
+                  {% endif %}
+                  {% if median_worsts[idx] is not none and key == '%.6f'|format(median_worsts[idx]) %}
+                    {% set classes = classes + ['metric-worst'] %}
+                  {% endif %}
+                  {% set class_attr = classes|join(' ') %}
+                  <td{% if class_attr %} class="{{ class_attr }}"{% endif %}>{{ '%.3f'|format(val) }}</td>
+                {% else %}
+                  <td>-</td>
+                {% endif %}
               {% endfor %}
             </tr>
             {% endfor %}
@@ -1033,16 +1273,46 @@
               {% endfor %}
             </tr>
           </thead>
+          {% set mem_median_extrema = namespace(bests=[], worsts=[]) %}
+          {% for op in ops %}
+            {% set values = [] %}
+            {% for a in compare.algos %}
+              {% if a.ops.get(op) and a.ops[op].mem_median_kb is not none %}
+                {% set values = values + [a.ops[op].mem_median_kb] %}
+              {% endif %}
+            {% endfor %}
+            {% if values %}
+              {% set mem_median_extrema.bests = mem_median_extrema.bests + [values|min] %}
+              {% set mem_median_extrema.worsts = mem_median_extrema.worsts + [values|max] %}
+            {% else %}
+              {% set mem_median_extrema.bests = mem_median_extrema.bests + [None] %}
+              {% set mem_median_extrema.worsts = mem_median_extrema.worsts + [None] %}
+            {% endif %}
+          {% endfor %}
+          {% set mem_median_bests = mem_median_extrema.bests %}
+          {% set mem_median_worsts = mem_median_extrema.worsts %}
           <tbody>
             {% for a in compare.algos %}
             <tr>
               <td>{{ a.label }}</td>
               {% for op in ops %}
-                <td>
-                  {% if a.ops.get(op) and a.ops[op].mem_median_kb is not none %}
-                    {{ '%.2f'|format(a.ops[op].mem_median_kb) }}
-                  {% else %}-{% endif %}
-                </td>
+                {% set idx = loop.index0 %}
+                {% set op_data = a.ops.get(op) %}
+                {% if op_data and op_data.mem_median_kb is not none %}
+                  {% set val = op_data.mem_median_kb %}
+                  {% set key = '%.6f'|format(val) %}
+                  {% set classes = [] %}
+                  {% if mem_median_bests[idx] is not none and key == '%.6f'|format(mem_median_bests[idx]) %}
+                    {% set classes = classes + ['metric-best'] %}
+                  {% endif %}
+                  {% if mem_median_worsts[idx] is not none and key == '%.6f'|format(mem_median_worsts[idx]) %}
+                    {% set classes = classes + ['metric-worst'] %}
+                  {% endif %}
+                  {% set class_attr = classes|join(' ') %}
+                  <td{% if class_attr %} class="{{ class_attr }}"{% endif %}>{{ '%.2f'|format(val) }}</td>
+                {% else %}
+                  <td>-</td>
+                {% endif %}
               {% endfor %}
             </tr>
             {% endfor %}
@@ -1331,9 +1601,9 @@
         <div style="opacity:.9; font-size:.92rem; margin-bottom:.35rem;">Mean fraction of differing bits between key pairs (per algorithm).</div>
         <canvas id="hd-bar" style="width:100%; height:260px;"></canvas>
       </div>
-      <div class="card">
+      <div class="card hamming-card">
         <div style="font-weight:700; margin-bottom:.5rem;">HD Statistics (fraction)</div>
-        <table class="vlines">
+        <table class="vlines hamming-table">
           <thead>
             <tr>
               <th>Algorithm</th>
@@ -1384,9 +1654,9 @@
         <div style="opacity:.9; font-size:.92rem; margin-bottom:.35rem;">Mean fraction of 1-bits in secret keys (per algorithm).</div>
         <canvas id="hw-bar" style="width:100%; height:260px;"></canvas>
       </div>
-      <div class="card">
+      <div class="card hamming-card">
         <div style="font-weight:700; margin-bottom:.5rem;">HW Statistics (fraction)</div>
-        <table class="vlines">
+        <table class="vlines hamming-table">
           <thead>
             <tr>
               <th>Algorithm</th>
