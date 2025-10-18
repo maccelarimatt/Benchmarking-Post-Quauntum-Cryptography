@@ -380,7 +380,7 @@ def plot_shor_runtime(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir:
                     classical_y = shor_y - gap * 0.5
                 ax.text(
                     x, classical_y, txt,
-                    ha="center", va="top", fontsize=14, color="black",
+                    ha="center", va="top", fontsize=14, color="#d00000",
                     linespacing=1.10, clip_on=False, zorder=6, path_effects=outline
                 )
             else:
@@ -388,15 +388,15 @@ def plot_shor_runtime(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir:
                 classical_y = shor_y + extra_classical_gap
                 ax.text(
                     x, classical_y, txt,
-                    ha="center", va="bottom", fontsize=14, color="black",
-                    linespacing=1.10, clip_on=False, zorder=6
+                    ha="center", va="bottom", fontsize=14, color="#d00000",
+                    linespacing=1.10, clip_on=False, zorder=6, path_effects=outline
                 )
 
     legend_handles = [
         mlines.Line2D([], [], color="black", linestyle="None", markersize=8,
-                      label="Shor (GE baseline): ~20 M physical qubits, \nsurface-code EC (p≈1e-3, ~1 µs cycle)."),
-        mlines.Line2D([], [], color="black", linestyle="None", markersize=8,
-                      label="GNFS (classical): General Number Field Sieve\n — fastest classical factoring (heuristic Ln[1/3])."),
+                      label="Shor (quantum) runtime"),
+        mlines.Line2D([], [], color="#d00000", linestyle="None", markersize=8,
+                      label="Classical GNFS runtime"),
     ]
     ax.legend(
     handles=legend_handles,
@@ -785,6 +785,76 @@ def plot_size_by_scheme(records: Sequence[Record], png_dir: pathlib.Path, pdf_di
     _save_figure(fig, "poster_size_by_scheme", png_dir, pdf_dir)
 
 
+def plot_category_top_metric(
+    records: Sequence[Record],
+    png_dir: pathlib.Path,
+    pdf_dir: pathlib.Path,
+    top_n: int,
+    metric: str,
+) -> None:
+    top_n = max(int(top_n or 0), 0)
+    if top_n <= 0:
+        return
+    metric = metric.lower()
+    if metric not in {"latency", "memory"}:
+        raise ValueError("metric must be 'latency' or 'memory'")
+
+    pass_name = "timing" if metric == "latency" else "memory"
+    attr_name = "mean_ms" if metric == "latency" else "mem_mean_kb"
+    ylabel = "Mean latency (ms)" if metric == "latency" else "Mean peak memory (KB)"
+    file_stub = "latency" if metric == "latency" else "memory"
+    title_label = "Latency" if metric == "latency" else "Memory"
+
+    palette_kem = ["#1f77b4", "#14796d", "#33539e", "#209fb5", "#14a44d"]
+    palette_sig = ["#d62839", "#f77f00", "#b56576", "#6d597a", "#ef6351"]
+
+    aggregates: Dict[Tuple[str, str, int], List[float]] = {}
+    for rec in records:
+        if rec.measurement_pass != pass_name:
+            continue
+        if rec.category_number not in (1, 3, 5):
+            continue
+        value = getattr(rec, attr_name, None)
+        if value is None:
+            continue
+        key = (rec.kind.upper(), rec.algo, rec.category_number)
+        aggregates.setdefault(key, []).append(float(value))
+
+    for kind in ("KEM", "SIG"):
+        palette = palette_kem if kind == "KEM" else palette_sig
+        for category in (1, 3, 5):
+            entries: List[Tuple[str, float]] = []
+            for (agg_kind, algo, cat), values in aggregates.items():
+                if agg_kind != kind or cat != category:
+                    continue
+                if not values:
+                    continue
+                avg = sum(values) / len(values)
+                entries.append((algo, avg))
+            if not entries:
+                continue
+
+            entries.sort(key=lambda item: item[1])
+            top_entries = entries[:min(top_n, len(entries))]
+
+            fig, ax = plt.subplots(figsize=(11, 7))
+            ax.set_title(f"{title_label} — Cat {category} Top {len(top_entries)} {kind}s")
+
+            labels = [f"{_friendly_label(algo)}" for algo, _ in top_entries]
+            values = [value for _, value in top_entries]
+            colors = [palette[idx % len(palette)] for idx in range(len(top_entries))]
+
+            ax.bar(labels, values, color=colors)
+            ax.set_ylabel(ylabel)
+            ax.grid(True, axis="y", linestyle="--", alpha=0.3)
+            ax.tick_params(axis="x", rotation=45)
+            for tick in ax.get_xticklabels():
+                tick.set_horizontalalignment("right")
+
+            output_name = f"poster_{file_stub}_cat{category}_{kind.lower()}_top"
+            _save_figure(fig, output_name, png_dir, pdf_dir)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Render poster graphs.")
     parser.add_argument(
@@ -798,6 +868,12 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_OUTPUT,
         type=pathlib.Path,
         help="Poster output directory base (default: Tested Benchmarks/i9 9880h/Benchmarks)",
+    )
+    parser.add_argument(
+        "--top-n",
+        type=int,
+        default=4,
+        help="Number of top algorithms to display in category-specific charts (default: 4).",
     )
     return parser.parse_args()
 
@@ -924,6 +1000,8 @@ def main() -> None:
     plot_security_vs_latency_by_category(records, png_dir, pdf_dir, csv_dir)
     plot_security_bits(records, png_dir, pdf_dir)
     plot_memory_combined(records, png_dir, pdf_dir)
+    plot_category_top_metric(records, png_dir, pdf_dir, args.top_n, "latency")
+    plot_category_top_metric(records, png_dir, pdf_dir, args.top_n, "memory")
     plot_size_by_scheme(records, png_dir, pdf_dir)
 
     print(f"Poster graphs written to {poster_root}")
