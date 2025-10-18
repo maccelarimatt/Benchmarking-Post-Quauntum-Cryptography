@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   {% from '_header.html' import header_styles %}
+  {% from '_background_effects.html' import background_layer, background_rules %}
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PQC Bench – Compare Results</title>
@@ -33,7 +34,17 @@
 
     :root { --island-bg: rgba(38,41,45,.92); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
     /* Reduce top padding so header sits closer to top */
-    body { margin:0; padding:0.1vh 5vw 5vh; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size:cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
+    body {
+      margin:0;
+      padding:0.1vh 5vw 5vh;
+      color:var(--text);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(31, 182, 184, 0.16), transparent 55%),
+        radial-gradient(circle at 80% 15%, rgba(77, 157, 255, 0.12), transparent 60%),
+        linear-gradient(180deg, #070b11 0%, #04070c 60%, #020408 100%);
+      position: relative;
+    }
     .island { background:var(--island-bg); border-radius:var(--island-radius); padding:1.25rem; backdrop-filter: blur(4px); max-width:1200px; margin:0 auto 1.6vh auto; }
     .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; }
     .card { background: rgba(0,0,0,.25); border-radius:.75rem; padding:1rem; }
@@ -43,7 +54,6 @@
     table.vlines th:not(:last-child),
     table.vlines td:not(:last-child) { border-right: 1px solid rgba(255,255,255,.25); }
     table.vlines thead th { border-bottom: 1px solid rgba(255,255,255,.35); }
-
     /* Hide default disclosure arrow markers on <summary> to avoid stray arrows */
     summary { list-style: none; }
     summary::marker { content: none; }
@@ -51,13 +61,13 @@
     /* WebKit/Blink */
     summary::-webkit-details-marker { display: none; }
     details > summary::-webkit-details-marker { display: none; }
-
     /* Defensive: suppress any stray pseudo-element arrows injected by defaults */
     body::before, body::after,
     header::before, header::after,
     .island::before, .island::after,
     details > summary::before, details > summary::after {
       content: none !important;
+ position: relative;
     }
     /* As a last resort on this page only, clear before/after on all descendants */
     :where(body) *::before, :where(body) *::after { content: none !important; }
@@ -137,9 +147,11 @@
     .note-point { position:relative; padding-left:1.1rem; font-size:.9rem; color:rgba(255,255,255,.9); line-height:1.45; }
     .note-point::before { content:'•'; position:absolute; left:0; top:0; color:rgba(255,255,255,.7); font-size:1rem; line-height:1.45; }
     .notes-empty { font-size:.85rem; opacity:.8; background:rgba(255,255,255,.04); border-radius:.6rem; padding:.7rem .85rem; }
+    {{ background_rules() | safe }}
   </style>
 </head>
 <body>
+  {{ background_layer() }}
   {% from '_header.html' import render_header %}
   {{ render_header(title='Post-Quantum Cryptography Benchmarking', subtitle='Run and Compare Different Cryptographic Algorithms', active='benchmarking') }}
   <div class="island" style="display:flex; justify-content:space-between; align-items:center;">
@@ -219,7 +231,7 @@
           if (!html.trim()) return;
           const doc = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>PQC LLM Analysis</title>
           <style>
-            body { background:#fff; color:#000; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; line-height:1.5; padding:16px; }
+    body { background:#fff; color:#000; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; line-height:1.5; padding:16px; }
             h1,h2,h3 { margin-top:1.1em; }
             table { width:100%; border-collapse:collapse; }
             th,td { border:1px solid #ccc; padding:.4rem .5rem; }

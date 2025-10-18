@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   {% from '_header.html' import header_styles %}
+  {% from '_background_effects.html' import background_layer, background_rules %}
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Post Quantum Cryptography Bench – Setup</title>
@@ -40,11 +41,20 @@
       --text: #ffffff;
     }
     body {
-      margin: 0; padding: 0 5vw 5vh; color: var(--text);
+      margin: 0;
+      padding: 0 5vw 5vh;
+      color: var(--text);
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
-      background-image: url('/static/Images/background.gif');
-      background-size: cover; background-position: center center; background-repeat: no-repeat; background-attachment: fixed;`n      background-color: #0b0f14;
-      display:flex; flex-direction:column; align-items:center; min-height:100vh;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(31, 182, 184, 0.16), transparent 55%),
+        radial-gradient(circle at 80% 15%, rgba(77, 157, 255, 0.12), transparent 60%),
+        linear-gradient(180deg, #070b11 0%, #04070c 60%, #020408 100%);
+      background-color: #0b0f14;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      min-height:100vh;
+      position: relative;
     }
     .island { background: var(--island-bg); border-radius: var(--island-radius); box-shadow: var(--island-shadow); backdrop-filter: blur(4px); padding: 1.25rem; width:100%; max-width:1200px; }
     .title { font-size:1.7rem; font-weight:700; margin:0 0 .5rem 0; }
@@ -335,10 +345,12 @@ input[type="checkbox"]:checked::after { opacity: 1; }
 
     /* Header strip */
     {{ header_styles() | safe }}
+    {{ background_rules() | safe }}
   </style>
   </head>
 <body>
-  <div id="loading-overlay" class="loading-overlay" hidden>
+  {{ background_layer() }}
+<div id="loading-overlay" class="loading-overlay" hidden>
     <div class="loading-card">
       <div class="loading-spinner" aria-hidden="true">
         <div class="dot"></div>
