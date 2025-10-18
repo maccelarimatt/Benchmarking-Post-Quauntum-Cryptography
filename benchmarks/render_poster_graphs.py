@@ -839,7 +839,6 @@ def plot_category_top_metric(
             top_entries = entries[:min(top_n, len(entries))]
 
             fig, ax = plt.subplots(figsize=(11, 7))
-            ax.set_title(f"{title_label} — Cat {category} Top {len(top_entries)} {kind}s")
 
             labels = [f"{_friendly_label(algo)}" for algo, _ in top_entries]
             values = [value for _, value in top_entries]
@@ -931,7 +930,6 @@ def plot_category_operation_breakdown(
             indices = list(range(len(top_entries)))
 
             fig, ax = plt.subplots(figsize=(11, 7))
-            ax.set_title(f"{ylabel.split(' (')[0]} by Operation — Cat {category} {kind}s")
 
             for idx_op, op in enumerate(required_ops):
                 offsets = [i + (idx_op - (num_ops - 1) / 2) * width for i in indices]
