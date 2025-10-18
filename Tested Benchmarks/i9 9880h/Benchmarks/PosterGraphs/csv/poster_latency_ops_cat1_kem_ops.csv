@@ -1,0 +1,22 @@
+algorithm,internal_algorithm,kind,category,operation,timing_value
+Kyber,kyber,KEM,1,keygen,2.121662299396121
+Kyber,kyber,KEM,1,encapsulate,0.09180650085909292
+Kyber,kyber,KEM,1,decapsulate,0.08690322429174557
+Ntru,ntru,KEM,1,keygen,2.2982100505032577
+Ntru,ntru,KEM,1,encapsulate,0.09807045280467719
+Ntru,ntru,KEM,1,decapsulate,0.09035322291310877
+Frodokem,frodokem,KEM,1,keygen,2.6401560666272417
+Frodokem,frodokem,KEM,1,encapsulate,0.6037993545760401
+Frodokem,frodokem,KEM,1,decapsulate,0.6142701080534607
+Bike,bike,KEM,1,keygen,3.3917893277248368
+Bike,bike,KEM,1,encapsulate,0.1233555914950557
+Bike,bike,KEM,1,decapsulate,0.7636850510607474
+Classic Mceliece,classic-mceliece,KEM,1,keygen,37.74256170145236
+Classic Mceliece,classic-mceliece,KEM,1,encapsulate,0.12872062070528045
+Classic Mceliece,classic-mceliece,KEM,1,decapsulate,0.1764135537086986
+Hqc,hqc,KEM,1,keygen,9.397928949692869
+Hqc,hqc,KEM,1,encapsulate,14.066079449185054
+Hqc,hqc,KEM,1,decapsulate,21.56624097551685
+Rsa Oaep,rsa-oaep,KEM,1,keygen,187.9826466749364
+Rsa Oaep,rsa-oaep,KEM,1,encapsulate,0.6729792992700823
+Rsa Oaep,rsa-oaep,KEM,1,decapsulate,2.5861128240649123

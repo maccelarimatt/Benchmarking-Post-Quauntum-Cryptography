@@ -1,0 +1,28 @@
+algorithm,internal_algorithm,kind,category,operation,timing_value
+Dilithium,dilithium,SIG,1,keygen,2.2291104440228082
+Dilithium,dilithium,SIG,1,sign,0.1661938920733519
+Dilithium,dilithium,SIG,1,verify,0.12922217429149896
+Mayo,mayo,SIG,1,keygen,2.1870861513889395
+Mayo,mayo,SIG,1,sign,0.2978467251523398
+Mayo,mayo,SIG,1,verify,0.162988125521224
+Cross,cross,SIG,1,keygen,2.2919941970030777
+Cross,cross,SIG,1,sign,0.726360923727043
+Cross,cross,SIG,1,verify,0.44425237720133737
+Uov,uov,SIG,1,keygen,3.9313656292506494
+Uov,uov,SIG,1,sign,0.20579255215125158
+Uov,uov,SIG,1,verify,0.1526754946098663
+Falcon,falcon,SIG,1,keygen,7.454233399403165
+Falcon,falcon,SIG,1,sign,0.29911202436778694
+Falcon,falcon,SIG,1,verify,0.12117032420064788
+Snova,snova,SIG,1,keygen,4.074069199850783
+Snova,snova,SIG,1,sign,1.2372905301162973
+Snova,snova,SIG,1,verify,8.91892717772862
+Rsa Pss,rsa-pss,SIG,1,keygen,140.72322587599047
+Rsa Pss,rsa-pss,SIG,1,sign,3.1222613997670123
+Rsa Pss,rsa-pss,SIG,1,verify,0.26497680082684383
+SPHINCS,sphincs+,SIG,1,keygen,40.106646349522634
+SPHINCS,sphincs+,SIG,1,sign,287.9451707009139
+SPHINCS,sphincs+,SIG,1,verify,0.46912702528061345
+Slh Dsa,slh-dsa,SIG,1,keygen,64.54070712497924
+Slh Dsa,slh-dsa,SIG,1,sign,473.28114152333
+Slh Dsa,slh-dsa,SIG,1,verify,0.5697979562683031

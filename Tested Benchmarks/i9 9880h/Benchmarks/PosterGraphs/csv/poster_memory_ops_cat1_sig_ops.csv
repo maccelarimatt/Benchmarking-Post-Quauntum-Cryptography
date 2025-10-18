@@ -1,0 +1,28 @@
+algorithm,internal_algorithm,kind,category,operation,memory_value
+Falcon,falcon,SIG,1,keygen,366.8
+Falcon,falcon,SIG,1,sign,105.1
+Falcon,falcon,SIG,1,verify,111.3
+Dilithium,dilithium,SIG,1,keygen,369.2
+Dilithium,dilithium,SIG,1,sign,116.2
+Dilithium,dilithium,SIG,1,verify,116.1
+Slh Dsa,slh-dsa,SIG,1,keygen,377.2
+Slh Dsa,slh-dsa,SIG,1,sign,142.2
+Slh Dsa,slh-dsa,SIG,1,verify,104.2
+SPHINCS,sphincs+,SIG,1,keygen,372.5
+SPHINCS,sphincs+,SIG,1,sign,164.7
+SPHINCS,sphincs+,SIG,1,verify,108.9
+Cross,cross,SIG,1,keygen,374.1
+Cross,cross,SIG,1,sign,228.8
+Cross,cross,SIG,1,verify,117.3
+Mayo,mayo,SIG,1,keygen,487.4
+Mayo,mayo,SIG,1,sign,149.1
+Mayo,mayo,SIG,1,verify,115.6
+Rsa Pss,rsa-pss,SIG,1,keygen,494.9
+Rsa Pss,rsa-pss,SIG,1,sign,238.7
+Rsa Pss,rsa-pss,SIG,1,verify,111.6
+Snova,snova,SIG,1,keygen,571.4
+Snova,snova,SIG,1,sign,151.5
+Snova,snova,SIG,1,verify,130.6
+Uov,uov,SIG,1,keygen,1682.7
+Uov,uov,SIG,1,sign,349.8818359375
+Uov,uov,SIG,1,verify,415.05859375

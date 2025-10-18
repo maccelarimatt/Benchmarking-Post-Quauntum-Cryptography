@@ -1,0 +1,16 @@
+algorithm,internal_algorithm,kind,category,operation,mean_ms
+Kyber,kyber,KEM,5,decapsulate,0.09005717693071347
+Kyber,kyber,KEM,5,encapsulate,0.0882510510564316
+Kyber,kyber,KEM,5,keygen,1.9965092513302807
+Kyber,kyber,KEM,3,decapsulate,0.10368275070504751
+Kyber,kyber,KEM,3,encapsulate,0.08343674999196082
+Kyber,kyber,KEM,3,keygen,2.035415048885625
+Kyber,kyber,KEM,1,decapsulate,0.08690322429174557
+Kyber,kyber,KEM,1,encapsulate,0.09180650085909292
+Kyber,kyber,KEM,1,keygen,2.121662299396121
+Dilithium,dilithium,SIG,3,keygen,2.049284574604826
+Dilithium,dilithium,SIG,3,sign,0.19361207450856455
+Dilithium,dilithium,SIG,3,verify,0.11961787567997817
+Dilithium,dilithium,SIG,5,keygen,2.063758702206542
+Dilithium,dilithium,SIG,5,sign,0.24794977252895478
+Dilithium,dilithium,SIG,5,verify,0.15018087542557623

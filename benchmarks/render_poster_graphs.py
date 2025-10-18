@@ -149,6 +149,23 @@ def _ensure_dir(path: pathlib.Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
 
+def _write_csv(
+    csv_dir: Optional[pathlib.Path],
+    name: str,
+    fieldnames: Sequence[str],
+    rows: Sequence[Dict[str, Any]],
+) -> None:
+    if csv_dir is None:
+        return
+    _ensure_dir(csv_dir)
+    path = csv_dir / f"{name}.csv"
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+
+
 def _save_figure(fig: plt.Figure, name: str, png_dir: pathlib.Path, pdf_dir: pathlib.Path) -> None:
     _ensure_dir(png_dir)
     _ensure_dir(pdf_dir)
@@ -176,7 +193,12 @@ def _select_top_algos(records: Iterable[Record], kind: str, count: int, pass_nam
     return result
 
 
-def plot_latency_combined(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir: pathlib.Path) -> None:
+def plot_latency_combined(
+    records: Sequence[Record],
+    png_dir: pathlib.Path,
+    pdf_dir: pathlib.Path,
+    csv_dir: Optional[pathlib.Path] = None,
+) -> None:
     pass_name = "timing"
     # Change this value if you want more or fewer algorithms plotted.
     top_n = 5
@@ -201,13 +223,13 @@ def plot_latency_combined(records: Sequence[Record], png_dir: pathlib.Path, pdf_
     if not top_algos:
         return
 
-    kem_palette = ["#1f77b4", "#14796d", "#33539e", "#209fb5", "#14a44d"]
-    sig_palette = ["#d62839", "#f77f00", "#b56576", "#6d597a", "#ef6351"]
+    kem_palette = ["#0072B2", "#56B4E9", "#009E73", "#CC79A7", "#E69F00"]
+    sig_palette = ["#D55E00", "#E69F00", "#999999", "#009E73", "#56B4E9"]
 
     fig, ax = plt.subplots(figsize=(13, 8))
-    #ax.set_title("Latency (Timing) — Top PQC Algorithms (Mean Over Operations)")
 
     bars: List[Tuple[str, float, str]] = []
+    csv_rows: List[Dict[str, Any]] = []
     for idx, (kind, algo, category, _, entries) in enumerate(top_algos):
         color_palette = kem_palette if kind == "KEM" else sig_palette
         base_color = color_palette[idx % len(color_palette)]
@@ -215,19 +237,36 @@ def plot_latency_combined(records: Sequence[Record], png_dir: pathlib.Path, pdf_
         for entry in entries:
             op_label = entry.operation[:4].upper()
             bars.append((f"{algorithm_label} {op_label} ({category})", entry.mean_ms, base_color))
+            csv_rows.append(
+                {
+                    "algorithm": algorithm_label,
+                    "internal_algorithm": entry.algo,
+                    "kind": entry.kind,
+                    "category": entry.category_number,
+                    "operation": entry.operation,
+                    "mean_ms": entry.mean_ms,
+                }
+            )
 
     labels = [label for label, _, _ in bars]
     values = [value for _, value, _ in bars]
     colors = [color for _, _, color in bars]
 
     ax.bar(labels, values, color=colors)
-    ax.set_ylabel("Mean latency (ms)")
+    ax.set_ylabel("Mean latency (ms)", fontsize=20)
     ax.grid(True, axis="y", linestyle="--", alpha=0.3)
-    ax.tick_params(axis="x", rotation=45)
+    ax.tick_params(axis="x", rotation=45, labelsize=18)
+    ax.tick_params(axis="y", labelsize=18)
     for tick in ax.get_xticklabels():
         tick.set_horizontalalignment("right")
 
     _save_figure(fig, "poster_latency_timing_top", png_dir, pdf_dir)
+    _write_csv(
+        csv_dir,
+        "poster_latency_timing_top",
+        ["algorithm", "internal_algorithm", "kind", "category", "operation", "mean_ms"],
+        csv_rows,
+    )
 
 
 def _format_scientific(value: Optional[float]) -> str:
@@ -236,7 +275,12 @@ def _format_scientific(value: Optional[float]) -> str:
     return f"{value:.2e}"
 
 
-def plot_shor_runtime(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir: pathlib.Path) -> None:
+def plot_shor_runtime(
+    records: Sequence[Record],
+    png_dir: pathlib.Path,
+    pdf_dir: pathlib.Path,
+    csv_dir: Optional[pathlib.Path] = None,
+) -> None:
     # Aggregate one entry per modulus_bits; prefer per-bit classical values if available.
     agg: Dict[int, Dict[str, Optional[float]]] = {}  # bits -> {'runtime_s': float, 'classical_core_years': float}
     global_classical_values: List[float] = []  # in case only a single (global) classical was provided
@@ -358,6 +402,7 @@ def plot_shor_runtime(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir:
     gap = max(0.04 * ymax, 0.45)         # base gap above the bar for Shor
     extra_classical_gap = max(0.06 * ymax, 0.70)  # extra gap above Shor for classical (when above)
 
+    csv_rows: List[Dict[str, Any]] = []
     for bar, days, bits, classical in zip(bars, runtime_days, bits_sorted, classical_vals):
         x = bar.get_x() + bar.get_width() / 2.0
         h = bar.get_height()
@@ -392,6 +437,15 @@ def plot_shor_runtime(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir:
                     ha="center", va="bottom", fontsize=14, color="#d00000",
                     linespacing=1.10, clip_on=False, zorder=6, path_effects=outline
                 )
+        csv_rows.append(
+            {
+                "modulus_bits": bits,
+                "runtime_seconds": agg[bits]["runtime_s"],
+                "runtime_hours": (agg[bits]["runtime_s"] or 0.0) / 3600.0,
+                "runtime_days": days,
+                "classical_core_years": classical,
+            }
+        )
 
     legend_handles = [
         mlines.Line2D([], [], color="black", linestyle="None", markersize=8,
@@ -408,6 +462,18 @@ def plot_shor_runtime(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir:
     )
 
     _save_figure(fig, "poster_shor_runtime_rsa_ge", png_dir, pdf_dir)
+    _write_csv(
+        csv_dir,
+        "poster_shor_runtime_rsa_ge",
+        [
+            "modulus_bits",
+            "runtime_seconds",
+            "runtime_hours",
+            "runtime_days",
+            "classical_core_years",
+        ],
+        csv_rows,
+    )
 
 def _gnfs_scale_core_years(bits_target: int, ref_bits: int, ref_core_years: float) -> float:
     """
@@ -456,7 +522,12 @@ def _place_labels(
         )
 
 
-def plot_security_vs_latency(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir: pathlib.Path) -> None:
+def plot_security_vs_latency(
+    records: Sequence[Record],
+    png_dir: pathlib.Path,
+    pdf_dir: pathlib.Path,
+    csv_dir: Optional[pathlib.Path] = None,
+) -> None:
     points: List[Tuple[float, float, str, str, Optional[int]]] = []
     for rec in records:
         if rec.measurement_pass != "timing" or rec.operation != "keygen":
@@ -476,6 +547,7 @@ def plot_security_vs_latency(records: Sequence[Record], png_dir: pathlib.Path, p
     # ax.set_title("Quantum Security vs Latency (Key Generation)")
 
     label_specs: List[Tuple[float, float, str, str]] = []
+    csv_rows: List[Dict[str, Any]] = []
     kem_idx = sig_idx = 0
     latencies: List[float] = []
 
@@ -495,6 +567,15 @@ def plot_security_vs_latency(records: Sequence[Record], png_dir: pathlib.Path, p
             edgecolors="#222222", linewidths=0.6, zorder=3,
         )
         label_specs.append((qbits, latency, f"{label} ({category})", color))
+        csv_rows.append(
+            {
+                "algorithm": label,
+                "kind": kind,
+                "category": category,
+                "quantum_bits": qbits,
+                "latency_ms": latency,
+            }
+        )
         if latency is not None:
             latencies.append(latency)
 
@@ -511,15 +592,23 @@ def plot_security_vs_latency(records: Sequence[Record], png_dir: pathlib.Path, p
     ax.margins(x=0.05, y=0.12)
     _place_labels_smart(ax, label_specs, base_offset=34, max_iter=370, max_distance_px=110.0)
 
-    ax.set_xlabel("Quantum security bits")
-    ax.set_ylabel("Key generation mean latency (ms, log scale)")
+    ax.set_xlabel("Quantum security bits", fontsize=20)
+    ax.set_ylabel("Key generation mean latency (ms, log scale)", fontsize=20)
     ax.grid(True, linestyle="--", alpha=0.3, zorder=0)
+    ax.tick_params(axis="x", labelsize=18)
+    ax.tick_params(axis="y", labelsize=18)
 
     kem_marker = plt.Line2D([], [], marker="o", color="w", markerfacecolor="#264653", markeredgecolor="#222222", markersize=10, label="KEM")
     sig_marker = plt.Line2D([], [], marker="^", color="w", markerfacecolor="#e63946", markeredgecolor="#222222", markersize=10, label="Signature")
-    ax.legend(handles=[kem_marker, sig_marker], loc="upper left")
+    ax.legend(handles=[kem_marker, sig_marker], loc="upper left", fontsize=18)
 
     _save_figure(fig, "poster_security_vs_latency", png_dir, pdf_dir)
+    _write_csv(
+        csv_dir,
+        "poster_security_vs_latency",
+        ["algorithm", "kind", "category", "quantum_bits", "latency_ms"],
+        csv_rows,
+    )
 
 
 
@@ -600,50 +689,59 @@ def plot_security_vs_latency_by_category(
 
         ax.margins(x=0.05, y=0.12)
         _place_labels_smart(ax, label_specs, base_offset=32, max_iter=340, max_distance_px=110.0)
-        ax.set_xlabel("Quantum security bits")
-        ax.set_ylabel("Total mean latency (ms, log scale)")
+        ax.set_xlabel("Quantum security bits", fontsize=20)
+        ax.set_ylabel("Total mean latency (ms, log scale)", fontsize=20)
         ax.grid(True, linestyle="--", alpha=0.3, zorder=0)
+        ax.tick_params(axis="x", labelsize=18)
+        ax.tick_params(axis="y", labelsize=18)
         kem_marker = plt.Line2D([], [], marker="o", color="w", markerfacecolor="#264653", markeredgecolor="#222222", markersize=10, label="KEM")
         sig_marker = plt.Line2D([], [], marker="^", color="w", markerfacecolor="#e63946", markeredgecolor="#222222", markersize=10, label="Signature")
-        ax.legend(handles=[kem_marker, sig_marker], loc="upper left")
+        ax.legend(handles=[kem_marker, sig_marker], loc="upper left", fontsize=18)
         _save_figure(fig, f"poster_security_vs_latency_cat{category}", png_dir, pdf_dir)
 
-        csv_path = csv_dir / f"poster_security_vs_latency_cat{category}.csv"
-        fieldnames = [
-            "algorithm",
-            "kind",
-            "category",
-            "quantum_bits",
-            "total_latency_ms",
-            "keygen_ms",
-            "encapsulate_ms",
-            "decapsulate_ms",
-            "sign_ms",
-            "verify_ms",
-        ]
-        with csv_path.open("w", newline="", encoding="utf-8") as fh:
-            writer = csv.DictWriter(fh, fieldnames=fieldnames)
-            writer.writeheader()
-            for kind, algo, _, quantum, total_latency, ops in entries:
-                writer.writerow(
-                    {
-                        "algorithm": _friendly_label(algo),
-                        "kind": kind,
-                        "category": category,
-                        "quantum_bits": quantum,
-                        "total_latency_ms": total_latency,
-                        "keygen_ms": ops.get("keygen"),
-                        "encapsulate_ms": ops.get("encapsulate"),
-                        "decapsulate_ms": ops.get("decapsulate"),
-                        "sign_ms": ops.get("sign"),
-                        "verify_ms": ops.get("verify"),
-                    }
-                )
+        csv_rows = []
+        for kind, algo, _, quantum, total_latency, ops in entries:
+            csv_rows.append(
+                {
+                    "algorithm": _friendly_label(algo),
+                    "kind": kind,
+                    "category": category,
+                    "quantum_bits": quantum,
+                    "total_latency_ms": total_latency,
+                    "keygen_ms": ops.get("keygen"),
+                    "encapsulate_ms": ops.get("encapsulate"),
+                    "decapsulate_ms": ops.get("decapsulate"),
+                    "sign_ms": ops.get("sign"),
+                    "verify_ms": ops.get("verify"),
+                }
+            )
+        _write_csv(
+            csv_dir,
+            f"poster_security_vs_latency_cat{category}",
+            [
+                "algorithm",
+                "kind",
+                "category",
+                "quantum_bits",
+                "total_latency_ms",
+                "keygen_ms",
+                "encapsulate_ms",
+                "decapsulate_ms",
+                "sign_ms",
+                "verify_ms",
+            ],
+            csv_rows,
+        )
 
 
 
 
-def plot_security_bits(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir: pathlib.Path) -> None:
+def plot_security_bits(
+    records: Sequence[Record],
+    png_dir: pathlib.Path,
+    pdf_dir: pathlib.Path,
+    csv_dir: Optional[pathlib.Path] = None,
+) -> None:
     uniques: Dict[Tuple[str, int], Record] = {}
     for rec in records:
         key = (rec.algo, rec.category_number)
@@ -668,17 +766,48 @@ def plot_security_bits(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir
     ax.bar([p - 0.225 for p in positions], classical, width=0.35, label="Classical bits", color="#1f77b4")
     ax.bar([p + 0.225 for p in positions], quantum, width=0.35, label="Quantum bits", color="#d62728")
     ax.set_xticks(list(positions))
-    ax.set_xticklabels(labels, rotation=45)
+    ax.set_xticklabels(labels, rotation=45, fontsize=18)
     for tick in ax.get_xticklabels():
         tick.set_horizontalalignment("right")
-    ax.set_ylabel("Bits of security")
+    ax.set_ylabel("Bits of security", fontsize=20)
     ax.legend()
     ax.grid(True, axis="y", linestyle="--", alpha=0.3)
+    ax.tick_params(axis="y", labelsize=18)
 
     _save_figure(fig, "poster_security_bits", png_dir, pdf_dir)
+    csv_rows = []
+    for rec in entries:
+        csv_rows.append(
+            {
+                "algorithm": _friendly_label(rec.algo),
+                "internal_algorithm": rec.algo,
+                "kind": rec.kind,
+                "category": rec.category_number,
+                "security_classical_bits": rec.security_classical_bits,
+                "security_quantum_bits": rec.security_quantum_bits,
+            }
+        )
+    _write_csv(
+        csv_dir,
+        "poster_security_bits",
+        [
+            "algorithm",
+            "internal_algorithm",
+            "kind",
+            "category",
+            "security_classical_bits",
+            "security_quantum_bits",
+        ],
+        csv_rows,
+    )
 
 
-def plot_memory_combined(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir: pathlib.Path) -> None:
+def plot_memory_combined(
+    records: Sequence[Record],
+    png_dir: pathlib.Path,
+    pdf_dir: pathlib.Path,
+    csv_dir: Optional[pathlib.Path] = None,
+) -> None:
     pass_name = "memory"
     top_n = 5
 
@@ -702,13 +831,13 @@ def plot_memory_combined(records: Sequence[Record], png_dir: pathlib.Path, pdf_d
     if not top_algos:
         return
 
-    kem_palette = ["#14213d", "#1b4965", "#264653", "#186276", "#0d3b66"]
-    sig_palette = ["#ff7f51", "#ff9f1c", "#f4a261", "#e76f51", "#bc6c25"]
+    kem_palette = ["#0072B2", "#56B4E9", "#009E73", "#CC79A7", "#E69F00"]
+    sig_palette = ["#D55E00", "#E69F00", "#999999", "#009E73", "#56B4E9"]
 
     fig, ax = plt.subplots(figsize=(13, 8))
-    #ax.set_title("Peak Memory — Top PQC Algorithms (Mean Over Operations)")
 
     bars: List[Tuple[str, float, str]] = []
+    csv_rows: List[Dict[str, Any]] = []
     for idx, (kind, algo, category, _, entries) in enumerate(top_algos):
         palette = kem_palette if kind == "KEM" else sig_palette
         base_color = palette[idx % len(palette)]
@@ -716,22 +845,51 @@ def plot_memory_combined(records: Sequence[Record], png_dir: pathlib.Path, pdf_d
         for entry in entries:
             op_label = entry.operation[:4].upper()
             bars.append((f"{algo_label} {op_label} ({category})", entry.mem_mean_kb, base_color))
+            csv_rows.append(
+                {
+                    "algorithm": algo_label,
+                    "internal_algorithm": entry.algo,
+                    "kind": entry.kind,
+                    "category": entry.category_number,
+                    "operation": entry.operation,
+                    "mean_mem_kb": entry.mem_mean_kb,
+                }
+            )
 
     labels = [label for label, _, _ in bars]
     values = [value for _, value, _ in bars]
     colors = [color for _, _, color in bars]
 
     ax.bar(labels, values, color=colors)
-    ax.set_ylabel("Peak memory (KB)")
+    ax.set_ylabel("Peak memory (KB)", fontsize=20)
     ax.grid(True, axis="y", linestyle="--", alpha=0.3)
-    ax.tick_params(axis="x", rotation=45)
+    ax.tick_params(axis="x", rotation=45, labelsize=18)
+    ax.tick_params(axis="y", labelsize=18)
     for tick in ax.get_xticklabels():
         tick.set_horizontalalignment("right")
 
     _save_figure(fig, "poster_memory_peak_top", png_dir, pdf_dir)
+    _write_csv(
+        csv_dir,
+        "poster_memory_peak_top",
+        [
+            "algorithm",
+            "internal_algorithm",
+            "kind",
+            "category",
+            "operation",
+            "mean_mem_kb",
+        ],
+        csv_rows,
+    )
 
 
-def plot_size_by_scheme(records: Sequence[Record], png_dir: pathlib.Path, pdf_dir: pathlib.Path) -> None:
+def plot_size_by_scheme(
+    records: Sequence[Record],
+    png_dir: pathlib.Path,
+    pdf_dir: pathlib.Path,
+    csv_dir: Optional[pathlib.Path] = None,
+) -> None:
     uniques: Dict[Tuple[str, int], Record] = {}
     for rec in records:
         key = (rec.algo, rec.category_number)
@@ -748,7 +906,6 @@ def plot_size_by_scheme(records: Sequence[Record], png_dir: pathlib.Path, pdf_di
     ]
 
     fig, ax = plt.subplots(figsize=(13, 8))
-    ax.set_title("Key Material Sizes by Scheme")
 
     pk = []
     sk = []
@@ -776,14 +933,44 @@ def plot_size_by_scheme(records: Sequence[Record], png_dir: pathlib.Path, pdf_di
         ax.bar(labels, values, bottom=bottoms, label=label)
         bottoms = [b + v for b, v in zip(bottoms, values)]
 
-    ax.set_ylabel("Bytes")
+    ax.set_ylabel("Bytes", fontsize=20)
     ax.legend()
     ax.grid(True, axis="y", linestyle="--", alpha=0.3)
-    ax.tick_params(axis="x", rotation=45)
+    ax.tick_params(axis="x", rotation=45, labelsize=18)
+    ax.tick_params(axis="y", labelsize=18)
     for tick in ax.get_xticklabels():
         tick.set_horizontalalignment("right")
 
     _save_figure(fig, "poster_size_by_scheme", png_dir, pdf_dir)
+    csv_rows = []
+    for rec in entries:
+        csv_rows.append(
+            {
+                "algorithm": _friendly_label(rec.algo),
+                "internal_algorithm": rec.algo,
+                "kind": rec.kind,
+                "category": rec.category_number,
+                "public_key_bytes": rec.meta.get("public_key_len"),
+                "secret_key_bytes": rec.meta.get("secret_key_len"),
+                "ciphertext_bytes": rec.meta.get("ciphertext_len"),
+                "signature_bytes": rec.meta.get("signature_len"),
+            }
+        )
+    _write_csv(
+        csv_dir,
+        "poster_size_by_scheme",
+        [
+            "algorithm",
+            "internal_algorithm",
+            "kind",
+            "category",
+            "public_key_bytes",
+            "secret_key_bytes",
+            "ciphertext_bytes",
+            "signature_bytes",
+        ],
+        csv_rows,
+    )
 
 
 def plot_category_top_metric(
@@ -792,6 +979,7 @@ def plot_category_top_metric(
     pdf_dir: pathlib.Path,
     top_n: int,
     metric: str,
+    csv_dir: Optional[pathlib.Path] = None,
 ) -> None:
     top_n = max(int(top_n or 0), 0)
     if top_n <= 0:
@@ -854,6 +1042,24 @@ def plot_category_top_metric(
 
             output_name = f"poster_{file_stub}_cat{category}_{kind.lower()}_top"
             _save_figure(fig, output_name, png_dir, pdf_dir)
+            metric_field = "mean_latency_ms" if metric == "latency" else "mean_peak_memory_kb"
+            csv_rows = []
+            for algo, value in top_entries:
+                csv_rows.append(
+                    {
+                        "algorithm": _friendly_label(algo),
+                        "internal_algorithm": algo,
+                        "kind": kind,
+                        "category": category,
+                        metric_field: value,
+                    }
+                )
+            _write_csv(
+                csv_dir,
+                output_name,
+                ["algorithm", "internal_algorithm", "kind", "category", metric_field],
+                csv_rows,
+            )
 
 
 def plot_category_operation_breakdown(
@@ -862,6 +1068,7 @@ def plot_category_operation_breakdown(
     pdf_dir: pathlib.Path,
     top_n: int,
     pass_name: str = "timing",
+    csv_dir: Optional[pathlib.Path] = None,
 ) -> None:
     top_n = max(int(top_n or 0), 0)
     if top_n <= 0:
@@ -932,6 +1139,7 @@ def plot_category_operation_breakdown(
 
             fig, ax = plt.subplots(figsize=(11, 7))
 
+            csv_rows: List[Dict[str, Any]] = []
             for idx_op, op in enumerate(required_ops):
                 offsets = [i + (idx_op - (num_ops - 1) / 2) * width for i in indices]
                 values = [ops[op] for _, _, ops in top_entries]
@@ -958,6 +1166,31 @@ def plot_category_operation_breakdown(
 
             output_name = f"poster_{file_stub}_cat{category}_{kind.lower()}_ops"
             _save_figure(fig, output_name, png_dir, pdf_dir)
+            for algo, _, ops in top_entries:
+                for op in required_ops:
+                    csv_rows.append(
+                        {
+                            "algorithm": _friendly_label(algo),
+                            "internal_algorithm": algo,
+                            "kind": kind,
+                            "category": category,
+                            "operation": op,
+                            f"{pass_key}_value": ops.get(op),
+                        }
+                    )
+            _write_csv(
+                csv_dir,
+                output_name,
+                [
+                    "algorithm",
+                    "internal_algorithm",
+                    "kind",
+                    "category",
+                    "operation",
+                    f"{pass_key}_value",
+                ],
+                csv_rows,
+            )
 
 
 def parse_args() -> argparse.Namespace:
@@ -1099,17 +1332,17 @@ def main() -> None:
     pdf_dir = poster_root / "pdf"
     csv_dir = poster_root / "csv"
 
-    plot_latency_combined(records, png_dir, pdf_dir)
-    plot_shor_runtime(records, png_dir, pdf_dir)
-    plot_security_vs_latency(records, png_dir, pdf_dir)
+    plot_latency_combined(records, png_dir, pdf_dir, csv_dir)
+    plot_shor_runtime(records, png_dir, pdf_dir, csv_dir)
+    plot_security_vs_latency(records, png_dir, pdf_dir, csv_dir)
     plot_security_vs_latency_by_category(records, png_dir, pdf_dir, csv_dir)
-    plot_security_bits(records, png_dir, pdf_dir)
-    plot_memory_combined(records, png_dir, pdf_dir)
-    plot_category_top_metric(records, png_dir, pdf_dir, args.top_n, "latency")
-    plot_category_top_metric(records, png_dir, pdf_dir, args.top_n, "memory")
-    plot_category_operation_breakdown(records, png_dir, pdf_dir, args.top_n, pass_name="timing")
-    plot_category_operation_breakdown(records, png_dir, pdf_dir, args.top_n, pass_name="memory")
-    plot_size_by_scheme(records, png_dir, pdf_dir)
+    plot_security_bits(records, png_dir, pdf_dir, csv_dir)
+    plot_memory_combined(records, png_dir, pdf_dir, csv_dir)
+    plot_category_top_metric(records, png_dir, pdf_dir, args.top_n, "latency", csv_dir)
+    plot_category_top_metric(records, png_dir, pdf_dir, args.top_n, "memory", csv_dir)
+    plot_category_operation_breakdown(records, png_dir, pdf_dir, args.top_n, pass_name="timing", csv_dir=csv_dir)
+    plot_category_operation_breakdown(records, png_dir, pdf_dir, args.top_n, pass_name="memory", csv_dir=csv_dir)
+    plot_size_by_scheme(records, png_dir, pdf_dir, csv_dir)
 
     print(f"Poster graphs written to {poster_root}")
 

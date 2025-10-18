@@ -1,0 +1,47 @@
+algorithm,internal_algorithm,kind,category,public_key_bytes,secret_key_bytes,ciphertext_bytes,signature_bytes
+Bike,bike,KEM,1,1541,5223,1573,
+Classic Mceliece,classic-mceliece,KEM,1,261120,6492,96,
+Frodokem,frodokem,KEM,1,9616,19888,9720,
+Hqc,hqc,KEM,1,2249,2305,4433,
+Kyber,kyber,KEM,1,800,1632,768,
+Ntru,ntru,KEM,1,699,935,699,
+Rsa Oaep,rsa-oaep,KEM,1,422,1767,384,
+Cross,cross,SIG,1,54,32,,9120
+Dilithium,dilithium,SIG,1,1312,2560,,2420
+Falcon,falcon,SIG,1,897,1281,,657
+Mayo,mayo,SIG,1,1420,24,,454
+Rsa Pss,rsa-pss,SIG,1,422,1768,,384
+Slh Dsa,slh-dsa,SIG,1,32,64,,7856
+Snova,snova,SIG,1,2320,48,,165
+SPHINCS,sphincs+,SIG,1,32,64,,7856
+Uov,uov,SIG,1,412160,348704,,96
+Bike,bike,KEM,3,3083,10105,3115,
+Classic Mceliece,classic-mceliece,KEM,3,524160,13608,156,
+Frodokem,frodokem,KEM,3,15632,31296,15744,
+Hqc,hqc,KEM,3,4522,4586,8978,
+Kyber,kyber,KEM,3,1184,2400,1088,
+Ntru,ntru,KEM,3,930,1234,930,
+Ntruprime,ntruprime,KEM,3,1158,1763,1039,
+Rsa Oaep,rsa-oaep,KEM,3,998,4364,960,
+Cross,cross,SIG,3,83,48,,22464
+Dilithium,dilithium,SIG,3,1952,4032,,3309
+Mayo,mayo,SIG,3,2986,32,,681
+Rsa Pss,rsa-pss,SIG,3,998,4365,,960
+Slh Dsa,slh-dsa,SIG,3,48,96,,16224
+Snova,snova,SIG,3,9842,48,,124
+SPHINCS,sphincs+,SIG,3,48,96,,16224
+Uov,uov,SIG,3,1225440,1044320,,200
+Bike,bike,KEM,5,5122,16494,5154,
+Classic Mceliece,classic-mceliece,KEM,5,1044992,13932,208,
+Frodokem,frodokem,KEM,5,21520,43088,21632,
+Hqc,hqc,KEM,5,7245,7317,14421,
+Kyber,kyber,KEM,5,1568,3168,1568,
+Ntru,ntru,KEM,5,1230,1590,1230,
+Cross,cross,SIG,5,106,64,,40100
+Dilithium,dilithium,SIG,5,2592,4896,,4627
+Falcon,falcon,SIG,5,1793,2305,,1268
+Mayo,mayo,SIG,5,5554,40,,964
+Slh Dsa,slh-dsa,SIG,5,64,128,,29792
+Snova,snova,SIG,5,8016,48,,576
+SPHINCS,sphincs+,SIG,5,64,128,,29792
+Uov,uov,SIG,5,2869440,2436704,,260

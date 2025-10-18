@@ -1,0 +1,19 @@
+algorithm,internal_algorithm,kind,category,operation,timing_value
+Kyber,kyber,KEM,5,keygen,1.9965092513302807
+Kyber,kyber,KEM,5,encapsulate,0.0882510510564316
+Kyber,kyber,KEM,5,decapsulate,0.09005717693071347
+Ntru,ntru,KEM,5,keygen,3.194039700611029
+Ntru,ntru,KEM,5,encapsulate,0.1898244780022651
+Ntru,ntru,KEM,5,decapsulate,0.20920757960993797
+Frodokem,frodokem,KEM,5,keygen,4.4916841317899525
+Frodokem,frodokem,KEM,5,encapsulate,2.255617215996608
+Frodokem,frodokem,KEM,5,decapsulate,2.1421428929897957
+Bike,bike,KEM,5,keygen,4.938578754081391
+Bike,bike,KEM,5,encapsulate,0.35776404838543385
+Bike,bike,KEM,5,decapsulate,5.44387207046384
+Classic Mceliece,classic-mceliece,KEM,5,keygen,168.60868555522757
+Classic Mceliece,classic-mceliece,KEM,5,encapsulate,0.45455352374119684
+Classic Mceliece,classic-mceliece,KEM,5,decapsulate,0.3056508183362894
+Hqc,hqc,KEM,5,keygen,36.46663262443326
+Hqc,hqc,KEM,5,encapsulate,67.35016392376565
+Hqc,hqc,KEM,5,decapsulate,107.54026372560475

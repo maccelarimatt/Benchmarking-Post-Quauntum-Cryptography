@@ -1,0 +1,16 @@
+algorithm,internal_algorithm,kind,category,operation,mean_mem_kb
+Kyber,kyber,KEM,1,decapsulate,98.8
+Kyber,kyber,KEM,1,encapsulate,106.0
+Kyber,kyber,KEM,1,keygen,356.1
+Kyber,kyber,KEM,5,decapsulate,101.6
+Kyber,kyber,KEM,5,encapsulate,102.0
+Kyber,kyber,KEM,5,keygen,359.8
+Kyber,kyber,KEM,3,decapsulate,109.1
+Kyber,kyber,KEM,3,encapsulate,104.5
+Kyber,kyber,KEM,3,keygen,352.8
+Ntru,ntru,KEM,5,decapsulate,99.3
+Ntru,ntru,KEM,5,encapsulate,97.4
+Ntru,ntru,KEM,5,keygen,372.2
+Falcon,falcon,SIG,1,keygen,366.8
+Falcon,falcon,SIG,1,sign,105.1
+Falcon,falcon,SIG,1,verify,111.3

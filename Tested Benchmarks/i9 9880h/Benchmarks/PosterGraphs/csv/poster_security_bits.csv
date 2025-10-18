@@ -1,0 +1,47 @@
+algorithm,internal_algorithm,kind,category,security_classical_bits,security_quantum_bits
+Bike,bike,KEM,1,128.0,128.0
+Classic Mceliece,classic-mceliece,KEM,1,128.0,128.0
+Frodokem,frodokem,KEM,1,128.0,128.0
+Hqc,hqc,KEM,1,128.0,128.0
+Kyber,kyber,KEM,1,148.3,134.6
+Ntru,ntru,KEM,1,128.0,128.0
+Rsa Oaep,rsa-oaep,KEM,1,128.0,0.0
+Cross,cross,SIG,1,128.0,128.0
+Dilithium,dilithium,SIG,1,189.79999999999998,172.25
+Falcon,falcon,SIG,1,136.0,123.0
+Mayo,mayo,SIG,1,128.0,128.0
+Rsa Pss,rsa-pss,SIG,1,128.0,0.0
+Slh Dsa,slh-dsa,SIG,1,128.0,64.0
+Snova,snova,SIG,1,128.0,128.0
+SPHINCS,sphincs+,SIG,1,128.0,64.0
+Uov,uov,SIG,1,128.0,128.0
+Bike,bike,KEM,3,192.0,192.0
+Classic Mceliece,classic-mceliece,KEM,3,192.0,192.0
+Frodokem,frodokem,KEM,3,192.0,192.0
+Hqc,hqc,KEM,3,192.0,192.0
+Kyber,kyber,KEM,3,184.0,167.0
+Ntru,ntru,KEM,3,192.0,192.0
+Ntruprime,ntruprime,KEM,3,192.0,192.0
+Rsa Oaep,rsa-oaep,KEM,3,192.0,0.0
+Cross,cross,SIG,3,192.0,192.0
+Dilithium,dilithium,SIG,3,217.8,197.7
+Mayo,mayo,SIG,3,192.0,192.0
+Rsa Pss,rsa-pss,SIG,3,192.0,0.0
+Slh Dsa,slh-dsa,SIG,3,192.0,96.0
+Snova,snova,SIG,3,192.0,192.0
+SPHINCS,sphincs+,SIG,3,192.0,96.0
+Uov,uov,SIG,3,192.0,192.0
+Bike,bike,KEM,5,256.0,256.0
+Classic Mceliece,classic-mceliece,KEM,5,256.0,256.0
+Frodokem,frodokem,KEM,5,256.0,256.0
+Hqc,hqc,KEM,5,256.0,256.0
+Kyber,kyber,KEM,5,227.8,206.7
+Ntru,ntru,KEM,5,256.0,256.0
+Cross,cross,SIG,5,256.0,256.0
+Dilithium,dilithium,SIG,5,258.4,234.5
+Falcon,falcon,SIG,5,265.0,240.0
+Mayo,mayo,SIG,5,256.0,256.0
+Slh Dsa,slh-dsa,SIG,5,256.0,128.0
+Snova,snova,SIG,5,256.0,256.0
+SPHINCS,sphincs+,SIG,5,256.0,128.0
+Uov,uov,SIG,5,256.0,256.0

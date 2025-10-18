@@ -1,0 +1,10 @@
+algorithm,internal_algorithm,kind,category,mean_latency_ms
+Dilithium,dilithium,SIG,1,0.8415088367958864
+Mayo,mayo,SIG,1,0.8826403340208344
+Cross,cross,SIG,1,1.154202499310486
+Uov,uov,SIG,1,1.429944558670589
+Falcon,falcon,SIG,1,2.6248385826572
+Snova,snova,SIG,1,4.7434289692319
+Rsa Pss,rsa-pss,SIG,1,48.03682135886144
+SPHINCS,sphincs+,SIG,1,109.50698135857238
+Slh Dsa,slh-dsa,SIG,1,179.46388220152585
