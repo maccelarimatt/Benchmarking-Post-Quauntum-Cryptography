@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   {% from '_header.html' import header_styles %}
+  {% from '_background_effects.html' import background_layer, background_rules %}
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Post-Quantum Cryptography Bench - Experience Overview</title>
@@ -45,12 +46,11 @@
       margin: 0;
       padding: 0 5vw 5vh;
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(31, 182, 184, 0.16), transparent 55%),
+        radial-gradient(circle at 80% 15%, rgba(77, 157, 255, 0.12), transparent 60%),
+        linear-gradient(180deg, #070b11 0%, #04070c 60%, #020408 100%);
       color: var(--text);
-      background-image: url('/static/Images/background.gif');
-      background-size: cover;
-      background-position: center center;
-      background-repeat: no-repeat;
-      background-attachment: fixed;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -727,9 +727,11 @@
         transform: none !important;
       }
     }
+    {{ background_rules() | safe }}
   </style>
 </head>
 <body>
+  {{ background_layer() }}
   {% from '_header.html' import render_header %}
   {{ render_header(title='Post-Quantum Cryptography Benchmarking', subtitle='Explore the toolkit in an interactive overview', active='summary') }}
   <main class="summary-shell">

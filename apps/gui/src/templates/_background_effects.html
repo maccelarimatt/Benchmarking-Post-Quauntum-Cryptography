@@ -1,0 +1,57 @@
+{% macro background_rules(dot_size='5px') -%}
+/* Animated particle backdrop (tuned from original SCSS pen) */
+.background-animation {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: -1;
+  display: block;
+}
+
+.background-animation span {
+  --dot-size: {{ dot_size }};
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--dot-size);
+  height: var(--dot-size);
+  border-radius: 50%;
+  background: currentColor;
+  transform-origin: center;
+  transform-style: preserve-3d;
+  mix-blend-mode: screen;
+  opacity: calc(0.32 + (var(--i) % 9) * 0.05);
+  color: hsl(calc(202 - var(--i) * 0.55deg), 82%, 60%);
+  animation: background-orbit calc(4.8s + var(--i) * 0.012s) ease-in-out infinite alternate;
+  animation-delay: calc(var(--i) * 0.0065s);
+  transform:
+    rotate(calc(var(--i) * 45deg))
+    perspective(calc(var(--dot-size) * 7))
+    translate3d(calc(var(--i) * 1px), calc(var(--i) * 1px), calc(var(--i) * -0.08px));
+  will-change: transform, color;
+}
+
+.background-animation span:nth-child(odd) {
+  color: hsl(calc(188 + var(--i) * 0.45deg), 78%, 58%);
+}
+
+@keyframes background-orbit {
+  100% {
+    color: hsl(calc(192 + var(--i) * 0.5deg), 90%, 68%);
+    transform:
+      rotate(calc(var(--i) * 90deg))
+      rotateX(calc(var(--i) * 1deg))
+      perspective(calc(var(--dot-size) * 3.2))
+      translate3d(calc(var(--i) * -3px), calc(var(--i) * 2px), calc(var(--i) * -0.08px));
+  }
+}
+{%- endmacro %}
+
+{% macro background_layer(particle_count=360) -%}
+<div class="background-animation" aria-hidden="true">
+  {% for i in range(particle_count) %}
+    <span style="--i: {{ i + 1 }};"></span>
+  {% endfor %}
+</div>
+{%- endmacro %}

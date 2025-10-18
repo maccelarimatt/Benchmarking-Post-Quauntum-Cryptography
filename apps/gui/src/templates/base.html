@@ -47,16 +47,58 @@
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
       line-height: 1.35;
       color: var(--text);
-      background-image: url('/static/Images/background.gif');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      background-attachment: fixed;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(31, 182, 184, 0.16), transparent 55%),
+        radial-gradient(circle at 80% 15%, rgba(77, 157, 255, 0.12), transparent 60%),
+        linear-gradient(180deg, #070b11 0%, #04070c 60%, #020408 100%);
       display: flex;
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
       box-sizing: border-box;
+      position: relative;
+    }
+
+    .background-animation {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: -1;
+    }
+
+    .background-animation span {
+      --size: 5px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: var(--size);
+      height: var(--size);
+      border-radius: 50%;
+      background: currentColor;
+      opacity: calc(0.25 + (var(--i) % 7) * 0.08);
+      color: hsl(calc(190 - var(--i) * 0.45deg), 68%, 58%);
+      transform-origin: center;
+      transform:
+        rotateZ(calc(var(--i) * 2deg))
+        translate3d(calc(var(--i) * 0.45px), calc(var(--i) * 0.35px), calc(var(--i) * -0.2px));
+      animation: background-orbit calc(12s + var(--i) * 0.08s) ease-in-out infinite alternate;
+      mix-blend-mode: screen;
+      will-change: transform, color;
+    }
+
+    .background-animation span:nth-child(odd) {
+      color: hsl(calc(175 + var(--i) * 0.3deg), 64%, 55%);
+    }
+
+    @keyframes background-orbit {
+      100% {
+        color: hsl(calc(188 + var(--i) * 0.35deg), 82%, 68%);
+        transform:
+          rotateZ(calc(var(--i) * 4deg))
+          rotateX(calc(var(--i) * 0.35deg))
+          translate3d(calc(var(--i) * -0.65px), calc(var(--i) * 0.5px), calc(var(--i) * -0.35px));
+      }
     }
 
     .island {
@@ -94,8 +136,30 @@
       align-items:end; width:100%;
     }
     .control label { font-size:.9rem; opacity:.95; display:block; text-align:left; margin-bottom:.2rem; }
-    .control input[type="number"], .control input[type="text"], .control select {
+    .control input[type="number"], .control input[type="text"] {
       padding:0.55rem 0.6rem; border:none; border-radius:0.5rem; width:100%; background:rgba(255,255,255,.96); color:#111;
+    }
+    .field select,
+    .control select {
+      padding:0.55rem 0.6rem;
+      border-radius:0.5rem;
+      width:100%;
+      border:1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(21, 26, 35, 0.92);
+      color: var(--text);
+      color-scheme: dark;
+      box-shadow: inset 0 1px 1.5px rgba(0, 0, 0, 0.35);
+    }
+    .field select:focus,
+    .control select:focus {
+      outline: none;
+      border-color: rgba(31, 182, 184, 0.65);
+      box-shadow: 0 0 0 2px rgba(31, 182, 184, 0.25);
+    }
+    .field select option,
+    .control select option {
+      background: rgba(10, 14, 20, 0.95);
+      color: var(--text);
     }
     .control.inline { display:flex; gap:.5rem; align-items:center; }
 
@@ -273,6 +337,11 @@
   </style>
 </head>
 <body>
+  <div class="background-animation" aria-hidden="true">
+    {% for i in range(120) %}
+      <span style="--i: {{ i + 1 }};"></span>
+    {% endfor %}
+  </div>
   <div id="loading-overlay" class="loading-overlay" hidden>
     <div class="loading-card">
       <div id="loading-stage" class="loading-stage">Preparing…</div>

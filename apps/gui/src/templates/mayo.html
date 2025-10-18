@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  {% from '_background_effects.html' import background_layer, background_rules %}
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{{ label }} - Details</title>
@@ -31,7 +32,17 @@
     }
 
   :root { --island-bg: rgba(38, 41, 45, 0.92); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
-    body { margin:0; padding:5vh 5vw; color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; background-image:url('/static/Images/background.gif'); background-size: cover; background-position:center; background-repeat:no-repeat; background-attachment:fixed; }
+    body {
+      margin:0;
+      padding:5vh 5vw;
+      color:var(--text);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(31, 182, 184, 0.16), transparent 55%),
+        radial-gradient(circle at 80% 15%, rgba(77, 157, 255, 0.12), transparent 60%),
+        linear-gradient(180deg, #070b11 0%, #04070c 60%, #020408 100%);
+      position: relative;
+    }
     .island { background:var(--island-bg); border-radius:var(--island-radius); padding:1.25rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 1.6vh auto; }
     .btn, button, input[type="submit"], input[type="button"], a.btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow: 0 4px 14px rgba(31,182,184,.25); text-decoration:none; transition: background-color .2s ease, filter .15s ease, box-shadow .2s ease; }
     .btn:hover, button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover { filter: brightness(0.92); box-shadow: 0 6px 18px rgba(31,182,184,.32); }
@@ -53,12 +64,14 @@
     code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
     /* Show only [n] you type in each <li> */
     ol.refs { list-style: none; margin: 0; padding-left: 0; }
+    {{ background_rules() | safe }}
   </style>
   <!-- MathJax for LaTeX-style math -->
   <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
-  <div class="island" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+  {{ background_layer() }}
+<div class="island" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
     <div>
       <div style="font-size:1.6rem; font-weight:700;">{{ label }}</div>
       {% if kind %}<div class="badge" title="Kind">{{ kind }}</div>{% endif %}
