@@ -101,6 +101,19 @@
     .indepth-section { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.25rem; border:1px solid rgba(255,255,255,0.05); }
     .indepth-section h3 { margin:0 0 0.75rem; font-size:1.1rem; }
     .indepth-section p.section-hint { font-size:0.9rem; opacity:0.82; margin:0 0 0.8rem; }
+    .indepth-runner { margin-bottom:1.25rem; }
+    .indepth-form-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; }
+    .indepth-form-grid .field { grid-column: span 1; margin:0; }
+    .indepth-form-grid .field--full,
+    .indepth-form-grid .field--wide { grid-column: 1 / -1; }
+    .indepth-checkbox-group { display:flex; gap:0.65rem; flex-wrap:wrap; }
+    .indepth-checkbox-group label { display:flex; align-items:center; gap:0.45rem; font-size:0.9rem; }
+    .indepth-run-actions { display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1rem; flex-wrap:wrap; }
+    .indepth-run-status { margin-top:1rem; padding:1rem; background: rgba(7,11,17,0.45); border:1px solid rgba(255,255,255,0.08); border-radius:.8rem; display:flex; flex-direction:column; gap:0.75rem; }
+    .indepth-run-stage { display:flex; justify-content:space-between; align-items:center; font-weight:600; font-size:0.95rem; }
+    .indepth-run-percent { font-size:0.9rem; opacity:0.8; }
+    .indepth-run-summary { font-size:0.9rem; opacity:0.85; }
+    .indepth-run-log { max-height:200px; overflow:auto; padding:0.75rem; background: rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.08); border-radius:.65rem; font-family:"Source Code Pro","Fira Code",Menlo,monospace; font-size:0.85rem; line-height:1.35; white-space:pre-wrap; word-break:break-word; }
     .indepth-session { background: rgba(7,11,17,0.45); border-radius:.8rem; border:1px solid rgba(255,255,255,0.08); margin-top:0.8rem; overflow:hidden; }
     .indepth-session summary { cursor:pointer; list-style:none; padding:0.9rem 1rem; font-weight:600; display:flex; align-items:center; justify-content:space-between; gap:1rem; background: rgba(255,255,255,0.02); }
     .indepth-session summary::-webkit-details-marker { display:none; }
@@ -399,9 +412,9 @@ input[type="checkbox"]:checked::after { opacity: 1; }
 
   <div class="mode-toggle">
     <button type="button" class="mode-button mode-button--active" data-mode="standard">Benchmark Setup</button>
-    <button type="button" class="mode-button" data-mode="indepth" {% if not indepth_available %}disabled{% endif %}>In-Depth Results</button>
+    <button type="button" class="mode-button" data-mode="indepth">In-Depth Results</button>
     {% if not indepth_available %}
-    <div class="mode-note">Add curated exports to <em>Tested Benchmarks</em> to enable this view.</div>
+    <div class="mode-note">Generate a run below or drop curated exports into <em>Tested Benchmarks</em> to populate this view.</div>
     {% endif %}
   </div>
 
@@ -453,6 +466,121 @@ input[type="checkbox"]:checked::after { opacity: 1; }
     <div class="island indepth-shell">
       <div class="title" style="font-size:1.2rem;">In-Depth Benchmarks</div>
       <div class="hint" style="text-align:left; margin-bottom:0.8rem;">Browse curated multi-run datasets and generated charts from Tested Benchmarks.</div>
+      <section class="indepth-section indepth-runner">
+        <h3>Generate New Results</h3>
+        <p class="section-hint">Launch the full category-floor benchmark pipeline and optional forensic probe. Outputs are saved automatically into the selected folder under <code>Tested Benchmarks</code>.</p>
+        <form id="indepth-run-form" class="indepth-run-form">
+          <div class="indepth-form-grid">
+            <div class="field field--full">
+              <label for="indepth-device-label">Test System Folder</label>
+              <input type="text" id="indepth-device-label" name="device_label" placeholder="e.g. Ryzen 5700X" required />
+              <div class="hint">Creates or updates <code>Tested Benchmarks/&lt;folder&gt;</code>.</div>
+            </div>
+            <div class="field">
+              <label for="indepth-runs">Runs per operation</label>
+              <input type="number" id="indepth-runs" name="runs" min="1" value="40" />
+            </div>
+            <div class="field">
+              <label for="indepth-message-size">Message size (bytes)</label>
+              <input type="number" id="indepth-message-size" name="message_size" min="1" value="1024" />
+            </div>
+            <div class="field">
+              <label>Categories</label>
+              <div class="indepth-checkbox-group">
+                <label class="checkbox-row"><input type="checkbox" name="categories" value="1" checked /><span>Cat-1</span></label>
+                <label class="checkbox-row"><input type="checkbox" name="categories" value="3" checked /><span>Cat-3</span></label>
+                <label class="checkbox-row"><input type="checkbox" name="categories" value="5" checked /><span>Cat-5</span></label>
+              </div>
+            </div>
+            <div class="field">
+              <label for="indepth-rsa-max">RSA max category</label>
+              <select id="indepth-rsa-max" name="rsa_max_category">
+                <option value="5" selected>Category 5</option>
+                <option value="3">Category 3</option>
+                <option value="1">Category 1</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="indepth-memory-interval">Memory sample interval (s)</label>
+              <input type="number" step="0.0001" min="0.0001" id="indepth-memory-interval" name="memory_interval" value="0.0005" />
+            </div>
+            <div class="field">
+              <label class="checkbox-row">
+                <input type="checkbox" id="indepth-warm" name="warm" />
+                <span>Include warm passes</span>
+              </label>
+            </div>
+            <div class="field">
+              <label class="checkbox-row">
+                <input type="checkbox" id="indepth-render-graphs" name="render_graphs" checked />
+                <span>Render comparison graphs</span>
+              </label>
+            </div>
+            <div class="field">
+              <label class="checkbox-row">
+                <input type="checkbox" id="indepth-side-channel" name="run_side_channel" checked />
+                <span>Run side-channel probe</span>
+              </label>
+            </div>
+            <div class="field">
+              <label for="indepth-side-iterations">Side-channel iterations</label>
+              <input type="number" id="indepth-side-iterations" name="side_iterations" min="1" value="500" data-side-option="true" />
+            </div>
+            <div class="field">
+              <label class="checkbox-row">
+                <input type="checkbox" id="indepth-side-all" name="side_all_categories" checked data-side-option="true" />
+                <span>Probe all categories</span>
+              </label>
+            </div>
+            <div class="field">
+              <label for="indepth-side-rsa-max">Side-channel RSA max category</label>
+              <select id="indepth-side-rsa-max" name="side_rsa_max_category" data-side-option="true">
+                <option value="3" selected>Category 3</option>
+                <option value="5">Category 5</option>
+                <option value="1">Category 1</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="checkbox-row">
+                <input type="checkbox" id="indepth-side-plots" name="side_render_plots" checked data-side-option="true" />
+                <span>Export forensic plots</span>
+              </label>
+            </div>
+            <div class="field">
+              <label class="checkbox-row">
+                <input type="checkbox" id="indepth-side-report" name="side_render_report" checked data-side-option="true" />
+                <span>Render forensic report</span>
+              </label>
+            </div>
+            <div class="field">
+              <label for="indepth-side-report-format">Report format</label>
+              <select id="indepth-side-report-format" name="side_report_format" data-side-option="true">
+                <option value="markdown" selected>Markdown</option>
+                <option value="html">HTML</option>
+                <option value="pdf">PDF</option>
+              </select>
+            </div>
+            <div class="field field--wide">
+              <label for="indepth-side-extra">Additional side-channel options</label>
+              <input type="text" id="indepth-side-extra" name="side_additional_options" placeholder="Optional extra flags, e.g. --seed 42" data-side-option="true" />
+            </div>
+          </div>
+          <div class="indepth-run-actions">
+            <button type="submit" class="btn" id="indepth-run-submit">Run In-Depth Benchmarks</button>
+          </div>
+        </form>
+        <div id="indepth-run-status" class="indepth-run-status" hidden>
+          <div class="indepth-run-stage">
+            <span id="indepth-run-stage-label">Preparing…</span>
+            <span id="indepth-run-percent" class="indepth-run-percent">0%</span>
+          </div>
+          <div class="progress-bar">
+            <div id="indepth-run-progress" class="fill" style="width:0%"></div>
+          </div>
+          <div id="indepth-run-detail" class="indepth-run-summary"></div>
+          <pre id="indepth-run-log" class="indepth-run-log" aria-live="polite"></pre>
+        </div>
+      </section>
       <div class="indepth-grid">
         <aside class="indepth-sidebar">
           <div id="indepth-device-list" class="indepth-device-list"></div>
@@ -502,6 +630,16 @@ input[type="checkbox"]:checked::after { opacity: 1; }
       const deviceListEl = document.getElementById('indepth-device-list');
       const contentEl = document.getElementById('indepth-content');
       const emptyStateEl = document.getElementById('indepth-empty-state');
+      const indepthForm = document.getElementById('indepth-run-form');
+      const indepthSubmit = document.getElementById('indepth-run-submit');
+      const indepthStatus = document.getElementById('indepth-run-status');
+      const indepthStageLabel = document.getElementById('indepth-run-stage-label');
+      const indepthPercentLabel = document.getElementById('indepth-run-percent');
+      const indepthProgressBar = document.getElementById('indepth-run-progress');
+      const indepthDetailLabel = document.getElementById('indepth-run-detail');
+      const indepthLogEl = document.getElementById('indepth-run-log');
+      const sideToggle = document.getElementById('indepth-side-channel');
+      const sideOptionInputs = indepthForm ? Array.prototype.slice.call(indepthForm.querySelectorAll('[data-side-option="true"]')) : [];
       const overlayEl = document.getElementById('indepth-overlay');
       const overlayTitleEl = overlayEl ? overlayEl.querySelector('.overlay-title') : null;
       const overlayBodyEl = overlayEl ? overlayEl.querySelector('.overlay-body') : null;
@@ -522,17 +660,11 @@ input[type="checkbox"]:checked::after { opacity: 1; }
       modeButtons.forEach(function (button) {
         button.addEventListener('click', function () {
           const mode = button.getAttribute('data-mode');
-          if (mode === 'indepth' && !indepthAvailable) {
-            return;
-          }
           activateMode(mode);
         });
       });
 
       function activateMode(mode) {
-        if (mode === 'indepth' && !indepthAvailable) {
-          return;
-        }
         if (standardSection) {
           standardSection.hidden = mode !== 'standard';
         }
@@ -625,7 +757,7 @@ input[type="checkbox"]:checked::after { opacity: 1; }
       (function initializeModeFromQuery() {
         const params = new URLSearchParams(window.location.search);
         const requestedMode = params.get('mode');
-        if (requestedMode === 'indepth' && indepthAvailable) {
+        if (requestedMode === 'indepth') {
           activateMode('indepth');
         } else {
           activateMode('standard');
@@ -1231,6 +1363,246 @@ input[type="checkbox"]:checked::after { opacity: 1; }
 
         contentEl.appendChild(actions);
       }
+
+      const indepthLogLines = [];
+      const MAX_INDEPTH_LOG_LINES = 400;
+      let indepthJobSource = null;
+      let indepthJobActive = false;
+
+      function closeIndepthSource() {
+        if (indepthJobSource) {
+          indepthJobSource.close();
+          indepthJobSource = null;
+        }
+      }
+
+      function ensureIndepthStatusVisible() {
+        if (indepthStatus) {
+          indepthStatus.hidden = false;
+        }
+      }
+
+      function resetIndepthStatus() {
+        if (indepthStageLabel) {
+          indepthStageLabel.textContent = 'Preparing…';
+        }
+        if (indepthPercentLabel) {
+          indepthPercentLabel.textContent = '0%';
+        }
+        if (indepthProgressBar) {
+          indepthProgressBar.style.width = '0%';
+        }
+        if (indepthDetailLabel) {
+          indepthDetailLabel.textContent = '';
+        }
+        indepthLogLines.length = 0;
+        if (indepthLogEl) {
+          indepthLogEl.textContent = '';
+        }
+      }
+
+      function appendIndepthLog(line) {
+        if (!line || !indepthLogEl) {
+          return;
+        }
+        const text = String(line);
+        indepthLogLines.push(text);
+        if (indepthLogLines.length > MAX_INDEPTH_LOG_LINES) {
+          indepthLogLines.splice(0, indepthLogLines.length - MAX_INDEPTH_LOG_LINES);
+        }
+        indepthLogEl.textContent = indepthLogLines.join('\n');
+        indepthLogEl.scrollTop = indepthLogEl.scrollHeight;
+      }
+
+      function setIndepthRunning(isRunning) {
+        indepthJobActive = isRunning;
+        if (indepthForm) {
+          indepthForm.querySelectorAll('input, select, textarea').forEach(function (el) {
+            el.disabled = isRunning;
+          });
+        }
+        if (indepthSubmit) {
+          indepthSubmit.disabled = isRunning;
+        }
+        if (!isRunning) {
+          syncSideOptions();
+        }
+      }
+
+      function syncSideOptions() {
+        if (!sideOptionInputs || !sideOptionInputs.length) {
+          return;
+        }
+        if (indepthJobActive) {
+          sideOptionInputs.forEach(function (input) {
+            const field = input && input.closest ? input.closest('.field') : null;
+            if (field) {
+              field.classList.add('is-disabled');
+            }
+          });
+          return;
+        }
+        const enabled = !sideToggle || sideToggle.checked;
+        sideOptionInputs.forEach(function (input) {
+          if (!input) {
+            return;
+          }
+          input.disabled = !enabled;
+          const field = input.closest ? input.closest('.field') : null;
+          if (field) {
+            field.classList.toggle('is-disabled', !enabled);
+          }
+        });
+      }
+
+      function applyIndepthProgress(payload) {
+        ensureIndepthStatusVisible();
+        if (payload.stage && indepthStageLabel) {
+          indepthStageLabel.textContent = payload.stage;
+        }
+        if (typeof payload.percent === 'number' && isFinite(payload.percent)) {
+          const pct = Math.max(0, Math.min(100, Math.round(payload.percent)));
+          if (indepthPercentLabel) {
+            indepthPercentLabel.textContent = pct + '%';
+          }
+          if (indepthProgressBar) {
+            indepthProgressBar.style.width = pct + '%';
+          }
+        }
+        if (payload.detail && indepthDetailLabel) {
+          indepthDetailLabel.textContent = payload.detail;
+        }
+      }
+
+      function handleIndepthProgress(evt) {
+        let payload;
+        try {
+          payload = JSON.parse(evt.data || '{}');
+        } catch (e) {
+          return;
+        }
+        if (!payload || payload.ok === false) {
+          return;
+        }
+        applyIndepthProgress(payload);
+        if (payload.status === 'done') {
+          closeIndepthSource();
+          setIndepthRunning(false);
+          appendIndepthLog('[status] Job completed successfully.');
+          if (typeof loadDeviceList === 'function') {
+            state.indepthLoaded = false;
+            setTimeout(loadDeviceList, 500);
+          }
+        } else if (payload.status === 'error') {
+          closeIndepthSource();
+          setIndepthRunning(false);
+          if (indepthStageLabel) {
+            indepthStageLabel.textContent = 'Error';
+          }
+          appendIndepthLog('[status] Job failed.');
+        }
+      }
+
+      function handleIndepthLog(evt) {
+        let payload;
+        try {
+          payload = JSON.parse(evt.data || '{}');
+        } catch (e) {
+          return;
+        }
+        if (!payload || !payload.line) {
+          return;
+        }
+        appendIndepthLog(payload.line);
+      }
+
+      function attachIndepthJob(jobId) {
+        if (!jobId) {
+          return;
+        }
+        closeIndepthSource();
+        indepthJobSource = new EventSource('/progress/' + encodeURIComponent(jobId));
+        if (indepthJobSource) {
+          indepthJobSource.addEventListener('progress', handleIndepthProgress);
+          indepthJobSource.addEventListener('log', handleIndepthLog);
+          indepthJobSource.onerror = function () {
+            // Keep the connection alive; server will close when complete.
+          };
+        }
+      }
+
+      if (sideToggle) {
+        sideToggle.addEventListener('change', function () {
+          syncSideOptions();
+        });
+      }
+      syncSideOptions();
+
+      if (indepthForm) {
+        indepthForm.addEventListener('submit', function (evt) {
+          if (evt) {
+            evt.preventDefault();
+          }
+          if (indepthJobActive) {
+            return false;
+          }
+          const formData = new FormData(indepthForm);
+          const selectedCategories = formData.getAll('categories');
+          if (!selectedCategories.length) {
+            ensureIndepthStatusVisible();
+            if (indepthStageLabel) {
+              indepthStageLabel.textContent = 'Validation';
+            }
+            if (indepthDetailLabel) {
+              indepthDetailLabel.textContent = 'Select at least one category to run.';
+            }
+            if (indepthPercentLabel) {
+              indepthPercentLabel.textContent = '0%';
+            }
+            if (indepthProgressBar) {
+              indepthProgressBar.style.width = '0%';
+            }
+            return false;
+          }
+          if (sideToggle && !sideToggle.checked && sideOptionInputs && sideOptionInputs.length) {
+            sideOptionInputs.forEach(function (input) {
+              if (input && input.name) {
+                formData.delete(input.name);
+              }
+            });
+          }
+          resetIndepthStatus();
+          ensureIndepthStatusVisible();
+          setIndepthRunning(true);
+          appendIndepthLog('[status] Starting in-depth run…');
+          fetch('/api/indepth/run', { method: 'POST', body: formData })
+            .then(handleFetch)
+            .then(function (data) {
+              if (!data || !data.ok || !data.job_id) {
+                throw new Error((data && (data.message || data.error)) || 'Failed to start job.');
+              }
+              appendIndepthLog('[status] Job ' + data.job_id + ' started.');
+              attachIndepthJob(data.job_id);
+            })
+            .catch(function (err) {
+              setIndepthRunning(false);
+              ensureIndepthStatusVisible();
+              const message = err && err.message ? err.message : 'Unable to start job.';
+              if (indepthStageLabel) {
+                indepthStageLabel.textContent = 'Error';
+              }
+              if (indepthDetailLabel) {
+                indepthDetailLabel.textContent = message;
+              }
+              appendIndepthLog('[error] ' + message);
+            });
+          return false;
+        });
+      }
+
+      window.addEventListener('beforeunload', function () {
+        closeIndepthSource();
+      });
 
       activateMode('standard');
     })();

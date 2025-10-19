@@ -12,6 +12,9 @@ import json
 import logging
 import importlib.util
 import re
+import subprocess
+import shlex
+import shutil
 from types import ModuleType
 from pathlib import Path
 
@@ -111,6 +114,7 @@ def _new_job() -> str:
             "view": None,  # 'compare' | 'single'
             "payload": None,  # context for template
             "errors": None,
+            "logs": [],
         }
     return jid
 
@@ -132,15 +136,33 @@ def _update_job(jid: str, *, percent: int | None = None, stage: str | None = Non
             job["status"] = status
 
 
+def _append_job_log(jid: str, line: str) -> None:
+    if not line:
+        return
+    clean_line = line.rstrip("\n")
+    with JobsLock:
+        job = Jobs.get(jid)
+        if not job:
+            return
+        logs = job.setdefault("logs", [])
+        logs.append(clean_line)
+        # Limit to last 500 entries to cap memory usage
+        if len(logs) > 500:
+            del logs[: len(logs) - 500]
+        job["detail"] = clean_line
+
+
 def _sse_from_job(jid: str):
     # Stream current job status every 300ms until completion
     last_payload = None
+    last_log_index = 0
     while True:
         with JobsLock:
             job = Jobs.get(jid)
             if not job:
                 payload = {"ok": False, "error": "job not found"}
                 done = True
+                logs: list[str] = []
             else:
                 payload = {
                     "ok": True,
@@ -149,6 +171,7 @@ def _sse_from_job(jid: str):
                     "stage": job.get("stage", ""),
                     "detail": job.get("detail", ""),
                 }
+                logs = list(job.get("logs") or [])
                 done = job.get("status") in ("done", "error")
         import json as _json
         data = _json.dumps(payload)
@@ -156,6 +179,13 @@ def _sse_from_job(jid: str):
             yield f"event: progress\n"
             yield f"data: {data}\n\n"
             last_payload = data
+        if last_log_index < len(logs):
+            for idx in range(last_log_index, len(logs)):
+                log_line = logs[idx]
+                log_payload = _json.dumps({"line": log_line, "index": idx})
+                yield "event: log\n"
+                yield f"data: {log_payload}\n\n"
+            last_log_index = len(logs)
         if done:
             break
         time.sleep(0.3)
@@ -245,6 +275,7 @@ def _display_names(names: list[str]) -> Dict[str, str]:
 
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
+_SESSION_NAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
 _IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
 _DOCUMENT_EXTENSIONS = {".csv", ".json", ".md", ".txt"}
 
@@ -257,6 +288,26 @@ def _tested_benchmarks_root() -> Path:
 def _slugify(value: str, fallback: str = "item") -> str:
     slug = _SLUG_RE.sub("-", value.lower()).strip("-")
     return slug or fallback
+
+
+def _validate_device_label(label: str) -> str:
+    cleaned = (label or "").strip()
+    if not cleaned:
+        raise ValueError("Device name is required.")
+    if cleaned in {".", ".."}:
+        raise ValueError("Device name cannot be '.' or '..'.")
+    if any(sep in cleaned for sep in ("/", "\\", ":", "\0")):
+        raise ValueError("Device name cannot contain path separators.")
+    return cleaned
+
+
+def _safe_session_name(value: Optional[str], fallback: str = "session") -> str:
+    if value:
+        cleaned = _SESSION_NAME_RE.sub("-", value.strip())
+        cleaned = cleaned.strip("-._")
+        if cleaned:
+            return cleaned
+    return fallback
 
 
 def _safe_float(value: Any) -> Optional[float]:
@@ -1235,6 +1286,330 @@ def api_indepth_device_detail(device_id: str):
         "extras": _with_urls(extra_groups),
     }
     return jsonify(response)
+
+
+def _run_indepth_job(jid: str, form_data: Dict[str, List[str]]) -> None:
+    def _get(name: str, default: Optional[str] = None) -> Optional[str]:
+        values = form_data.get(name)
+        if not values:
+            return default
+        return values[0]
+
+    def _getlist(name: str) -> List[str]:
+        return [value for value in form_data.get(name, []) if value]
+
+    def _is_checked(name: str) -> bool:
+        value = _get(name)
+        if value is None:
+            return False
+        return str(value).strip().lower() in {"1", "true", "on", "yes"}
+
+    try:
+        device_label = _validate_device_label(_get("device_label", "") or "")
+    except ValueError as exc:
+        _append_job_log(jid, f"[error] {exc}")
+        _update_job(jid, status="error", stage="Error", detail=str(exc), percent=100)
+        return
+
+    process: Optional[subprocess.Popen] = None
+    temp_csv: Optional[Path] = None
+    temp_meta: Optional[Path] = None
+    graph_output_dir: Optional[Path] = None
+    forensics_temp_dir: Optional[Path] = None
+    try:
+        _update_job(jid, status="running", stage="Preparing run", detail="Collecting options", percent=1)
+        root = _tested_benchmarks_root()
+        root.mkdir(parents=True, exist_ok=True)
+        device_dir = root / device_label
+        bench_dir = device_dir / "Benchmarks"
+        graphs_root = bench_dir / "graphs"
+        bench_dir.mkdir(parents=True, exist_ok=True)
+        graphs_root.mkdir(parents=True, exist_ok=True)
+
+        runs = max(_safe_int(_get("runs")) or 40, 1)
+        message_size = max(_safe_int(_get("message_size")) or 1024, 1)
+        memory_interval = _safe_float(_get("memory_interval"))
+        if memory_interval is not None and memory_interval <= 0:
+            memory_interval = None
+        warm = _is_checked("warm")
+
+        selected_categories: List[int] = []
+        for raw in _getlist("categories"):
+            cat = _safe_int(raw)
+            if cat in (1, 3, 5):
+                selected_categories.append(cat)
+        selected_categories = sorted(set(selected_categories)) or [1, 3, 5]
+
+        rsa_max_category = max(_safe_int(_get("rsa_max_category")) or 5, 1)
+        render_graphs = _is_checked("render_graphs")
+        run_side_channel = _is_checked("run_side_channel")
+
+        base_token = f"{int(time.time())}-{jid[:6]}"
+        temp_csv = bench_dir / f"{base_token}.csv"
+        temp_meta = bench_dir / f"{base_token}.meta.json"
+
+        script_path = _PROJECT_ROOT / "benchmarks" / "run_category_floor_matrix.py"
+        cmd: List[str] = [sys.executable, str(script_path), "--runs", str(runs), "--message-size", str(message_size)]
+        if selected_categories and selected_categories != [1, 3, 5]:
+            cmd.append("--categories")
+            cmd.extend(str(cat) for cat in selected_categories)
+        if warm:
+            cmd.append("--warm")
+        if memory_interval is not None:
+            cmd.extend(["--memory-interval", f"{memory_interval}"])
+        cmd.extend(["--output", str(temp_csv)])
+        cmd.extend(["--metadata", str(temp_meta)])
+        cmd.extend(["--rsa-max-category", str(rsa_max_category)])
+
+        graph_args: List[str] = []
+        if render_graphs:
+            graph_output_dir = graphs_root / base_token
+            graph_output_dir.mkdir(parents=True, exist_ok=True)
+            graph_args.extend(["--output-dir", str(graph_output_dir)])
+        if graph_args:
+            cmd.extend(["--graph-args", "--"])
+            cmd.extend(graph_args)
+
+        side_channel_summary: Optional[str] = None
+        if run_side_channel:
+            cmd.append("--run-side-channel")
+            side_iterations = max(_safe_int(_get("side_iterations")) or 500, 1)
+            side_all_categories = _is_checked("side_all_categories")
+            side_selected_categories: List[int] = []
+            for raw in _getlist("side_categories"):
+                cat = _safe_int(raw)
+                if cat in (1, 3, 5):
+                    side_selected_categories.append(cat)
+            side_selected_categories = sorted(set(side_selected_categories))
+            side_rsa_max = max(_safe_int(_get("side_rsa_max_category")) or rsa_max_category, 1)
+            side_render_plots = _is_checked("side_render_plots")
+            side_render_report = _is_checked("side_render_report")
+            side_report_format = (_get("side_report_format") or "markdown").strip() or "markdown"
+            side_extra_options = (_get("side_additional_options") or "").strip()
+
+            forensics_temp_dir = device_dir / f"forensic_{base_token}"
+            forensics_temp_dir.mkdir(parents=True, exist_ok=True)
+            side_output_json = forensics_temp_dir / f"{base_token}.json"
+            side_options: List[str] = ["--iterations", str(side_iterations), "--output", str(side_output_json), "--rsa-max-category", str(side_rsa_max)]
+            if side_all_categories:
+                side_options.append("--all-categories")
+            elif side_selected_categories:
+                side_options.append("--categories")
+                side_options.extend(str(cat) for cat in side_selected_categories)
+            elif selected_categories and selected_categories != [1, 3, 5]:
+                side_options.append("--categories")
+                side_options.extend(str(cat) for cat in selected_categories)
+            if side_render_plots:
+                side_options.append("--render-plots")
+                side_options.extend(["--plot-dir", str(forensics_temp_dir)])
+            if side_render_report:
+                side_options.append("--render-report")
+                side_options.extend(["--report-format", side_report_format])
+                report_ext = "md" if side_report_format.lower() == "markdown" else side_report_format.lower()
+                report_path = forensics_temp_dir / f"summary.{report_ext}"
+                side_options.extend(["--report-output", str(report_path)])
+                side_channel_summary = str(report_path)
+            else:
+                # Ensure plots/report artifacts share a consistent location if extra options set it explicitly later
+                side_options.extend(["--report-format", side_report_format])
+            if side_extra_options:
+                try:
+                    side_options.extend(shlex.split(side_extra_options))
+                except ValueError as exc:
+                    _append_job_log(jid, f"[warning] Failed to parse side-channel extra options: {exc}")
+            side_options_str = " ".join(shlex.quote(opt) for opt in side_options)
+            cmd.extend(["--side-channel-options", side_options_str])
+
+        display_cmd = " ".join(shlex.quote(part) for part in cmd)
+        _append_job_log(jid, f"[cmd] {display_cmd}")
+        _update_job(jid, stage="Benchmarking", detail="Launching benchmark process", percent=3)
+
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            cwd=str(_PROJECT_ROOT),
+            text=True,
+            bufsize=1,
+            universal_newlines=True,
+        )
+        if process.stdout is None:
+            raise RuntimeError("Failed to capture benchmark process output.")
+
+        total_steps: Optional[int] = None
+        last_percent = 3
+        progress_pattern = re.compile(r"^\[(\d+)/(\d+)\]")
+        prepared_pattern = re.compile(r"\[progress\]\s+Prepared\s+(\d+)\s+measurement tasks", re.IGNORECASE)
+        side_pattern = re.compile(r"side-channel", re.IGNORECASE)
+        graph_pattern = re.compile(r"graph", re.IGNORECASE)
+
+        for raw_line in iter(process.stdout.readline, ""):
+            line = raw_line.rstrip()
+            if not line:
+                continue
+            _append_job_log(jid, line)
+            prepared_match = prepared_pattern.search(line)
+            if prepared_match:
+                try:
+                    total_steps = int(prepared_match.group(1))
+                except (ValueError, TypeError):
+                    total_steps = total_steps
+                if total_steps and total_steps > 0:
+                    last_percent = max(last_percent, 5)
+                    _update_job(jid, stage="Benchmarking", detail=line, percent=last_percent)
+                continue
+            match = progress_pattern.match(line)
+            if match:
+                current = None
+                total = None
+                try:
+                    current = int(match.group(1))
+                    total = int(match.group(2))
+                except (ValueError, TypeError):
+                    pass
+                if current is not None and total:
+                    total_steps = total
+                    progress_ratio = current / max(total, 1)
+                    percent = 10 + int(progress_ratio * 60)
+                    last_percent = max(last_percent, min(percent, 75))
+                    _update_job(jid, stage="Benchmarking", detail=line, percent=last_percent)
+                continue
+            if side_pattern.search(line):
+                last_percent = max(last_percent, 80)
+                _update_job(jid, stage="Side-channel analysis", detail=line, percent=last_percent)
+                continue
+            if graph_pattern.search(line) and render_graphs:
+                last_percent = max(last_percent, 78)
+                _update_job(jid, stage="Graph rendering", detail=line, percent=last_percent)
+                continue
+            # Generic update if none of the patterns matched
+            if last_percent < 85:
+                last_percent = min(last_percent + 1, 85)
+            _update_job(jid, detail=line, percent=last_percent)
+
+        process.wait()
+        exit_code = process.returncode
+        if exit_code:
+            raise RuntimeError(f"In-depth benchmark command exited with status {exit_code}.")
+
+        _update_job(jid, stage="Finalising", detail="Organising output artefacts", percent=max(last_percent, 90))
+
+        if temp_meta is None or not temp_meta.exists():
+            raise RuntimeError("Metadata file not produced; unable to register results.")
+        if temp_csv is None or not temp_csv.exists():
+            raise RuntimeError("CSV output file not produced; unable to register results.")
+
+        meta_data = json.loads(temp_meta.read_text(encoding="utf-8"))
+        session_id = meta_data.get("session_id")
+        fallback_base = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+        base_name = _safe_session_name(session_id, fallback=fallback_base)
+
+        final_base = base_name
+        counter = 2
+        while True:
+            csv_candidate = bench_dir / f"{final_base}.csv"
+            meta_candidate = bench_dir / f"{final_base}.meta.json"
+            conflict = csv_candidate.exists() or meta_candidate.exists()
+            if render_graphs and graph_output_dir and graph_output_dir.exists():
+                conflict = conflict or (graphs_root / final_base).exists()
+            if run_side_channel and forensics_temp_dir and forensics_temp_dir.exists():
+                conflict = conflict or (device_dir / f"forensic_{final_base}").exists()
+            if not conflict:
+                break
+            final_base = f"{base_name}-{counter}"
+            counter += 1
+
+        csv_dest = bench_dir / f"{final_base}.csv"
+        temp_csv.rename(csv_dest)
+
+        # Relocate optional JSONL/Parquet outputs if requested in future
+        jsonl_path = meta_data.get("output_jsonl")
+        if jsonl_path:
+            src_jsonl = Path(jsonl_path)
+            if not src_jsonl.is_absolute():
+                src_jsonl = temp_meta.parent / src_jsonl
+            if src_jsonl.exists():
+                dest_jsonl = bench_dir / f"{final_base}.jsonl"
+                src_jsonl.rename(dest_jsonl)
+                meta_data["output_jsonl"] = str(dest_jsonl)
+            else:
+                meta_data["output_jsonl"] = None
+
+        parquet_path = meta_data.get("output_parquet")
+        if parquet_path:
+            src_parquet = Path(parquet_path)
+            if not src_parquet.is_absolute():
+                src_parquet = temp_meta.parent / src_parquet
+            if src_parquet.exists():
+                dest_parquet = bench_dir / f"{final_base}.parquet"
+                src_parquet.rename(dest_parquet)
+                meta_data["output_parquet"] = str(dest_parquet)
+            else:
+                meta_data["output_parquet"] = None
+
+        meta_data["output_csv"] = str(csv_dest)
+        dest_meta = bench_dir / f"{final_base}.meta.json"
+        dest_meta.write_text(json.dumps(meta_data, indent=2, sort_keys=True), encoding="utf-8")
+        if temp_meta.exists():
+            temp_meta.unlink()
+
+        final_graph_dir: Optional[Path] = None
+        if render_graphs and graph_output_dir and graph_output_dir.exists():
+            final_graph_dir = graphs_root / final_base
+            graph_output_dir.rename(final_graph_dir)
+
+        final_forensics_dir: Optional[Path] = None
+        if run_side_channel and forensics_temp_dir and forensics_temp_dir.exists():
+            final_forensics_dir = device_dir / f"forensic_{final_base}"
+            forensics_temp_dir.rename(final_forensics_dir)
+            if side_channel_summary:
+                side_channel_summary = str((final_forensics_dir / Path(side_channel_summary).name))
+
+        summary_message = f"Stored session {final_base} under Tested Benchmarks/{device_label}"
+        _append_job_log(jid, summary_message)
+        if final_graph_dir:
+            _append_job_log(jid, f"[graphs] {final_graph_dir}")
+        if final_forensics_dir:
+            _append_job_log(jid, f"[forensics] {final_forensics_dir}")
+        if side_channel_summary:
+            _append_job_log(jid, f"[report] {side_channel_summary}")
+
+        _update_job(jid, status="done", stage="Complete", detail=summary_message, percent=100)
+    except Exception as exc:
+        _append_job_log(jid, f"[error] {exc}")
+        _update_job(jid, status="error", stage="Error", detail=str(exc), percent=100)
+        # Clean up temporary artefacts
+        for path in (temp_csv, temp_meta):
+            try:
+                if path and path.exists():
+                    path.unlink()
+            except Exception:
+                pass
+        if graph_output_dir and graph_output_dir.exists():
+            shutil.rmtree(graph_output_dir, ignore_errors=True)
+        if forensics_temp_dir and forensics_temp_dir.exists():
+            shutil.rmtree(forensics_temp_dir, ignore_errors=True)
+    finally:
+        if process and process.stdout:
+            try:
+                process.stdout.close()
+            except Exception:
+                pass
+
+
+@app.route("/api/indepth/run", methods=["POST"])
+def api_indepth_run():
+    form = request.form
+    device_label = (form.get("device_label") or "").strip()
+    try:
+        _validate_device_label(device_label)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": "invalid-device-label", "message": str(exc)}), 400
+    jid = _new_job()
+    form_payload = form.to_dict(flat=False)
+    t = threading.Thread(target=_run_indepth_job, args=(jid, form_payload), daemon=True)
+    t.start()
+    return jsonify({"ok": True, "job_id": jid})
 
 
 @app.route("/tested-benchmarks/<path:resource>")
