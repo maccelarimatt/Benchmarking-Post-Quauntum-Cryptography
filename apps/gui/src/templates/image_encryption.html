@@ -10,7 +10,7 @@
   <link rel="mask-icon" href="/static/favicon.svg" color="#1fb6b8" />
   <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
   <meta name="theme-color" content="#0b0f14" />
-  <style>
+    <style>
     /* Dark scrollbar styling */
     html {
       scrollbar-width: thin;
@@ -34,18 +34,21 @@
 
     * { box-sizing: border-box; }
     :root {
-      --island-bg: rgba(38, 41, 45, 0.92);
-      --island-radius: 1.5rem;
-      --island-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      --panel-bg: rgba(22, 26, 32, 0.65);
+      --island-bg: rgba(13, 18, 26, 0.88);
+      --island-radius: 1.6rem;
+      --island-shadow: 0 28px 60px rgba(9, 12, 18, 0.55);
+      --panel-border: rgba(255, 255, 255, 0.06);
+      --panel-overlay: rgba(255, 255, 255, 0.04);
+      --panel-bg-soft: rgba(22, 29, 41, 0.65);
       --accent: #1fb6b8;
-      --accent-soft: rgba(31, 182, 184, 0.2);
+      --accent-soft: rgba(31, 182, 184, 0.18);
+      --accent-strong: rgba(14, 165, 233, 0.85);
       --gold: #facc15;
-      --gold-soft: rgba(250, 204, 21, 0.2);
+      --gold-soft: rgba(250, 204, 21, 0.16);
       --sky: #5eead4;
       --sky-soft: rgba(94, 234, 212, 0.2);
       --text: #ffffff;
-      --muted: rgba(226, 232, 240, 0.75);
+      --muted: rgba(226, 232, 240, 0.78);
       --danger: #f87171;
       --success: #34d399;
     }
@@ -61,88 +64,247 @@
       background-color: #0b0f14;
       min-height: 100vh;
       position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
     }
-    .island {
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      width: 420px;
+      height: 420px;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.6;
+      pointer-events: none;
+      z-index: 0;
+      mix-blend-mode: screen;
+    }
+    body::before {
+      background: linear-gradient(145deg, rgba(31, 182, 184, 0.35), rgba(56, 189, 248, 0.25));
+      top: 5vh;
+      left: 10vw;
+      animation: floatOrb 22s ease-in-out infinite;
+    }
+    body::after {
+      background: linear-gradient(145deg, rgba(196, 181, 253, 0.32), rgba(148, 163, 184, 0.2));
+      bottom: 12vh;
+      right: 12vw;
+      animation: floatOrb 26s ease-in-out infinite reverse;
+    }
+
+    @keyframes floatOrb {
+      0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.58; }
+      50% { transform: translate3d(30px, -35px, 0) scale(1.08); opacity: 0.72; }
+    }
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(200%); }
+    }
+
+    {{ header_styles() | safe }}
+
+    main.image-shell {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      position: relative;
+      z-index: 2;
+    }
+
+    .panel {
       background: var(--island-bg);
       border-radius: var(--island-radius);
       box-shadow: var(--island-shadow);
-      backdrop-filter: blur(4px);
-      padding: 1.5rem;
-      max-width: 1200px;
-      margin: 0 auto 1.75rem auto;
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--panel-border);
+      padding: clamp(1.75rem, 2.8vw, 2.6rem);
+      position: relative;
+      overflow: hidden;
     }
-    .intro-island {
+    .panel::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      border: 1px solid var(--panel-overlay);
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+    .panel header h1,
+    .panel header h2 {
+      margin: 0;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+    .panel header h1 { font-size: clamp(1.9rem, 2.4vw, 2.25rem); }
+    .panel header h2 { font-size: clamp(1.4rem, 2vw, 1.6rem); }
+    .panel header p {
+      margin: 0.8rem 0 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: clamp(1.5rem, 3vw, 2.4rem);
+      align-items: center;
+    }
+    .hero header h1 {
+      font-size: clamp(2rem, 3vw, 2.5rem);
+    }
+    .hero .lead {
+      font-size: 1.05rem;
+      color: var(--muted);
+      margin-top: 1.2rem;
+      line-height: 1.7;
+    }
+    .hero-badges {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 1.8rem;
+    }
+    .hero-badge {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1.1rem;
+      padding: 1.25rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s ease, box-shadow 0.35s ease, background 0.35s ease;
+    }
+    .hero-badge::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(31, 182, 184, 0.24), rgba(56, 189, 248, 0.16));
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+    .hero-badge strong {
+      position: relative;
+      display: block;
+      font-size: 1.05rem;
+      margin-bottom: 0.4rem;
+    }
+    .hero-badge p {
+      position: relative;
+      margin: 0;
+      font-size: 0.9rem;
+      color: rgba(226, 232, 240, 0.78);
+      line-height: 1.6;
+    }
+    .hero-badge:hover,
+    .hero-badge:focus-visible {
+      border-color: rgba(31, 182, 184, 0.35);
+      box-shadow: 0 18px 32px rgba(12, 40, 58, 0.35);
+      background: linear-gradient(135deg, rgba(31, 182, 184, 0.18), rgba(56, 189, 248, 0.1));
+    }
+    .hero-badge:hover::before,
+    .hero-badge:focus-visible::before { opacity: 1; }
+    .hero-aside {
+      position: relative;
+      border-radius: 1.2rem;
+      border: 1px solid rgba(31, 182, 184, 0.26);
+      background: linear-gradient(145deg, rgba(31, 182, 184, 0.12), rgba(56, 189, 248, 0.06));
+      padding: clamp(1.5rem, 2.6vw, 2.2rem);
+      box-shadow: 0 22px 44px rgba(8, 20, 32, 0.45);
+      overflow: hidden;
+    }
+    .hero-aside::before {
+      content: "";
+      position: absolute;
+      inset: -60% 30% auto -30%;
+      height: 120%;
+      background: radial-gradient(circle at center, rgba(31, 182, 184, 0.35), transparent 65%);
+      opacity: 0.65;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      animation: floatOrb 24s ease-in-out infinite;
+    }
+    .hero-aside h3 {
+      margin: 0;
+      font-size: 1.25rem;
+      letter-spacing: 0.02em;
+      position: relative;
+    }
+    .hero-aside p {
+      margin: 0.85rem 0 0;
+      font-size: 0.92rem;
+      color: var(--muted);
+      line-height: 1.6;
+      position: relative;
+    }
+    .hero-aside-list {
+      list-style: none;
+      margin: 1.2rem 0 0;
+      padding: 0;
+      display: grid;
+      gap: 0.75rem;
+      position: relative;
+    }
+    .hero-aside-list li {
       display: flex;
+      gap: 0.65rem;
       align-items: flex-start;
-      justify-content: flex-start;
-      gap: 1.25rem;
-      flex-wrap: wrap;
+      font-size: 0.9rem;
+      color: rgba(226, 232, 240, 0.82);
+      line-height: 1.55;
     }
-    .intro-island > * {
-      flex: 1 1 100%;
-    }
-    .header-title { font-size: 1.8rem; font-weight: 700; margin: 0; }
-    .header-sub { margin: 0; color: var(--muted); font-size: 0.95rem; max-width: none; }
-    {{ header_styles() | safe }}
-    .btn, button, input[type="submit"], input[type="button"], a.btn {
+    .hero-aside-icon {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 0.65rem 1.4rem;
-      border: none;
-      border-radius: 0.7rem;
-      background: var(--accent);
-      color: #ffffff;
-      text-decoration: none;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 999px;
+      background: rgba(31, 182, 184, 0.18);
+      border: 1px solid rgba(31, 182, 184, 0.35);
+      font-size: 0.85rem;
       font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 4px 14px rgba(31, 182, 184, 0.25);
-      transition: filter 0.18s ease, box-shadow 0.2s ease;
+      color: var(--accent);
+      flex-shrink: 0;
     }
-    .btn:hover, button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover {
-      filter: brightness(0.92);
-      box-shadow: 0 6px 18px rgba(31, 182, 184, 0.32);
-    }
-    button:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; filter: none; }
-    .btn-soft {
-      background: rgba(31, 182, 184, 0.12);
-      color: var(--text);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 0.45rem 0.9rem;
-      border-radius: 0.65rem;
-      box-shadow: none;
-    }
-    .btn-soft:hover { background: rgba(31, 182, 184, 0.2); }
-    .btn-soft.active { background: var(--accent); }
+
     .layout {
       display: grid;
-      grid-template-columns: minmax(340px, 0.55fr) minmax(0, 1fr);
-      gap: 1.5rem;
+      grid-template-columns: minmax(320px, 0.55fr) minmax(0, 1fr);
+      gap: 1.75rem;
       align-items: start;
     }
-    .layout > * {
-      align-self: start;
-    }
-    .left-column {
-      display: grid;
-      gap: 1.25rem;
-      align-content: start;
-    }
+    .layout > * { align-self: start; }
     @media (max-width: 980px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero-aside { order: -1; }
       .layout { grid-template-columns: 1fr; }
     }
+
+    .left-column {
+      display: grid;
+      gap: 1.4rem;
+      align-content: start;
+    }
     .card {
-      background: var(--panel-bg);
+      background: var(--panel-bg-soft);
       border-radius: 1.1rem;
       border: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 1.25rem;
+      padding: 1.35rem;
       display: grid;
       gap: 1rem;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
     }
     .card h2 {
       margin: 0;
-      font-size: 1.15rem;
+      font-size: 1.18rem;
       font-weight: 600;
+      letter-spacing: 0.01em;
     }
     label {
       font-size: 0.82rem;
@@ -152,11 +314,12 @@
       display: block;
       margin-bottom: 0.45rem;
     }
-    input[type="file"], select {
+    input[type="file"],
+    select {
       width: 100%;
       padding: 0.65rem 0.85rem;
       border-radius: 0.75rem;
-      border: 1px solid rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.22);
       background: rgba(15, 23, 42, 0.55);
       color: var(--text);
       font-size: 0.95rem;
@@ -172,12 +335,64 @@
       border: 1px solid rgba(255, 255, 255, 0.1);
       background: rgba(15, 23, 42, 0.35);
     }
-    .toggle-row div { font-size: 0.85rem; color: var(--muted); }
+    .toggle-row div {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
     .button-row {
       display: flex;
       flex-wrap: wrap;
       gap: 0.75rem;
     }
+    .btn,
+    button,
+    input[type="submit"],
+    input[type="button"],
+    a.btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.68rem 1.45rem;
+      border: none;
+      border-radius: 0.75rem;
+      background: var(--accent);
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 10px 22px rgba(31, 182, 184, 0.28);
+      transition: filter 0.18s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .btn:hover,
+    button:hover,
+    input[type="submit"]:hover,
+    input[type="button"]:hover,
+    a.btn:hover {
+      filter: brightness(0.95);
+      box-shadow: 0 16px 28px rgba(31, 182, 184, 0.35);
+      transform: translateY(-1px);
+    }
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      box-shadow: none;
+      filter: none;
+    }
+    .btn-soft {
+      background: rgba(31, 182, 184, 0.12);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 0.48rem 0.95rem;
+      border-radius: 0.65rem;
+      box-shadow: none;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+    .btn-soft:hover { background: rgba(31, 182, 184, 0.22); border-color: rgba(31, 182, 184, 0.28); }
+    .btn-soft.active { background: var(--accent); color: #fff; }
+    .btn-accent { background: linear-gradient(145deg, var(--accent), var(--accent-strong)); }
+    .btn-sky { background: linear-gradient(145deg, rgba(94, 234, 212, 0.92), rgba(56, 189, 248, 0.9)); }
+    .btn-gold { background: linear-gradient(145deg, rgba(250, 204, 21, 0.95), rgba(245, 158, 11, 0.9)); }
+
     .status {
       min-height: 1.2rem;
       font-size: 0.9rem;
@@ -191,10 +406,11 @@
       padding: 0.75rem 1rem;
       font-size: 0.9rem;
     }
+
     .metrics dl {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 0.65rem 1.25rem;
+      gap: 0.75rem 1.25rem;
       margin: 0;
     }
     .metrics dt {
@@ -215,7 +431,7 @@
       word-break: break-word;
     }
     .badge {
-      padding: 0.35rem 0.75rem;
+      padding: 0.35rem 0.9rem;
       border-radius: 999px;
       background: rgba(94, 234, 212, 0.18);
       color: var(--sky);
@@ -225,125 +441,118 @@
     .badge.ok { background: rgba(52, 211, 153, 0.18); color: var(--success); }
     .badge.fail { background: rgba(248, 113, 113, 0.18); color: var(--danger); }
     .badge.pending { background: rgba(250, 204, 21, 0.18); color: var(--gold); }
+
     .panel-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 1.5rem;
     }
     @media (max-width: 960px) {
-      .panel-grid {
-        grid-template-columns: 1fr;
-      }
+      .panel-grid { grid-template-columns: 1fr; }
     }
     figure {
       margin: 0;
-      padding: 1rem;
-      background: var(--panel-bg);
-      border-radius: 1rem;
+      padding: 1.1rem;
+      border-radius: 1.1rem;
+      background: rgba(15, 23, 42, 0.35);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      display: flex;
-      flex-direction: column;
-      gap: 0.65rem;
+      position: relative;
+      overflow: hidden;
+    }
+    figure::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      pointer-events: none;
     }
     figure header {
       display: flex;
       align-items: center;
-      gap: 0.35rem;
-      color: var(--muted);
-      font-size: 0.85rem;
+      gap: 0.65rem;
+      font-size: 1rem;
       font-weight: 600;
     }
-    figure header strong { color: var(--text); font-size: 1rem; }
-    figure canvas {
-      width: 100%;
-      height: auto;
-      border-radius: 0.75rem;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      background: rgba(15, 23, 42, 0.55);
+    figure header span:first-child {
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(226, 232, 240, 0.58);
     }
     .canvas-wrapper {
       position: relative;
-      border-radius: 0.75rem;
+      margin: 1rem 0;
+      border-radius: 0.9rem;
       overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
     .canvas-wrapper canvas {
       display: block;
       width: 100%;
       height: auto;
-      transition: opacity 0.18s ease;
-    }
-    .panel-canvas--hidden {
-      opacity: 0;
-      pointer-events: none;
     }
     .entropy-heatmap {
       position: absolute;
       inset: 0;
       pointer-events: none;
       opacity: 0;
-      transition: opacity 0.18s ease;
-      mix-blend-mode: screen;
-      image-rendering: pixelated;
+      transition: opacity 0.2s ease;
     }
-    .entropy-heatmap.visible { opacity: 0.65; }
-    figcaption { color: var(--muted); font-size: 0.82rem; line-height: 1.45; }
+    .entropy-readout {
+      font-size: 0.9rem;
+      color: rgba(226, 232, 240, 0.82);
+      margin-top: 0.6rem;
+    }
+    .panel-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
     .panel-meta {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      gap: 0.75rem;
+      align-items: center;
       flex-wrap: wrap;
-    }
-    .panel-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-    .entropy-readout {
-      font-size: 0.82rem;
+      gap: 0.75rem;
+      font-size: 0.85rem;
       color: var(--muted);
-      line-height: 1.5;
-      background: rgba(15, 23, 42, 0.38);
-      border-radius: 0.75rem;
-      padding: 0.65rem 0.75rem;
-      border: 1px solid rgba(255, 255, 255, 0.08);
     }
-    .entropy-readout strong { color: var(--text); }
     .entropy-legend {
-      margin-top: 1.1rem;
-      font-size: 0.84rem;
-      color: var(--muted);
-      line-height: 1.4;
+      margin-top: 1.6rem;
+      padding: 1.4rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      background: linear-gradient(145deg, rgba(15, 24, 38, 0.75), rgba(12, 19, 30, 0.9));
+      color: rgba(226, 232, 240, 0.88);
+      line-height: 1.65;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
     }
     .heatmap-scale {
-      display: flex;
-      gap: 0.85rem;
-      flex-wrap: wrap;
-      font-size: 0.78rem;
+      margin-top: 1.1rem;
+      display: grid;
+      gap: 0.6rem;
+      font-size: 0.9rem;
       color: var(--muted);
-      margin-top: 0.45rem;
     }
-    .heatmap-scale span strong { color: var(--text); }
-    .note {
-      margin-top: 1.25rem;
-      font-size: 0.85rem;
-      color: rgba(226, 232, 240, 0.7);
+    footer.note {
+      margin-top: 2rem;
+      font-size: 0.92rem;
+      color: rgba(226, 232, 240, 0.78);
+      line-height: 1.7;
+      padding: 1.2rem 1.4rem;
+      border-radius: 0.95rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(12, 18, 28, 0.72);
     }
     .modal {
-      position: fixed;
-      inset: 0;
       display: none;
-      align-items: center;
-      justify-content: center;
-      background: rgba(2, 6, 12, 0.72);
-      padding: 2rem;
-      z-index: 50;
     }
-    .modal.active { display: flex; }
     .modal-card {
-      background: var(--island-bg);
-      border-radius: 1.2rem;
+      background: rgba(12, 18, 28, 0.92);
+      border-radius: 1rem;
       padding: 1.5rem;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      width: min(720px, 94vw);
-      max-height: 92vh;
-      overflow: auto;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       display: grid;
       gap: 1rem;
     }
@@ -398,7 +607,6 @@
       grid-row: 2;
       justify-self: center;
     }
-
     .histogram-toggle {
       display: flex;
       gap: 0.5rem;
@@ -417,144 +625,169 @@
   {% from '_header.html' import render_header %}
   {{ render_header(title='Post-Quantum Cryptography Benchmarking', subtitle='Encrypt an image using Post-Quantum cryptography', active='image') }}
 
-  <div class="island intro-island">
-    <div>
-      <h1 class="header-title">PQC Image Encryption Visualizer</h1>
-      <p class="header-sub">Panels (a)-(d) mirror the reference visualization: original pixels, permuted ciphertext, a wrong-key ghost, and a random pad baseline. Entropy analytics expose how structure dissolves as PQC primitives kick in.</p>
-    </div>
-  </div>
-
-  <div class="island">
-    <div class="layout">
-      <div class="left-column">
-        <div class="card">
-          <h2>Workflow</h2>
-          <div>
-            <label for="image-input">Image</label>
-            <input id="image-input" type="file" accept="image/*" />
+  <main class="image-shell">
+    <section class="panel hero">
+      <div class="hero-copy">
+        <header>
+          <h1>PQC Image Encryption Visualizer</h1>
+          <p class="lead">Panels (a)-(d) mirror the reference visualization: original pixels, permuted ciphertext, a wrong-key ghost, and a random pad baseline. Entropy analytics expose how structure dissolves as PQC primitives kick in.</p>
+        </header>
+        <div class="hero-badges">
+          <div class="hero-badge">
+            <strong>Entropy telemetry</strong>
+            <p>Per-panel readouts trace heatmaps, histograms, and byte entropy as you toggle views.</p>
           </div>
-          <div>
-            <label for="kem-select">KEM</label>
-            <select id="kem-select">
-              <optgroup label="ML-KEM (Kyber)">
-                <option value="Kyber512">Kyber512 (ML-KEM-512)</option>
-                <option value="Kyber768">Kyber768 (ML-KEM-768)</option>
-              </optgroup>
-              <optgroup label="HQC">
-                <option value="HQC-128">HQC-128</option>
-                <option value="HQC-192">HQC-192</option>
-                <option value="HQC-256">HQC-256</option>
-              </optgroup>
-              <optgroup label="BIKE">
-                <option value="BIKE-L1">BIKE-L1 (Level 1)</option>
-                <option value="BIKE-L3">BIKE-L3 (Level 3)</option>
-                <option value="BIKE-L5">BIKE-L5 (Level 5)</option>
-              </optgroup>
-              <optgroup label="Classic McEliece">
-                <option value="Classic-McEliece-348864f">Classic McEliece 348864f (Level 1)</option>
-                <option value="Classic-McEliece-460896f">Classic McEliece 460896f (Level 3)</option>
-                <option value="Classic-McEliece-6688128f">Classic McEliece 6688128f (Level 5)</option>
-              </optgroup>
-              <optgroup label="FrodoKEM">
-                <option value="FrodoKEM-640-AES">FrodoKEM-640-AES (Level 1)</option>
-                <option value="FrodoKEM-976-AES">FrodoKEM-976-AES (Level 3)</option>
-                <option value="FrodoKEM-1344-AES">FrodoKEM-1344-AES (Level 5)</option>
-              </optgroup>
-              <optgroup label="NTRU">
-                <option value="NTRU-HPS-2048-509">NTRU-HPS-2048-509 (Level 1)</option>
-                <option value="NTRU-HPS-2048-677">NTRU-HPS-2048-677 (Level 3)</option>
-                <option value="NTRU-HPS-4096-821">NTRU-HPS-4096-821 (Level 4/5)</option>
-                <option value="NTRU-HRSS-701">NTRU-HRSS-701 (Level 3)</option>
-              </optgroup>
-              <optgroup label="NTRU Prime">
-                <option value="sntrup653">sntrup653 (Level 1)</option>
-                <option value="sntrup761">sntrup761 (Level 3)</option>
-                <option value="sntrup1277">sntrup1277 (Level 5)</option>
-                <option value="ntrulpr761">ntrulpr761 (Level 3)</option>
-              </optgroup>
-            </select>
+          <div class="hero-badge">
+            <strong>Hybrid pipeline</strong>
+            <p>ChaCha20 keystreams ride on PQC KEM secrets and signatures to mirror production flows.</p>
           </div>
-          <div>
-            <label for="sig-select">Signature</label>
-            <select id="sig-select">
-              <optgroup label="ML-DSA (Dilithium)">
-                <option value="ML-DSA-44">ML-DSA-44 (≈ Dilithium2, Level 1)</option>
-                <option value="ML-DSA-65">ML-DSA-65 (≈ Dilithium3, Level 3)</option>
-                <option value="ML-DSA-87">ML-DSA-87 (≈ Dilithium5, Level 4)</option>
-                <option value="ML-DSA-110">ML-DSA-110 (Level 5)</option>
-                <option value="Dilithium2">Dilithium2 (Legacy Level 2)</option>
-                <option value="Dilithium3">Dilithium3 (Legacy Level 3)</option>
-                <option value="Dilithium5">Dilithium5 (Legacy Level 5)</option>
-              </optgroup>
-              <optgroup label="Falcon">
-                <option value="Falcon-512">Falcon-512 (Level 1)</option>
-                <option value="Falcon-1024">Falcon-1024 (Level 5)</option>
-              </optgroup>
-              <optgroup label="SPHINCS+">
-                <option value="SPHINCS+-SHA2-128s-simple">SPHINCS+-SHA2-128s-simple (Level 1)</option>
-                <option value="SPHINCS+-SHA2-128f-simple">SPHINCS+-SHA2-128f-simple (Level 3)</option>
-                <option value="SPHINCS+-SHA2-128f-robust">SPHINCS+-SHA2-128f-robust (Level 3)</option>
-                <option value="SPHINCS+-SHAKE-128s-simple">SPHINCS+-SHAKE-128s-simple (Level 1)</option>
-                <option value="SPHINCS+-SHAKE-128f-simple">SPHINCS+-SHAKE-128f-simple (Level 3)</option>
-              </optgroup>
-              <optgroup label="CROSS">
-                <option value="cross-rsdpg-256-balanced">CROSS RSDPG 256 Balanced (Level 5)</option>
-                <option value="cross-rsdpg-192-balanced">CROSS RSDPG 192 Balanced (Level 3)</option>
-                <option value="cross-rsdpg-128-balanced">CROSS RSDPG 128 Balanced (Level 1)</option>
-              </optgroup>
-              <optgroup label="SLH-DSA (FIPS 205)">
-                <option value="SLH_DSA_PURE_SHA2_256S">SLH-DSA SHA2-256s (Level 5)</option>
-                <option value="SLH_DSA_PURE_SHA2_192S">SLH-DSA SHA2-192s (Level 3)</option>
-                <option value="SLH_DSA_PURE_SHA2_128S">SLH-DSA SHA2-128s (Level 1)</option>
-                <option value="SLH_DSA_PURE_SHAKE_256S">SLH-DSA SHAKE-256s (Alt Level 5)</option>
-              </optgroup>
-              <optgroup label="SNOVA">
-                <option value="SNOVA_60_10_4">SNOVA 60/10/4 (Level 5)</option>
-                <option value="SNOVA_37_17_2">SNOVA 37/17/2 (Level 3)</option>
-                <option value="SNOVA_25_8_3">SNOVA 25/8/3 (Level 1)</option>
-              </optgroup>
-              <optgroup label="UOV">
-                <option value="OV-V-pkc-skc">UOV OV-V pkc+skc (Level 5)</option>
-                <option value="OV-III-pkc">UOV OV-III pkc (Level 3)</option>
-                <option value="OV-Is">UOV OV-Is (Level 1)</option>
-              </optgroup>
-              <optgroup label="XMSS / XMSSMT">
-                <option value="XMSS-SHA2_20_256">XMSS-SHA2_20_256 (Stateful Level 1)</option>
-                <option value="XMSSMT-SHA2_20/2_256">XMSSMT-SHA2_20/2_256 (Stateful Level 1/2)</option>
-                <option value="XMSSMT-SHA2_40/4_256">XMSSMT-SHA2_40/4_256 (Stateful Level 3)</option>
-                <option value="XMSSMT-SHA2_60/6_256">XMSSMT-SHA2_60/6_256 (Stateful Level 5)</option>
-              </optgroup>
-              <optgroup label="MAYO">
-                <option value="MAYO-2">MAYO-2 (Level 2)</option>
-                <option value="MAYO-1">MAYO-1 (Level 1)</option>
-                <option value="MAYO-3">MAYO-3 (Level 3)</option>
-                <option value="MAYO-5">MAYO-5 (Level 5)</option>
-              </optgroup>
-            </select>
+          <div class="hero-badge">
+            <strong>Interactive lab</strong>
+            <p>Swap algorithms, freeze demo seeds, and compare wrong-key ghosts against random pads.</p>
           </div>
-          <div class="toggle-row">
-            <div>
-              <strong>Deterministic demo seed</strong>
-              Keeps nonce and row permutation stable for the same image.
-            </div>
-            <input id="demo-seed" type="checkbox" />
-          </div>
-          <div class="toggle-row">
-            <div>
-              <strong>Include alpha channel</strong>
-              Adds the alpha histogram to global entropy (defaults to RGB only).
-            </div>
-            <input id="include-alpha" type="checkbox" />
-          </div>
-          <div class="button-row">
-            <button id="btn-encrypt" class="btn btn-accent">Encrypt</button>
-            <button id="btn-decrypt" class="btn btn-sky" disabled>Decrypt (correct key)</button>
-            <button id="btn-wrong" class="btn btn-gold" disabled>Decrypt with wrong key</button>
-          </div>
-          <div id="status" class="status" role="status"></div>
-          <div id="error" class="error" style="display:none;"></div>
         </div>
+      </div>
+      <aside class="hero-aside">
+        <h3>Session primer</h3>
+        <p>Drop in a PNG or JPEG and watch structure dissolve as the PQC pipeline scrambles each channel.</p>
+        <ul class="hero-aside-list">
+          <li><span class="hero-aside-icon">1</span><span>Select a NIST candidate KEM and signature to derive the shared secret and attest it.</span></li>
+          <li><span class="hero-aside-icon">2</span><span>Encrypt to explore ciphertext, wrong-key ghosts, and a random pad baseline side by side.</span></li>
+          <li><span class="hero-aside-icon">3</span><span>Open heatmaps or histograms to inspect entropy shifts at byte and channel granularity.</span></li>
+        </ul>
+      </aside>
+    </section>
 
+    <section class="panel workflow-panel">
+      <div class="layout">
+        <div class="left-column">
+          <div class="card">
+            <h2>Workflow</h2>
+            <div>
+              <label for="image-input">Image</label>
+              <input id="image-input" type="file" accept="image/*" />
+            </div>
+            <div>
+              <label for="kem-select">KEM</label>
+              <select id="kem-select">
+                <optgroup label="ML-KEM (Kyber)">
+                  <option value="Kyber512">Kyber512 (ML-KEM-512)</option>
+                  <option value="Kyber768">Kyber768 (ML-KEM-768)</option>
+                </optgroup>
+                <optgroup label="HQC">
+                  <option value="HQC-128">HQC-128</option>
+                  <option value="HQC-192">HQC-192</option>
+                  <option value="HQC-256">HQC-256</option>
+                </optgroup>
+                <optgroup label="BIKE">
+                  <option value="BIKE-L1">BIKE-L1 (Level 1)</option>
+                  <option value="BIKE-L3">BIKE-L3 (Level 3)</option>
+                  <option value="BIKE-L5">BIKE-L5 (Level 5)</option>
+                </optgroup>
+                <optgroup label="Classic McEliece">
+                  <option value="Classic-McEliece-348864f">Classic McEliece 348864f (Level 1)</option>
+                  <option value="Classic-McEliece-460896f">Classic McEliece 460896f (Level 3)</option>
+                  <option value="Classic-McEliece-6688128f">Classic McEliece 6688128f (Level 5)</option>
+                </optgroup>
+                <optgroup label="FrodoKEM">
+                  <option value="FrodoKEM-640-AES">FrodoKEM-640-AES (Level 1)</option>
+                  <option value="FrodoKEM-976-AES">FrodoKEM-976-AES (Level 3)</option>
+                  <option value="FrodoKEM-1344-AES">FrodoKEM-1344-AES (Level 5)</option>
+                </optgroup>
+                <optgroup label="NTRU">
+                  <option value="NTRU-HPS-2048-509">NTRU-HPS-2048-509 (Level 1)</option>
+                  <option value="NTRU-HPS-2048-677">NTRU-HPS-2048-677 (Level 3)</option>
+                  <option value="NTRU-HPS-4096-821">NTRU-HPS-4096-821 (Level 4/5)</option>
+                  <option value="NTRU-HRSS-701">NTRU-HRSS-701 (Level 3)</option>
+                </optgroup>
+                <optgroup label="NTRU Prime">
+                  <option value="sntrup653">sntrup653 (Level 1)</option>
+                  <option value="sntrup761">sntrup761 (Level 3)</option>
+                  <option value="sntrup1277">sntrup1277 (Level 5)</option>
+                  <option value="ntrulpr761">ntrulpr761 (Level 3)</option>
+                </optgroup>
+              </select>
+            </div>
+            <div>
+              <label for="sig-select">Signature</label>
+              <select id="sig-select">
+                <optgroup label="ML-DSA (Dilithium)">
+                  <option value="ML-DSA-44">ML-DSA-44 (?%^ Dilithium2, Level 1)</option>
+                  <option value="ML-DSA-65">ML-DSA-65 (?%^ Dilithium3, Level 3)</option>
+                  <option value="ML-DSA-87">ML-DSA-87 (?%^ Dilithium5, Level 4)</option>
+                  <option value="ML-DSA-110">ML-DSA-110 (Level 5)</option>
+                  <option value="Dilithium2">Dilithium2 (Legacy Level 2)</option>
+                  <option value="Dilithium3">Dilithium3 (Legacy Level 3)</option>
+                  <option value="Dilithium5">Dilithium5 (Legacy Level 5)</option>
+                </optgroup>
+                <optgroup label="Falcon">
+                  <option value="Falcon-512">Falcon-512 (Level 1)</option>
+                  <option value="Falcon-1024">Falcon-1024 (Level 5)</option>
+                </optgroup>
+                <optgroup label="SPHINCS+">
+                  <option value="SPHINCS+-SHA2-128s-simple">SPHINCS+-SHA2-128s-simple (Level 1)</option>
+                  <option value="SPHINCS+-SHA2-128f-simple">SPHINCS+-SHA2-128f-simple (Level 3)</option>
+                  <option value="SPHINCS+-SHA2-128f-robust">SPHINCS+-SHA2-128f-robust (Level 3)</option>
+                  <option value="SPHINCS+-SHAKE-128s-simple">SPHINCS+-SHAKE-128s-simple (Level 1)</option>
+                  <option value="SPHINCS+-SHAKE-128f-simple">SPHINCS+-SHAKE-128f-simple (Level 3)</option>
+                </optgroup>
+                <optgroup label="CROSS">
+                  <option value="cross-rsdpg-256-balanced">CROSS RSDPG 256 Balanced (Level 5)</option>
+                  <option value="cross-rsdpg-192-balanced">CROSS RSDPG 192 Balanced (Level 3)</option>
+                  <option value="cross-rsdpg-128-balanced">CROSS RSDPG 128 Balanced (Level 1)</option>
+                </optgroup>
+                <optgroup label="SLH-DSA (FIPS 205)">
+                  <option value="SLH_DSA_PURE_SHA2_256S">SLH-DSA SHA2-256s (Level 5)</option>
+                  <option value="SLH_DSA_PURE_SHA2_192S">SLH-DSA SHA2-192s (Level 3)</option>
+                  <option value="SLH_DSA_PURE_SHA2_128S">SLH-DSA SHA2-128s (Level 1)</option>
+                  <option value="SLH_DSA_PURE_SHAKE_256S">SLH-DSA SHAKE-256s (Alt Level 5)</option>
+                </optgroup>
+                <optgroup label="SNOVA">
+                  <option value="SNOVA_60_10_4">SNOVA 60/10/4 (Level 5)</option>
+                  <option value="SNOVA_37_17_2">SNOVA 37/17/2 (Level 3)</option>
+                  <option value="SNOVA_25_8_3">SNOVA 25/8/3 (Level 1)</option>
+                </optgroup>
+                <optgroup label="UOV">
+                  <option value="OV-V-pkc-skc">UOV OV-V pkc+skc (Level 5)</option>
+                  <option value="OV-III-pkc">UOV OV-III pkc (Level 3)</option>
+                  <option value="OV-Is">UOV OV-Is (Level 1)</option>
+                </optgroup>
+                <optgroup label="XMSS / XMSSMT">
+                  <option value="XMSS-SHA2_20_256">XMSS-SHA2_20_256 (Stateful Level 1)</option>
+                  <option value="XMSSMT-SHA2_20/2_256">XMSSMT-SHA2_20/2_256 (Stateful Level 1/2)</option>
+                  <option value="XMSSMT-SHA2_40/4_256">XMSSMT-SHA2_40/4_256 (Stateful Level 3)</option>
+                  <option value="XMSSMT-SHA2_60/6_256">XMSSMT-SHA2_60/6_256 (Stateful Level 5)</option>
+                </optgroup>
+                <optgroup label="MAYO">
+                  <option value="MAYO-2">MAYO-2 (Level 2)</option>
+                  <option value="MAYO-1">MAYO-1 (Level 1)</option>
+                  <option value="MAYO-3">MAYO-3 (Level 3)</option>
+                  <option value="MAYO-5">MAYO-5 (Level 5)</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <strong>Deterministic demo seed</strong>
+                Keeps nonce and row permutation stable for the same image.
+              </div>
+              <input id="demo-seed" type="checkbox" />
+            </div>
+            <div class="toggle-row">
+              <div>
+                <strong>Include alpha channel</strong>
+                Adds the alpha histogram to global entropy (defaults to RGB only).
+              </div>
+              <input id="include-alpha" type="checkbox" />
+            </div>
+            <div class="button-row">
+              <button id="btn-encrypt" class="btn btn-accent">Encrypt</button>
+              <button id="btn-decrypt" class="btn btn-sky" disabled>Decrypt (correct key)</button>
+              <button id="btn-wrong" class="btn btn-gold" disabled>Decrypt with wrong key</button>
+            </div>
+            <div id="status" class="status" role="status"></div>
+            <div id="error" class="error" style="display:none;"></div>
+          </div>
         <div class="card metrics">
           <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
             <span id="badge-verify" class="badge">Signature pending</span>
@@ -670,8 +903,9 @@
         </div>
       </div>
     </div>
-    <footer class="note">ChaCha20 keystream runs over permuted rows; the wrong-key panel shows how little signal leaks when the shared secret is perturbed. Entropy overlays emphasize this visually: flat photos spike toward 8.0, while structured scenes brighten only after encryption.</footer>
-  </div>
+      <footer class="note">ChaCha20 keystream runs over permuted rows; the wrong-key panel shows how little signal leaks when the shared secret is perturbed. Entropy overlays emphasize this visually: flat photos spike toward 8.0, while structured scenes brighten only after encryption.</footer>
+    </section>
+  </main>
 
   <div id="recovered-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal-card">
@@ -718,3 +952,5 @@
   <script src="/static/js/pqc-image-app.js" defer></script>
 </body>
 </html>
+
+
