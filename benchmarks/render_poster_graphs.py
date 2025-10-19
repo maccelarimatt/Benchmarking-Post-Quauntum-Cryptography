@@ -223,8 +223,8 @@ def plot_latency_combined(
     if not top_algos:
         return
 
-    kem_palette = ["#0072B2", "#56B4E9", "#009E73", "#CC79A7", "#E69F00"]
-    sig_palette = ["#D55E00", "#E69F00", "#999999", "#009E73", "#56B4E9"]
+    kem_palette = ["#2964a8", "#5897c6", "#1f77b4", "#13786c", "#64658f"]
+    sig_palette = ["#ee6251", "#ff7f0e", "#695973", "#8c564b", "#bcbd22"]
 
     fig, ax = plt.subplots(figsize=(13, 8))
 
@@ -994,8 +994,8 @@ def plot_category_top_metric(
     file_stub = "latency" if metric == "latency" else "memory"
     title_label = "Latency" if metric == "latency" else "Memory"
 
-    palette_kem = ["#0072B2", "#56B4E9", "#009E73", "#CC79A7", "#E69F00"]
-    palette_sig = ["#D55E00", "#E69F00", "#999999", "#009E73", "#56B4E9"]
+    palette_kem = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
+    palette_sig = ["#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
 
     aggregates: Dict[Tuple[str, str, int], List[float]] = {}
     for rec in records:
@@ -1188,10 +1188,133 @@ def plot_category_operation_breakdown(
                     "category",
                     "operation",
                     f"{pass_key}_value",
-                ],
-                csv_rows,
+            ],
+            csv_rows,
+        )
+
+
+def plot_cat3_mixed_top(
+    records: Sequence[Record],
+    png_dir: pathlib.Path,
+    pdf_dir: pathlib.Path,
+    csv_dir: Optional[pathlib.Path],
+    metric: str,
+) -> None:
+    metric = metric.lower()
+    if metric not in {"latency", "memory"}:
+        raise ValueError("metric must be 'latency' or 'memory'")
+    pass_name = "timing" if metric == "latency" else "memory"
+    attr_name = "mean_ms" if metric == "latency" else "mem_mean_kb"
+    ylabel = "Mean latency (ms)" if metric == "latency" else "Mean peak memory (KB)"
+    file_stub = "latency" if metric == "latency" else "memory"
+
+    if metric == "memory":
+        vibrant_kem_palette = ["#1e5065", "#151f36", "#bb6b26"]
+        vibrant_sig_palette = ["#1c374c", "#367384", "#cb8e59"]
+    else:
+        vibrant_kem_palette = ["#2964a8", "#13786c", "#ee6251"]
+        vibrant_sig_palette = ["#695973", "#5897c6", "#64658f"]
+
+    aggregated: Dict[Tuple[str, str], Dict[str, Any]] = {}
+    for rec in records:
+        if rec.measurement_pass != pass_name or rec.category_number != 3:
+            continue
+        value = getattr(rec, attr_name, None)
+        if value is None:
+            continue
+        key = (rec.kind.upper(), rec.algo)
+        bucket = aggregated.setdefault(key, {"sums": 0.0, "count": 0, "entries": []})
+        bucket["sums"] += value
+        bucket["count"] += 1
+        bucket["entries"].append(rec)
+
+    top_kems: List[Tuple[str, float, List[Record]]] = []
+    top_sigs: List[Tuple[str, float, List[Record]]] = []
+    for (kind, algo), info in aggregated.items():
+        if not info["count"]:
+            continue
+        avg = info["sums"] / info["count"]
+        entry = (algo, avg, info["entries"])
+        if kind == "KEM":
+            top_kems.append(entry)
+        elif kind == "SIG":
+            top_sigs.append(entry)
+    top_kems.sort(key=lambda item: item[1])
+    top_sigs.sort(key=lambda item: item[1])
+    top_kems = top_kems[:3]
+    top_sigs = top_sigs[:3]
+    if not top_kems and not top_sigs:
+        return
+
+    fig, ax = plt.subplots(figsize=(13, 8))
+    bars: List[Tuple[str, float, str]] = []
+    csv_rows: List[Dict[str, Any]] = []
+
+    for idx, (algo, _, entries) in enumerate(top_kems):
+        color = vibrant_kem_palette[idx % len(vibrant_kem_palette)]
+        label = _friendly_label(algo)
+        for rec in entries:
+            op_short = rec.operation[:4].upper()
+            bars.append((f"{label} {op_short}", getattr(rec, attr_name), color))
+            csv_rows.append(
+                {
+                    "algorithm": label,
+                    "internal_algorithm": rec.algo,
+                    "kind": rec.kind,
+                    "category": rec.category_number,
+                    "operation": rec.operation,
+                    f"mean_{file_stub}_value": getattr(rec, attr_name),
+                }
             )
 
+    for idx, (algo, _, entries) in enumerate(top_sigs):
+        color = vibrant_sig_palette[idx % len(vibrant_sig_palette)]
+        label = _friendly_label(algo)
+        for rec in entries:
+            op_short = rec.operation[:4].upper()
+            bars.append((f"{label} {op_short}", getattr(rec, attr_name), color))
+            csv_rows.append(
+                {
+                    "algorithm": label,
+                    "internal_algorithm": rec.algo,
+                    "kind": rec.kind,
+                    "category": rec.category_number,
+                    "operation": rec.operation,
+                    f"mean_{file_stub}_value": getattr(rec, attr_name),
+                }
+            )
+
+    if not bars:
+        return
+
+    labels = [label for label, _, _ in bars]
+    values = [value for _, value, _ in bars]
+    colors = [color for _, _, color in bars]
+
+    ax.bar(labels, values, color=colors)
+    ax.set_ylabel(ylabel, fontsize=22)
+    ax.grid(True, axis="y", linestyle="--", alpha=0.3)
+    ax.tick_params(axis="x", rotation=45, labelsize=20)
+    ax.tick_params(axis="y", labelsize=20)
+    for tick in ax.get_xticklabels():
+        tick.set_horizontalalignment("right")
+
+    graph_name = f"poster_{file_stub}_cat3_mixed_top6"
+    _save_figure(fig, graph_name, png_dir, pdf_dir)
+    value_field = f"mean_{file_stub}_value"
+    _write_csv(
+        csv_dir,
+        graph_name,
+        [
+            "algorithm",
+            "internal_algorithm",
+            "kind",
+            "category",
+            "operation",
+            value_field,
+        ],
+        csv_rows,
+    )
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Render poster graphs.")
@@ -1342,6 +1465,8 @@ def main() -> None:
     plot_category_top_metric(records, png_dir, pdf_dir, args.top_n, "memory", csv_dir)
     plot_category_operation_breakdown(records, png_dir, pdf_dir, args.top_n, pass_name="timing", csv_dir=csv_dir)
     plot_category_operation_breakdown(records, png_dir, pdf_dir, args.top_n, pass_name="memory", csv_dir=csv_dir)
+    plot_cat3_mixed_top(records, png_dir, pdf_dir, csv_dir, metric="latency")
+    plot_cat3_mixed_top(records, png_dir, pdf_dir, csv_dir, metric="memory")
     plot_size_by_scheme(records, png_dir, pdf_dir, csv_dir)
 
     print(f"Poster graphs written to {poster_root}")

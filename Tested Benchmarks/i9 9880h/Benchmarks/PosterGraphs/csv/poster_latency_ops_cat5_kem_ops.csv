@@ -11,9 +11,3 @@ Frodokem,frodokem,KEM,5,decapsulate,2.1421428929897957
 Bike,bike,KEM,5,keygen,4.938578754081391
 Bike,bike,KEM,5,encapsulate,0.35776404838543385
 Bike,bike,KEM,5,decapsulate,5.44387207046384
-Classic Mceliece,classic-mceliece,KEM,5,keygen,168.60868555522757
-Classic Mceliece,classic-mceliece,KEM,5,encapsulate,0.45455352374119684
-Classic Mceliece,classic-mceliece,KEM,5,decapsulate,0.3056508183362894
-Hqc,hqc,KEM,5,keygen,36.46663262443326
-Hqc,hqc,KEM,5,encapsulate,67.35016392376565
-Hqc,hqc,KEM,5,decapsulate,107.54026372560475
