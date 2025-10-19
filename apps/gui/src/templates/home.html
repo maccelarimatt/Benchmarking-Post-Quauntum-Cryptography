@@ -83,6 +83,19 @@
     .indepth-loading { border-color: rgba(148,163,184,0.25); color:#e0f2f1; }
     .indepth-detail { display:flex; flex-direction:column; gap:1.25rem; }
     .indepth-content { display:flex; flex-direction:column; gap:1.25rem; }
+    .indepth-actions { display:flex; flex-wrap:wrap; gap:0.75rem; margin-top:0.25rem; }
+    .indepth-action-button { display:inline-flex; align-items:center; justify-content:center; min-width:200px; text-align:center; }
+    body.overlay-open { overflow:hidden; }
+    .indepth-overlay { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:4vh 5vw; background: rgba(5,11,17,0.75); backdrop-filter: blur(10px); z-index:3000; }
+    .indepth-overlay.is-visible { display:flex; }
+    .indepth-overlay .overlay-panel { width:min(1200px, 100%); max-height:90vh; overflow-y:auto; background: rgba(10,14,21,0.95); border-radius:1.2rem; border:1px solid rgba(255,255,255,0.12); box-shadow:0 28px 60px rgba(0,0,0,0.45); display:flex; flex-direction:column; }
+    .indepth-overlay .overlay-header { position:sticky; top:0; display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1.2rem 1.5rem; border-bottom:1px solid rgba(255,255,255,0.1); background: rgba(10,14,21,0.95); z-index:1; }
+    .indepth-overlay .overlay-title { margin:0; font-size:1.35rem; }
+    .indepth-overlay .overlay-body { padding:1.5rem; display:flex; flex-direction:column; gap:1rem; }
+    .indepth-overlay .overlay-close { background:none; border:1px solid rgba(255,255,255,0.18); border-radius:999px; color:inherit; padding:0.45rem 1rem; font-weight:600; cursor:pointer; transition: border-color .2s ease, color .2s ease; }
+    .indepth-overlay .overlay-close:hover,
+    .indepth-overlay .overlay-close:focus-visible { border-color: rgba(31,182,184,0.45); color: var(--accent); outline:none; }
+    .indepth-section--overlay { margin:0; }
     .indepth-section { background: rgba(0,0,0,.25); border-radius:.9rem; padding:1.25rem; border:1px solid rgba(255,255,255,0.05); }
     .indepth-section h3 { margin:0 0 0.75rem; font-size:1.1rem; }
     .indepth-section p.section-hint { font-size:0.9rem; opacity:0.82; margin:0 0 0.8rem; }
@@ -449,6 +462,15 @@ input[type="checkbox"]:checked::after { opacity: 1; }
             {% endif %}
           </div>
           <div id="indepth-content" class="indepth-content" hidden></div>
+          <div id="indepth-overlay" class="indepth-overlay" hidden>
+            <div class="overlay-panel" role="dialog" aria-modal="true" aria-labelledby="indepth-overlay-title">
+              <header class="overlay-header">
+                <h3 id="indepth-overlay-title" class="overlay-title"></h3>
+                <button type="button" class="overlay-close">Close</button>
+              </header>
+              <div class="overlay-body"></div>
+            </div>
+          </div>
         </section>
       </div>
     </div>
@@ -476,12 +498,19 @@ input[type="checkbox"]:checked::after { opacity: 1; }
       const deviceListEl = document.getElementById('indepth-device-list');
       const contentEl = document.getElementById('indepth-content');
       const emptyStateEl = document.getElementById('indepth-empty-state');
+      const overlayEl = document.getElementById('indepth-overlay');
+      const overlayTitleEl = overlayEl ? overlayEl.querySelector('.overlay-title') : null;
+      const overlayBodyEl = overlayEl ? overlayEl.querySelector('.overlay-body') : null;
+      const overlayCloseButton = overlayEl ? overlayEl.querySelector('.overlay-close') : null;
 
       const state = {
         indepthLoaded: false,
         devices: [],
         activeDeviceId: null
       };
+
+      let overlayActive = false;
+      let overlayReturnFocus = null;
 
       modeButtons.forEach(function (button) {
         button.addEventListener('click', function () {
@@ -506,10 +535,85 @@ input[type="checkbox"]:checked::after { opacity: 1; }
         modeButtons.forEach(function (btn) {
           btn.classList.toggle('mode-button--active', btn.getAttribute('data-mode') === mode);
         });
+        if (mode !== 'indepth') {
+          closeOverlay();
+        }
         if (mode === 'indepth' && !state.indepthLoaded) {
           loadDeviceList();
         }
       }
+
+      function closeOverlay() {
+        if (!overlayEl || !overlayBodyEl) {
+          return;
+        }
+        const returnTarget = overlayReturnFocus;
+        overlayReturnFocus = null;
+        overlayEl.classList.remove('is-visible');
+        overlayEl.hidden = true;
+        overlayBodyEl.innerHTML = '';
+        if (overlayTitleEl) {
+          overlayTitleEl.textContent = '';
+        }
+        overlayActive = false;
+        document.body.classList.remove('overlay-open');
+        if (returnTarget && typeof returnTarget.focus === 'function') {
+          returnTarget.focus();
+        }
+      }
+
+      function openOverlay(title, renderContent) {
+        if (!overlayEl || !overlayBodyEl || !overlayTitleEl) {
+          return;
+        }
+        overlayReturnFocus = document.activeElement && typeof document.activeElement.focus === 'function'
+          ? document.activeElement
+          : null;
+        overlayTitleEl.textContent = title || '';
+        overlayBodyEl.innerHTML = '';
+        var appended = false;
+        var content = typeof renderContent === 'function' ? renderContent() : null;
+        if (Array.isArray(content)) {
+          content.forEach(function (node) {
+            if (node && typeof node === 'object' && typeof node.nodeType === 'number') {
+              overlayBodyEl.appendChild(node);
+              appended = true;
+            }
+          });
+        } else if (content && typeof content === 'object' && typeof content.nodeType === 'number') {
+          overlayBodyEl.appendChild(content);
+          appended = true;
+        }
+        if (!appended) {
+          var fallback = document.createElement('div');
+          fallback.className = 'indepth-empty';
+          fallback.textContent = 'No data available for this view.';
+          overlayBodyEl.appendChild(fallback);
+        }
+        overlayEl.hidden = false;
+        overlayEl.classList.add('is-visible');
+        document.body.classList.add('overlay-open');
+        overlayActive = true;
+        if (overlayCloseButton) {
+          overlayCloseButton.focus();
+        }
+      }
+
+      if (overlayCloseButton) {
+        overlayCloseButton.addEventListener('click', closeOverlay);
+      }
+      if (overlayEl) {
+        overlayEl.addEventListener('click', function (event) {
+          if (event.target === overlayEl) {
+            closeOverlay();
+          }
+        });
+      }
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && overlayActive) {
+          closeOverlay();
+        }
+      });
 
       (function initializeModeFromQuery() {
         const params = new URLSearchParams(window.location.search);
@@ -721,6 +825,7 @@ input[type="checkbox"]:checked::after { opacity: 1; }
         if (!contentEl) {
           return;
         }
+        closeOverlay();
         contentEl.hidden = false;
         contentEl.innerHTML = '<div class="indepth-loading">Loading results…</div>';
         if (emptyStateEl) {
@@ -990,15 +1095,60 @@ input[type="checkbox"]:checked::after { opacity: 1; }
         return section;
       }
 
+      function buildSessionsOverlay(sessions) {
+        const fragment = document.createDocumentFragment();
+        if (!sessions || !sessions.length) {
+          const empty = document.createElement('div');
+          empty.className = 'indepth-empty';
+          empty.textContent = 'No benchmark sessions were found for this device.';
+          fragment.appendChild(empty);
+          return fragment;
+        }
+        const section = document.createElement('section');
+        section.className = 'indepth-section indepth-section--overlay';
+        const title = document.createElement('h3');
+        title.textContent = 'Benchmark Sessions';
+        section.appendChild(title);
+        sessions.forEach(function (session, index) {
+          section.appendChild(renderSession(session, index === 0));
+        });
+        fragment.appendChild(section);
+        return fragment;
+      }
+
+      function buildGraphsOverlay(graphs, extras) {
+        const fragment = document.createDocumentFragment();
+        const graphSection = renderAssetGroups(graphs, 'Graphs');
+        const extrasSection = renderAssetGroups(extras, 'Forensics & Extras');
+        if (graphSection) {
+          graphSection.classList.add('indepth-section--overlay');
+          fragment.appendChild(graphSection);
+        }
+        if (extrasSection) {
+          extrasSection.classList.add('indepth-section--overlay');
+          fragment.appendChild(extrasSection);
+        }
+        if (!graphSection && !extrasSection) {
+          const empty = document.createElement('div');
+          empty.className = 'indepth-empty';
+          empty.textContent = 'No graphs or extras were generated for this device.';
+          fragment.appendChild(empty);
+        }
+        return fragment;
+      }
+
       function renderDeviceDetail(data) {
         if (!contentEl) {
           return;
         }
+        closeOverlay();
         contentEl.innerHTML = '';
         const device = data && data.device ? data.device : {};
         const sessions = Array.isArray(data && data.sessions) ? data.sessions : [];
         const graphs = Array.isArray(data && data.graphs) ? data.graphs : [];
         const extras = Array.isArray(data && data.extras) ? data.extras : [];
+        const hasSessions = sessions.length > 0;
+        const hasGraphContent = (graphs && graphs.length > 0) || (extras && extras.length > 0);
 
         const overview = document.createElement('section');
         overview.className = 'indepth-section';
@@ -1019,16 +1169,25 @@ input[type="checkbox"]:checked::after { opacity: 1; }
         overview.appendChild(metaGrid);
         contentEl.appendChild(overview);
 
-        if (sessions.length) {
-          const sessionsSection = document.createElement('section');
-          sessionsSection.className = 'indepth-section';
+        if (hasSessions) {
+          const previewSection = document.createElement('section');
+          previewSection.className = 'indepth-section';
           const title = document.createElement('h3');
           title.textContent = 'Benchmark Sessions';
-          sessionsSection.appendChild(title);
-          sessions.forEach(function (session, index) {
-            sessionsSection.appendChild(renderSession(session, index === 0));
+          previewSection.appendChild(title);
+          const previewDetails = renderSession(sessions[0], true);
+          const previewTables = previewDetails.querySelectorAll('.indepth-table');
+          previewTables.forEach(function (table) {
+            table.remove();
           });
-          contentEl.appendChild(sessionsSection);
+          previewSection.appendChild(previewDetails);
+          if (sessions.length > 1) {
+            const moreHint = document.createElement('p');
+            moreHint.className = 'section-hint';
+            moreHint.textContent = 'Showing first of ' + sessions.length + ' sessions.';
+            previewSection.appendChild(moreHint);
+          }
+          contentEl.appendChild(previewSection);
         } else {
           const noSessions = document.createElement('div');
           noSessions.className = 'indepth-empty';
@@ -1036,14 +1195,34 @@ input[type="checkbox"]:checked::after { opacity: 1; }
           contentEl.appendChild(noSessions);
         }
 
-        const graphSection = renderAssetGroups(graphs, 'Graphs');
-        if (graphSection) {
-          contentEl.appendChild(graphSection);
-        }
-        const extrasSection = renderAssetGroups(extras, 'Forensics & Extras');
-        if (extrasSection) {
-          contentEl.appendChild(extrasSection);
-        }
+        const actions = document.createElement('div');
+        actions.className = 'indepth-actions';
+
+        const sessionsButton = document.createElement('button');
+        sessionsButton.type = 'button';
+        sessionsButton.className = 'btn indepth-action-button';
+        sessionsButton.textContent = 'Show Tabulated Results';
+        sessionsButton.disabled = !hasSessions;
+        sessionsButton.addEventListener('click', function () {
+          openOverlay('Tabulated Results', function () {
+            return buildSessionsOverlay(sessions);
+          });
+        });
+        actions.appendChild(sessionsButton);
+
+        const graphsButton = document.createElement('button');
+        graphsButton.type = 'button';
+        graphsButton.className = 'btn indepth-action-button';
+        graphsButton.textContent = 'Show Graphs Generated';
+        graphsButton.disabled = !hasGraphContent;
+        graphsButton.addEventListener('click', function () {
+          openOverlay('Graphs Generated', function () {
+            return buildGraphsOverlay(graphs, extras);
+          });
+        });
+        actions.appendChild(graphsButton);
+
+        contentEl.appendChild(actions);
       }
 
       activateMode('standard');
