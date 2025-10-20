@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   {% from '_background_effects.html' import background_layer, background_rules %}
+  {% from '_detail_styles.html' import detail_styles %}
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{{ label }} - Details</title>
@@ -10,59 +11,7 @@
   <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
   <meta name="theme-color" content="#0b0f14" />
   <style>
-    /* Dark scrollbar styling */
-    html {
-      scrollbar-width: thin;
-      scrollbar-color: rgba(36, 49, 63, 0.85) rgba(7, 11, 17, 0.92);
-    }
-    html::-webkit-scrollbar {
-      width: 12px;
-      height: 12px;
-    }
-    html::-webkit-scrollbar-track {
-      background: rgba(7, 11, 17, 0.92);
-    }
-    html::-webkit-scrollbar-thumb {
-      background: rgba(148, 163, 184, 0.45);
-      border-radius: 999px;
-      border: 2px solid rgba(7, 11, 17, 0.92);
-    }
-    html::-webkit-scrollbar-thumb:hover {
-      background: rgba(148, 163, 184, 0.65);
-    }
-
-  :root { --island-bg: rgba(38,41,45,.92); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
-    body {
-      margin:0;
-      padding:5vh 5vw;
-      color:var(--text);
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
-      background:
-        radial-gradient(circle at 15% 20%, rgba(31, 182, 184, 0.16), transparent 55%),
-        radial-gradient(circle at 80% 15%, rgba(77, 157, 255, 0.12), transparent 60%),
-        linear-gradient(180deg, #070b11 0%, #04070c 60%, #020408 100%);
-      position: relative;
-    }
-    .island { background:var(--island-bg); border-radius:var(--island-radius); padding:1.25rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 1.6vh auto; }
-    .btn, button, input[type="submit"], input[type="button"], a.btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow: 0 4px 14px rgba(31,182,184,.25); text-decoration:none; transition: background-color .2s ease, filter .15s ease, box-shadow .2s ease; }
-    .btn:hover, button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover { filter: brightness(0.92); box-shadow: 0 6px 18px rgba(31,182,184,.32); }
-    .badge { font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem; display:inline-block; }
-    .muted { opacity:.9; }
-    h2, h3 { margin: 0 0 .6rem 0; }
-    h2 { font-size:1.25rem; }
-    h3 { font-size:1.05rem; margin-top:1.2rem; }
-    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    table { width:100%; border-collapse:collapse; }
-    th, td { text-align:left; padding:.45rem .4rem; border-bottom:1px solid rgba(255,255,255,.2); }
-    th { font-weight:600; }
-    .refs li { margin:.35rem 0; }
-    .chip { display:inline-block; font-size:.85rem; padding:.1rem .5rem; border-radius:.4rem; background:rgba(255,255,255,.15); margin-right:.4rem; }
-    .toc a { color:#fff; text-decoration:none; }
-    .toc a:hover { text-decoration:underline; }
-    .note { font-size:.95rem; opacity:.95; }
-    code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
-    ol.refs { list-style: none; margin: 0; padding-left: 0; }
+    {{ detail_styles() | safe }}
     {{ background_rules() | safe }}
   </style>
   <!-- MathJax for LaTeX-style math -->
@@ -70,18 +19,26 @@
 </head>
 <body>
   {{ background_layer() }}
-<div class="island" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
-    <div>
-      <div style="font-size:1.6rem; font-weight:700;">{{ label }}</div>
-      {% if kind %}<div class="badge" title="Kind">{{ kind }}</div>{% endif %}
+  <main class="detail-shell">
+    <div class="island detail-hero">
+      <div class="detail-hero__text">
+        <span class="detail-hero__eyebrow">Algorithm Profile</span>
+        <h1 class="detail-hero__title">{{ label }}</h1>
+        <div class="detail-hero__meta">
+          {% if kind %}<span class="detail-pill">{{ kind }}</span>{% endif %}
+        </div>
+        <p class="detail-hero__lead">
+          {{ hero_lead or ('Explore the design, math, and security posture of ' ~ label ~ ' in depth.') }}
+        </p>
+      </div>
+      <div class="detail-hero__actions">
+        <a href="/" class="btn btn-soft">Back to home</a>
+        <a href="#overview" class="btn btn-ghost">Jump to overview</a>
+      </div>
     </div>
-    <div>
-      <a href="/" class="btn">Back to home</a>
-    </div>
-  </div>
 
   <div class="island">
-    <div style="font-weight:700; margin-bottom:.5rem;">About</div>
+    <h2>About</h2>
     <p class="muted">
       {{ about or 'This page explains the SPHINCS+ / SLH-DSA hash-based signature in depth: its origins, math, parameters, algorithms, security assumptions, and practical considerations—plus references.' }}
     </p>
@@ -264,13 +221,19 @@
     </div>
   </div>
 
-  <div class="island" id="references">
+    <div class="island" id="references">
     <h2>References</h2>
     <ol class="refs muted">
-      <li>[1] NIST, “<i>FIPS 205: Stateless Hash-Based Digital Signature Standard (SLH-DSA)</i>,” Aug. 13, 2024. [Online]. Available: <a target="_blank" rel="noopener" href="https://csrc.nist.gov/pubs/fips/205/final">csrc.nist.gov/pubs/fips/205/final</a></li>
-      <li>[2] Federal Register, “Announcing issuance of FIPS 203/204/205,” Aug. 14, 2024. [Online]. Available: <a target="_blank" rel="noopener" href="https://www.federalregister.gov/documents/2024/08/14/2024-17956/announcing-issuance-of-federal-information-processing-standards-fips-fips-203-module-lattice-based">federalregister.gov</a></li>
-      <li>[3] J. Aumasson <i>et&nbsp;al.</i>, “<i>SPHINCS+ Specification (Round 3 / r3.1)</i>,” 2020–2022. [Online]. Available: <a target="_blank" rel="noopener" href="https://sphincs.org/data/sphincs%2B-r3.1-specification.pdf">sphincs.org</a></li>
-      <li>[4] D. J. Bernstein <i>et&nbsp;al.</i>, “<i>SPHINCS+: Stateless Hash-Based Signatures</i>,” 2019 (paper). [Online]. Available: <a target="_blank" rel="noopener" href="https://sphincs.org/data/sphincs%2B-paper.pdf">sphincs.org</a></li>
-      <li>[5] NIST, “<i>FIPS 205 (PDF)</i>,” domain separation and algorithm details. [Online]. Available: <a target="_blank" rel="noopener" href="https://nvlpubs.nist.gov/nistpubs/fips/nist.fips.205.pdf">nist.gov</a></li>
-      <li>[6] NIST PQC, “Official comments / design notes (Round 3),” 2021. [Online]. Available: <a target="_blank" rel="noopener" href="https://csrc.nist.gov/csrc/media/Projects/post-quantum-cryptography/documents/round-3/official-comments/Sphincs-Plus-round3-official-comment.pdf">csrc.nist.gov</a></li>
-      <li>[7] Open Quantum Safe, “SPHINCS+ parameter set summary (sizes),” accessed Sep. 14, 2
+      <li>[1] NIST, "<i>FIPS 205: Stateless Hash-Based Digital Signature Standard (SLH-DSA)</i>," Aug. 13, 2024. [Online]. Available: <a target="_blank" rel="noopener" href="https://csrc.nist.gov/pubs/fips/205/final">csrc.nist.gov/pubs/fips/205/final</a></li>
+      <li>[2] Federal Register, "Announcing issuance of FIPS 203/204/205," Aug. 14, 2024. [Online]. Available: <a target="_blank" rel="noopener" href="https://www.federalregister.gov/documents/2024/08/14/2024-17956/announcing-issuance-of-federal-information-processing-standards-fips-fips-203-module-lattice-based">federalregister.gov</a></li>
+      <li>[3] J. Aumasson <i>et&nbsp;al.</i>, "<i>SPHINCS+ Specification (Round 3 / r3.1)</i>," 2020?2022. [Online]. Available: <a target="_blank" rel="noopener" href="https://sphincs.org/data/sphincs%2B-r3.1-specification.pdf">sphincs.org</a></li>
+      <li>[4] D. J. Bernstein <i>et&nbsp;al.</i>, "<i>SPHINCS+: Stateless Hash-Based Signatures</i>," 2019 (paper). [Online]. Available: <a target="_blank" rel="noopener" href="https://sphincs.org/data/sphincs%2B-paper.pdf">sphincs.org</a></li>
+      <li>[5] NIST, "<i>FIPS 205 (PDF)</i>," domain separation and algorithm details. [Online]. Available: <a target="_blank" rel="noopener" href="https://nvlpubs.nist.gov/nistpubs/fips/nist.fips.205.pdf">nist.gov</a></li>
+      <li>[6] NIST PQC, "Official comments / design notes (Round 3)," 2021. [Online]. Available: <a target="_blank" rel="noopener" href="https://csrc.nist.gov/csrc/media/Projects/post-quantum-cryptography/documents/round-3/official-comments/Sphincs-Plus-round3-official-comment.pdf">csrc.nist.gov</a></li>
+      <li>[7] Open Quantum Safe, "SPHINCS+ parameter set summary (sizes)," accessed Sep. 14, 2024. [Online]. Available: <a target="_blank" rel="noopener" href="https://openquantumsafe.org/#sphincs-plus">openquantumsafe.org</a></li>
+    </ol>
+  </div>
+  </main>
+</body>
+</html>
+

@@ -1,7 +1,8 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   {% from '_background_effects.html' import background_layer, background_rules %}
+  {% from '_detail_styles.html' import detail_styles %}
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{{ label }} - Details</title>
@@ -10,59 +11,7 @@
   <link rel="apple-touch-icon" href="/static/Images/pqc-bench-logo.png" />
   <meta name="theme-color" content="#0b0f14" />
   <style>
-    /* Dark scrollbar styling */
-    html {
-      scrollbar-width: thin;
-      scrollbar-color: rgba(36, 49, 63, 0.85) rgba(7, 11, 17, 0.92);
-    }
-    html::-webkit-scrollbar {
-      width: 12px;
-      height: 12px;
-    }
-    html::-webkit-scrollbar-track {
-      background: rgba(7, 11, 17, 0.92);
-    }
-    html::-webkit-scrollbar-thumb {
-      background: rgba(148, 163, 184, 0.45);
-      border-radius: 999px;
-      border: 2px solid rgba(7, 11, 17, 0.92);
-    }
-    html::-webkit-scrollbar-thumb:hover {
-      background: rgba(148, 163, 184, 0.65);
-    }
-
-  :root { --island-bg: rgba(38,41,45,.92); --island-radius:1.5rem; --text:#fff; --accent:#1fb6b8; }
-    body {
-      margin:0;
-      padding:5vh 5vw;
-      color:var(--text);
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
-      background:
-        radial-gradient(circle at 15% 20%, rgba(31, 182, 184, 0.16), transparent 55%),
-        radial-gradient(circle at 80% 15%, rgba(77, 157, 255, 0.12), transparent 60%),
-        linear-gradient(180deg, #070b11 0%, #04070c 60%, #020408 100%);
-      position: relative;
-    }
-    .island { background:var(--island-bg); border-radius:var(--island-radius); padding:1.25rem; backdrop-filter: blur(4px); max-width: 1000px; margin:0 auto 1.6vh auto; }
-    .btn, button, input[type="submit"], input[type="button"], a.btn { padding:.65rem 1.4rem; border:none; border-radius:.7rem; background: var(--accent); color:#fff; cursor:pointer; box-shadow: 0 4px 14px rgba(31,182,184,.25); text-decoration:none; transition: background-color .2s ease, filter .15s ease, box-shadow .2s ease; }
-    .btn:hover, button:hover, input[type="submit"]:hover, input[type="button"]:hover, a.btn:hover { filter: brightness(0.92); box-shadow: 0 6px 18px rgba(31,182,184,.32); }
-    .badge { font-size:.9rem; background:rgba(255,255,255,.2); padding:.2rem .6rem; border-radius:.4rem; display:inline-block; }
-    .muted { opacity:.9; }
-    h2, h3 { margin: 0 0 .6rem 0; }
-    h2 { font-size:1.25rem; }
-    h3 { font-size:1.05rem; margin-top:1.2rem; }
-    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    table { width:100%; border-collapse:collapse; }
-    th, td { text-align:left; padding:.45rem .4rem; border-bottom:1px solid rgba(255,255,255,.2); }
-    th { font-weight:600; }
-    .refs li { margin:.35rem 0; }
-    .chip { display:inline-block; font-size:.85rem; padding:.1rem .5rem; border-radius:.4rem; background:rgba(255,255,255,.15); margin-right:.4rem; }
-    .toc a { color:#fff; text-decoration:none; }
-    .toc a:hover { text-decoration:underline; }
-    .note { font-size:.95rem; opacity:.95; }
-    code { background: rgba(255,255,255,.12); padding:.05rem .3rem; border-radius:.3rem; }
-    ol.refs { list-style: none; margin: 0; padding-left: 0; }
+    {{ detail_styles() | safe }}
     {{ background_rules() | safe }}
   </style>
   <!-- MathJax for LaTeX-style math -->
@@ -70,33 +19,41 @@
 </head>
 <body>
   {{ background_layer() }}
-<div class="island" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
-    <div>
-      <div style="font-size:1.6rem; font-weight:700;">{{ label }}</div>
-      {% if kind %}<div class="badge" title="Kind">{{ kind }}</div>{% endif %}
+  <main class="detail-shell">
+    <div class="island detail-hero">
+      <div class="detail-hero__text">
+        <span class="detail-hero__eyebrow">Algorithm Profile</span>
+        <h1 class="detail-hero__title">{{ label }}</h1>
+        <div class="detail-hero__meta">
+          {% if kind %}<span class="detail-pill">{{ kind }}</span>{% endif %}
+        </div>
+        <p class="detail-hero__lead">
+          {{ hero_lead or ('Explore the design, math, and security posture of ' ~ label ~ ' in depth.') }}
+        </p>
+      </div>
+      <div class="detail-hero__actions">
+        <a href="/" class="btn btn-soft">Back to home</a>
+        <a href="#overview" class="btn btn-ghost">Jump to overview</a>
+      </div>
     </div>
-    <div>
-      <a href="/" class="btn">Back to home</a>
-    </div>
-  </div>
 
-  <div class="island">
-    <div style="font-weight:700; margin-bottom:.5rem;">About</div>
-    <p class="muted">
-      {{ about or 'This page explains the Kyber / ML-KEM key-encapsulation mechanism in depth: its history, math, parameters, algorithms, security assumptions, and practical considerations—plus references.' }}
-    </p>
-    <div class="toc muted">
-      <span class="chip"><a href="#history">Origins & history</a></span>
-      <span class="chip"><a href="#overview">Design overview</a></span>
-      <span class="chip"><a href="#math">Mathematical setting</a></span>
-      <span class="chip"><a href="#params">Parameter sets</a></span>
-      <span class="chip"><a href="#algorithms">Algorithms</a></span>
-      <span class="chip"><a href="#security">Security</a></span>
-      <span class="chip"><a href="#impl">Implementation notes</a></span>
-      <span class="chip"><a href="#proscons">Pros & cons</a></span>
-      <span class="chip"><a href="#references">References</a></span>
+    <div class="island">
+      <h2>About</h2>
+      <p class="muted">
+        {{ about or 'This page explains the Kyber / ML-KEM key-encapsulation mechanism in depth: its history, math, parameters, algorithms, security assumptions, and practical considerations-plus references.' }}
+      </p>
+      <div class="toc muted">
+        <span class="chip"><a href="#history">Origins & history</a></span>
+        <span class="chip"><a href="#overview">Design overview</a></span>
+        <span class="chip"><a href="#math">Mathematical setting</a></span>
+        <span class="chip"><a href="#params">Parameter sets</a></span>
+        <span class="chip"><a href="#algorithms">Algorithms</a></span>
+        <span class="chip"><a href="#security">Security</a></span>
+        <span class="chip"><a href="#impl">Implementation notes</a></span>
+        <span class="chip"><a href="#proscons">Pros & cons</a></span>
+        <span class="chip"><a href="#references">References</a></span>
+      </div>
     </div>
-  </div>
 
   <div class="island" id="history">
     <h2>Origins & history</h2>
@@ -108,7 +65,7 @@
   <div class="island" id="overview">
     <h2>Design overview</h2>
     <p class="muted">
-      Kyber’s security reduces to the hardness of the Module-Learning-With-Errors (MLWE) problem over a small polynomial ring. It first specifies a compact, IND-CPA public-key encryption (PKE) and then applies a Fujisaki–Okamoto (FO) transform to obtain an IND-CCA2 KEM with <span class="mono">KeyGen/Encaps/Decaps</span> APIs. The FO variant uses “implicit rejection” (on decryption failure, derive a pseudorandom shared secret) to avoid catastrophic misuse at higher protocol layers [1][4][5].
+      Kyber�s security reduces to the hardness of the Module-Learning-With-Errors (MLWE) problem over a small polynomial ring. It first specifies a compact, IND-CPA public-key encryption (PKE) and then applies a Fujisaki�Okamoto (FO) transform to obtain an IND-CCA2 KEM with <span class="mono">KeyGen/Encaps/Decaps</span> APIs. The FO variant uses �implicit rejection� (on decryption failure, derive a pseudorandom shared secret) to avoid catastrophic misuse at higher protocol layers [1][4][5].
     </p>
   </div>
 
@@ -131,12 +88,12 @@
       \( \mathbf{t} = \mathbf{A}\mathbf{s} + \mathbf{e} \in R_q^k. \)
     </p>
     <p class="muted">
-      Distinguishing \((\mathbf{A},\mathbf{t})\) from uniform (or recovering \(\mathbf{s}\)) is as hard as MLWE for Kyber’s parameters [1][2].
+      Distinguishing \((\mathbf{A},\mathbf{t})\) from uniform (or recovering \(\mathbf{s}\)) is as hard as MLWE for Kyber�s parameters [1][2].
     </p>
   </div>
 
   <div class="island" id="params">
-    <h2>Parameter sets (Kyber → ML-KEM)</h2>
+    <h2>Parameter sets (Kyber ? ML-KEM)</h2>
     <p class="muted note">All sets use \(n{=}256\), \(q{=}3329\), ring \(R_q=\mathbb{Z}_q[x]/(x^{256}+1)\). \( \eta_1,\eta_2\) are CBD noise parameters; \(d_u,d_v\) are compression bits; \(\delta\) is decryption-failure probability.</p>
     <div class="grid-2">
       <div>
@@ -156,10 +113,10 @@
           <li>XOF: SHAKE-128</li>
           <li>H: SHA3-256</li>
           <li>G: SHA3-512</li>
-          <li>PRF(s,b): SHAKE-256(s ∥ b)</li>
+          <li>PRF(s,b): SHAKE-256(s ? b)</li>
           <li>KDF: SHAKE-256</li>
         </ul>
-        <p class="muted">A “90s” AES/SHA-2 variant also exists for constrained environments [2][3].</p>
+        <p class="muted">A �90s� AES/SHA-2 variant also exists for constrained environments [2][3].</p>
       </div>
     </div>
   </div>
@@ -196,16 +153,16 @@
       \( m' = \mathrm{Compress}\big(\mathrm{Decompress}(v,d_v) - \mathbf{s}^{\mathsf{T}}\mathrm{Decompress}(\mathbf{u},d_u),\;1\big). \)
     </p>
     <p class="muted">
-      Recompute \( c' \) from \( m' \). If \( c=c' \) return \( K=\mathrm{KDF}(\overline{K}\|H(c))\); else (implicit rejection) return \( K=\mathrm{KDF}(z\|H(c)) \). This FO-style check gives IND-CCA2 security and avoids “return-value-ignored” pitfalls [2][4][5].
+      Recompute \( c' \) from \( m' \). If \( c=c' \) return \( K=\mathrm{KDF}(\overline{K}\|H(c))\); else (implicit rejection) return \( K=\mathrm{KDF}(z\|H(c)) \). This FO-style check gives IND-CCA2 security and avoids �return-value-ignored� pitfalls [2][4][5].
     </p>
   </div>
 
   <div class="island" id="security">
     <h2>Security at a glance</h2>
     <ul class="muted">
-      <li><b>Assumption:</b> Hardness of MLWE in dimension \(k\cdot n\) with Kyber’s noise/compression settings; reductions in ROM/QROM provided in the spec [2].</li>
+      <li><b>Assumption:</b> Hardness of MLWE in dimension \(k\cdot n\) with Kyber�s noise/compression settings; reductions in ROM/QROM provided in the spec [2].</li>
       <li><b>Failure probability:</b> \(\delta \le 2^{-139}\) (512), \(\le 2^{-164}\) (768), \(\le 2^{-174}\) (1024); negligible for practical deployment [2][3].</li>
-      <li><b>Security levels:</b> Targets NIST Levels 1/3/5 (≈ AES-128/192/256) as ML-KEM-512/768/1024 [1][3].</li>
+      <li><b>Security levels:</b> Targets NIST Levels 1/3/5 (� AES-128/192/256) as ML-KEM-512/768/1024 [1][3].</li>
       <li><b>Side channels:</b> Constant-time implementations and masking/hardening recommended; FO implicit-reject helps robustness against API misuse [2].</li>
     </ul>
   </div>
@@ -215,8 +172,8 @@
     <ul class="muted">
       <li><b>NTT:</b> Uses a 256-point NTT over \(q{=}3329\) (e.g., \(\zeta{=}17\) root); supports fast polynomial multiplies with base multiplications; no 512-th root exists modulo 3329 [6][7].</li>
       <li><b>Sampling:</b> \(\mathbf{A}\) derived from seed via SHAKE-128; noise via centered binomial distributions with \(\eta_1,\eta_2\) [2][3].</li>
-      <li><b>Symmetric:</b> SHAKE-128/256, SHA3-256/512 as per spec; AES/SHA-2 “90s” variant optional [2][3].</li>
-      <li><b>Packing:</b> Coefficient compression with \((d_u,d_v)\) reduces bandwidth with controlled noise (“learning with rounding” flavor) [2].</li>
+      <li><b>Symmetric:</b> SHAKE-128/256, SHA3-256/512 as per spec; AES/SHA-2 �90s� variant optional [2][3].</li>
+      <li><b>Packing:</b> Coefficient compression with \((d_u,d_v)\) reduces bandwidth with controlled noise (�learning with rounding� flavor) [2].</li>
     </ul>
   </div>
 
@@ -244,15 +201,17 @@
   <div class="island" id="references">
     <h2>References</h2>
     <ol class="refs muted">
-      <li>[1] NIST, “<i>Module-Lattice-Based Key-Encapsulation Mechanism Standard (FIPS 203)</i>,” Aug. 13, 2024. [Online]. Available: <a href="https://csrc.nist.gov/pubs/fips/203/final" target="_blank" rel="noopener">csrc.nist.gov/pubs/fips/203/final</a></li>
-      <li>[2] R. Avanzi <i>et al.</i>, “<i>CRYSTALS-Kyber Algorithm Specifications and Supporting Documentation (v3.02)</i>,” Aug. 4, 2021. [Online]. Available: <a href="https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf" target="_blank" rel="noopener">pq-crystals.org</a></li>
-      <li>[3] P. Schwabe <i>et al.</i>, “<i>Kyber Post-Quantum KEM</i>,” IETF CFRG Internet-Draft, Jan. 2, 2024. [Online]. Available: <a href="https://www.ietf.org/archive/id/draft-cfrg-schwabe-kyber-04.html" target="_blank" rel="noopener">ietf.org</a></li>
-      <li>[4] E. Fujisaki and T. Okamoto, “How to Enhance the Security of Public-Key Encryption at Minimum Cost,” <i>PKC ’99</i>, LNCS 1560, pp. 53–68, 1999. [Online]. Available: <a href="https://link.springer.com/chapter/10.1007/3-540-49162-7_5" target="_blank" rel="noopener">Springer</a></li>
-      <li>[5] P. Schwabe (ed.), “FO-style implicit rejection in Kyber CCAKEM,” notes/discussion summarized in spec §1.3 (and related literature).</li>
-      <li>[6] NIST, “<i>FIPS 203</i> (PDF),” Aug. 13, 2024—ring definition and MLWE overview. [Online]. Available: <a href="https://nvlpubs.nist.gov/nistpubs/fips/nist.fips.203.pdf" target="_blank" rel="noopener">nist.gov</a></li>
-      <li>[7] A. Higashi, “A Gentle Introduction of NTT—Part III: The Kyber Trick,” Dec. 15, 2023. [Online]. Available: <a href="https://higashi.blog/2023/12/15/ntt-03/" target="_blank" rel="noopener">higashi.blog</a></li>
-      <li>[8] NIST, “NIST Announces First Four Quantum-Resistant Cryptographic Algorithms,” News Release, Jul. 5, 2022. [Online]. Available: <a href="https://www.nist.gov/news-events/news/2022/07/nist-announces-first-four-quantum-resistant-cryptographic-algorithms" target="_blank" rel="noopener">nist.gov</a></li>
+      <li>[1] NIST, "<i>Module-Lattice-Based Key-Encapsulation Mechanism Standard (FIPS 203)</i>," Aug. 13, 2024. [Online]. Available: <a href="https://csrc.nist.gov/pubs/fips/203/final" target="_blank" rel="noopener">csrc.nist.gov/pubs/fips/203/final</a></li>
+      <li>[2] R. Avanzi <i>et al.</i>, "<i>CRYSTALS-Kyber Algorithm Specifications and Supporting Documentation (v3.02)</i>," Aug. 4, 2021. [Online]. Available: <a href="https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf" target="_blank" rel="noopener">pq-crystals.org</a></li>
+      <li>[3] P. Schwabe <i>et al.</i>, "<i>Kyber Post-Quantum KEM</i>," IETF CFRG Internet-Draft, Jan. 2, 2024. [Online]. Available: <a href="https://www.ietf.org/archive/id/draft-cfrg-schwabe-kyber-04.html" target="_blank" rel="noopener">ietf.org</a></li>
+      <li>[4] E. Fujisaki and T. Okamoto, "How to Enhance the Security of Public-Key Encryption at Minimum Cost," <i>PKC '99</i>, LNCS 1560, pp. 53-68, 1999. [Online]. Available: <a href="https://link.springer.com/chapter/10.1007/3-540-49162-7_5" target="_blank" rel="noopener">Springer</a></li>
+      <li>[5] P. Schwabe (ed.), "FO-style implicit rejection in Kyber CCAKEM," notes/discussion summarized in spec �1.3 (and related literature).</li>
+      <li>[6] NIST, "<i>FIPS 203</i> (PDF)," Aug. 13, 2024-ring definition and MLWE overview. [Online]. Available: <a href="https://nvlpubs.nist.gov/nistpubs/fips/nist.fips.203.pdf" target="_blank" rel="noopener">nist.gov</a></li>
+      <li>[7] A. Higashi, "A Gentle Introduction of NTT-Part III: The Kyber Trick," Dec. 15, 2023. [Online]. Available: <a href="https://higashi.blog/2023/12/15/ntt-03/" target="_blank" rel="noopener">higashi.blog</a></li>
+      <li>[8] NIST, "NIST Announces First Four Quantum-Resistant Cryptographic Algorithms," News Release, Jul. 5, 2022. [Online]. Available: <a href="https://www.nist.gov/news-events/news/2022/07/nist-announces-first-four-quantum-resistant-cryptographic-algorithms" target="_blank" rel="noopener">nist.gov</a></li>
     </ol>
   </div>
+  </main>
 </body>
 </html>
+
