@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from numbers import Number
 from typing import Any, Dict, List, Optional, Tuple
 import time
 
@@ -87,6 +88,7 @@ SYSTEM_PROMPT = (
     "\n- Use semantic headings and short paragraphs." \
     "\n- Prefer small tables for comparisons." \
     "\n- When it improves clarity, include a single <figure data-chart='...'> visualization (JSON keys: type, title, labels, datasets[{label,data}]) with a matching <figcaption>; use single quotes around the attribute and keep each dataset to five points or fewer." \
+    "\n- The JSON embedded in data-chart must be strict (double quotes only, no trailing commas) and each dataset needs at least one finite number; use null for missing values and skip the chart entirely if nothing numeric is available." \
     "\n- Use consistent units: ms for time, KB for memory, B for sizes." \
     "\n- If a field is missing, write 'n/a' rather than inventing values." \
     "\n- Treat measured metrics as 'baseline desktop'; when projecting to other devices, mark projections as rough and state assumptions."
@@ -161,21 +163,143 @@ def _build_user_prompt_v2(summary: Dict[str, Any], user_request: Optional[str] =
             med_txt = f"{float(median):.3f}" if isinstance(median, (int, float)) else "n/a"
             mem_txt = f"{float(mem):.2f}" if isinstance(mem, (int, float)) else "n/a"
             lines.append(f"  {op}: mean_ms={mean_txt}, median_ms={med_txt}, mem_kb={mem_txt}")
+        sec = a.get("security") or {}
+        head = sec.get("headline") or {}
+        if head:
+            bit_parts: List[str] = []
+            cb = head.get("classical_bits")
+            qb = head.get("quantum_bits")
+            if isinstance(cb, (int, float)):
+                bit_parts.append(f"classical_bits={float(cb):.2f}")
+            if isinstance(qb, (int, float)):
+                bit_parts.append(f"quantum_bits={float(qb):.2f}")
+            est = head.get("estimator")
+            if est:
+                bit_parts.append(f"estimator={est}")
+            attack = head.get("attack")
+            if attack:
+                bit_parts.append(f"attack={attack}")
+            model = head.get("model")
+            if model:
+                bit_parts.append(f"model={model}")
+            if head.get("notes"):
+                notes = head["notes"] if isinstance(head["notes"], list) else [head["notes"]]
+                note_preview = "; ".join(str(n) for n in notes[:2])
+                if note_preview:
+                    bit_parts.append(f"notes={note_preview}")
+            if bit_parts:
+                lines.append("  security_bits: " + "; ".join(bit_parts))
+        est_meta = sec.get("estimator") or {}
+        if est_meta and isinstance(est_meta, dict):
+            meta_parts = []
+            if est_meta.get("profile"):
+                meta_parts.append(f"profile={est_meta['profile']}")
+            if est_meta.get("available") is not None:
+                meta_parts.append(f"available={est_meta['available']}")
+            if est_meta.get("reference"):
+                meta_parts.append(f"reference={est_meta['reference']}")
+            if meta_parts:
+                meta_txt = "; ".join(str(p) for p in meta_parts)
+                lines.append(f"  estimator_meta: {meta_txt}")
+        detail_rows = sec.get("detail_rows") or []
+        if isinstance(detail_rows, list) and detail_rows:
+            preview = []
+            for row in detail_rows[:2]:
+                if isinstance(row, dict):
+                    label = row.get("label") or ""
+                    detail = row.get("detail") or ""
+                else:
+                    label = ""
+                    detail = ""
+                label = str(label).strip()
+                detail = str(detail).strip()
+                if label or detail:
+                    preview.append(f"{label}: {detail}" if label else detail)
+            if preview:
+                lines.append("  security_details: " + " | ".join(preview))
+        if sec.get("notes"):
+            sec_notes = "; ".join(str(n) for n in sec["notes"][:2]) if isinstance(sec["notes"], list) else str(sec["notes"])
+            if sec_notes:
+                lines.append(f"  security_notes: {sec_notes}")
+        brute = sec.get("bruteforce") or {}
+        if brute and isinstance(brute, dict):
+            bf_parts = []
+            if brute.get("space_bits") is not None:
+                bf_parts.append(f"space_bits={brute['space_bits']}")
+            if brute.get("rate_unit"):
+                bf_parts.append(f"rate_unit={brute['rate_unit']}")
+            if brute.get("rates"):
+                bf_parts.append("sample_rates=" + ", ".join(str(r) for r in brute["rates"][:3]))
+            time_map = brute.get("time_years") or {}
+            if isinstance(time_map, dict) and time_map:
+                sample_items = []
+                for rate_key, row in list(time_map.items())[:2]:
+                    if isinstance(row, dict):
+                        entry = row.get("sci") or row.get("log10")
+                    else:
+                        entry = None
+                    if entry:
+                        sample_items.append(f"{rate_key}:{entry}")
+                if sample_items:
+                    bf_parts.append("time_years=" + ", ".join(sample_items))
+            if brute.get("rationale"):
+                bf_parts.append(f"rationale={brute['rationale']}")
+            if bf_parts:
+                lines.append("  bruteforce: " + "; ".join(bf_parts))
+        secret_keys = a.get("secret_keys") or {}
+        if isinstance(secret_keys, dict):
+            hd = secret_keys.get("hd")
+            if isinstance(hd, dict) and hd:
+                hd_parts = []
+                if hd.get("mean_fraction") is not None:
+                    try:
+                        hd_parts.append(f"mean={float(hd['mean_fraction']):.4f}")
+                    except Exception:
+                        hd_parts.append(f"mean={hd['mean_fraction']}")
+                if hd.get("expected_fraction") is not None:
+                    try:
+                        hd_parts.append(f"expected={float(hd['expected_fraction']):.4f}")
+                    except Exception:
+                        hd_parts.append(f"expected={hd['expected_fraction']}")
+                if hd.get("samples") is not None:
+                    hd_parts.append(f"samples={hd['samples']}")
+                if hd_parts:
+                    lines.append("  hamming_distance: " + "; ".join(hd_parts))
+            hw = secret_keys.get("hw")
+            if isinstance(hw, dict) and hw:
+                hw_parts = []
+                if hw.get("mean_fraction") is not None:
+                    try:
+                        hw_parts.append(f"mean={float(hw['mean_fraction']):.4f}")
+                    except Exception:
+                        hw_parts.append(f"mean={hw['mean_fraction']}")
+                if hw.get("expected_fraction") is not None:
+                    try:
+                        hw_parts.append(f"expected={float(hw['expected_fraction']):.4f}")
+                    except Exception:
+                        hw_parts.append(f"expected={hw['expected_fraction']}")
+                if hw.get("samples") is not None:
+                    hw_parts.append(f"samples={hw['samples']}")
+                if hw_parts:
+                    lines.append("  hamming_weight: " + "; ".join(hw_parts))
     lines.append("")
     req = (str(user_request).strip() if user_request is not None else "")
     if len(req) > 4000:
-        req = req[:4000] + "…"
+        req = req[:4000] + "..."
     lines.append("User request: " + (req or "(none)"))
     lines.append("Incorporate the request where relevant; keep structure consistent; avoid cryptanalytic guarantees.")
     lines.append("In the Summary section, add one sentence that explicitly references the user's request focus if provided.")
     lines.append("")
     lines.append("Task: Provide an expansive analysis with the sections below. Highlight:")
-    lines.append("After the Relative Performance table, include one compact chart using <figure data-chart='...'> with no more than five labels per dataset to visualize the key comparison; skip the chart only if fewer than two algorithms are available.")
-    lines.append("- fastest algorithms per operation and approximate margins")
-    lines.append("- memory trade-offs and key/ciphertext/signature size implications")
+    lines.append("You must include at least one <figure data-chart='...'> that pulls numeric values from these stats (for example mean runtime per algorithm or security bits). Use at most five labels per dataset, prefer type 'bar' or 'line', and skip the chart entirely if there are fewer than two algorithms or no finite numbers to plot.")
+    lines.append("Ensure the data-chart payload is valid JSON: double quotes for keys/strings, no trailing commas, and every dataset must include at least one finite numeric value (use null for missing entries, never NaN/Infinity).")
+    lines.append("- fastest algorithms per operation with approximate margins")
+    lines.append("- memory trade-offs plus key/ciphertext/signature size implications")
+    lines.append("- interpretation of secret-key Hamming distance and weight against expected baselines")
+    lines.append("- security estimator outputs: headline bits, estimator name/profile, dominant attacks, and notable security notes")
+    lines.append("- brute-force baselines (search space, assumed rates, illustrative time-to-break numbers)")
     lines.append("- rough device projections (desktop/server vs mobile/embedded)")
-    lines.append("- security considerations (standardization status, side-channel posture)")
-    lines.append("- variance/outliers and caveats")
+    lines.append("- variance, outliers, or missing data caveats")
     lines.append("")
     lines.append(_output_template(summary.get("kind")))
     lines.append("Append a <h3>Conclusion</h3> section at the end with 2–3 sentences or bullets summarizing key trade-offs and when each algorithm is preferable (no security guarantees).")
@@ -229,7 +353,7 @@ def _build_user_prompt(summary: Dict[str, Any], user_request: Optional[str] = No
         req = str(user_request).strip()
         # Cap extremely long inputs to keep prompts manageable
         if len(req) > 4000:
-            req = req[:4000] + "…"
+            req = req[:4000] + "..."
         lines.append("User request: " + req)
         lines.append("Respond concisely and focus on the requested aspects.")
         lines.append("Avoid security claims or recommendations beyond performance/footprint observations.")
@@ -507,6 +631,35 @@ def _heuristic_summary_html(summary: Dict[str, Any]) -> str:
 
 # --- Public API
 
+def _to_plain_dict(value: Any) -> Dict[str, Any]:
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return dict(value)
+    if hasattr(value, "_asdict"):
+        try:
+            return dict(value._asdict())
+        except Exception:
+            return {}
+    if hasattr(value, "__dict__"):
+        try:
+            return {k: v for k, v in vars(value).items() if not k.startswith("_")}
+        except Exception:
+            return {}
+    return {}
+
+
+def _clean_number(value: Any) -> Any:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, Number):
+        try:
+            return float(value)
+        except Exception:
+            return value
+    return value
+
+
 def condense_compare(compare: Dict[str, Any]) -> Dict[str, Any]:
     """Reduce the compare payload to essentials to keep prompts compact and stable."""
     kind = compare.get("kind")
@@ -542,13 +695,121 @@ def condense_compare(compare: Dict[str, Any]) -> Dict[str, Any]:
             )
             if k in meta
         }
-        algos_out.append({
+        algo_entry: Dict[str, Any] = {
             "name": a.get("name"),
             "label": a.get("label", a.get("name")),
             "ops_order": ops_order,
             "ops": ops_out,
             "meta": meta_keep,
-        })
+        }
+        secret_stats: Dict[str, Any] = {}
+        secret_analysis = meta.get("secret_key_analysis")
+        if secret_analysis:
+            ana_dict = _to_plain_dict(secret_analysis)
+            for key in ("hd", "hw"):
+                stats = _to_plain_dict(ana_dict.get(key))
+                if not stats:
+                    continue
+                entry: Dict[str, Any] = {}
+                for field in ("samples", "mean_fraction", "std_fraction", "min_fraction", "max_fraction", "expected_fraction"):
+                    if field in stats and stats[field] is not None:
+                        entry[field] = _clean_number(stats[field])
+                if entry:
+                    secret_stats[key] = entry
+        if secret_stats:
+            algo_entry["secret_keys"] = secret_stats
+        security_src = a.get("security") or {}
+        sec_dict = _to_plain_dict(security_src)
+        security_out: Dict[str, Any] = {}
+        for field in ("nist_category", "category_floor", "shor_breakable"):
+            if field in sec_dict and sec_dict[field] is not None:
+                security_out[field] = sec_dict[field]
+        headline_dict = _to_plain_dict(sec_dict.get("headline"))
+        if headline_dict:
+            headline_out: Dict[str, Any] = {}
+            for field in ("classical_bits", "quantum_bits", "estimator", "attack", "model"):
+                if field in headline_dict and headline_dict[field] is not None:
+                    headline_out[field] = _clean_number(headline_dict[field])
+            for field in ("classical_bits_range", "quantum_bits_range"):
+                rng = headline_dict.get(field)
+                if isinstance(rng, (list, tuple)) and len(rng) == 2:
+                    headline_out[field] = [_clean_number(rng[0]), _clean_number(rng[1])]
+            notes = headline_dict.get("notes")
+            if isinstance(notes, (list, tuple)):
+                cleaned_notes = [str(n) for n in notes if n]
+                if cleaned_notes:
+                    headline_out["notes"] = cleaned_notes[:4]
+            if headline_out:
+                security_out["headline"] = headline_out
+        estimator_dict = _to_plain_dict(sec_dict.get("estimator"))
+        if estimator_dict:
+            estimator_out: Dict[str, Any] = {}
+            for field in ("name", "profile", "available", "requested", "supported", "reference"):
+                if field in estimator_dict and estimator_dict[field] is not None:
+                    estimator_out[field] = estimator_dict[field]
+            if estimator_out:
+                security_out["estimator"] = estimator_out
+        notes = sec_dict.get("notes")
+        if isinstance(notes, (list, tuple)):
+            cleaned = [str(n) for n in notes if n]
+            if cleaned:
+                security_out["notes"] = cleaned[:4]
+        detail_rows = sec_dict.get("detail_rows")
+        if isinstance(detail_rows, (list, tuple)):
+            rows_out: List[Dict[str, Any]] = []
+            for row in detail_rows[:6]:
+                label = ""
+                detail = ""
+                if isinstance(row, dict):
+                    label = str(row.get("label") or row.get("title") or "")
+                    detail = str(row.get("detail") or row.get("value") or "")
+                elif isinstance(row, (list, tuple)):
+                    if row:
+                        label = str(row[0])
+                    if len(row) > 1:
+                        detail = str(row[1])
+                else:
+                    label = str(row)
+                label = label.strip()
+                detail = detail.strip()
+                if label or detail:
+                    rows_out.append({"label": label, "detail": detail})
+            if rows_out:
+                security_out["detail_rows"] = rows_out
+        bruteforce_dict = _to_plain_dict(sec_dict.get("bruteforce"))
+        if bruteforce_dict:
+            brute_out: Dict[str, Any] = {}
+            if bruteforce_dict.get("model") is not None:
+                brute_out["model"] = bruteforce_dict.get("model")
+            if bruteforce_dict.get("rate_unit") is not None:
+                brute_out["rate_unit"] = bruteforce_dict.get("rate_unit")
+            if bruteforce_dict.get("space_bits") is not None:
+                brute_out["space_bits"] = _clean_number(bruteforce_dict.get("space_bits"))
+            rates = bruteforce_dict.get("rates")
+            if isinstance(rates, (list, tuple)):
+                brute_out["rates"] = [_clean_number(r) for r in rates[:4]]
+            time_years = bruteforce_dict.get("time_years")
+            if isinstance(time_years, dict):
+                time_out: Dict[str, Any] = {}
+                for key, value in list(time_years.items())[:4]:
+                    entry = _to_plain_dict(value)
+                    row_out: Dict[str, Any] = {}
+                    if entry.get("sci") is not None:
+                        row_out["sci"] = entry.get("sci")
+                    if entry.get("log10") is not None:
+                        row_out["log10"] = _clean_number(entry.get("log10"))
+                    if row_out:
+                        time_out[str(key)] = row_out
+                if time_out:
+                    brute_out["time_years"] = time_out
+            assumptions = _to_plain_dict(bruteforce_dict.get("assumptions"))
+            if assumptions.get("rationale"):
+                brute_out["rationale"] = str(assumptions.get("rationale"))
+            if brute_out:
+                security_out["bruteforce"] = brute_out
+        if security_out:
+            algo_entry["security"] = security_out
+        algos_out.append(algo_entry)
     return {
         "kind": kind,
         "runs": compare.get("runs"),
