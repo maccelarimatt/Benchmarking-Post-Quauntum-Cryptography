@@ -547,6 +547,18 @@
     }
     .modal {
       display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(7, 11, 18, 0.72);
+      backdrop-filter: blur(6px);
+      align-items: center;
+      justify-content: center;
+      z-index: 80;
+      padding: 2rem;
+      overflow: auto;
+    }
+    .modal.active {
+      display: flex;
     }
     .modal-card {
       background: rgba(12, 18, 28, 0.92);
@@ -948,5 +960,3 @@
   <script src="/static/js/pqc-image-app.js" defer></script>
 </body>
 </html>
-
-
