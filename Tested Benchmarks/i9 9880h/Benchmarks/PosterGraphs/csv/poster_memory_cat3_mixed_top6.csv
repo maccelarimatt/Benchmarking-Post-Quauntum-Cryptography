@@ -1,0 +1,19 @@
+algorithm,internal_algorithm,kind,category,operation,mean_memory_value
+Kyber,kyber,KEM,3,decapsulate,109.1
+Kyber,kyber,KEM,3,encapsulate,104.5
+Kyber,kyber,KEM,3,keygen,352.8
+Ntru,ntru,KEM,3,decapsulate,121.5
+Ntru,ntru,KEM,3,encapsulate,113.7
+Ntru,ntru,KEM,3,keygen,381.0
+Ntruprime,ntruprime,KEM,3,decapsulate,115.8
+Ntruprime,ntruprime,KEM,3,encapsulate,113.4
+Ntruprime,ntruprime,KEM,3,keygen,414.2
+Dilithium,dilithium,SIG,3,keygen,354.8
+Dilithium,dilithium,SIG,3,sign,129.5
+Dilithium,dilithium,SIG,3,verify,99.6
+Slh Dsa,slh-dsa,SIG,3,keygen,371.2
+Slh Dsa,slh-dsa,SIG,3,sign,168.2
+Slh Dsa,slh-dsa,SIG,3,verify,106.3
+SPHINCS,sphincs+,SIG,3,keygen,367.9
+SPHINCS,sphincs+,SIG,3,sign,189.6
+SPHINCS,sphincs+,SIG,3,verify,110.9
