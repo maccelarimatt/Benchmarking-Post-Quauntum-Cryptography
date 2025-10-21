@@ -3,3 +3,7 @@ Kyber,kyber,KEM,3,188.79999999999998
 Ntru,ntru,KEM,3,205.4
 Ntruprime,ntruprime,KEM,3,214.46666666666667
 Hqc,hqc,KEM,3,233.26666666666665
+Bike,bike,KEM,3,257.46666666666664
+Frodokem,frodokem,KEM,3,287.6666666666667
+Rsa Oaep,rsa-oaep,KEM,3,321.7
+Classic Mceliece,classic-mceliece,KEM,3,905.0236979166667

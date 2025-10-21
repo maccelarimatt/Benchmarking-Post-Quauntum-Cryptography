@@ -11,3 +11,15 @@ Ntruprime,ntruprime,KEM,3,decapsulate,0.11442620016168803
 Bike,bike,KEM,3,keygen,2.7163926264620386
 Bike,bike,KEM,3,encapsulate,0.1630322731216438
 Bike,bike,KEM,3,decapsulate,1.8574671805254184
+Frodokem,frodokem,KEM,3,keygen,2.9033398765022866
+Frodokem,frodokem,KEM,3,encapsulate,1.0532037995290011
+Frodokem,frodokem,KEM,3,decapsulate,1.003372247214429
+Classic Mceliece,classic-mceliece,KEM,3,keygen,100.60758425097447
+Classic Mceliece,classic-mceliece,KEM,3,encapsulate,0.16497987526236102
+Classic Mceliece,classic-mceliece,KEM,3,decapsulate,0.1890111219836399
+Hqc,hqc,KEM,3,keygen,20.98509802526678
+Hqc,hqc,KEM,3,encapsulate,38.56599982573243
+Hqc,hqc,KEM,3,decapsulate,62.522910974075785
+Rsa Oaep,rsa-oaep,KEM,3,keygen,5679.295471822479
+Rsa Oaep,rsa-oaep,KEM,3,encapsulate,0.7721905752987368
+Rsa Oaep,rsa-oaep,KEM,3,decapsulate,33.89115660065727

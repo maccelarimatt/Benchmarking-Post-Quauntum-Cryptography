@@ -11,3 +11,12 @@ Hqc,hqc,KEM,1,decapsulate,121.3
 Bike,bike,KEM,1,keygen,402.0
 Bike,bike,KEM,1,encapsulate,103.0
 Bike,bike,KEM,1,decapsulate,102.9
+Frodokem,frodokem,KEM,1,keygen,378.2
+Frodokem,frodokem,KEM,1,encapsulate,172.6
+Frodokem,frodokem,KEM,1,decapsulate,156.1
+Rsa Oaep,rsa-oaep,KEM,1,keygen,492.4
+Rsa Oaep,rsa-oaep,KEM,1,encapsulate,168.8
+Rsa Oaep,rsa-oaep,KEM,1,decapsulate,133.0
+Classic Mceliece,classic-mceliece,KEM,1,keygen,1307.2
+Classic Mceliece,classic-mceliece,KEM,1,encapsulate,259.8369873046875
+Classic Mceliece,classic-mceliece,KEM,1,decapsulate,96.5

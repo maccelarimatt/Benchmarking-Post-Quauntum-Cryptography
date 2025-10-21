@@ -11,3 +11,15 @@ Dilithium,dilithium,SIG,5,verify,107.4
 SPHINCS,sphincs+,SIG,5,keygen,369.1
 SPHINCS,sphincs+,SIG,5,sign,209.5
 SPHINCS,sphincs+,SIG,5,verify,107.1
+Cross,cross,SIG,5,keygen,354.6
+Cross,cross,SIG,5,sign,532.2
+Cross,cross,SIG,5,verify,108.2
+Mayo,mayo,SIG,5,keygen,1205.8
+Mayo,mayo,SIG,5,sign,266.2
+Mayo,mayo,SIG,5,verify,110.3
+Snova,snova,SIG,5,keygen,2227.1
+Snova,snova,SIG,5,sign,283.1
+Snova,snova,SIG,5,verify,109.7
+Uov,uov,SIG,5,keygen,8760.7
+Uov,uov,SIG,5,sign,2388.9443359375
+Uov,uov,SIG,5,verify,2814.9931640625

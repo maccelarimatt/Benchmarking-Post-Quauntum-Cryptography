@@ -11,3 +11,9 @@ Hqc,hqc,KEM,5,decapsulate,157.1
 Frodokem,frodokem,KEM,5,keygen,415.2
 Frodokem,frodokem,KEM,5,encapsulate,224.9
 Frodokem,frodokem,KEM,5,decapsulate,145.2
+Bike,bike,KEM,5,keygen,792.0
+Bike,bike,KEM,5,encapsulate,97.5
+Bike,bike,KEM,5,decapsulate,106.6
+Classic Mceliece,classic-mceliece,KEM,5,keygen,3333.6
+Classic Mceliece,classic-mceliece,KEM,5,encapsulate,1025.498046875
+Classic Mceliece,classic-mceliece,KEM,5,decapsulate,100.0
