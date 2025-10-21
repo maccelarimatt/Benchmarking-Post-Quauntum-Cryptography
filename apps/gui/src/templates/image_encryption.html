@@ -492,12 +492,19 @@
       width: 100%;
       height: auto;
     }
+    .canvas-wrapper canvas.panel-canvas--hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
     .entropy-heatmap {
       position: absolute;
       inset: 0;
       pointer-events: none;
       opacity: 0;
       transition: opacity 0.2s ease;
+    }
+    .entropy-heatmap.visible {
+      opacity: 1;
     }
     .entropy-readout {
       font-size: 0.9rem;
