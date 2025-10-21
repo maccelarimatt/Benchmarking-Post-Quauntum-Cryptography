@@ -1,0 +1,10 @@
+person,kind,category,pass,algorithm,internal_algorithm,operation,value
+Matthew,KEM,1,memory,Kyber,kyber,keygen,356.1
+Matthew,KEM,1,memory,Rsa Oaep,rsa-oaep,keygen,492.4
+Matthew,KEM,1,memory,Classic Mceliece,classic-mceliece,keygen,1307.2
+Matthew,KEM,1,memory,Kyber,kyber,encapsulate,106.0
+Matthew,KEM,1,memory,Rsa Oaep,rsa-oaep,encapsulate,168.8
+Matthew,KEM,1,memory,Classic Mceliece,classic-mceliece,encapsulate,259.8369873046875
+Matthew,KEM,1,memory,Kyber,kyber,decapsulate,98.8
+Matthew,KEM,1,memory,Rsa Oaep,rsa-oaep,decapsulate,133.0
+Matthew,KEM,1,memory,Classic Mceliece,classic-mceliece,decapsulate,96.5

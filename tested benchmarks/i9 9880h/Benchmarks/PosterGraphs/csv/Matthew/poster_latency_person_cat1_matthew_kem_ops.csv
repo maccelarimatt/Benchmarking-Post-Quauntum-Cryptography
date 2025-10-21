@@ -1,0 +1,7 @@
+person,kind,category,pass,algorithm,internal_algorithm,operation,value
+Matthew,KEM,1,timing,Kyber,kyber,keygen,2.121662299396121
+Matthew,KEM,1,timing,Classic Mceliece,classic-mceliece,keygen,37.74256170145236
+Matthew,KEM,1,timing,Kyber,kyber,encapsulate,0.09180650085909292
+Matthew,KEM,1,timing,Classic Mceliece,classic-mceliece,encapsulate,0.12872062070528045
+Matthew,KEM,1,timing,Kyber,kyber,decapsulate,0.08690322429174557
+Matthew,KEM,1,timing,Classic Mceliece,classic-mceliece,decapsulate,0.1764135537086986

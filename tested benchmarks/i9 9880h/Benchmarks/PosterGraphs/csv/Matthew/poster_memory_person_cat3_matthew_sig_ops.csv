@@ -1,0 +1,13 @@
+person,kind,category,pass,algorithm,internal_algorithm,operation,value
+Matthew,SIG,3,memory,Dilithium,dilithium,keygen,354.8
+Matthew,SIG,3,memory,Rsa Pss,rsa-pss,keygen,564.1
+Matthew,SIG,3,memory,Snova,snova,keygen,834.7
+Matthew,SIG,3,memory,Uov,uov,keygen,4007.7
+Matthew,SIG,3,memory,Dilithium,dilithium,sign,129.5
+Matthew,SIG,3,memory,Rsa Pss,rsa-pss,sign,240.1
+Matthew,SIG,3,memory,Snova,snova,sign,110.7
+Matthew,SIG,3,memory,Uov,uov,sign,1029.1962890625
+Matthew,SIG,3,memory,Dilithium,dilithium,verify,99.6
+Matthew,SIG,3,memory,Rsa Pss,rsa-pss,verify,113.7
+Matthew,SIG,3,memory,Snova,snova,verify,106.8
+Matthew,SIG,3,memory,Uov,uov,verify,1209.3818359375

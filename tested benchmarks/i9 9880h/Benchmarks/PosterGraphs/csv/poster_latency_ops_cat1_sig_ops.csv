@@ -14,15 +14,3 @@ Uov,uov,SIG,1,verify,0.1526754946098663
 Falcon,falcon,SIG,1,keygen,7.454233399403165
 Falcon,falcon,SIG,1,sign,0.29911202436778694
 Falcon,falcon,SIG,1,verify,0.12117032420064788
-Snova,snova,SIG,1,keygen,4.074069199850783
-Snova,snova,SIG,1,sign,1.2372905301162973
-Snova,snova,SIG,1,verify,8.91892717772862
-Rsa Pss,rsa-pss,SIG,1,keygen,140.72322587599047
-Rsa Pss,rsa-pss,SIG,1,sign,3.1222613997670123
-Rsa Pss,rsa-pss,SIG,1,verify,0.26497680082684383
-SPHINCS,sphincs+,SIG,1,keygen,40.106646349522634
-SPHINCS,sphincs+,SIG,1,sign,287.9451707009139
-SPHINCS,sphincs+,SIG,1,verify,0.46912702528061345
-Slh Dsa,slh-dsa,SIG,1,keygen,64.54070712497924
-Slh Dsa,slh-dsa,SIG,1,sign,473.28114152333
-Slh Dsa,slh-dsa,SIG,1,verify,0.5697979562683031

@@ -1,0 +1,13 @@
+person,kind,category,pass,algorithm,internal_algorithm,operation,value
+Warwick,SIG,5,memory,Slh Dsa,slh-dsa,keygen,358.1
+Warwick,SIG,5,memory,SPHINCS,sphincs+,keygen,369.1
+Warwick,SIG,5,memory,Cross,cross,keygen,354.6
+Warwick,SIG,5,memory,Mayo,mayo,keygen,1205.8
+Warwick,SIG,5,memory,Slh Dsa,slh-dsa,sign,151.7
+Warwick,SIG,5,memory,SPHINCS,sphincs+,sign,209.5
+Warwick,SIG,5,memory,Cross,cross,sign,532.2
+Warwick,SIG,5,memory,Mayo,mayo,sign,266.2
+Warwick,SIG,5,memory,Slh Dsa,slh-dsa,verify,107.7
+Warwick,SIG,5,memory,SPHINCS,sphincs+,verify,107.1
+Warwick,SIG,5,memory,Cross,cross,verify,108.2
+Warwick,SIG,5,memory,Mayo,mayo,verify,110.3

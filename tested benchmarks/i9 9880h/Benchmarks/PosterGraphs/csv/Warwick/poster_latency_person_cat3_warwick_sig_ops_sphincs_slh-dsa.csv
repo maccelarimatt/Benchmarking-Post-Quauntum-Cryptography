@@ -1,0 +1,7 @@
+person,kind,category,pass,algorithm,internal_algorithm,operation,value
+Warwick,SIG,3,timing,SPHINCS,sphincs+,keygen,54.31873572561017
+Warwick,SIG,3,timing,Slh Dsa,slh-dsa,keygen,108.80870702530956
+Warwick,SIG,3,timing,SPHINCS,sphincs+,sign,456.7288713747985
+Warwick,SIG,3,timing,Slh Dsa,slh-dsa,sign,1024.6056314004818
+Warwick,SIG,3,timing,SPHINCS,sphincs+,verify,0.5969081015791744
+Warwick,SIG,3,timing,Slh Dsa,slh-dsa,verify,1.0521458520088345

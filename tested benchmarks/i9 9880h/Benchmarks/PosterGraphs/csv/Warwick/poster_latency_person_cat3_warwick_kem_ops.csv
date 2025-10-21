@@ -1,0 +1,13 @@
+person,kind,category,pass,algorithm,internal_algorithm,operation,value
+Warwick,KEM,3,timing,Ntru,ntru,keygen,2.322494900727179
+Warwick,KEM,3,timing,Bike,bike,keygen,2.7163926264620386
+Warwick,KEM,3,timing,Frodokem,frodokem,keygen,2.9033398765022866
+Warwick,KEM,3,timing,Hqc,hqc,keygen,20.98509802526678
+Warwick,KEM,3,timing,Ntru,ntru,encapsulate,0.11067390878451988
+Warwick,KEM,3,timing,Bike,bike,encapsulate,0.1630322731216438
+Warwick,KEM,3,timing,Frodokem,frodokem,encapsulate,1.0532037995290011
+Warwick,KEM,3,timing,Hqc,hqc,encapsulate,38.56599982573243
+Warwick,KEM,3,timing,Ntru,ntru,decapsulate,0.1119989959988743
+Warwick,KEM,3,timing,Bike,bike,decapsulate,1.8574671805254184
+Warwick,KEM,3,timing,Frodokem,frodokem,decapsulate,1.003372247214429
+Warwick,KEM,3,timing,Hqc,hqc,decapsulate,62.522910974075785

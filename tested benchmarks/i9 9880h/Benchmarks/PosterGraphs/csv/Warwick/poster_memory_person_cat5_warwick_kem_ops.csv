@@ -1,0 +1,13 @@
+person,kind,category,pass,algorithm,internal_algorithm,operation,value
+Warwick,KEM,5,memory,Ntru,ntru,keygen,372.2
+Warwick,KEM,5,memory,Hqc,hqc,keygen,430.1
+Warwick,KEM,5,memory,Frodokem,frodokem,keygen,415.2
+Warwick,KEM,5,memory,Bike,bike,keygen,792.0
+Warwick,KEM,5,memory,Ntru,ntru,encapsulate,97.4
+Warwick,KEM,5,memory,Hqc,hqc,encapsulate,196.8
+Warwick,KEM,5,memory,Frodokem,frodokem,encapsulate,224.9
+Warwick,KEM,5,memory,Bike,bike,encapsulate,97.5
+Warwick,KEM,5,memory,Ntru,ntru,decapsulate,99.3
+Warwick,KEM,5,memory,Hqc,hqc,decapsulate,157.1
+Warwick,KEM,5,memory,Frodokem,frodokem,decapsulate,145.2
+Warwick,KEM,5,memory,Bike,bike,decapsulate,106.6

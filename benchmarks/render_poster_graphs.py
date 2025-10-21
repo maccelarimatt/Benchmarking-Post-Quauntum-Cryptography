@@ -11,8 +11,9 @@ import pathlib
 # near your imports
 import matplotlib.patheffects as pe
 import io, contextlib
+import statistics
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 try:
     import matplotlib.pyplot as plt
@@ -55,6 +56,17 @@ DEFAULT_OUTPUT = REPO_ROOT / "Tested Benchmarks" / "i9 9880h" / "Benchmarks"
 
 KEM_OPERATIONS: Sequence[str] = ("keygen", "encapsulate", "decapsulate")
 SIG_OPERATIONS: Sequence[str] = ("keygen", "sign", "verify")
+
+PERSON_CONFIGS: Dict[str, Dict[str, Set[str]]] = {
+    "Warwick": {
+        "KEM": {"rsa-oaep", "frodokem", "ntru", "hqc", "bike"},
+        "SIG": {"rsa-pss", "sphincs+", "slh-dsa", "mayo", "cross"},
+    },
+    "Matthew": {
+        "KEM": {"rsa-oaep", "kyber", "ntruprime", "classic-mceliece"},
+        "SIG": {"rsa-pss", "dilithium", "falcon", "snova", "uov"},
+    },
+}
 
 
 @dataclass
@@ -273,6 +285,31 @@ def _format_scientific(value: Optional[float]) -> str:
     if value is None or value <= 0:
         return "N/A"
     return f"{value:.2e}"
+
+def _compute_warwick_axis_break(values: Sequence[float], person: str) -> Optional[Tuple[float, float, float]]:
+    if person.lower() != "warwick":
+        return None
+    cleaned = [float(v) for v in values if v is not None and v > 0]
+    if len(cleaned) < 2:
+        return None
+    cleaned.sort()
+    max_val = cleaned[-1]
+    if max_val <= 0:
+        return None
+    median = statistics.median(cleaned)
+    reference = max(median, cleaned[0], 1e-6)
+    if max_val / reference < 6.0:
+        return None
+    cutoff = max_val / 6.0
+    lower_cluster = [v for v in cleaned if v <= cutoff]
+    upper_cluster = [v for v in cleaned if v > cutoff]
+    if not lower_cluster or not upper_cluster:
+        return None
+    lower_max = max(lower_cluster)
+    upper_min = min(upper_cluster)
+    if upper_min <= lower_max:
+        return None
+    return lower_max, upper_min, max_val
 
 
 def plot_shor_runtime(
@@ -1178,19 +1215,253 @@ def plot_category_operation_breakdown(
                             f"{pass_key}_value": ops.get(op),
                         }
                     )
-            _write_csv(
-                csv_dir,
-                output_name,
-                [
-                    "algorithm",
-                    "internal_algorithm",
-                    "kind",
-                    "category",
-                    "operation",
-                    f"{pass_key}_value",
+        _write_csv(
+            csv_dir,
+            output_name,
+            [
+                "algorithm",
+                "internal_algorithm",
+                "kind",
+                "category",
+                "operation",
+                f"{pass_key}_value",
             ],
             csv_rows,
         )
+
+
+def plot_personal_operation_graphs(
+    records: Sequence[Record],
+    png_dir: pathlib.Path,
+    pdf_dir: pathlib.Path,
+    csv_dir: Optional[pathlib.Path],
+    person: str,
+) -> None:
+    config = PERSON_CONFIGS.get(person)
+    if not config:
+        return
+
+    allowed_lookup = {
+        kind: {algo.lower() for algo in algos}
+        for kind, algos in config.items()
+    }
+
+    person_png = png_dir / person
+    person_pdf = pdf_dir / person
+    person_csv = csv_dir / person if csv_dir else None
+    _ensure_dir(person_png)
+    _ensure_dir(person_pdf)
+    if person_csv:
+        _ensure_dir(person_csv)
+
+    op_map = {
+        "KEM": list(KEM_OPERATIONS),
+        "SIG": list(SIG_OPERATIONS),
+    }
+    op_labels = {
+        "keygen": "Keygen",
+        "encapsulate": "Encap",
+        "decapsulate": "Decap",
+        "sign": "Sign",
+        "verify": "Verify",
+    }
+    op_colors = {
+        "keygen": "#0072B2",
+        "encapsulate": "#009E73",
+        "decapsulate": "#E69F00",
+        "sign": "#D55E00",
+        "verify": "#CC79A7",
+    }
+
+    rsa_algos = {"rsa-oaep", "rsa-pss"}
+
+    for pass_name in ("timing", "memory"):
+        pass_key = pass_name
+        attr_name = "mean_ms" if pass_key == "timing" else "mem_mean_kb"
+        ylabel = "Mean latency (ms)" if pass_key == "timing" else "Mean peak memory (KB)"
+        file_stub = "latency_person" if pass_key == "timing" else "memory_person"
+        exclude_rsa = pass_key == "timing"
+
+        aggregates: Dict[Tuple[str, str, int], Dict[str, Any]] = {}
+        for rec in records:
+            if rec.measurement_pass != pass_key:
+                continue
+            if rec.category_number not in (1, 3, 5):
+                continue
+            algo_lower = rec.algo.lower()
+            kind_upper = rec.kind.upper()
+            allowed = allowed_lookup.get(kind_upper, set())
+            if algo_lower not in allowed:
+                continue
+            if exclude_rsa and algo_lower in rsa_algos:
+                continue
+            value = getattr(rec, attr_name, None)
+            if value is None:
+                continue
+            key = (kind_upper, algo_lower, rec.category_number)
+            bucket = aggregates.setdefault(key, {"ops": {}, "label": rec.algo})
+            bucket["ops"][rec.operation] = float(value)
+
+        for kind in ("KEM", "SIG"):
+            required_ops = op_map[kind]
+            for category in (1, 3, 5):
+                entries: List[Tuple[str, Dict[str, float], str]] = []
+                for (agg_kind, algo, cat), info in aggregates.items():
+                    if agg_kind != kind or cat != category:
+                        continue
+                    ops = info["ops"]
+                    if any(op not in ops for op in required_ops):
+                        continue
+                    entries.append((algo, ops, info["label"]))
+                if not entries:
+                    continue
+
+                entries.sort(key=lambda item: sum(item[1].values()))
+
+                subset_specs: List[Tuple[Optional[str], Optional[Set[str]]]] = [(None, None)]
+                if person.lower() == "warwick":
+                    if kind == "SIG" and pass_key == "timing":
+                        subset_specs.extend(
+                            [
+                                ("mayo_cross", {"mayo", "cross"}),
+                                ("sphincs_slh-dsa", {"sphincs+", "slh-dsa"}),
+                            ]
+                        )
+                    if kind == "KEM":
+                        allowed_base = {entry[0].lower() for entry in entries}
+                        if "hqc" in allowed_base:
+                            subset_specs.append(
+                                ("no_hqc", {algo for algo in allowed_base if algo != "hqc"})
+                            )
+
+                for subset_name, allowed_algos in subset_specs:
+                    if allowed_algos:
+                        allowed_lower = {algo.lower() for algo in allowed_algos}
+                        filtered = [entry for entry in entries if entry[0].lower() in allowed_lower]
+                    else:
+                        filtered = list(entries)
+                    if not filtered:
+                        continue
+
+                    filtered.sort(key=lambda item: sum(item[1].values()))
+                    indices = list(range(len(filtered)))
+                    num_ops = len(required_ops)
+                    width = 0.18 if num_ops >= 3 else 0.25
+
+                    csv_rows: List[Dict[str, Any]] = []
+                    offsets_per_op: Dict[str, List[float]] = {}
+                    values_per_op: Dict[str, List[float]] = {}
+                    all_values: List[float] = []
+
+                    for idx_op, op in enumerate(required_ops):
+                        offsets = [i + (idx_op - (num_ops - 1) / 2) * width for i in indices]
+                        values = [float(ops.get(op, 0.0)) for _, ops, _ in filtered]
+                        offsets_per_op[op] = offsets
+                        values_per_op[op] = values
+                        all_values.extend(values)
+                        for _, ops_map, label_text in filtered:
+                            csv_rows.append(
+                                {
+                                    "person": person,
+                                    "kind": kind,
+                                    "category": category,
+                                    "pass": pass_key,
+                                    "algorithm": _friendly_label(label_text),
+                                    "internal_algorithm": label_text,
+                                    "operation": op,
+                                    "value": ops_map.get(op),
+                                }
+                            )
+
+                    break_info = _compute_warwick_axis_break(all_values, person)
+                    if break_info:
+                        lower_max, upper_min, max_val = break_info
+                        fig, (ax_top, ax_bottom) = plt.subplots(
+                            2,
+                            1,
+                            sharex=True,
+                            figsize=(11, 7),
+                            gridspec_kw={"height_ratios": [1, 2], "hspace": 0.05},
+                        )
+                        axes = [ax_top, ax_bottom]
+                    else:
+                        fig, ax = plt.subplots(figsize=(11, 7))
+                        axes = [ax]
+
+                    legend_handles = [
+                        Patch(facecolor=op_colors.get(op, "#888888"), label=op_labels.get(op, op.title()))
+                        for op in required_ops
+                    ]
+
+                    for op in required_ops:
+                        offsets = offsets_per_op[op]
+                        values = values_per_op[op]
+                        for axis in axes:
+                            axis.bar(
+                                offsets,
+                                values,
+                                width=width * 0.9,
+                                color=op_colors.get(op, "#888888"),
+                            )
+
+                    friendly_labels = [_friendly_label(label_text) for _, _, label_text in filtered]
+
+                    if break_info:
+                        ax_top, ax_bottom = axes
+                        ax_top.spines["bottom"].set_visible(False)
+                        ax_bottom.spines["top"].set_visible(False)
+                        ax_top.tick_params(axis="x", which="both", labelbottom=False)
+                        ax_bottom.set_xticks(indices)
+                        ax_bottom.set_xticklabels(friendly_labels, rotation=45, ha="right", fontsize=18)
+                        ax_top.tick_params(axis="y", labelsize=18)
+                        ax_bottom.tick_params(axis="y", labelsize=18)
+                        bottom_top = lower_max * 1.1 if lower_max > 0 else upper_min * 0.5
+                        ax_bottom.set_ylim(0, bottom_top)
+                        top_bottom = upper_min * 0.9
+                        ax_top.set_ylim(top_bottom, max_val * 1.05)
+                        ax_top.grid(True, axis="y", linestyle="--", alpha=0.3)
+                        ax_bottom.grid(True, axis="y", linestyle="--", alpha=0.3)
+                        ax_bottom.set_ylabel(ylabel, fontsize=20)
+                        ax_top.tick_params(axis="x", bottom=False)
+                        d = 0.015
+                        kwargs = dict(transform=ax_top.transAxes, color="k", clip_on=False, linewidth=1.2)
+                        ax_top.plot((-d, +d), (-d, +d), **kwargs)
+                        ax_top.plot((1 - d, 1 + d), (-d, +d), **kwargs)
+                        kwargs.update(transform=ax_bottom.transAxes)
+                        ax_bottom.plot((-d, +d), (1 - d, 1 + d), **kwargs)
+                        ax_bottom.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)
+                        legend_target = ax_top
+                    else:
+                        ax = axes[0]
+                        ax.legend(handles=legend_handles, loc="upper left", fontsize=18)
+                        ax.set_ylabel(ylabel, fontsize=20)
+                        ax.set_xticks(indices)
+                        ax.set_xticklabels(friendly_labels, rotation=45, ha="right", fontsize=18)
+                        ax.tick_params(axis="y", labelsize=18)
+                        ax.grid(True, axis="y", linestyle="--", alpha=0.3)
+                        legend_target = ax
+
+                    if break_info:
+                        legend_target.legend(handles=legend_handles, loc="upper left", fontsize=18)
+
+                    subset_suffix = f"_{subset_name}" if subset_name else ""
+                    name = f"poster_{file_stub}_cat{category}_{person.lower()}_{kind.lower()}_ops{subset_suffix}"
+                    _save_figure(fig, name, person_png, person_pdf)
+                    _write_csv(
+                        person_csv,
+                        name,
+                        [
+                            "person",
+                            "kind",
+                            "category",
+                            "pass",
+                            "algorithm",
+                            "internal_algorithm",
+                            "operation",
+                            "value",
+                        ],
+                        csv_rows,
+                    )
 
 
 def plot_cat3_mixed_top(
@@ -1468,6 +1739,8 @@ def main() -> None:
     plot_cat3_mixed_top(records, png_dir, pdf_dir, csv_dir, metric="latency")
     plot_cat3_mixed_top(records, png_dir, pdf_dir, csv_dir, metric="memory")
     plot_size_by_scheme(records, png_dir, pdf_dir, csv_dir)
+    for person in PERSON_CONFIGS.keys():
+        plot_personal_operation_graphs(records, png_dir, pdf_dir, csv_dir, person)
 
     print(f"Poster graphs written to {poster_root}")
 

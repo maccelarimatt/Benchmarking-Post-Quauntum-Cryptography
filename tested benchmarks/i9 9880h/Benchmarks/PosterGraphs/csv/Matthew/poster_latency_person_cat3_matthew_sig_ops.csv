@@ -1,0 +1,10 @@
+person,kind,category,pass,algorithm,internal_algorithm,operation,value
+Matthew,SIG,3,timing,Dilithium,dilithium,keygen,2.049284574604826
+Matthew,SIG,3,timing,Snova,snova,keygen,5.366810802661348
+Matthew,SIG,3,timing,Uov,uov,keygen,11.498255269543733
+Matthew,SIG,3,timing,Dilithium,dilithium,sign,0.19361207450856455
+Matthew,SIG,3,timing,Snova,snova,sign,1.6475847995025106
+Matthew,SIG,3,timing,Uov,uov,sign,0.5299908734741621
+Matthew,SIG,3,timing,Dilithium,dilithium,verify,0.11961787567997817
+Matthew,SIG,3,timing,Snova,snova,verify,0.6837432767497376
+Matthew,SIG,3,timing,Uov,uov,verify,0.4811003804206848

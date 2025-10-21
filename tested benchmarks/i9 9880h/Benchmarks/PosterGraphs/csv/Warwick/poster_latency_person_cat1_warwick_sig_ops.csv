@@ -1,0 +1,13 @@
+person,kind,category,pass,algorithm,internal_algorithm,operation,value
+Warwick,SIG,1,timing,Mayo,mayo,keygen,2.1870861513889395
+Warwick,SIG,1,timing,Cross,cross,keygen,2.2919941970030777
+Warwick,SIG,1,timing,SPHINCS,sphincs+,keygen,40.106646349522634
+Warwick,SIG,1,timing,Slh Dsa,slh-dsa,keygen,64.54070712497924
+Warwick,SIG,1,timing,Mayo,mayo,sign,0.2978467251523398
+Warwick,SIG,1,timing,Cross,cross,sign,0.726360923727043
+Warwick,SIG,1,timing,SPHINCS,sphincs+,sign,287.9451707009139
+Warwick,SIG,1,timing,Slh Dsa,slh-dsa,sign,473.28114152333
+Warwick,SIG,1,timing,Mayo,mayo,verify,0.162988125521224
+Warwick,SIG,1,timing,Cross,cross,verify,0.44425237720133737
+Warwick,SIG,1,timing,SPHINCS,sphincs+,verify,0.46912702528061345
+Warwick,SIG,1,timing,Slh Dsa,slh-dsa,verify,0.5697979562683031

@@ -1,9 +1,5 @@
 algorithm,internal_algorithm,kind,category,mean_peak_memory_kb
 Slh Dsa,slh-dsa,SIG,5,205.83333333333334
 Falcon,falcon,SIG,5,208.5666666666667
-Dilithium,dilithium,SIG,5,214.9
+Dilithium,dilithium,SIG,5,214.89999999999998
 SPHINCS,sphincs+,SIG,5,228.5666666666667
-Cross,cross,SIG,5,331.6666666666667
-Mayo,mayo,SIG,5,527.4333333333333
-Snova,snova,SIG,5,873.3000000000001
-Uov,uov,SIG,5,4654.879166666667

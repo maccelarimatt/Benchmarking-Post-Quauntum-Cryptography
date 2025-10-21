@@ -14,12 +14,3 @@ Cross,cross,SIG,3,verify,104.0
 Rsa Pss,rsa-pss,SIG,3,keygen,564.1
 Rsa Pss,rsa-pss,SIG,3,sign,240.1
 Rsa Pss,rsa-pss,SIG,3,verify,113.7
-Mayo,mayo,SIG,3,keygen,732.9
-Mayo,mayo,SIG,3,sign,194.2
-Mayo,mayo,SIG,3,verify,109.8
-Snova,snova,SIG,3,keygen,834.7
-Snova,snova,SIG,3,sign,110.7
-Snova,snova,SIG,3,verify,106.8
-Uov,uov,SIG,3,keygen,4007.7
-Uov,uov,SIG,3,sign,1029.1962890625
-Uov,uov,SIG,3,verify,1209.3818359375
