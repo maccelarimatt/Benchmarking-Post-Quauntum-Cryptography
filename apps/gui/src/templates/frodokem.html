@@ -3,6 +3,7 @@
 <head>
   {% from '_background_effects.html' import background_layer, background_rules %}
   {% from '_detail_styles.html' import detail_styles %}
+  {% from '_header.html' import header_styles, render_header %}
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{{ label }} - Details</title>
@@ -12,6 +13,7 @@
   <meta name="theme-color" content="#0b0f14" />
   <style>
     {{ detail_styles() | safe }}
+    {{ header_styles() | safe }}
     {{ background_rules() | safe }}
   </style>
   <!-- MathJax for LaTeX-style math -->
@@ -19,6 +21,7 @@
 </head>
 <body>
   {{ background_layer() }}
+  {{ render_header(active='benchmarking') }}
   <main class="detail-shell">
     <div class="island detail-hero">
       <div class="detail-hero__text">

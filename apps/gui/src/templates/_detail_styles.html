@@ -37,7 +37,7 @@ html::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.65); }
 
 body {
   margin: 0;
-  padding: 6vh 6vw 8vh;
+  padding: 0 5vw 8vh;
   color: var(--text);
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
   background:
@@ -48,7 +48,9 @@ body {
   position: relative;
   overflow-x: hidden;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 body::before,
@@ -83,6 +85,7 @@ main.detail-shell {
   gap: 1.9rem;
   position: relative;
   z-index: 1;
+  margin-top: 6vh;
 }
 main.detail-shell::before {
   content: "";
