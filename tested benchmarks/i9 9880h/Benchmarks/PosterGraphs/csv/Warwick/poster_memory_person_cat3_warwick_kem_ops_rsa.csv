@@ -1,0 +1,4 @@
+person,kind,category,pass,algorithm,internal_algorithm,operation,value
+Warwick,KEM,3,memory,Rsa Oaep,rsa-oaep,keygen,673.5
+Warwick,KEM,3,memory,Rsa Oaep,rsa-oaep,encapsulate,158.2
+Warwick,KEM,3,memory,Rsa Oaep,rsa-oaep,decapsulate,133.4

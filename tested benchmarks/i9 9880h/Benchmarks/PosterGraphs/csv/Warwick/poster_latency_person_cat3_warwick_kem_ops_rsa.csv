@@ -1,0 +1,4 @@
+person,kind,category,pass,algorithm,internal_algorithm,operation,value
+Warwick,KEM,3,timing,Rsa Oaep,rsa-oaep,keygen,5679.295471822479
+Warwick,KEM,3,timing,Rsa Oaep,rsa-oaep,encapsulate,0.7721905752987368
+Warwick,KEM,3,timing,Rsa Oaep,rsa-oaep,decapsulate,33.89115660065727

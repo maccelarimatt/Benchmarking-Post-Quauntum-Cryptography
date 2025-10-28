@@ -1283,6 +1283,7 @@ def plot_personal_operation_graphs(
         exclude_rsa = pass_key == "timing"
 
         aggregates: Dict[Tuple[str, str, int], Dict[str, Any]] = {}
+        rsa_records: Dict[str, Dict[int, Dict[str, Dict[str, Any]]]] = {"KEM": {}, "SIG": {}}
         for rec in records:
             if rec.measurement_pass != pass_key:
                 continue
@@ -1293,10 +1294,16 @@ def plot_personal_operation_graphs(
             allowed = allowed_lookup.get(kind_upper, set())
             if algo_lower not in allowed:
                 continue
-            if exclude_rsa and algo_lower in rsa_algos:
-                continue
             value = getattr(rec, attr_name, None)
             if value is None:
+                continue
+            is_rsa = algo_lower in rsa_algos
+            if is_rsa:
+                kind_map = rsa_records.setdefault(kind_upper, {})
+                cat_map = kind_map.setdefault(rec.category_number, {})
+                algo_entry = cat_map.setdefault(algo_lower, {"label": rec.algo, "ops": {}})
+                algo_entry["ops"][rec.operation] = float(value)
+            if exclude_rsa and is_rsa:
                 continue
             key = (kind_upper, algo_lower, rec.category_number)
             bucket = aggregates.setdefault(key, {"ops": {}, "label": rec.algo})
@@ -1334,7 +1341,7 @@ def plot_personal_operation_graphs(
                                 ("no_hqc", {algo for algo in allowed_base if algo != "hqc"})
                             )
 
-                for subset_name, allowed_algos in subset_specs:
+                for subset_idx, (subset_name, allowed_algos) in enumerate(subset_specs):
                     if allowed_algos:
                         allowed_lower = {algo.lower() for algo in allowed_algos}
                         filtered = [entry for entry in entries if entry[0].lower() in allowed_lower]
@@ -1462,6 +1469,51 @@ def plot_personal_operation_graphs(
                         ],
                         csv_rows,
                     )
+
+                if (
+                    subset_idx == len(subset_specs) - 1
+                    and person.lower() == "warwick"
+                    and person_csv
+                ):
+                    rsa_kind_entries = rsa_records.get(kind, {})
+                    algo_map = rsa_kind_entries.get(category, {})
+                    if algo_map:
+                        rsa_rows: List[Dict[str, Any]] = []
+                        for algo_lower, data in sorted(algo_map.items()):
+                            ops_map = data.get("ops", {})
+                            if any(op not in ops_map for op in required_ops):
+                                continue
+                            for op in required_ops:
+                                rsa_rows.append(
+                                    {
+                                        "person": person,
+                                        "kind": kind,
+                                        "category": category,
+                                        "pass": pass_key,
+                                        "algorithm": _friendly_label(data["label"]),
+                                        "internal_algorithm": data["label"],
+                                        "operation": op,
+                                        "value": ops_map.get(op),
+                                    }
+                                )
+                        if rsa_rows:
+                            name = f"poster_{file_stub}_cat{category}_{person.lower()}_{kind.lower()}_ops_rsa"
+                            _write_csv(
+                                person_csv,
+                                name,
+                                [
+                                    "person",
+                                    "kind",
+                                    "category",
+                                    "pass",
+                                    "algorithm",
+                                    "internal_algorithm",
+                                    "operation",
+                                    "value",
+                                ],
+                                rsa_rows,
+                            )
+
 
 
 def plot_cat3_mixed_top(

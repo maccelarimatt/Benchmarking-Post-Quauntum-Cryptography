@@ -1,0 +1,4 @@
+person,kind,category,pass,algorithm,internal_algorithm,operation,value
+Warwick,SIG,1,timing,Rsa Pss,rsa-pss,keygen,140.72322587599047
+Warwick,SIG,1,timing,Rsa Pss,rsa-pss,sign,3.1222613997670123
+Warwick,SIG,1,timing,Rsa Pss,rsa-pss,verify,0.26497680082684383

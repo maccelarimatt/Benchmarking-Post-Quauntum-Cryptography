@@ -1,0 +1,4 @@
+person,kind,category,pass,algorithm,internal_algorithm,operation,value
+Warwick,SIG,1,memory,Rsa Pss,rsa-pss,keygen,494.9
+Warwick,SIG,1,memory,Rsa Pss,rsa-pss,sign,238.7
+Warwick,SIG,1,memory,Rsa Pss,rsa-pss,verify,111.6
